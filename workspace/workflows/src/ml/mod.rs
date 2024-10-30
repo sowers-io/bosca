@@ -10,9 +10,21 @@ pub fn device(cpu: bool) -> Result<Device, activity::Error> {
     if cpu {
         Ok(Device::Cpu)
     } else if cuda_is_available() {
-        Ok(Device::new_cuda(0).map_err(|e| activity::Error::new(e.to_string()))?)
+        match Device::new_cuda(0) {
+            Ok(device) => Ok(device),
+            Err(err) => {
+                println!("falling back to CPU: {}", err);
+                Ok(Device::Cpu)
+            }
+        }
     } else if metal_is_available() {
-        Ok(Device::new_metal(0).map_err(|e| activity::Error::new(e.to_string()))?)
+        match Device::new_metal(0) {
+            Ok(device) => Ok(device),
+            Err(err) => {
+                println!("falling back to CPU: {}", err);
+                Ok(Device::Cpu)
+            }
+        }
     } else {
         #[cfg(all(target_os = "macos", target_arch = "aarch64"))]
         {

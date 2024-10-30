@@ -3,10 +3,12 @@ use candle_nn::ops::softmax;
 use crate::ml::whisper::model::Model;
 use tokenizers::Tokenizer;
 use candle_transformers::models::whisper::{self as m};
+use log::{info, warn};
 use crate::ml::whisper::decoding_result::DecodingResult;
 use rand::{distributions::Distribution, SeedableRng};
+use serde_json::json;
 use crate::activity;
-use crate::ml::whisper::segment::Segment;
+use crate::ml::whisper::segment::{Segment, SegmentTiming};
 
 #[derive(Clone, Copy, Debug)]
 pub enum Task {
@@ -40,7 +42,7 @@ pub struct Decoder {
 
 impl Decoder {
     #[allow(clippy::too_many_arguments)]
-    pub(crate) fn new(
+    pub fn new(
         model: Model,
         tokenizer: Tokenizer,
         seed: u64,
@@ -100,7 +102,7 @@ impl Decoder {
         if self.verbose {
             println!("audio features: {:?}", audio_features.dims());
         }
-        let sample_len = model.config().max_target_positions;
+        let sample_len = model.config().max_target_positions / 2;
         let mut sum_logprob = 0f64;
         let mut no_speech_prob = f64::NAN;
         let mut tokens = vec![self.sot_token];
@@ -191,9 +193,9 @@ impl Decoder {
             // On errors, we try again with a different temperature.
             match dr {
                 Ok(dr) => {
-                    let needs_fallback = dr.compression_ratio > 1.0
-                        || dr.avg_logprob < -2.0;
-                    if !needs_fallback || dr.no_speech_prob > 0.8 {
+                    let needs_fallback = dr.compression_ratio > m::COMPRESSION_RATIO_THRESHOLD
+                        || dr.avg_logprob < m::LOGPROB_THRESHOLD;
+                    if !needs_fallback || dr.no_speech_prob > m::NO_SPEECH_THRESHOLD {
                         return Ok(dr);
                     }
                 }
@@ -209,29 +211,29 @@ impl Decoder {
         let (_, _, content_frames) = mel.dims3().map_err(|e| activity::Error::new(e.to_string()))?;
         let mut seek = 0;
         let mut segments = vec![];
-        while seek < content_frames {
-            let start = std::time::Instant::now();
-            let seek_start = ((seek as f32) * 0.8) as usize;
-            let time_offset = (seek_start * m::HOP_LENGTH) as f64 / m::SAMPLE_RATE as f64;
-            let time_offset_start = (seek_start * m::HOP_LENGTH) as f64 / m::SAMPLE_RATE as f64;
-            let segment_size = usize::min(content_frames - seek_start, m::N_FRAMES);
-            let mel_segment = mel.narrow(2, seek_start, segment_size).map_err(|e| activity::Error::new(e.to_string()))?;
+        while seek < content_frames + m::N_FRAMES {
+            // TODO: sometimes the end gets cut off, rolling back a bit to try and grab it.
+            //       I'm sure there's a smarter way to achieve this, but this is quick and dirty... and should suffice for now.
+            let start = ((seek as f32) * 0.8) as usize;
+            let time_offset = (start * m::HOP_LENGTH) as f64 / m::SAMPLE_RATE as f64;
+            let segment_size = usize::min(content_frames - start, m::N_FRAMES);
+            let mel_segment = mel.narrow(2, start, segment_size).map_err(|e| activity::Error::new(e.to_string()))?;
             let segment_duration = (segment_size * m::HOP_LENGTH) as f64 / m::SAMPLE_RATE as f64;
+
             let dr = self.decode_with_fallback(&mel_segment)?;
             seek += segment_size;
-            if dr.no_speech_prob > 0.8 && dr.avg_logprob < -2.0 {
-                println!("no speech detected, skipping {seek} -> {seek_start} {dr:?}");
+            if dr.no_speech_prob > m::NO_SPEECH_THRESHOLD && dr.avg_logprob < m::LOGPROB_THRESHOLD {
+                warn!("no speech detected, skipping {seek} -> {start} {dr:?}");
                 continue;
             }
-            let segment = Segment {
-                start_offset: time_offset_start,
+            let mut segment = Segment {
                 start: time_offset,
                 duration: segment_duration,
-                duration_offset: segment_duration,
                 dr,
+                timing: Vec::new(),
             };
             if self.timestamps {
-                println!(
+                info!(
                     "{:.1}s -- {:.1}s",
                     segment.start,
                     segment.start + segment.duration,
@@ -250,7 +252,12 @@ impl Decoder {
                                 .tokenizer
                                 .decode(&tokens_to_decode, true)
                                 .map_err(|e| activity::Error::new(e.to_string()))?;
-                            println!("decoding 1:  {:.1}s-{:.1}s: {}", prev_timestamp_s, timestamp_s, text);
+                            info!("decoding 1:  {:.1}s-{:.1}s: {}", prev_timestamp_s, timestamp_s, text);
+                            segment.timing.push(SegmentTiming {
+                                start: prev_timestamp_s,
+                                duration: timestamp_s,
+                                text,
+                            });
                             tokens_to_decode.clear()
                         }
                         prev_timestamp_s = timestamp_s;
@@ -264,22 +271,32 @@ impl Decoder {
                         .decode(&tokens_to_decode, true)
                         .map_err(|e| activity::Error::new(e.to_string()))?;
                     if !text.is_empty() {
-                        println!("decoding 2:  {:.1}s-...: {}", prev_timestamp_s, text);
+                        info!("decoding 2:  {:.1}s-...: {}", prev_timestamp_s, text);
+                        segment.timing.push(SegmentTiming {
+                            start: prev_timestamp_s,
+                            duration: (segment.duration as f32) - prev_timestamp_s,
+                            text,
+                        });
                     }
                     tokens_to_decode.clear()
                 }
             } else {
-                println!(
+                info!(
                     "{:.1}s -- {:.1}s: {}",
                     segment.start,
                     segment.start + segment.duration,
                     segment.dr.text,
-                )
-            }
-            if self.verbose {
-                println!("{seek}: {segment:?}, in {:?}", start.elapsed());
+                );
+                segment.timing.push(SegmentTiming {
+                    start: segment.start as f32,
+                    duration: (segment.start + segment.duration) as f32,
+                    text: segment.dr.text.to_owned(),
+                });
             }
             segments.push(segment)
+        }
+        if self.verbose {
+            info!("Result: {}", json!(segments).to_string())
         }
         Ok(segments)
     }

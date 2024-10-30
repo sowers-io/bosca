@@ -47,11 +47,11 @@ impl Activity for TranscribeActivity {
         convert_to_wav(&download, &path_str).await?;
         let path_buf = PathBuf::from(path_str);
         let segments = create_segments(path_buf.as_path(),
-                                       true,
+                                       false,
                                        None,
                                        None,
                                        None,
-                                       Some(WhichModel::MediumEn),
+                                       Some(WhichModel::LargeV3),
                                        None,
                                        None,
                                        false,
