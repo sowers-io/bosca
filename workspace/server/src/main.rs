@@ -236,6 +236,8 @@ async fn initialize_workflow(ctx: &BoscaContext) {
         let mut settings = index.get_settings().await.unwrap();
         settings.filterable_attributes = Some(vec!["_type".to_owned()]);
         index.set_settings(&settings).await.unwrap();
+    } else {
+        ctx.workflow.create_queues().await.unwrap();
     }
 }
 

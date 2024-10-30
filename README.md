@@ -5,7 +5,21 @@ Bosca
 
 Bosca is a Content Management System.
 
-Key Features (not an exhaustive list):
+### Getting Started
+
+Run
+
+```bash
+cargo build --release
+docker compose up
+```
+
+Admin UI: http://127.0.0.1:3000/
+GraphQL: http://127.0.0.1:8000/
+
+Username: `admin` Password: `password`
+
+### Key Features (not an exhaustive list):
 
 * Content Management
 * Collections

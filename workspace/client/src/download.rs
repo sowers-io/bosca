@@ -1,3 +1,4 @@
+use std::fs::create_dir_all;
 use crate::client::{MetadataContentDownloadUrl, MetadataSupplementaryDownloadUrl};
 use http::{HeaderMap, HeaderName, HeaderValue};
 use std::path::Path;
@@ -29,6 +30,10 @@ pub async fn download_path_with_extension(id: &String, download: &MetadataConten
     } else {
         format!("/tmp/bosca/{}", id)
     };
+    let parent_path = Path::new("/tmp/bosca/");
+    if !parent_path.exists() {
+        create_dir_all(parent_path)?;
+    }
     let path = Path::new(path_str.as_str());
     let mut file = File::create(path).await?;
     while let Some(chunk) = response.chunk().await? {
@@ -53,6 +58,10 @@ pub async fn download_supplementary_path(id: &String, download: &MetadataSupplem
         .send()
         .await?;
     let path_str = format!("/tmp/bosca/{}", id);
+    let parent_path = Path::new("/tmp/bosca/");
+    if !parent_path.exists() {
+        create_dir_all(parent_path)?;
+    }
     let path = Path::new(path_str.as_str());
     let mut file = File::create(path).await?;
     while let Some(chunk) = response.chunk().await? {

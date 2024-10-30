@@ -10,8 +10,7 @@ services:
       dockerfile: Dockerfile-migrations
     pull_policy: always
     environment:
-      GOOSE_DRIVER: postgres
-      GOOSE_DBSTRING: postgresql://bosca:bosca@postgres:5432/bosca
+      DATABASE_URL: postgresql://bosca:bosca@postgres:5432/bosca
     networks:
       - boscanet
     depends_on:
@@ -26,7 +25,7 @@ services:
     environment:
       BOSCA_USERNAME: admin
       BOSCA_PASSWORD: password
-      BOSCA_QUEUES: "bible,20;bible-ai,0;bible-book,20;bible-chapter,50;bible-verse,50;default,50;media-transcription,1;media-upload,5;metadata,50;search-index,100;traits,100;transition,100"
+      BOSCA_QUEUES: "bible,20;bible-ai,0;bible-book,20;bible-chapter,20;bible-verse,10;media-transcription,1;media-upload,5;metadata,50;search-index,100;traits,100;transition,100"
       BOSCA_URL: http://server:8000/graphql
     restart: always
     networks:
@@ -41,7 +40,7 @@ services:
         - ghcr.io/sowers-io/bosca/server:latest
       dockerfile: Dockerfile-server
     environment:
-      BOSCA_URL_PREFIX: http://127.0.0.1:8000
+      BOSCA_URL_PREFIX: http://server:8000
       DATABASE_JOBS_URL: postgres://boscajobs:boscajobs@postgres-jobs:5432/boscajobs
       DATABASE_URL: postgres://bosca:bosca@postgres:5432/bosca
       JWT_AUDIENCE: bosca.io
@@ -62,6 +61,10 @@ services:
     networks:
       - boscanet
     depends_on:
+      database-migration:
+        condition: service_started
+      postgres-jobs:
+        condition: service_healthy
       postgres:
         condition: service_healthy
 

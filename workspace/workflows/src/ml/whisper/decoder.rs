@@ -211,14 +211,12 @@ impl Decoder {
         let mut segments = vec![];
         while seek < content_frames {
             let start = std::time::Instant::now();
-            let seek_start = ((seek as f32) * 0.9) as usize;
+            let seek_start = ((seek as f32) * 0.8) as usize;
             let time_offset = (seek_start * m::HOP_LENGTH) as f64 / m::SAMPLE_RATE as f64;
             let time_offset_start = (seek_start * m::HOP_LENGTH) as f64 / m::SAMPLE_RATE as f64;
             let segment_size = usize::min(content_frames - seek_start, m::N_FRAMES);
-            let segment_size_buf = ((segment_size as f32) * 1.1) as usize;
-            let mel_segment = mel.narrow(2, seek_start, segment_size_buf).map_err(|e| activity::Error::new(e.to_string()))?;
+            let mel_segment = mel.narrow(2, seek_start, segment_size).map_err(|e| activity::Error::new(e.to_string()))?;
             let segment_duration = (segment_size * m::HOP_LENGTH) as f64 / m::SAMPLE_RATE as f64;
-            let segment_duration_offset = (segment_size_buf * m::HOP_LENGTH) as f64 / m::SAMPLE_RATE as f64;
             let dr = self.decode_with_fallback(&mel_segment)?;
             seek += segment_size;
             if dr.no_speech_prob > 0.8 && dr.avg_logprob < -2.0 {
@@ -229,7 +227,7 @@ impl Decoder {
                 start_offset: time_offset_start,
                 start: time_offset,
                 duration: segment_duration,
-                duration_offset: segment_duration_offset,
+                duration_offset: segment_duration,
                 dr,
             };
             if self.timestamps {
