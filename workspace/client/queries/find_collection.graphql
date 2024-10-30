@@ -1,0 +1,13 @@
+query FindCollection($attributes: [FindAttributeInput!]!) {
+    content {
+        findCollection(attributes: $attributes) {
+            id
+            name
+            created
+            modified
+            labels
+            attributes
+            type
+        }
+    }
+}

@@ -1,0 +1,48 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt"
+    nginx.ingress.kubernetes.io/proxy-body-size: 1024m
+    nginx.ingress.kubernetes.io/proxy-send-timeout: 600
+    nginx.ingress.kubernetes.io/proxy-read-timeout: 600
+spec:
+  ingressClassName: "nginx"
+  tls:
+    - hosts:
+        - api.bosca.io
+        - admin.bosca.io
+        - search.bosca.io
+      secretName: api-bosca-tls
+  rules:
+    - host: api.bosca.io
+      http:
+        paths:
+          - pathType: Prefix
+            path: "/"
+            backend:
+              service:
+                name: server
+                port:
+                  number: 8000
+    - host: admin.bosca.io
+      http:
+        paths:
+          - pathType: Prefix
+            path: "/"
+            backend:
+              service:
+                name: admin
+                port:
+                  number: 3000
+    - host: search.bosca.io
+      http:
+        paths:
+          - pathType: Prefix
+            path: "/"
+            backend:
+              service:
+                name: meilisearch
+                port:
+                  number: 7700

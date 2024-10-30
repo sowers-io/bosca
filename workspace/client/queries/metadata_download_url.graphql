@@ -1,0 +1,18 @@
+query MetadataDownloadUrl($id: String!) {
+    content {
+        metadata(id: $id) {
+            content {
+                type
+                urls {
+                    download {
+                        url
+                        headers {
+                            name
+                            value
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

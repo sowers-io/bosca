@@ -1,0 +1,2 @@
+$env:DATABASE_URL="postgres://bosca:bosca@127.0.0.1:5433/bosca"
+cargo run --bin bosca-migrations

@@ -1,0 +1,14 @@
+query Login($identifier: String!, $password: String!) {
+    security {
+        login {
+            password(identifier: $identifier, password: $password) {
+                principal {
+                    id
+                }
+                token {
+                    token
+                }
+            }
+        }
+    }
+}

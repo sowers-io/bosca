@@ -1,0 +1,6 @@
+FROM gcr.io/distroless/cc-debian12
+
+COPY target/release/bosca-migrations /
+
+EXPOSE 8000
+CMD ["./bosca-migrations"]

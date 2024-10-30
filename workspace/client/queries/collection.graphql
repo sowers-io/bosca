@@ -1,0 +1,12 @@
+query GetCollection($id: String!) {
+    content {
+        collection(id: $id) {
+            id
+            name
+            created
+            modified
+            labels
+            attributes
+        }
+    }
+}

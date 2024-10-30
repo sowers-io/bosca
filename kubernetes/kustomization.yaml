@@ -1,0 +1,28 @@
+namespace: bosca
+
+resources:
+  - secrets/meilisearch.yaml
+  - secrets/s3.yaml
+  - secrets/jwt.yaml
+  - secrets/serviceaccount.yaml
+  - secrets/mux.yaml
+  - secrets/postgres-bosca.yaml
+  - secrets/postgres-bosca-direct.yaml
+  - secrets/postgres-boscajobs.yaml
+  - services/otel.yaml
+  - services/coroot-pg-agent.yaml
+  - server
+  - workflow-server
+  - runner
+  - admin
+  - meilisearch
+  - ollama
+  - ingress.yaml
+  - namespace.yaml
+#  - mail-secret.yaml
+#  - service-credentials.yaml
+#  - service-certificate-secret.yaml
+
+generatorOptions:
+  disableNameSuffixHash: true
+

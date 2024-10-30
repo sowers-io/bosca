@@ -1,0 +1,9 @@
+mutation AddChildCollection($id: String!, $collectionId: String!) {
+    content {
+        collection {
+            addChildCollection(id: $id, collectionId: $collectionId) {
+                id
+            }
+        }
+    }
+}

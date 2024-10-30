@@ -1,0 +1,7 @@
+mutation SetMetadataReady($id: String!) {
+    content {
+        metadata {
+            setMetadataReady(id: $id)
+        }
+    }
+}

@@ -1,0 +1,6 @@
+FROM gcr.io/distroless/cc-debian12
+
+COPY target/release/bosca-front /
+
+EXPOSE 3002
+CMD ["./bosca-front"]

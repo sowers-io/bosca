@@ -1,0 +1,15 @@
+#!/bin/bash
+
+cargo build --release
+
+export BOSCA_URL_PREFIX=http://127.0.0.1:8000
+export DATABASE_JOBS_URL=postgres://boscajobs:boscajobs@127.0.0.1:5434/boscajobs
+export DATABASE_URL=postgres://bosca:bosca@127.0.0.1:5433/bosca
+export JWT_AUDIENCE=bosca.io
+export JWT_ISSUER=bosca-graphql
+export JWT_SECRET=bosca1234*
+export SEARCH_KEY=p8JcB_HuMHRxN7uVXfrG2wU06b5k7oTvaAAYo6nsi9M
+export SEARCH_URL=http://127.0.0.1:7701
+export STORAGE=/tmp/bosca/fs
+
+./target/release/bosca-server

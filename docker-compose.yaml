@@ -1,0 +1,83 @@
+include:
+  # This includes services like database, storage, etc
+  - services/docker-compose.yaml
+
+services:
+  database-migration:
+    build:
+      tags:
+        - ghcr.io/sowers-io/bosca/database-migration:latest
+      dockerfile: Dockerfile-migrations
+    pull_policy: always
+    environment:
+      GOOSE_DRIVER: postgres
+      GOOSE_DBSTRING: postgresql://bosca:bosca@postgres:5432/bosca
+    networks:
+      - boscanet
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  runner:
+    build:
+      tags:
+        - ghcr.io/sowers-io/bosca/runner:latest
+      dockerfile: Dockerfile-runner
+    environment:
+      BOSCA_USERNAME: admin
+      BOSCA_PASSWORD: password
+      BOSCA_QUEUES: "bible,20;bible-ai,0;bible-book,20;bible-chapter,50;bible-verse,50;default,50;media-transcription,1;media-upload,5;metadata,50;search-index,100;traits,100;transition,100"
+      BOSCA_URL: http://server:8000/graphql
+    restart: always
+    networks:
+      - boscanet
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  server:
+    build:
+      tags:
+        - ghcr.io/sowers-io/bosca/server:latest
+      dockerfile: Dockerfile-server
+    environment:
+      BOSCA_URL_PREFIX: http://127.0.0.1:8000
+      DATABASE_JOBS_URL: postgres://boscajobs:boscajobs@postgres-jobs:5432/boscajobs
+      DATABASE_URL: postgres://bosca:bosca@postgres:5432/bosca
+      JWT_AUDIENCE: bosca.io
+      JWT_ISSUER: bosca-graphql
+      JWT_SECRET: bosca1234*
+      SEARCH_KEY: p8JcB_HuMHRxN7uVXfrG2wU06b5k7oTvaAAYo6nsi9M
+      SEARCH_URL: http://meilisearch:7700
+      STORAGE: s3
+      AWS_BUCKET: bosca
+      AWS_FORCE_PATH_STYLE: 'true'
+      AWS_ENDPOINT: http://minio:9010
+      AWS_ACCESS_KEY_ID: 67fO5gFs6BuksBrh6rMp
+      AWS_SECRET_ACCESS_KEY: eV4rlwomvXsM19CXorOTb5uYaFLeNXsPLKx5Uxdm
+      AWS_ALLOW_HTTP: true
+    ports:
+      - '8000:8000'
+    restart: always
+    networks:
+      - boscanet
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  admin:
+    build:
+      tags:
+        - ghcr.io/sowers-io/bosca/admin:latest
+      context: workspace/admin
+      dockerfile: Dockerfile
+    pull_policy: always
+    ports:
+      - '3000:3000'
+    environment:
+      BOSCA_SERVER_URL: http://server:8000/graphql
+    networks:
+      - boscanet
+    depends_on:
+      postgres:
+        condition: service_healthy

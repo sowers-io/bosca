@@ -1,0 +1,28 @@
+apiVersion: dragonflydb.io/v1alpha1
+kind: Dragonfly
+metadata:
+  name: bosca-jobs
+  namespace: bosca
+spec:
+  replicas: 1
+  env:
+    # - name: DFLY_cluster_mode
+      # value: emulated
+    - name: DFLY_lock_on_hashtags
+      value: "true"
+    - name: DFLY_default_lua_flags
+      value: allow-undeclared-keys
+  snapshot:
+    persistentVolumeClaimSpec:
+      accessModes:
+        - ReadWriteOnce
+      resources:
+        requests:
+          storage: 1Gi
+  resources:
+    requests:
+      cpu: 500m
+      memory: 250Mi
+    limits:
+      cpu: 600m
+      memory: 750Mi

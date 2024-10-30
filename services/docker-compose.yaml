@@ -1,0 +1,230 @@
+x-minio-common: &minio-common
+  image: quay.io/minio/minio:RELEASE.2024-04-06T05-26-02Z
+  command: server --console-address ":9011" http://minio{1...4}/data{1...2}
+  restart: always
+  expose:
+    - "9010"
+    - "9011"
+  healthcheck:
+    test: [ "CMD", "mc", "ready", "local" ]
+    interval: 5s
+    timeout: 5s
+    retries: 5
+  environment:
+    - MINIO_ACCESS_KEY=67fO5gFs6BuksBrh6rMp
+    - MINIO_SECRET_KEY=eV4rlwomvXsM19CXorOTb5uYaFLeNXsPLKx5Uxdm
+  networks:
+    - boscanet
+
+services:
+#  mailhog:
+#    image: mailhog/mailhog:latest
+#    platform: linux/amd64
+#    restart: always
+#    ports:
+#      - 1025:1025
+#      - 8025:8025
+
+  qdrant:
+    image: qdrant/qdrant:v1.9.2
+    restart: always
+    ports:
+      - 6333:6333
+      - 6334:6334
+    volumes:
+      - bosca-qdrant:/qdrant/storage:z
+    networks:
+      - boscanet
+
+  meilisearch:
+    image: getmeili/meilisearch:v1.9.0
+    restart: always
+    ports:
+      - 7701:7700
+    environment:
+      MEILI_MASTER_KEY: p8JcB_HuMHRxN7uVXfrG2wU06b5k7oTvaAAYo6nsi9M
+    volumes:
+      - bosca-meilisearch:/meili_data
+    networks:
+      - boscanet
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:7700/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  dragonfly:
+    image: 'docker.dragonflydb.io/dragonflydb/dragonfly'
+    ulimits:
+      memlock: -1
+    environment:
+      DFLY_cluster_mode: emulated
+      DFLY_lock_on_hashtags: true
+      DFLY_default_lua_flags: allow-undeclared-keys
+    ports:
+      - "6380:6379"
+    # For better performance, consider `host` mode instead `port` to avoid docker NAT.
+    # `host` mode is NOT currently supported in Swarm Mode.
+    # https://docs.docker.com/compose/compose-file/compose-file-v3/#network_mode
+    # network_mode: "host"
+    volumes:
+      - bosca-dragonflydata:/data
+    networks:
+      - boscanet
+
+  postgres:
+    image: postgres:16-alpine
+    restart: always
+    ports:
+      - '5433:5432'
+    volumes:
+      - bosca-postgres:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_PASSWORD=bosca
+      - POSTGRES_USER=bosca
+      - POSTGRES_DB=bosca
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-U", "bosca" ]
+      interval: 10s
+      retries: 5
+      start_period: 10s
+    networks:
+      - boscanet
+
+  postgres-jobs:
+    image: quay.io/tembo/pg16-pgmq:latest
+    restart: always
+    ports:
+      - '5434:5432'
+    volumes:
+      - bosca-postgres-jobs:/var/lib/postgresql/data
+    environment:
+      - POSTGRES_PASSWORD=boscajobs
+      - POSTGRES_USER=boscajobs
+      - POSTGRES_DB=boscajobs
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-U", "boscajobs" ]
+      interval: 10s
+      retries: 5
+      start_period: 10s
+    networks:
+      - boscanet
+
+  minio1:
+    <<: *minio-common
+    hostname: minio1
+    volumes:
+      - bosca-minio-data1-1:/data1
+      - bosca-minio-data1-2:/data2
+
+  minio2:
+    <<: *minio-common
+    hostname: minio2
+    volumes:
+      - bosca-minio-data2-1:/data1
+      - bosca-minio-data2-2:/data2
+
+  minio3:
+    <<: *minio-common
+    hostname: minio3
+    volumes:
+      - bosca-minio-data3-1:/data1
+      - bosca-minio-data3-2:/data2
+
+  minio4:
+    <<: *minio-common
+    hostname: minio4
+    volumes:
+      - bosca-minio-data4-1:/data1
+      - bosca-minio-data4-2:/data2
+
+  minio:
+    image: nginx:1.19.2-alpine
+    restart: always
+    hostname: bosca.minio-nginx
+    volumes:
+      - ./minio/nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - "9010:9010"
+      - "9011:9011"
+    depends_on:
+      - minio1
+      - minio2
+      - minio3
+      - minio4
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:9010/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - boscanet
+
+  storage-init:
+    build:
+      dockerfile: Dockerfile-storage
+    restart: on-failure:100000
+    depends_on:
+      minio:
+        condition: service_healthy
+      meilisearch:
+        condition: service_healthy
+    networks:
+      - boscanet
+
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - 11434:11434
+    environment:
+      OLLAMA_NUM_PARALLEL: 4
+      OLLAMA_MAX_LOADED_MODELS: 4
+      OLLAMA_DEBUG: 1
+    volumes:
+      - ./ollama/ollama:/root/.ollama
+    tty: true
+    restart: always
+    networks:
+      - boscanet
+  #    deploy:
+  #      resources:
+  #        reservations:
+  #          devices:
+  #            - driver: nvidia
+  #              count: all
+  #              capabilities: [gpu]
+
+  textextractor:
+    image: ghcr.io/sowers-io/bosca/text-extractor:a35bff0b7cf9d7584f3d58269f9719a7d5778d02
+    restart: always
+    ports:
+      - 8083:8080
+    environment:
+      QUARKUS_MANAGEMENT_LIMITS_MAX_BODY_SIZE: 100G
+    networks:
+      - boscanet
+    healthcheck:
+      test: [ "CMD", "curl", "-f", "http://localhost:8080/health" ]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  boscanet:
+
+volumes:
+  bosca-postgres:
+  bosca-postgres-jobs:
+  bosca-postgresjobqueue:
+  bosca-minio-data1-1:
+  bosca-minio-data1-2:
+  bosca-minio-data2-1:
+  bosca-minio-data2-2:
+  bosca-minio-data3-1:
+  bosca-minio-data3-2:
+  bosca-minio-data4-1:
+  bosca-minio-data4-2:
+  bosca-ollama:
+  bosca-qdrant:
+  bosca-meilisearch:
+  bosca-dragonflydata:

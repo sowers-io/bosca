@@ -1,0 +1,7 @@
+mutation SetMetadataSystemAttributes($id: String!, $attributes: JSON!) {
+    content {
+        metadata {
+            setMetadataSystemAttributes(id: $id, attributes: $attributes)
+        }
+    }
+}

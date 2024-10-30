@@ -1,0 +1,16 @@
+resources:
+  - deployment.yaml
+  - service.yaml
+  - hpa.yaml
+  - pdb.yaml
+
+generatorOptions:
+  disableNameSuffixHash: true
+
+configMapGenerator:
+  - name: admin-env
+    literals:
+      - NODE_ENV=production
+      - OTLP_TRACE_ENDPOINT=http://otel-collector.bosca.svc.cluster.local:4318/v1/traces
+      - OTLP_METRICS_ENDPOINT=http://otel-collector.bosca.svc.cluster.local:4318/v1/metrics
+

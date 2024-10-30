@@ -1,0 +1,4 @@
+#!/bin/bash
+
+kubectl apply -f issuer-secret.yaml
+kubectl apply -f issuer.yaml

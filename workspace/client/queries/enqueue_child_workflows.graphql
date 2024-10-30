@@ -1,0 +1,8 @@
+mutation EnqueueChildWorkflows($jobId: WorkflowExecutionIdInput!, $workflowIds: [String!]!) {
+    workflows {
+        enqueueChildWorkflows(jobId: $jobId, workflowIds: $workflowIds) {
+            id
+            queue
+        }
+    }
+}

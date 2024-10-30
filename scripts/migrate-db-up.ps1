@@ -1,0 +1,1 @@
+./scripts/migrate-db.ps1 content up

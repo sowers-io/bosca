@@ -1,0 +1,132 @@
+use crate::graphql::content::metadata::MetadataObject;
+use crate::graphql::workflows::activity::ActivityObject;
+use crate::graphql::workflows::workflow::WorkflowObject;
+use crate::graphql::workflows::workflow_activity::WorkflowActivityObject;
+use crate::graphql::workflows::workflow_activity_model::WorkflowActivityModelObject;
+use crate::graphql::workflows::workflow_activity_prompt::WorkflowActivityPromptObject;
+use crate::graphql::workflows::workflow_activity_storage_system::WorkflowActivityStorageSystemObject;
+use crate::graphql::workflows::workflow_execution_id::WorkflowExecutionIdObject;
+use crate::graphql::workflows::workflow_job_id::WorkflowJobIdObject;
+use crate::models::workflow::execution_plan::WorkflowJob;
+use async_graphql::{Context, Error, Object};
+use serde_json::Value;
+use uuid::Uuid;
+use crate::context::BoscaContext;
+use crate::graphql::content::collection::CollectionObject;
+
+pub struct WorkflowJobObject {
+    job: WorkflowJob,
+}
+
+impl WorkflowJobObject {
+    pub fn new(job: WorkflowJob) -> Self {
+        Self { job }
+    }
+}
+
+#[Object(name = "WorkflowJob")]
+impl WorkflowJobObject {
+    async fn id(&self) -> WorkflowJobIdObject {
+        WorkflowJobIdObject::new(self.job.id.clone())
+    }
+
+    async fn workflow(&self, ctx: &Context<'_>) -> Result<WorkflowObject, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let workflow = ctx.workflow.get_workflow(&self.job.workflow_id).await?;
+        Ok(workflow.unwrap().into())
+    }
+
+    async fn error(&self) -> &Option<String> {
+        &self.job.error
+    }
+
+    async fn collection_id(&self) -> &Option<String> {
+        &self.job.collection_id
+    }
+
+    async fn collection(&self, ctx: &Context<'_>) -> Result<Option<CollectionObject>, Error> {
+        if self.job.collection_id.is_none() {
+            return Ok(None);
+        }
+        let ctx = ctx.data::<BoscaContext>()?;
+        let id = Uuid::parse_str(self.job.collection_id.clone().unwrap().as_str())?;
+        Ok(ctx.content
+            .get_collection(&id)
+            .await?
+            .map(CollectionObject::from))
+    }
+
+    async fn metadata(&self, ctx: &Context<'_>) -> Result<Option<MetadataObject>, Error> {
+        if self.job.metadata_id.is_none() {
+            return Ok(None);
+        }
+        let ctx = ctx.data::<BoscaContext>()?;
+        let id = Uuid::parse_str(self.job.metadata_id.clone().unwrap().as_str())?;
+        Ok(ctx.content
+            .get_metadata(&id)
+            .await?
+            .map(MetadataObject::from))
+    }
+
+    async fn version(&self) -> Option<i32> {
+        self.job.version
+    }
+
+    async fn supplementary_id(&self) -> &Option<String> {
+        &self.job.supplementary_id
+    }
+
+    async fn activity(&self) -> ActivityObject {
+        ActivityObject::new(
+            &self.job.activity,
+            Some(self.job.activity_inputs.clone()),
+            Some(self.job.activity_outputs.clone()),
+        )
+    }
+
+    async fn children(&self) -> Vec<WorkflowExecutionIdObject> {
+        self.job.children.iter().map(|p| p.into()).collect()
+    }
+
+    async fn completed_children(&self) -> Vec<WorkflowExecutionIdObject> {
+        self.job
+            .completed_children
+            .iter()
+            .map(|p| p.into())
+            .collect()
+    }
+
+    async fn failed_children(&self) -> Vec<WorkflowExecutionIdObject> {
+        self.job.failed_children.iter().map(|p| p.into()).collect()
+    }
+
+    async fn workflow_activity(&self) -> WorkflowActivityObject {
+        WorkflowActivityObject::new(&self.job, &self.job.workflow_activity)
+    }
+
+    async fn prompts(&self) -> Vec<WorkflowActivityPromptObject> {
+        self.job.prompts.iter().map(|p| p.clone().into()).collect()
+    }
+
+    async fn storage_systems(&self) -> Vec<WorkflowActivityStorageSystemObject> {
+        self.job
+            .storage_systems
+            .iter()
+            .map(|p| p.clone().into())
+            .collect()
+    }
+
+    async fn models(&self) -> Vec<WorkflowActivityModelObject> {
+        self.job.models.iter().map(|p| p.clone().into()).collect()
+    }
+
+    async fn context(&self) -> &Value {
+        &self.job.context
+    }
+}
+
+impl From<WorkflowJob> for WorkflowJobObject {
+    fn from(job: WorkflowJob) -> Self {
+        Self::new(job)
+    }
+}

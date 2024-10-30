@@ -1,0 +1,18 @@
+query MetadataUploadUrl($id: String!) {
+    content {
+        metadata(id: $id) {
+            content {
+                type
+                urls {
+                    upload {
+                        url
+                        headers {
+                            name
+                            value
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

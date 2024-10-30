@@ -1,0 +1,20 @@
+query SupplementaryUploadUrl($id: String!, $key: String!) {
+    content {
+        metadataSupplementary(id: $id, key: $key) {
+            metadataId
+            key
+            content {
+                type
+                urls {
+                    upload {
+                        url
+                        headers {
+                            name
+                            value
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

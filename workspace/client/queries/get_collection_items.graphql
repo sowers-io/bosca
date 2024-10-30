@@ -1,0 +1,25 @@
+query GetCollectionItems($id: String!, $offset: Int!, $limit: Int!) {
+    content {
+        collection(id: $id) {
+            items(limit: $limit, offset: $offset) {
+                ... on Collection {
+                    id
+                    ready
+                    workflow {
+                        state
+                        pending
+                    }
+                }
+                ... on Metadata {
+                    id
+                    ready
+                    workflow {
+                        state
+                        pending
+                    }
+                }
+                __typename
+            }
+        }
+    }
+}

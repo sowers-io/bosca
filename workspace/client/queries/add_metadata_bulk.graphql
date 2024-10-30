@@ -1,0 +1,9 @@
+mutation AddMetadataBulk($metadatas: [MetadataInput!]!) {
+    content {
+        metadata {
+            addBulk(metadatas: $metadatas) {
+                id
+            }
+        }
+    }
+}

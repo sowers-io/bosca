@@ -1,0 +1,7 @@
+mutation AddSearchDocuments($storageSystemId: String!, $documents: [SearchDocumentInput!]!) {
+    content {
+        metadata {
+            addSearchDocuments( storageSystemId: $storageSystemId, documents: $documents)
+        }
+    }
+}

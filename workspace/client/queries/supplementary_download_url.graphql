@@ -1,0 +1,19 @@
+query SupplementaryDownloadUrl($id: String!, $key: String!) {
+    content {
+        metadataSupplementary(id: $id, key: $key) {
+            metadataId
+            key
+            content {
+                urls {
+                    download {
+                        url
+                        headers {
+                            name
+                            value
+                        }
+                    }
+                }
+            }
+        }
+    }
+}

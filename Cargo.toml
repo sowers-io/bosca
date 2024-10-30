@@ -1,0 +1,13 @@
+[workspace]
+resolver = "2"
+members = [
+    "workspace/migrations",
+    "workspace/server",
+    "workspace/workflows",
+    "workspace/runner",
+    "workspace/bible/workflows",
+    "workspace/bible/processor",
+    "workspace/util/telemetry",
+    "workspace/front",
+    "workspace/client"
+]

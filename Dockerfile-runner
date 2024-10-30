@@ -1,0 +1,7 @@
+FROM debian:bookworm-slim
+
+RUN apt update && apt install -y ffmpeg
+
+COPY target/release/bosca-runner /
+
+CMD ["./bosca-runner"]

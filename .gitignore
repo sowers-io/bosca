@@ -1,0 +1,4 @@
+/target
+.idea
+services/ollama/ollama
+/templates

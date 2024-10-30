@@ -1,0 +1,35 @@
+query GetMetadata($id: String!) {
+    content {
+        metadata(id: $id) {
+            id
+            languageTag
+            name
+            version
+            traitIds
+            content {
+                type
+                length
+            }
+            created
+            modified
+            labels
+            attributes
+            source {
+                id
+                identifier
+            }
+            supplementary {
+                key
+                uploaded
+                content {
+                    type
+                    length
+                }
+                source {
+                    id
+                    identifier
+                }
+            }
+        }
+    }
+}
