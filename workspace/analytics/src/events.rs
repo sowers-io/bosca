@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-#[derive(Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd, Clone)]
+#[derive(Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd, Clone, Debug)]
 pub enum EventType {
     Interaction,
     Impression,
