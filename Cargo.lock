@@ -634,6 +634,47 @@ dependencies = [
 ]
 
 [[package]]
+name = "bosca-analytics"
+version = "0.1.0"
+dependencies = [
+ "argon2",
+ "async-stream",
+ "async-trait",
+ "axum",
+ "axum-extra",
+ "base64 0.22.1",
+ "bytes",
+ "chrono",
+ "futures-util",
+ "headers",
+ "http",
+ "jsonwebtoken",
+ "log",
+ "mimalloc",
+ "opentelemetry 0.26.0",
+ "opentelemetry-http",
+ "opentelemetry-otlp",
+ "opentelemetry-semantic-conventions",
+ "opentelemetry-stdout 0.26.0",
+ "opentelemetry_sdk 0.26.0",
+ "rand",
+ "reqwest",
+ "rustls",
+ "serde",
+ "serde_json",
+ "structured-logger",
+ "tokio",
+ "tokio-postgres",
+ "tokio-postgres-rustls",
+ "tokio-stream",
+ "tower 0.5.1",
+ "tower-http",
+ "ulid",
+ "uuid 0.8.2",
+ "webpki-roots",
+]
+
+[[package]]
 name = "bosca-bible-processor"
 version = "0.1.0"
 dependencies = [
@@ -6153,6 +6194,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ed646292ffc8188ef8ea4d1e0e0150fb15a5c2e12ad9b8fc191ae7a8a7f3c4b9"
 
 [[package]]
+name = "ulid"
+version = "1.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "04f903f293d11f31c0c29e4148f6dc0d033a7f80cebc0282bea147611667d289"
+dependencies = [
+ "getrandom",
+ "rand",
+ "web-time",
+]
+
+[[package]]
 name = "unic-char-property"
 version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6524,6 +6576,16 @@ name = "web-sys"
 version = "0.3.70"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "26fdeaafd9bd129f65e7c031593c24d62186301e0c72c8978fa1678be7d532c0"
+dependencies = [
+ "js-sys",
+ "wasm-bindgen",
+]
+
+[[package]]
+name = "web-time"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5a6580f308b1fad9207618087a65c04e7a10bc77e02c8e84e9b00dd4b12fa0bb"
 dependencies = [
  "js-sys",
  "wasm-bindgen",

@@ -9,5 +9,6 @@ members = [
     "workspace/bible/processor",
     "workspace/util/telemetry",
     "workspace/front",
-    "workspace/client"
+    "workspace/client",
+    "workspace/analytics"
 ]
