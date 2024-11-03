@@ -14,15 +14,20 @@ pub struct ParquetWriter {
     accumulator: BatchAccumulator,
 }
 
+pub fn new_arrow_writer(schema: Arc<SchemaDefinition>, path: &str, batch_size: usize) -> Result<ArrowWriter<File>, Box<dyn std::error::Error>> {
+    let props = WriterProperties::builder()
+        .set_compression(Compression::ZSTD(ZstdLevel::default()))
+        .set_max_row_group_size(batch_size)
+        .build();
+    let file = File::create(path)?;
+    Ok(ArrowWriter::try_new(file, Arc::clone(&schema.schema), Some(props))?)
+}
+
 impl ParquetWriter {
+    #[allow(dead_code)]
     pub fn new(schema: Arc<SchemaDefinition>, path: &str, batch_size: usize) -> Result<Self, Box<dyn std::error::Error>> {
-        let props = WriterProperties::builder()
-            .set_compression(Compression::ZSTD(ZstdLevel::default()))
-            .set_max_row_group_size(batch_size)
-            .build();
-        let file = File::create(path)?;
-        let writer = ArrowWriter::try_new(file, Arc::clone(&schema.schema), Some(props))?;
-        let accumulator = BatchAccumulator::new(Arc::clone(&schema), batch_size);
+        let writer = new_arrow_writer(Arc::clone(&schema), path, batch_size)?;
+        let accumulator = BatchAccumulator::new(schema, batch_size);
         Ok(Self {
             writer,
             accumulator,

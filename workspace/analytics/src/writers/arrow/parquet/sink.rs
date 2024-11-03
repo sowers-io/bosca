@@ -9,6 +9,7 @@ pub struct ParquetSink {
 }
 
 impl ParquetSink {
+    #[allow(dead_code)]
     pub fn new(schema: Arc<SchemaDefinition>, path: &str, batch_size: usize) -> Result<Self, Box<dyn std::error::Error>> {
         Ok(Self {
             writer: ParquetWriter::new(schema, path, batch_size)?

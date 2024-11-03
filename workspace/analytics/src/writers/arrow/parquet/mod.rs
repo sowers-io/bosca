@@ -1,2 +1,2 @@
-mod writer;
+pub mod writer;
 pub mod sink;
