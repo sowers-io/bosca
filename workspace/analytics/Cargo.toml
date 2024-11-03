@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 ulid = "1.1.3"
 parquet = "53.2.0"
-arrow = "53.2.0"
+arrow = { version = "53.2.0", features = ["arrow-json", "chrono-tz"] }
 
 axum = { version = "0.7.5", features = ["default", "tokio", "multipart", "tracing", "json", "form", "ws"] }
 axum-extra = { version = "0.9.4", features = ["cookie"] }

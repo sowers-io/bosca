@@ -1,28 +1,22 @@
 mod events;
-mod events_sync;
+mod events_sink;
 mod installation;
 mod writers;
 
 use axum::extract::{DefaultBodyLimit, State};
 use axum::routing::post;
-use axum::{extract, response::{self, IntoResponse}, routing::get, Router};
+use axum::{extract, response::{IntoResponse}, routing::get, Router};
 use std::str::FromStr;
 use http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
 use log::{error, info, warn};
-use serde_json::{json, Value};
+use serde_json::json;
 use std::env;
-use std::fs::create_dir_all;
-use std::path::{Path, PathBuf};
-use std::process::exit;
-use std::str::from_utf8;
 use std::sync::Arc;
 use std::sync::atomic::AtomicBool;
 use std::sync::atomic::Ordering::Relaxed;
 use std::time::Duration;
-use base64::Engine;
 use opentelemetry::{global, KeyValue};
 use tokio::net::TcpListener;
-use uuid::Uuid;
 
 use opentelemetry::trace::TracerProvider as _;
 use opentelemetry_otlp::WithExportConfig;
@@ -34,9 +28,12 @@ use tower_http::timeout::TimeoutLayer;
 use mimalloc::MiMalloc;
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::Sender;
+use tokio::time::timeout;
 use crate::events::Events;
+use crate::events_sink::EventSink;
 use crate::installation::Installation;
-use crate::writers::parquet::parquet::process;
+use crate::writers::arrow::json::sink::JsonSink;
+use crate::writers::arrow::schema::SchemaDefinition;
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
@@ -79,7 +76,7 @@ async fn register() -> impl IntoResponse {
 }
 
 async fn events(State(sender): State<Sender<Events>>, extract::Json(payload): extract::Json<Events>) -> Result<(StatusCode, String), (StatusCode, String)> {
-    sender.send(payload).await.map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, "Error processing payload".to_owned()))?;
+    sender.send(payload).await.map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Error processing payload".to_owned()))?;
     Ok((StatusCode::OK, "OK".to_owned()))
 }
 
@@ -131,13 +128,27 @@ async fn main() {
     let active = Arc::new(AtomicBool::new(true));
     let closed = Arc::new(AtomicBool::new(false));
 
-    let active_process = Arc::clone(&active);
     let active_closed = Arc::clone(&closed);
+    let schema = Arc::new(SchemaDefinition::new());
     tokio::spawn(async move {
+        let mut sink = JsonSink::new(schema, "events.json", 10000).unwrap();
         while !active_closed.load(Relaxed) {
-            if let Err(err) = process(&mut recv, Arc::clone(&active_process)).await {
-                error!("error processing events!: {:?}", err);
+            match timeout(Duration::from_millis(3000), recv.recv()).await {
+                Ok(Some(events)) => {
+                    if let Err(error) = sink.add(events).await {
+                        error!("error adding events to sink: {:?}", error);
+                    }
+                }
+                Ok(None) => {}
+                Err(_) => {
+                    if let Err(error) = sink.flush().await {
+                        error!("error finishing adding events to sink: {:?}", error);
+                    }
+                }
             }
+        }
+        if let Err(error) = sink.finish().await {
+            error!("error finishing adding events to sink: {:?}", error);
         }
     });
 

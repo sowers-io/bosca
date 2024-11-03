@@ -48,7 +48,9 @@ pub struct Device {
     pub manufacturer: String,
     pub model: String,
     pub platform: String,
+    #[serde(alias="primaryLocale")]
     pub primary_locale: String,
+    #[serde(alias="systemName")]
     pub system_name: String,
     pub timezone: String,
     #[serde(alias="type")]

@@ -49,8 +49,8 @@ impl Installation {
             let mut source = thread_rng();
             let random_msb = source.gen::<u16>();
             let lsb = source.gen::<u64>();
-            let node_id = node_id().clone();
-            let cleared_msb = random_msb & !((1 << NODE_BITS) - 1 << (16 - NODE_BITS));
+            let node_id = *node_id();
+            let cleared_msb = random_msb & !(((1 << NODE_BITS) - 1) << (16 - NODE_BITS));
             let node_msb = cleared_msb | (u16::from(node_id) << (16 - NODE_BITS));
             let msb = timebits << 16 | u64::from(node_msb);
             let id = Ulid::from((msb, lsb));

@@ -1,0 +1,62 @@
+POST http://localhost:8009/events
+Content-Type: application/json
+
+{
+  "context": {
+    "app_id": "boom",
+    "app_version": "1.0.0",
+    "client_id": "me",
+    "device": {
+      "installation_id": "asdf",
+      "manufacturer": "asdf",
+      "model": "yup",
+      "platform": "pform",
+      "primaryLocale": "en",
+      "systemName": "sname",
+      "timezone": "America/Chicago",
+      "type": "test",
+      "version": "123"
+    },
+    "browser": {
+      "agent": "HELLO"
+    },
+    "geo": {
+      "city": "Somecity",
+      "country": "US",
+      "region": "OK"
+    },
+    "session_id": "1234"
+  },
+  "sent": 123,
+  "sent_micros": 123,
+  "events": [
+    {
+      "type": "Interaction",
+      "element": {
+        "id": "hello",
+        "type": "typehello",
+        "content": [
+          { "id": "asdf", "type": "boo", "index": 1, "percent": 0.8 }
+        ],
+        "extras": {
+          "hello": "world"
+        }
+      },
+      "created": 123
+    },
+    {
+      "type": "Impression",
+      "element": {
+        "id": "hello2",
+        "type": "typehello2",
+        "content": [
+          { "id": "asdf2","type": "boo2" }
+        ],
+        "extras": {
+          "hello": "world3"
+        }
+      },
+      "created": 1234
+    }
+  ]
+}
