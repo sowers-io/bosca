@@ -26,13 +26,11 @@ pub fn find_file(index: usize) -> Result<String, Box<dyn Error>> {
     }
     let paths = fs::read_dir(TEMP_DIR)?;
     let prefix = format!("{}/events-{index}-", TEMP_DIR);
-    for path in paths {
-        if let Ok(path) = path {
-            if path.file_type()?.is_file() {
-                let name = path.file_name().into_string().unwrap();
-                if name.starts_with(&prefix) && name.ends_with(".json") && path.metadata()?.st_size() < MAX_FILE_SIZE {
-                    return Ok(path.file_name().into_string().unwrap());
-                }
+    for path in paths.flatten() {
+        if path.file_type()?.is_file() {
+            let name = path.file_name().into_string().unwrap();
+            if name.starts_with(&prefix) && name.ends_with(".json") && path.metadata()?.st_size() < MAX_FILE_SIZE {
+                return Ok(path.file_name().into_string().unwrap());
             }
         }
     }
@@ -85,7 +83,7 @@ pub async fn watch_files(writer: Arc<EventsWriter>, schema: Arc<SchemaDefinition
                                         if let Err(err) = copy_to_parquet(file, spawn_writer_schema, spawn_writer) {
                                             error!("error copying file to parquet: {:?}", err);
                                         }
-                                    },
+                                    }
                                     Err(e) => {
                                         error!("error opening file for parquet copy: {:?}", e);
                                         return false;
@@ -124,11 +122,9 @@ pub async fn watch_files(writer: Arc<EventsWriter>, schema: Arc<SchemaDefinition
                             }
                         }
                     }
-                } else {
-                    if let Err(err) = tokio::fs::remove_file(parquet_file).await {
-                        error!("error deleting file: {:?}", err);
-                        break;
-                    }
+                } else if let Err(err) = tokio::fs::remove_file(parquet_file).await {
+                    error!("error deleting file: {:?}", err);
+                    break;
                 }
             }
         } else {
