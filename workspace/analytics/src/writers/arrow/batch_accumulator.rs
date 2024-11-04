@@ -31,7 +31,7 @@ impl BatchAccumulator {
     }
 
     pub fn is_full(&self) -> bool {
-        self.data.len() >= self.capacity
+        self.events >= self.capacity
     }
 
     pub fn build(&mut self) -> Result<RecordBatch, Box<dyn std::error::Error>> {

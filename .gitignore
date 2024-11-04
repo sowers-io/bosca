@@ -3,3 +3,4 @@
 services/ollama/ollama
 /templates
 /analytics
+node_modules

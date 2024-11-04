@@ -2,7 +2,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicI32};
 use std::sync::atomic::Ordering::Relaxed;
 use std::time::Duration;
-use log::error;
+use log::{error, info};
 use tokio::sync::mpsc;
 use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::sync::mpsc::error::SendError;
@@ -46,17 +46,24 @@ impl WriterWorker {
     }
 
     async fn process(stopped: Arc<AtomicBool>, active: Arc<AtomicI32>, mut recv: Receiver<Events>, mut sink: Box<dyn EventSink + Send + Sync>) {
-        while !stopped.load(Relaxed) {
+        let mut done = false;
+        while !done && !stopped.load(Relaxed) && !recv.is_closed() {
             match timeout(Duration::from_millis(3000), recv.recv()).await {
                 Ok(Some(events)) => {
                     if let Err(error) = sink.add(events).await {
                         error!("error adding events to sink: {:?}", error);
                     }
                 }
-                Ok(None) => {}
+                Ok(None) => {
+                    info!("shutting down worker");
+                    done = true;
+                }
                 Err(_) => {
                     if let Err(error) = sink.flush().await {
                         error!("error finishing adding events to sink: {:?}", error);
+                    }
+                    if recv.is_closed() {
+                        done = true;
                     }
                 }
             }

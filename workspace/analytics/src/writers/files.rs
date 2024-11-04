@@ -12,69 +12,74 @@ use crate::writers::arrow::parquet::writer::new_arrow_writer;
 use crate::writers::arrow::schema::SchemaDefinition;
 use crate::writers::writer::EventsWriter;
 
-//const MAX_FILE_SIZE: u64 = 104857600;
-const MAX_FILE_SIZE: u64 = 100;
-const TEMP_DIR: &str = "./analytics/temp";
-const BATCHES_DIR: &str = "./analytics/batches";
+pub struct Config {
+    pub temp_dir: String,
+    pub batches_dir: String,
+    pub pending_objects_dir: String,
+    pub max_file_size: u64,
+}
 
-pub fn find_file(index: usize) -> Result<String, Box<dyn Error>> {
-    if !exists(TEMP_DIR)? {
-        create_dir_all(TEMP_DIR)?;
+pub fn find_file(index: usize, config: Arc<Config>) -> Result<String, Box<dyn Error>> {
+    if !exists(&config.temp_dir)? {
+        create_dir_all(&config.temp_dir)?;
     }
-    if !exists(BATCHES_DIR)? {
-        create_dir_all(BATCHES_DIR)?;
+    if !exists(&config.batches_dir)? {
+        create_dir_all(&config.batches_dir)?;
     }
-    let paths = fs::read_dir(TEMP_DIR)?;
-    let prefix = format!("{}/events-{index}-", TEMP_DIR);
+    let paths = fs::read_dir(&config.temp_dir)?;
+    let prefix = format!("{}/events-{index}-", config.temp_dir);
     for path in paths.flatten() {
         if path.file_type()?.is_file() {
             let name = path.file_name().into_string().unwrap();
-            if name.starts_with(&prefix) && name.ends_with(".json") && path.metadata()?.st_size() < MAX_FILE_SIZE {
+            if name.starts_with(&prefix) && name.ends_with(".json") && path.metadata()?.st_size() < config.max_file_size {
                 return Ok(path.file_name().into_string().unwrap());
             }
         }
     }
-    Ok(format!("{}/events-{index}-{}.json", TEMP_DIR, Utc::now().timestamp_millis()))
+    Ok(format!("{}/events-{index}-{}.json", &config.temp_dir, Utc::now().timestamp_millis()))
 }
 
-pub async fn watch_files(writer: Arc<EventsWriter>, schema: Arc<SchemaDefinition>) {
+pub async fn watch_files(writer: Arc<EventsWriter>, schema: Arc<SchemaDefinition>, config: Arc<Config>) {
     loop {
-        info!("watching files");
-        if let Ok(exists) = tokio::fs::try_exists(TEMP_DIR).await {
+        if let Ok(exists) = tokio::fs::try_exists(&config.temp_dir).await {
             if !exists {
-                tokio::fs::create_dir_all(TEMP_DIR).await.unwrap();
+                tokio::fs::create_dir_all(&config.temp_dir).await.unwrap();
             }
         }
-        if let Ok(exists) = tokio::fs::try_exists(BATCHES_DIR).await {
+        if let Ok(exists) = tokio::fs::try_exists(&config.batches_dir).await {
             if !exists {
-                tokio::fs::create_dir_all(BATCHES_DIR).await.unwrap();
+                tokio::fs::create_dir_all(&config.batches_dir).await.unwrap();
             }
         }
-        if let Ok(mut read) = tokio::fs::read_dir(TEMP_DIR).await {
+        if let Ok(exists) = tokio::fs::try_exists(&config.pending_objects_dir).await {
+            if !exists {
+                tokio::fs::create_dir_all(&config.pending_objects_dir).await.unwrap();
+            }
+        }
+        if let Ok(mut read) = tokio::fs::read_dir(&config.temp_dir).await {
             let mut files = Vec::new();
-            let mut recycle = false;
+            let mut file_sizes = 0u64;
             while let Ok(Some(entry)) = read.next_entry().await {
                 if let Ok(file_type) = entry.file_type().await {
                     if file_type.is_file() {
                         if let Ok(metadata) = entry.metadata().await {
-                            if metadata.st_size() >= MAX_FILE_SIZE {
-                                recycle = true;
-                            }
+                            file_sizes += metadata.st_size();
                         }
                         files.push(entry);
                     }
                 }
             }
-            if recycle {
+            if file_sizes >= config.max_file_size {
                 writer.recycle().await;
-                let parquet_file = format!("{}/batch-{}.parquet", BATCHES_DIR, Utc::now().timestamp_millis());
+                let parquet_file = format!("{}/batch-{}.parquet", &config.batches_dir, Utc::now().timestamp_millis());
+                let finished_parquet_file = format!("{}/batch-{}.parquet", &config.pending_objects_dir, Utc::now().timestamp_millis());
                 let writer = Arc::new(Mutex::new(new_arrow_writer(Arc::clone(&schema), &parquet_file, 10000).unwrap()));
                 let mut success = true;
                 for file in &files {
                     if let Ok(file_name) = file.file_name().into_string() {
                         if file_name.starts_with("events-") && file_name.ends_with(".json") {
-                            info!("processing file: {}", file_name);
-                            let spawn_file = format!("{}/{}", TEMP_DIR, file_name);
+                            info!("adding json file to parquet: {}", file_name);
+                            let spawn_file = format!("{}/{}", &config.temp_dir, file_name);
                             let spawn_writer = Arc::clone(&writer);
                             let spawn_writer_schema = Arc::clone(&schema);
                             success = task::spawn_blocking(move || {
@@ -115,12 +120,16 @@ pub async fn watch_files(writer: Arc<EventsWriter>, schema: Arc<SchemaDefinition
                     for file in files {
                         if let Ok(file_name) = file.file_name().into_string() {
                             if file_name.starts_with("events-") && file_name.ends_with(".json") {
-                                if let Err(err) = tokio::fs::remove_file(format!("{}/{}", TEMP_DIR, file_name)).await {
+                                if let Err(err) = tokio::fs::remove_file(format!("{}/{}", &config.temp_dir, file_name)).await {
                                     error!("error deleting file: {:?}", err);
                                     break;
                                 }
                             }
                         }
+                    }
+                    if let Err(err) = tokio::fs::rename(parquet_file, finished_parquet_file).await {
+                        error!("error deleting file: {:?}", err);
+                        break;
                     }
                 } else if let Err(err) = tokio::fs::remove_file(parquet_file).await {
                     error!("error deleting file: {:?}", err);
@@ -128,7 +137,7 @@ pub async fn watch_files(writer: Arc<EventsWriter>, schema: Arc<SchemaDefinition
                 }
             }
         } else {
-            error!("error watching files");
+            error!("error processing files");
         }
         tokio::time::sleep(Duration::from_secs(15)).await;
     }
