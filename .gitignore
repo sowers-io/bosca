@@ -2,3 +2,4 @@
 .idea
 services/ollama/ollama
 /templates
+/analytics

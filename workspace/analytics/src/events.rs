@@ -29,10 +29,11 @@ pub struct Element {
 #[derive(Serialize, Deserialize, Clone)]
 pub struct Event {
     pub created: i64,
-    pub created_micros: Option<i64>,
+    pub created_micros: Option<u32>,
     #[serde(alias="type")]
     pub event_type: EventType,
-    pub element: Element
+    pub element: Element,
+    pub client_id: String,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -80,5 +81,7 @@ pub struct Events {
     pub context: EventContext,
     pub events: Vec<Event>,
     pub sent: i64,
-    pub sent_micros: i64,
+    pub sent_micros: u32,
+    pub received: Option<i64>,
+    pub received_micros: Option<u32>,
 }

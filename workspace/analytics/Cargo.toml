@@ -45,4 +45,6 @@ webpki-roots = "0.26.6"
 
 mimalloc = { version = "0.1.43", features = ["default"] }
 rand = "0.8.5"
+
+bosca-pool = { path = "../util/pool" }
 #console-subscriber = "0.4.0"

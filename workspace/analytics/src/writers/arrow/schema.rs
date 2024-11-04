@@ -69,16 +69,17 @@ impl SchemaDefinition {
 
         // Top level schema (flattened)
         let schema = Schema::new(vec![
-            // Context fields
+            Field::new("server_id", DataType::Utf8, false),
+            Field::new("client_id", DataType::Utf8, false),
             Field::new("context", DataType::Struct(context_struct.clone()), false),
-            // Event fields
             Field::new("created", DataType::Timestamp(TimeUnit::Millisecond, Some("UTC".into())), false),
-            Field::new("created_micros", DataType::Int64, true),
+            Field::new("created_micros", DataType::UInt32, true),
             Field::new("type", DataType::Utf8, false),
             Field::new("element", DataType::Struct(element_struct.clone()), false),
-            // Timing fields
             Field::new("sent", DataType::Timestamp(TimeUnit::Millisecond, Some("UTC".into())), false),
-            Field::new("sent_micros", DataType::Int64, true),
+            Field::new("sent_micros", DataType::UInt32, true),
+            Field::new("received", DataType::Timestamp(TimeUnit::Millisecond, Some("UTC".into())), false),
+            Field::new("received_micros", DataType::UInt32, false),
         ]);
 
         SchemaDefinition {

@@ -8,13 +8,12 @@ use axum::routing::post;
 use axum::{extract, response::{IntoResponse}, routing::get, Router};
 use std::str::FromStr;
 use http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
-use log::{error, info, warn};
+use log::{info, warn};
 use serde_json::json;
 use std::env;
 use std::sync::Arc;
-use std::sync::atomic::AtomicBool;
-use std::sync::atomic::Ordering::Relaxed;
 use std::time::Duration;
+use chrono::Utc;
 use opentelemetry::{global, KeyValue};
 use tokio::net::TcpListener;
 
@@ -26,28 +25,25 @@ use tokio::signal::unix::{signal, SignalKind};
 use tower_http::timeout::TimeoutLayer;
 
 use mimalloc::MiMalloc;
-use tokio::sync::mpsc;
-use tokio::sync::mpsc::Sender;
-use tokio::time::timeout;
 use crate::events::Events;
-use crate::events_sink::EventSink;
 use crate::installation::Installation;
 use crate::writers::arrow::json::sink::JsonSink;
 use crate::writers::arrow::schema::SchemaDefinition;
+use crate::writers::files::{find_file, watch_files};
+use crate::writers::writer::EventsWriter;
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
 
-async fn shutdown_hook(sender: Sender<Events>, active: Arc<AtomicBool>, closed: Arc<AtomicBool>) {
+async fn shutdown_hook(writer: Arc<EventsWriter>) {
     let mut interrupt = signal(SignalKind::interrupt()).unwrap();
     let mut terminate = signal(SignalKind::terminate()).unwrap();
     tokio::select! {
         _ = interrupt.recv() => {
             warn!("Received SIGINT, shutting down");
-            closed.store(true, Relaxed);
-            drop(sender);
+            writer.stop();
             loop {
-                if active.load(Relaxed) {
+                if writer.is_active() {
                     tokio::time::sleep(Duration::from_millis(100)).await;
                 } else {
                     break
@@ -56,10 +52,9 @@ async fn shutdown_hook(sender: Sender<Events>, active: Arc<AtomicBool>, closed: 
         },
         _ = terminate.recv() => {
             warn!("Received SIGTERM, shutting down");
-            closed.store(true, Relaxed);
-            drop(sender);
+            writer.stop();
             loop {
-                if active.load(Relaxed) {
+                if writer.is_active() {
                     tokio::time::sleep(Duration::from_millis(100)).await;
                 } else {
                     break
@@ -75,8 +70,12 @@ async fn register() -> impl IntoResponse {
     (headers, json!(Installation::new()).to_string())
 }
 
-async fn events(State(sender): State<Sender<Events>>, extract::Json(payload): extract::Json<Events>) -> Result<(StatusCode, String), (StatusCode, String)> {
-    sender.send(payload).await.map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Error processing payload".to_owned()))?;
+async fn events(State(writer): State<Arc<EventsWriter>>, extract::Json(payload): extract::Json<Events>) -> Result<(StatusCode, String), (StatusCode, String)> {
+    let mut payload = payload;
+    let now = Utc::now();
+    payload.received = Some(now.timestamp_millis());
+    payload.received_micros = Some(now.timestamp_subsec_micros());
+    writer.write(payload).await.map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Error writing payload".to_owned()))?;
     Ok((StatusCode::OK, "OK".to_owned()))
 }
 
@@ -124,32 +123,16 @@ async fn main() {
     let _ = provider.tracer("Bosca Analytics");
     let _ = global::set_tracer_provider(provider);
 
-    let (send, mut recv) = mpsc::channel(10000);
-    let active = Arc::new(AtomicBool::new(true));
-    let closed = Arc::new(AtomicBool::new(false));
-
-    let active_closed = Arc::clone(&closed);
     let schema = Arc::new(SchemaDefinition::new());
-    tokio::spawn(async move {
-        let mut sink = JsonSink::new(schema, "events.json", 10000).unwrap();
-        while !active_closed.load(Relaxed) {
-            match timeout(Duration::from_millis(3000), recv.recv()).await {
-                Ok(Some(events)) => {
-                    if let Err(error) = sink.add(events).await {
-                        error!("error adding events to sink: {:?}", error);
-                    }
-                }
-                Ok(None) => {}
-                Err(_) => {
-                    if let Err(error) = sink.flush().await {
-                        error!("error finishing adding events to sink: {:?}", error);
-                    }
-                }
-            }
-        }
-        if let Err(error) = sink.finish().await {
-            error!("error finishing adding events to sink: {:?}", error);
-        }
+    let writer_schema = Arc::clone(&schema);
+    let writer = Arc::new(EventsWriter::new(8, 10000, move |index| {
+        let filepath = find_file(index)?;
+        Ok(Box::new(JsonSink::new(Arc::clone(&writer_schema), &filepath, 1000).unwrap()))
+    }).await);
+
+    let watch_writer = Arc::clone(&writer);
+    tokio::spawn(async {
+       watch_files(watch_writer, schema).await;
     });
 
     let app = Router::new()
@@ -157,12 +140,12 @@ async fn main() {
         .route("/events", post(events))
         .layer(DefaultBodyLimit::disable())
         .layer(TimeoutLayer::new(Duration::from_secs(600)))
-        .with_state(send.clone());
+        .with_state(Arc::clone(&writer));
 
     info!(target: "bosca", "Listening on http://0.0.0.0:8009");
 
     axum::serve(TcpListener::bind("0.0.0.0:8009").await.unwrap(), app)
-        .with_graceful_shutdown(shutdown_hook(send, active, closed))
+        .with_graceful_shutdown(shutdown_hook(writer))
         .await
         .unwrap();
 }

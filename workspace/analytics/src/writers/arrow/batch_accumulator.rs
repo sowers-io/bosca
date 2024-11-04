@@ -1,5 +1,6 @@
 use std::sync::Arc;
-use arrow::array::{ArrayRef, Float32Builder, Int32Builder, Int64Builder, ListBuilder, RecordBatch, StringBuilder, StructBuilder, TimestampMillisecondBuilder};
+use arrow::array::{ArrayRef, Float32Builder, Int32Builder, ListBuilder, RecordBatch, StringBuilder, StructBuilder, TimestampMillisecondBuilder, UInt32Builder};
+use ulid::Ulid;
 use crate::events::Events;
 use crate::writers::arrow::schema::SchemaDefinition;
 
@@ -135,10 +136,14 @@ impl BatchAccumulator {
 
         // Top-level event builders
         let mut created_builder = TimestampMillisecondBuilder::new().with_timezone("UTC");
-        let mut created_micros_builder = Int64Builder::new();
+        let mut created_micros_builder = UInt32Builder::new();
         let mut type_builder = StringBuilder::new();
         let mut sent_builder = TimestampMillisecondBuilder::new().with_timezone("UTC");
-        let mut sent_micros_builder = Int64Builder::new();
+        let mut sent_micros_builder = UInt32Builder::new();
+        let mut received_builder = TimestampMillisecondBuilder::new().with_timezone("UTC");
+        let mut received_micros_builder = UInt32Builder::new();
+        let mut server_id_builder = StringBuilder::new();
+        let mut client_id_builder = StringBuilder::new();
 
         // Populate data for each event
         for events in &self.data {
@@ -242,16 +247,24 @@ impl BatchAccumulator {
                 } else {
                     created_micros_builder.append_null();
                 }
+                received_builder.append_value(events.received.unwrap_or(0));
+                received_micros_builder.append_value(events.received_micros.unwrap_or(0));
                 type_builder.append_value(format!("{:?}", event.event_type));
 
                 // Sent timestamps
                 sent_builder.append_value(events.sent);
                 sent_micros_builder.append_value(events.sent_micros);
+
+                let server_id = Ulid::new();
+                server_id_builder.append_value(server_id.to_string());
+                client_id_builder.append_value(&event.client_id)
             }
         }
 
         // Build the final RecordBatch
         let arrays: Vec<ArrayRef> = vec![
+            Arc::new(server_id_builder.finish()),
+            Arc::new(client_id_builder.finish()),
             Arc::new(context_struct_builder.finish()),
             Arc::new(created_builder.finish()),
             Arc::new(created_micros_builder.finish()),
@@ -259,6 +272,8 @@ impl BatchAccumulator {
             Arc::new(element_struct_builder.finish()),
             Arc::new(sent_builder.finish()),
             Arc::new(sent_micros_builder.finish()),
+            Arc::new(received_builder.finish()),
+            Arc::new(received_micros_builder.finish()),
         ];
 
         let batch = RecordBatch::try_new(self.schema.schema.clone(), arrays)?;

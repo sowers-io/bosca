@@ -1,0 +1,9 @@
+[package]
+name = "bosca-pool"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+async-channel = "2.3.1"
+tokio = { version = "1.38.1", features = ["full", "tracing"] }
+log = "0.4.22"

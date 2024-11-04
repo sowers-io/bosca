@@ -39,7 +39,7 @@ impl JsonWriter {
         Ok(())
     }
 
-    pub fn finish(mut self) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn finish(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         self.flush(true)?;
         self.writer.finish()?;
         Ok(())

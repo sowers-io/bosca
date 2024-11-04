@@ -1,4 +1,4 @@
-use std::fs::File;
+use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::sync::Arc;
 use log::info;
@@ -19,7 +19,11 @@ pub fn new_arrow_writer(schema: Arc<SchemaDefinition>, path: &str, batch_size: u
         .set_compression(Compression::ZSTD(ZstdLevel::default()))
         .set_max_row_group_size(batch_size)
         .build();
-    let file = File::create(path)?;
+    let file = OpenOptions::new()
+        .read(true)
+        .append(true)
+        .create(true)
+        .open(path)?;
     Ok(ArrowWriter::try_new(file, Arc::clone(&schema.schema), Some(props))?)
 }
 
@@ -52,7 +56,7 @@ impl ParquetWriter {
         Ok(())
     }
 
-    pub fn finish(mut self) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn finish(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         self.flush(true)?;
         self.writer.finish()?;
         Ok(())

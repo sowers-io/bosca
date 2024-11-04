@@ -27,7 +27,7 @@ impl EventSink for ParquetSink {
         self.writer.flush(true)
     }
 
-    async fn finish(mut self) -> Result<(), Box<dyn std::error::Error>> {
+    async fn finish(&mut self) -> Result<(), Box<dyn std::error::Error>> {
         self.writer.finish()
     }
 }
