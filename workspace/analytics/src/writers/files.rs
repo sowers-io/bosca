@@ -70,7 +70,7 @@ pub async fn watch_files(writer: Arc<EventsWriter>, schema: Arc<SchemaDefinition
             error!("error watching json: {:?}", err);
         }
         if let Err(err) = watch_objects(&config).await {
-            error!("error watching json: {:?}", err);
+            error!("error watching objects: {:?}", err);
         }
         watching.store(false, Relaxed);
         tokio::time::sleep(Duration::from_secs(15)).await;
@@ -97,7 +97,9 @@ async fn watch_objects(config: &Config) -> Result<(), Box<dyn Error>> {
                             ))?;
                             let mut upload = s3.put_multipart(&path).await?;
                             let mut buf = BytesMut::with_capacity(5242880);
-                            let mut file = tokio::fs::File::open(entry.file_name()).await?;
+                            let file_name = entry.file_name().clone();
+                            let file_name = file_name.to_str().unwrap();
+                            let mut file = tokio::fs::File::open(format!("{}/{}", config.pending_objects_dir, file_name)).await?;
                             let len = file.metadata().await?.len();
                             let mut offset = 0;
                             while offset < len {
