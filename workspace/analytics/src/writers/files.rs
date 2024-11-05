@@ -89,12 +89,10 @@ async fn watch_objects(config: &Config) -> Result<(), Box<dyn Error>> {
                             info!("processing upload for: {}", file_name);
                             let metadata = entry.metadata().await?;
                             let created = metadata.created()?;
-                            let utc = time::OffsetDateTime::UNIX_EPOCH
-                                + time::Duration::try_from(created.duration_since(std::time::UNIX_EPOCH).unwrap()).unwrap();
-                            let local = utc.to_offset(time::UtcOffset::local_offset_at(utc).unwrap());
+                            let utc = time::OffsetDateTime::UNIX_EPOCH + time::Duration::try_from(created.duration_since(std::time::UNIX_EPOCH).unwrap()).unwrap();
                             let path = Path::parse(format!(
                                 "analytics/{}/{}/{}/events-{}.parquet",
-                                local.year(), local.month(), local.day(),
+                                utc.year(), utc.month(), utc.day(),
                                 Ulid::new().to_string(),
                             ))?;
                             let mut upload = s3.put_multipart(&path).await?;
