@@ -8,7 +8,7 @@ metadata:
     app.kubernetes.io/instance: analytics-backend
     app.kubernetes.io/name: analytics-backend
 spec:
-  replicas: 1
+  replicas: 2
   revisionHistoryLimit: 2
   selector:
     matchLabels:
