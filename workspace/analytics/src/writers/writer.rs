@@ -42,6 +42,10 @@ impl EventsWriter {
         self.stopped.store(true, Relaxed);
         self.pool.close().await;
     }
+    
+    pub fn is_stopped(&self) -> bool {
+        self.stopped.load(Relaxed)
+    }
 
     pub fn is_active(&self) -> bool {
         self.active.load(Relaxed) > 0

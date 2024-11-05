@@ -3,7 +3,7 @@ use std::fs;
 use std::fs::{create_dir_all, exists, File};
 use std::os::linux::fs::MetadataExt;
 use std::sync::{Arc, Mutex};
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, AtomicI64};
 use std::sync::atomic::Ordering::Relaxed;
 use std::time::Duration;
 use bytes::{Buf, BytesMut};
@@ -26,7 +26,11 @@ pub struct Config {
     pub batches_dir: String,
     pub pending_objects_dir: String,
     pub max_file_size: u64,
+    // TODO: store this on disk so that it survives restarts
+    pub last_full_sync: Arc<AtomicI64>,
 }
+
+const MAX_UPLOAD_CHUNK_SIZE: usize = 5242880;
 
 pub fn find_file(index: usize, config: Config) -> Result<String, Box<dyn Error>> {
     if !exists(&config.temp_dir)? {
@@ -50,6 +54,10 @@ pub fn find_file(index: usize, config: Config) -> Result<String, Box<dyn Error>>
 
 pub async fn watch_files(writer: Arc<EventsWriter>, schema: Arc<SchemaDefinition>, config: Config, watching: Arc<AtomicBool>) {
     loop {
+        if writer.is_stopped() {
+            // TODO: is it necessary to interrupt the sleep if this happens?
+            break;
+        }
         watching.store(true, Relaxed);
         if let Ok(exists) = tokio::fs::try_exists(&config.temp_dir).await {
             if !exists {
@@ -66,7 +74,7 @@ pub async fn watch_files(writer: Arc<EventsWriter>, schema: Arc<SchemaDefinition
                 tokio::fs::create_dir_all(&config.pending_objects_dir).await.unwrap();
             }
         }
-        if let Err(err) = watch_json(&writer, &schema, &config).await {
+        if let Err(err) = watch_json(&writer, &schema, &config, false).await {
             error!("error watching json: {:?}", err);
         }
         if let Err(err) = watch_objects(&config).await {
@@ -77,10 +85,34 @@ pub async fn watch_files(writer: Arc<EventsWriter>, schema: Arc<SchemaDefinition
     }
 }
 
+pub async fn watch_files_hourly(writer: Arc<EventsWriter>, schema: Arc<SchemaDefinition>, config: Config, watching: Arc<AtomicBool>) {
+    loop {
+        if writer.is_stopped() {
+            // TODO: is it necessary to interrupt the sleep if this happens?
+            break;
+        }
+        // TODO: once stored on disk, move this last
+        tokio::time::sleep(Duration::from_secs(3600)).await;
+        let now = Utc::now().timestamp_millis();
+        if now > config.last_full_sync.load(Relaxed) + 3600000 {
+            error!("running hourly watch");
+            // TODO: Store on disk
+            watching.store(true, Relaxed);
+            if let Err(err) = watch_json(&writer, &schema, &config, true).await {
+                error!("hourly error watching json: {:?}", err);
+            }
+            if let Err(err) = watch_objects(&config).await {
+                error!("hourly error watching objects: {:?}", err);
+            }
+            watching.store(false, Relaxed);
+        }
+    }
+}
+
 async fn watch_objects(config: &Config) -> Result<(), Box<dyn Error>> {
     if let Ok(mut read) = tokio::fs::read_dir(&config.pending_objects_dir).await {
         // TODO: make this more generic for multiple object stores
-        let s3 = AmazonS3Builder::from_env().build().unwrap();
+        let s3 = AmazonS3Builder::from_env().build()?;
         while let Ok(Some(entry)) = read.next_entry().await {
             if let Ok(file_type) = entry.file_type().await {
                 if file_type.is_file() {
@@ -91,19 +123,20 @@ async fn watch_objects(config: &Config) -> Result<(), Box<dyn Error>> {
                             let created = metadata.created()?;
                             let utc = time::OffsetDateTime::UNIX_EPOCH + time::Duration::try_from(created.duration_since(std::time::UNIX_EPOCH).unwrap()).unwrap();
                             let path = Path::parse(format!(
-                                "raw/{}/{}/{}/events-{}.parquet",
+                                "ingest/raw/{}/{}/{}/events-{}.parquet",
                                 utc.year(), utc.month() as u8, utc.day(),
                                 Ulid::new().to_string(),
                             ))?;
                             let mut upload = s3.put_multipart(&path).await?;
-                            let mut buf = BytesMut::with_capacity(5242880);
-                            let mut file = tokio::fs::File::open(format!("{}/{}", config.pending_objects_dir, file_name)).await?;
+                            let mut buf = BytesMut::with_capacity(MAX_UPLOAD_CHUNK_SIZE);
+                            let file_name = format!("{}/{}", config.pending_objects_dir, file_name);
+                            let mut file = tokio::fs::File::open(&file_name).await?;
                             let len = file.metadata().await?.len();
                             let mut offset = 0;
                             while offset < len {
                                 let chunk_len = file.read_buf(&mut buf).await?;
                                 let buf_len = buf.len();
-                                if buf_len >= 5242880 {
+                                if buf_len >= MAX_UPLOAD_CHUNK_SIZE {
                                     let copy = buf.copy_to_bytes(buf_len);
                                     buf.clear();
                                     upload
@@ -120,8 +153,7 @@ async fn watch_objects(config: &Config) -> Result<(), Box<dyn Error>> {
                                     .await?;
                             }
                             upload.complete().await?;
-                            let remove = format!("{}/{}", config.pending_objects_dir, file_name);
-                            if let Err(err) = tokio::fs::remove_file(&remove).await {
+                            if let Err(err) = tokio::fs::remove_file(&file_name).await {
                                 return Err(format!("error deleting file: {} {:?}", file_name, err).into())
                             }
                         }
@@ -135,7 +167,7 @@ async fn watch_objects(config: &Config) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-async fn watch_json(writer: &Arc<EventsWriter>, schema: &Arc<SchemaDefinition>, config: &Config) -> Result<(), Box<dyn Error>> {
+async fn watch_json(writer: &Arc<EventsWriter>, schema: &Arc<SchemaDefinition>, config: &Config, ignore_file_size: bool) -> Result<(), Box<dyn Error>> {
     if let Ok(mut read) = tokio::fs::read_dir(&config.temp_dir).await {
         let mut files = Vec::new();
         let mut file_sizes = 0u64;
@@ -149,8 +181,9 @@ async fn watch_json(writer: &Arc<EventsWriter>, schema: &Arc<SchemaDefinition>, 
                 }
             }
         }
-        if file_sizes >= config.max_file_size {
+        if ignore_file_size || file_sizes >= config.max_file_size {
             writer.recycle().await;
+            config.last_full_sync.store(Utc::now().timestamp_millis(), Relaxed);
             let parquet_file = format!("{}/batch-{}.parquet", &config.batches_dir, Utc::now().timestamp_millis());
             let finished_parquet_file = format!("{}/batch-{}.parquet", &config.pending_objects_dir, Utc::now().timestamp_millis());
             let writer = Arc::new(Mutex::new(new_arrow_writer(Arc::clone(schema), &parquet_file, 10000).unwrap()));

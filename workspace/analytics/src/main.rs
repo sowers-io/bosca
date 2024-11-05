@@ -12,7 +12,7 @@ use log::{info, warn};
 use serde_json::json;
 use std::env;
 use std::sync::Arc;
-use std::sync::atomic::AtomicBool;
+use std::sync::atomic::{AtomicBool, AtomicI64};
 use std::sync::atomic::Ordering::Relaxed;
 use std::time::Duration;
 use chrono::Utc;
@@ -31,7 +31,7 @@ use crate::events::Events;
 use crate::installation::Installation;
 use crate::writers::arrow::json::sink::JsonSink;
 use crate::writers::arrow::schema::SchemaDefinition;
-use crate::writers::files::{find_file, watch_files, Config};
+use crate::writers::files::{find_file, watch_files, watch_files_hourly, Config};
 use crate::writers::http::sink::HttpSink;
 use crate::writers::writer::EventsWriter;
 
@@ -166,6 +166,7 @@ async fn main() {
                 warn!("missing MAX_JSON_FILE_SIZE, defaulting to 250MB");
                 262144000
             },
+            last_full_sync: Arc::new(AtomicI64::new(0)),
         })
     } else {
         None
@@ -189,8 +190,16 @@ async fn main() {
         let watch_writer = Arc::clone(&writer);
         let watch_config = config.clone();
         let watch_watching = Arc::clone(&watching);
+        let watch_schema = Arc::clone(&schema);
         tokio::spawn(async {
-            watch_files(watch_writer, schema, watch_config, watch_watching).await;
+            watch_files(watch_writer, watch_schema, watch_config, watch_watching).await;
+        });
+
+        let hourly_watch_writer = Arc::clone(&writer);
+        let hourly_watch_config = config.clone();
+        let hourly_watch_watching = Arc::clone(&watching);
+        tokio::spawn(async {
+            watch_files_hourly(hourly_watch_writer, schema, hourly_watch_config, hourly_watch_watching).await;
         });
     }
 
