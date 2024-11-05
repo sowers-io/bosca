@@ -12,6 +12,8 @@ use log::{info, warn};
 use serde_json::json;
 use std::env;
 use std::sync::Arc;
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering::Relaxed;
 use std::time::Duration;
 use chrono::Utc;
 use opentelemetry::{global, KeyValue};
@@ -36,7 +38,7 @@ use crate::writers::writer::EventsWriter;
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
 
-async fn shutdown_hook(writer: Arc<EventsWriter>) {
+async fn shutdown_hook(writer: Arc<EventsWriter>, watching: Arc<AtomicBool>) {
     let mut interrupt = signal(SignalKind::interrupt()).unwrap();
     let mut terminate = signal(SignalKind::terminate()).unwrap();
     tokio::select! {
@@ -44,7 +46,7 @@ async fn shutdown_hook(writer: Arc<EventsWriter>) {
             warn!("Received SIGINT, shutting down");
             writer.stop().await;
             loop {
-                if writer.is_active() {
+                if writer.is_active() || watching.load(Relaxed) {
                     tokio::time::sleep(Duration::from_millis(100)).await;
                 } else {
                     break
@@ -55,7 +57,7 @@ async fn shutdown_hook(writer: Arc<EventsWriter>) {
             warn!("Received SIGTERM, shutting down");
             writer.stop().await;
             loop {
-                if writer.is_active() {
+                if writer.is_active() || watching.load(Relaxed) {
                     tokio::time::sleep(Duration::from_millis(100)).await;
                 } else {
                     break
@@ -81,6 +83,10 @@ async fn events(State(writer): State<Arc<EventsWriter>>, extract::Json(payload):
 }
 
 async fn index() -> Result<(StatusCode, String), (StatusCode, String)> {
+    Ok((StatusCode::OK, "OK".to_owned()))
+}
+
+async fn health() -> Result<(StatusCode, String), (StatusCode, String)> {
     Ok((StatusCode::OK, "OK".to_owned()))
 }
 
@@ -178,18 +184,21 @@ async fn main() {
         })
     }).await);
 
+    let watching = Arc::new(AtomicBool::new(false));
     if let Some(config) = config {
         let watch_writer = Arc::clone(&writer);
         let watch_config = config.clone();
+        let watch_watching = Arc::clone(&watching);
         tokio::spawn(async {
-            watch_files(watch_writer, schema, watch_config).await;
+            watch_files(watch_writer, schema, watch_config, watch_watching).await;
         });
     }
 
     let app = Router::new()
+        .route("/", get(index))
+        .route("/health", get(health))
         .route("/register", get(register))
         .route("/events", post(events))
-        .route("/", get(index))
         .layer(DefaultBodyLimit::disable())
         .layer(TimeoutLayer::new(Duration::from_secs(600)))
         .with_state(Arc::clone(&writer));
@@ -197,7 +206,7 @@ async fn main() {
     info!(target: "bosca", "Listening on http://0.0.0.0:8009");
 
     axum::serve(TcpListener::bind("0.0.0.0:8009").await.unwrap(), app)
-        .with_graceful_shutdown(shutdown_hook(writer))
+        .with_graceful_shutdown(shutdown_hook(writer, watching))
         .await
         .unwrap();
 }

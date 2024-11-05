@@ -3,6 +3,8 @@ use std::fs;
 use std::fs::{create_dir_all, exists, File};
 use std::os::linux::fs::MetadataExt;
 use std::sync::{Arc, Mutex};
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering::Relaxed;
 use std::time::Duration;
 use chrono::Utc;
 use log::{error, info};
@@ -40,8 +42,9 @@ pub fn find_file(index: usize, config: Config) -> Result<String, Box<dyn Error>>
     Ok(format!("{}/events-{index}-{}.json", &config.temp_dir, Utc::now().timestamp_millis()))
 }
 
-pub async fn watch_files(writer: Arc<EventsWriter>, schema: Arc<SchemaDefinition>, config: Config) {
+pub async fn watch_files(writer: Arc<EventsWriter>, schema: Arc<SchemaDefinition>, config: Config, watching: Arc<AtomicBool>) {
     loop {
+        watching.store(true, Relaxed);
         if let Ok(exists) = tokio::fs::try_exists(&config.temp_dir).await {
             if !exists {
                 tokio::fs::create_dir_all(&config.temp_dir).await.unwrap();
@@ -140,6 +143,7 @@ pub async fn watch_files(writer: Arc<EventsWriter>, schema: Arc<SchemaDefinition
         } else {
             error!("error processing files");
         }
+        watching.store(false, Relaxed);
         tokio::time::sleep(Duration::from_secs(15)).await;
     }
 }
