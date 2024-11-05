@@ -72,6 +72,15 @@ jobs:
           tags: |
             ghcr.io/sowers-io/bosca/runner:latest
             ghcr.io/sowers-io/bosca/runner:${{ github.sha }}
+      - name: Build and push analytics
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: Dockerfile-analytics
+          push: true
+          tags: |
+            ghcr.io/sowers-io/bosca/analytics:latest
+            ghcr.io/sowers-io/bosca/analytics:${{ github.sha }}
       - name: Build and push front
         uses: docker/build-push-action@v3
         with:

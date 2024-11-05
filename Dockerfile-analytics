@@ -1,0 +1,6 @@
+FROM gcr.io/distroless/cc-debian12
+
+COPY target/release/bosca-analytics /
+
+EXPOSE 8009
+CMD ["./bosca-analytics"]

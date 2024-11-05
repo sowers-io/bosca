@@ -179,10 +179,10 @@ mod tests {
         let chapter = {
             let book = book.lock().unwrap();
             let chapter = book.chapters_by_usfm.get("2PE.3").unwrap();
-            Arc::clone(&chapter)
+            Arc::clone(chapter)
         };
         let verses = match chapter.lock().unwrap().deref() {
-            UsxItem::Chapter(c) => c.get_verses(Arc::clone(&book)),
+            UsxItem::Chapter(c) => c.get_verses(Arc::clone(book)),
             _ => Vec::new(),
         };
         println!("{}", verses.len());
