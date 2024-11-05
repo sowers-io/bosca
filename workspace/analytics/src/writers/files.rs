@@ -97,8 +97,6 @@ async fn watch_objects(config: &Config) -> Result<(), Box<dyn Error>> {
                             ))?;
                             let mut upload = s3.put_multipart(&path).await?;
                             let mut buf = BytesMut::with_capacity(5242880);
-                            let file_name = entry.file_name().clone();
-                            let file_name = file_name.to_str().unwrap();
                             let mut file = tokio::fs::File::open(format!("{}/{}", config.pending_objects_dir, file_name)).await?;
                             let len = file.metadata().await?.len();
                             let mut offset = 0;
@@ -122,8 +120,8 @@ async fn watch_objects(config: &Config) -> Result<(), Box<dyn Error>> {
                                     .await?;
                             }
                             upload.complete().await?;
-                            if let Err(err) = tokio::fs::remove_file(file_name).await {
-                                return Err(format!("error deleting file: {:?}", err).into())
+                            if let Err(err) = tokio::fs::remove_file(&file_name).await {
+                                return Err(format!("error deleting file: {} {:?}", file_name, err).into())
                             }
                         }
                     }
