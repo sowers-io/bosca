@@ -14,7 +14,7 @@ spec:
         - api.bosca.io
         - admin.bosca.io
         - search.bosca.io
-        - analytics.bosca.io
+        - a.bosca.io
       secretName: api-bosca-tls
   rules:
     - host: api.bosca.io
@@ -47,7 +47,7 @@ spec:
                 name: meilisearch
                 port:
                   number: 7700
-    - host: analytics.bosca.io
+    - host: a.bosca.io
       http:
         paths:
           - pathType: Prefix
