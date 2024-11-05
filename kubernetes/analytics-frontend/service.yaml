@@ -1,0 +1,12 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: analytics-frontend
+  namespace: bosca
+spec:
+  selector:
+    app: analytics-frontend
+  ports:
+    - name: http
+      port: 8009

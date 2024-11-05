@@ -14,6 +14,8 @@ resources:
   - server
   - workflow-server
   - runner
+  - analytics-backend
+  - analytics-frontend
   - admin
   - meilisearch
   - ollama

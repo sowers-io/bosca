@@ -1,0 +1,86 @@
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: analytics-backend
+  namespace: bosca
+  labels:
+    app.kubernetes.io/instance: analytics-backend
+    app.kubernetes.io/name: analytics-backend
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      app: analytics-backend
+  serviceName: analytics-backend
+  template:
+    metadata:
+      labels:
+        app: analytics-backend
+    spec:
+      containers:
+        - name: analytics-backend
+          image: ghcr.io/sowers-io/bosca/analytics:latest
+          imagePullPolicy: IfNotPresent
+          restartPolicy: Always
+          resources:
+            requests:
+              memory: "250Mi"
+              cpu: "250m"
+#            limits:
+#              memory: "512Mi"
+#              cpu: "2"
+          livenessProbe:
+            httpGet:
+              port: http
+              path: /
+            initialDelaySeconds: 3
+            failureThreshold: 10
+            periodSeconds: 5
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              port: http
+              path: /
+            initialDelaySeconds: 3
+            failureThreshold: 10
+            periodSeconds: 5
+            timeoutSeconds: 5
+          volumeMounts:
+            - mountPath: /data
+              name: data
+          ports:
+            - containerPort: 8009
+              name: http
+          env:
+            - name: AWS_BUCKET
+              valueFrom:
+                secretKeyRef:
+                  name: s3-credentials
+                  key: S3_BUCKET
+            - name: AWS_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: s3-credentials
+                  key: S3_ENDPOINT
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: s3-credentials
+                  key: S3_SECRET_ACCESS_KEY
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: s3-credentials
+                  key: S3_ACCESS_KEY_ID
+          envFrom:
+            - configMapRef:
+                name: analytics-backend-env
+      terminationGracePeriodSeconds: 6000
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: analytics-backend
+      imagePullSecrets:
+        - name: packages-credentials

@@ -12,6 +12,7 @@ use crate::writers::arrow::parquet::writer::new_arrow_writer;
 use crate::writers::arrow::schema::SchemaDefinition;
 use crate::writers::writer::EventsWriter;
 
+#[derive(Clone)]
 pub struct Config {
     pub temp_dir: String,
     pub batches_dir: String,
@@ -19,7 +20,7 @@ pub struct Config {
     pub max_file_size: u64,
 }
 
-pub fn find_file(index: usize, config: Arc<Config>) -> Result<String, Box<dyn Error>> {
+pub fn find_file(index: usize, config: Config) -> Result<String, Box<dyn Error>> {
     if !exists(&config.temp_dir)? {
         create_dir_all(&config.temp_dir)?;
     }
@@ -39,7 +40,7 @@ pub fn find_file(index: usize, config: Arc<Config>) -> Result<String, Box<dyn Er
     Ok(format!("{}/events-{index}-{}.json", &config.temp_dir, Utc::now().timestamp_millis()))
 }
 
-pub async fn watch_files(writer: Arc<EventsWriter>, schema: Arc<SchemaDefinition>, config: Arc<Config>) {
+pub async fn watch_files(writer: Arc<EventsWriter>, schema: Arc<SchemaDefinition>, config: Config) {
     loop {
         if let Ok(exists) = tokio::fs::try_exists(&config.temp_dir).await {
             if !exists {

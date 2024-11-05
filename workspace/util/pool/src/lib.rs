@@ -55,6 +55,14 @@ impl<T> Pool<T> {
         }
         Ok(())
     }
+
+    pub async fn close(&self) {
+        self.index.fetch_add(1, Relaxed);
+        while !self.sender.is_empty() {
+            let _ = timeout(Duration::from_millis(3000), self.receiver.recv()).await;
+        }
+        assert!(self.sender.is_empty());
+    }
 }
 
 impl<T> Clone for Pool<T> {

@@ -38,8 +38,9 @@ impl EventsWriter {
         self.pool.recycle().await
     }
 
-    pub fn stop(&self) {
-        self.stopped.store(true, Relaxed)
+    pub async fn stop(&self) {
+        self.stopped.store(true, Relaxed);
+        self.pool.close().await;
     }
 
     pub fn is_active(&self) -> bool {

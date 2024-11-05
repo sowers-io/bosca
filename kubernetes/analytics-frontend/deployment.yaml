@@ -1,0 +1,74 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: analytics-frontend
+  namespace: bosca
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      app: analytics-frontend
+  template:
+    metadata:
+      labels:
+        app: analytics-frontend
+    spec:
+      containers:
+        - name: analytics-frontend
+          image: ghcr.io/sowers-io/bosca/analytics:latest
+          imagePullPolicy: IfNotPresent
+          resources:
+            requests:
+              memory: "250Mi"
+              cpu: "250m"
+#            limits:
+#              memory: "512Mi"
+#              cpu: "2"
+          livenessProbe:
+            httpGet:
+              port: http
+              path: /
+            initialDelaySeconds: 3
+            failureThreshold: 10
+            periodSeconds: 5
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              port: http
+              path: /
+            initialDelaySeconds: 3
+            failureThreshold: 10
+            periodSeconds: 5
+            timeoutSeconds: 5
+          ports:
+            - containerPort: 8000
+              name: http
+          env:
+            - name: AWS_BUCKET
+              valueFrom:
+                secretKeyRef:
+                  name: s3-credentials
+                  key: S3_BUCKET
+            - name: AWS_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: s3-credentials
+                  key: S3_ENDPOINT
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: s3-credentials
+                  key: S3_SECRET_ACCESS_KEY
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: s3-credentials
+                  key: S3_ACCESS_KEY_ID
+          envFrom:
+            - configMapRef:
+                name: analytics-frontend-env
+      terminationGracePeriodSeconds: 600
+      imagePullSecrets:
+        - name: packages-credentials

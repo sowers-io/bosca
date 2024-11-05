@@ -30,6 +30,7 @@ use crate::installation::Installation;
 use crate::writers::arrow::json::sink::JsonSink;
 use crate::writers::arrow::schema::SchemaDefinition;
 use crate::writers::files::{find_file, watch_files, Config};
+use crate::writers::http::sink::HttpSink;
 use crate::writers::writer::EventsWriter;
 
 #[global_allocator]
@@ -41,7 +42,7 @@ async fn shutdown_hook(writer: Arc<EventsWriter>) {
     tokio::select! {
         _ = interrupt.recv() => {
             warn!("Received SIGINT, shutting down");
-            writer.stop();
+            writer.stop().await;
             loop {
                 if writer.is_active() {
                     tokio::time::sleep(Duration::from_millis(100)).await;
@@ -52,7 +53,7 @@ async fn shutdown_hook(writer: Arc<EventsWriter>) {
         },
         _ = terminate.recv() => {
             warn!("Received SIGTERM, shutting down");
-            writer.stop();
+            writer.stop().await;
             loop {
                 if writer.is_active() {
                     tokio::time::sleep(Duration::from_millis(100)).await;
@@ -123,53 +124,63 @@ async fn main() {
     let _ = provider.tracer("Bosca Analytics");
     let _ = global::set_tracer_provider(provider);
 
-
-    let config = Arc::new(Config {
-        batches_dir: if let Ok(batches_dir) = env::var("BATCHES_DIR") {
-            batches_dir
-        } else {
-            warn!("missing BATCHES_DIR, defaulting to ./analytics/batches");
-            "./analytics/batches".to_owned()
-        },
-        pending_objects_dir: if let Ok(objects_dir) = env::var("PENDING_OBJECTS_DIR") {
-            objects_dir
-        } else {
-            warn!("missing PENDING_OBJECTS_DIR, defaulting to ./analytics/objects");
-            "./analytics/objects".to_owned()
-        },
-        temp_dir: if let Ok(batches_dir) = env::var("TEMP_DIR") {
-            batches_dir
-        } else {
-            warn!("missing TEMP_DIR, defaulting to ./analytics/temp");
-            "./analytics/temp".to_owned()
-        },
-        max_file_size: if let Ok(size) = env::var("MAX_JSON_FILE_SIZE") {
-            if let Ok(size) = size.parse() {
-                size
+    let forward_url = env::var("FORWARD_URL").unwrap_or("".to_owned());
+    let config = if forward_url.is_empty() {
+        Some(Config {
+            batches_dir: if let Ok(batches_dir) = env::var("BATCHES_DIR") {
+                batches_dir
             } else {
-                warn!("invalid MAX_JSON_FILE_SIZE, defaulting to 250MB");
+                warn!("missing BATCHES_DIR, defaulting to ./analytics/batches");
+                "./analytics/batches".to_owned()
+            },
+            pending_objects_dir: if let Ok(objects_dir) = env::var("PENDING_OBJECTS_DIR") {
+                objects_dir
+            } else {
+                warn!("missing PENDING_OBJECTS_DIR, defaulting to ./analytics/objects");
+                "./analytics/objects".to_owned()
+            },
+            temp_dir: if let Ok(batches_dir) = env::var("TEMP_DIR") {
+                batches_dir
+            } else {
+                warn!("missing TEMP_DIR, defaulting to ./analytics/temp");
+                "./analytics/temp".to_owned()
+            },
+            max_file_size: if let Ok(size) = env::var("MAX_JSON_FILE_SIZE") {
+                if let Ok(size) = size.parse() {
+                    size
+                } else {
+                    warn!("invalid MAX_JSON_FILE_SIZE, defaulting to 250MB");
+                    262144000
+                }
+            } else {
+                warn!("missing MAX_JSON_FILE_SIZE, defaulting to 250MB");
                 262144000
-            }
-        } else {
-            warn!("missing MAX_JSON_FILE_SIZE, defaulting to 250MB");
-            262144000
-        },
-    });
+            },
+        })
+    } else {
+        None
+    };
 
     let schema = Arc::new(SchemaDefinition::new());
     let writer_schema = Arc::clone(&schema);
-    let writer_config = Arc::clone(&config);
+    let writer_config = config.clone();
     // TODO: make these configurable
     let writer = Arc::new(EventsWriter::new(8, 10000, move |index| {
-        let filepath = find_file(index, Arc::clone(&writer_config))?;
-        Ok(Box::new(JsonSink::new(Arc::clone(&writer_schema), &filepath, 250).unwrap()))
+        Ok(if !forward_url.is_empty() {
+            Box::new(HttpSink::new(forward_url.clone()))
+        } else {
+            let filepath = find_file(index, writer_config.as_ref().unwrap().clone())?;
+            Box::new(JsonSink::new(Arc::clone(&writer_schema), &filepath, 250).unwrap())
+        })
     }).await);
 
-    let watch_writer = Arc::clone(&writer);
-    let watch_config = Arc::clone(&config);
-    tokio::spawn(async {
-        watch_files(watch_writer, schema, watch_config).await;
-    });
+    if let Some(config) = config {
+        let watch_writer = Arc::clone(&writer);
+        let watch_config = config.clone();
+        tokio::spawn(async {
+            watch_files(watch_writer, schema, watch_config).await;
+        });
+    }
 
     let app = Router::new()
         .route("/register", get(register))
