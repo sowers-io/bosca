@@ -150,7 +150,7 @@ async fn watch_json(writer: &Arc<EventsWriter>, schema: &Arc<SchemaDefinition>, 
             writer.recycle().await;
             let parquet_file = format!("{}/batch-{}.parquet", &config.batches_dir, Utc::now().timestamp_millis());
             let finished_parquet_file = format!("{}/batch-{}.parquet", &config.pending_objects_dir, Utc::now().timestamp_millis());
-            let writer = Arc::new(Mutex::new(new_arrow_writer(Arc::clone(&schema), &parquet_file, 10000).unwrap()));
+            let writer = Arc::new(Mutex::new(new_arrow_writer(Arc::clone(schema), &parquet_file, 10000).unwrap()));
             let mut success = true;
             for file in &files {
                 if let Ok(file_name) = file.file_name().into_string() {
@@ -158,7 +158,7 @@ async fn watch_json(writer: &Arc<EventsWriter>, schema: &Arc<SchemaDefinition>, 
                         info!("adding json file to parquet: {}", file_name);
                         let spawn_file = format!("{}/{}", &config.temp_dir, file_name);
                         let spawn_writer = Arc::clone(&writer);
-                        let spawn_writer_schema = Arc::clone(&schema);
+                        let spawn_writer_schema = Arc::clone(schema);
                         success = task::spawn_blocking(move || {
                             match File::open(spawn_file) {
                                 Ok(file) => {
