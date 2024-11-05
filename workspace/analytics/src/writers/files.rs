@@ -122,6 +122,9 @@ async fn watch_objects(config: &Config) -> Result<(), Box<dyn Error>> {
                                     .await?;
                             }
                             upload.complete().await?;
+                            if let Err(err) = tokio::fs::remove_file(file_name).await {
+                                return Err(format!("error deleting file: {:?}", err).into())
+                            }
                         }
                     }
                 }
