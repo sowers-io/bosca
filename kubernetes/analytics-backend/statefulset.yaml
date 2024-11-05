@@ -57,12 +57,12 @@ spec:
               valueFrom:
                 secretKeyRef:
                   name: s3-credentials
-                  key: S3_BUCKET
+                  key: S3_ANALTYICS_BUCKET
             - name: AWS_ENDPOINT
               valueFrom:
                 secretKeyRef:
                   name: s3-credentials
-                  key: S3_ENDPOINT
+                  key: S3_ANALTYICS_ENDPOINT
             - name: AWS_SECRET_ACCESS_KEY
               valueFrom:
                 secretKeyRef:

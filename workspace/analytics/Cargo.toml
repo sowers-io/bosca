@@ -30,6 +30,7 @@ jsonwebtoken = "9.3.0"
 tokio-stream = "0.1.16"
 async-stream = "0.3.5"
 structured-logger = "1.0.3"
+object_store = { version = "0.11.0", features = ["aws"] }
 
 reqwest = { version = "0.12.8", features = ["default", "json"] }
 opentelemetry = { version = "0.26.0", features = ["trace"] }
@@ -47,4 +48,5 @@ mimalloc = { version = "0.1.43", features = ["default"] }
 rand = "0.8.5"
 
 bosca-pool = { path = "../util/pool" }
+time = { version = "0.3.36", features = ["local-offset"] }
 #console-subscriber = "0.4.0"
