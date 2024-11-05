@@ -23,7 +23,6 @@ spec:
         - name: analytics-backend
           image: ghcr.io/sowers-io/bosca/analytics:latest
           imagePullPolicy: IfNotPresent
-          restartPolicy: Always
           resources:
             requests:
               memory: "250Mi"
