@@ -78,7 +78,7 @@ pub async fn watch_files(writer: Arc<EventsWriter>, schema: Arc<SchemaDefinition
 }
 
 async fn watch_objects(config: &Config) -> Result<(), Box<dyn Error>> {
-    if let Ok(mut read) = tokio::fs::read_dir(&config.temp_dir).await {
+    if let Ok(mut read) = tokio::fs::read_dir(&config.pending_objects_dir).await {
         // TODO: make this more generic for multiple object stores
         let s3 = AmazonS3Builder::from_env().build().unwrap();
         while let Ok(Some(entry)) = read.next_entry().await {
@@ -86,6 +86,7 @@ async fn watch_objects(config: &Config) -> Result<(), Box<dyn Error>> {
                 if file_type.is_file() {
                     if let Ok(file_name) = entry.file_name().into_string() {
                         if file_name.ends_with(".parquet") {
+                            info!("processing upload for: {}", file_name);
                             let metadata = entry.metadata().await?;
                             let created = metadata.created()?;
                             let utc = time::OffsetDateTime::UNIX_EPOCH
