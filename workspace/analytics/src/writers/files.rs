@@ -86,13 +86,13 @@ async fn watch_objects(config: &Config) -> Result<(), Box<dyn Error>> {
                 if file_type.is_file() {
                     if let Ok(file_name) = entry.file_name().into_string() {
                         if file_name.ends_with(".parquet") {
-                            info!("processing upload for: {}", file_name);
+                            info!("processing upload for: {}/{}", config.pending_objects_dir, file_name);
                             let metadata = entry.metadata().await?;
                             let created = metadata.created()?;
                             let utc = time::OffsetDateTime::UNIX_EPOCH + time::Duration::try_from(created.duration_since(std::time::UNIX_EPOCH).unwrap()).unwrap();
                             let path = Path::parse(format!(
-                                "analytics/{}/{}/{}/events-{}.parquet",
-                                utc.year(), utc.month(), utc.day(),
+                                "raw/{}/{}/{}/events-{}.parquet",
+                                utc.year(), utc.month() as u8, utc.day(),
                                 Ulid::new().to_string(),
                             ))?;
                             let mut upload = s3.put_multipart(&path).await?;
@@ -120,7 +120,8 @@ async fn watch_objects(config: &Config) -> Result<(), Box<dyn Error>> {
                                     .await?;
                             }
                             upload.complete().await?;
-                            if let Err(err) = tokio::fs::remove_file(&file_name).await {
+                            let remove = format!("{}/{}", config.pending_objects_dir, file_name);
+                            if let Err(err) = tokio::fs::remove_file(&remove).await {
                                 return Err(format!("error deleting file: {} {:?}", file_name, err).into())
                             }
                         }
