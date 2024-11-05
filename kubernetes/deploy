@@ -14,8 +14,7 @@ if [ "$IMAGE_TAG" != "" ]; then
 
   echo_image "ghcr.io/sowers-io/bosca/database-migrations" $IMAGE_TAG
   echo_image "ghcr.io/sowers-io/bosca/server" $IMAGE_TAG
-  echo_image "ghcr.io/sowers-io/bosca/analytics-backend" $IMAGE_TAG
-  echo_image "ghcr.io/sowers-io/bosca/analytics-frontend" $IMAGE_TAG
+  echo_image "ghcr.io/sowers-io/bosca/analytics" $IMAGE_TAG
   echo_image "ghcr.io/sowers-io/bosca/runner" $IMAGE_TAG
   echo_image "ghcr.io/sowers-io/bosca/admin" $IMAGE_TAG
 fi
