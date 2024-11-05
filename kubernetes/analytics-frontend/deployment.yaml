@@ -43,7 +43,7 @@ spec:
             periodSeconds: 5
             timeoutSeconds: 5
           ports:
-            - containerPort: 8000
+            - containerPort: 8009
               name: http
           env:
             - name: AWS_BUCKET
