@@ -80,6 +80,10 @@ async fn events(State(writer): State<Arc<EventsWriter>>, extract::Json(payload):
     Ok((StatusCode::OK, "OK".to_owned()))
 }
 
+async fn index() -> Result<(StatusCode, String), (StatusCode, String)> {
+    Ok((StatusCode::OK, "OK".to_owned()))
+}
+
 #[tokio::main(flavor = "multi_thread")]
 async fn main() {
     structured_logger::Builder::with_level("info")
@@ -185,6 +189,7 @@ async fn main() {
     let app = Router::new()
         .route("/register", get(register))
         .route("/events", post(events))
+        .route("/", get(index))
         .layer(DefaultBodyLimit::disable())
         .layer(TimeoutLayer::new(Duration::from_secs(600)))
         .with_state(Arc::clone(&writer));
