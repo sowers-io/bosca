@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 
-kubectl apply -f issuer-secret.yaml
+kubectl apply -f cloudflare.yaml
 kubectl apply -f issuer.yaml

@@ -87,6 +87,5 @@ spec:
           - ReadWriteOnce
         resources:
           requests:
-            storage: 5Gi
-        storageClassName: do-block-storage
+            storage: 40Gi
 

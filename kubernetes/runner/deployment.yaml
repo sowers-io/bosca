@@ -80,10 +80,9 @@ spec:
                   type: runner-tmp
               spec:
                 accessModes: [ "ReadWriteOnce" ]
-                storageClassName: "do-block-storage"
                 resources:
                   requests:
-                    storage: 5Gi
+                    storage: 40Gi
       terminationGracePeriodSeconds: 600
       imagePullSecrets:
         - name: packages-credentials
