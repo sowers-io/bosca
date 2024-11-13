@@ -33,10 +33,10 @@ impl Activity for TranscribeActivity {
 
     async fn execute(&self, client: &Client, _context: &mut ActivityContext, job: &WorkflowJob) -> Result<(), Error> {
         let metadata_id = &job.metadata.as_ref().unwrap().id;
-        let key = if job.activity.outputs.is_empty() {
+        let key = if job.workflow_activity.outputs.is_empty() {
             "transcription".to_owned()
         }  else {
-            job.activity.outputs.first().unwrap().name.to_owned()
+            job.workflow_activity.outputs.first().unwrap().value.to_owned()
         };
         client.add_metadata_supplementary(MetadataSupplementaryInput {
             metadata_id: metadata_id.to_owned(),
