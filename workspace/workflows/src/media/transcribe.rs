@@ -38,15 +38,17 @@ impl Activity for TranscribeActivity {
         }  else {
             job.workflow_activity.outputs.first().unwrap().value.to_owned()
         };
-        client.add_metadata_supplementary(MetadataSupplementaryInput {
-            metadata_id: metadata_id.to_owned(),
-            key: key.to_owned(),
-            name: "Transcription".to_owned(),
-            content_type: "application/json".to_owned(),
-            content_length: None,
-            source_id: None,
-            source_identifier: None,
-        }).await?;
+        if !job.metadata.as_ref().unwrap().supplementary.iter().any(|s| s.key == key) {
+            client.add_metadata_supplementary(MetadataSupplementaryInput {
+                metadata_id: metadata_id.to_owned(),
+                key: key.to_owned(),
+                name: "Transcription".to_owned(),
+                content_type: "application/json".to_owned(),
+                content_length: None,
+                source_id: None,
+                source_identifier: None,
+            }).await?;
+        }
         let upload_url = client.get_metadata_supplementary_upload(metadata_id, &key).await?;
         let transcribe_function = env::var("RUNPOD_TRANSCRIBE_FUNCTION")?;
         let response = execute_runpod(client, &transcribe_function, "transcribe", job).await?;

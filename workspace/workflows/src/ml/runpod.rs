@@ -24,7 +24,7 @@ pub async fn execute_runpod(client: &Client, function: &str, action: &str, job: 
     loop {
         let status_payload: Value = client.execute_rest(&token, &status_url, None::<Value>).await?;
         let status = status_payload.get("status").unwrap().as_str().unwrap();
-        if status == "IN_PROGRESS" {
+        if status == "IN_PROGRESS" || status == "IN_QUEUE" {
             tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
         } else if status == "COMPLETED" {
             return Ok(status_payload.get("output").unwrap().clone())
