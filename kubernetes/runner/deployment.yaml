@@ -65,6 +65,21 @@ spec:
                 secretKeyRef:
                   name: mux
                   key: secret-key
+            - name: RUNPOD_TRANSCRIBE_FUNCTION
+              valueFrom:
+                secretKeyRef:
+                  name: runpod
+                  key: function
+            - name: RUNPOD_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: runpod
+                  key: token
+            - name: RUNPOD_URL
+              valueFrom:
+                secretKeyRef:
+                  name: runpod
+                  key: url
           envFrom:
             - configMapRef:
                 name: runner-env

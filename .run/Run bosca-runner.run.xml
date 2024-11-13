@@ -11,6 +11,9 @@
       <env name="MUX_TEST" value="true" />
       <env name="MUX_TOKEN_ID" value="" />
       <env name="MUX_TOKEN_SECRET" value="" />
+      <env name="RUNPOD_URL" value="http://127.0.0.1:8002" />
+      <env name="RUNPOD_TOKEN" value="" />
+      <env name="RUNPOD_TRANSCRIBE_FUNCTION" value="" />
     </envs>
     <option name="emulateTerminal" value="true" />
     <option name="channel" value="DEFAULT" />

@@ -18,7 +18,7 @@ use crate::queue::message::MessageValue;
 use crate::worklfow::job_queue::JobQueues;
 use async_graphql::*;
 use chrono::Utc;
-use deadpool_postgres::{GenericClient, Pool};
+use deadpool_postgres::{GenericClient, Pool, Transaction};
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
@@ -76,6 +76,54 @@ impl WorkflowDataStore {
                 .execute(&stmt, &[&activity.id, &input.name, &input.parameter_type])
                 .await?;
         }
+        Ok(())
+    }
+
+    pub async fn edit_activity(&self, activity: &ActivityInput) -> Result<(), Error> {
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        let stmt = txn.prepare_cached("update activities set name = $2, description = $3, child_workflow_id = $4, configuration = $5 where id = $1").await?;
+        txn
+            .query(
+                &stmt,
+                &[
+                    &activity.id,
+                    &activity.name,
+                    &activity.description,
+                    &activity.child_workflow_id,
+                    &activity.configuration,
+                ],
+            )
+            .await?;
+        txn.query("delete from activity_inputs where activity_id = $1", &[&activity.id]).await?;
+        txn.query("delete from activity_outputs where activity_id = $1", &[&activity.id]).await?;
+        let stmt = txn
+            .prepare_cached(
+                "insert into activity_inputs (activity_id, name, type) values ($1, $2, $3)",
+            )
+            .await?;
+        for input in activity.inputs.iter() {
+            txn
+                .execute(&stmt, &[&activity.id, &input.name, &input.parameter_type])
+                .await?;
+        }
+        let stmt = txn
+            .prepare_cached(
+                "insert into activity_outputs (activity_id, name, type) values ($1, $2, $3)",
+            )
+            .await?;
+        for input in activity.outputs.iter() {
+            txn
+                .execute(&stmt, &[&activity.id, &input.name, &input.parameter_type])
+                .await?;
+        }
+        txn.commit().await?;
+        Ok(())
+    }
+
+    pub async fn delete_activity(&self, activity_id: &str) -> Result<(), Error> {
+        let connection = self.pool.get().await?;
+        connection.execute("delete from activities where id = $1", &[&activity_id]).await?;
         Ok(())
     }
 
@@ -143,20 +191,23 @@ impl WorkflowDataStore {
     }
 
     pub async fn add_workflow(&self, workflow: &WorkflowInput) -> Result<(), Error> {
-        let connection = self.pool.get().await?;
-        let stmt = connection.prepare_cached("insert into workflows (id, name, description, queue, configuration) values ($1, $2, $3, $4, $5) returning id").await?;
-        connection
-            .query(
-                &stmt,
-                &[
-                    &workflow.id,
-                    &workflow.name,
-                    &workflow.description,
-                    &workflow.queue,
-                    &workflow.configuration,
-                ],
-            )
-            .await?;
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        let stmt = txn.prepare_cached("insert into workflows (id, name, description, queue, configuration) values ($1, $2, $3, $4, $5) returning id").await?;
+        txn.query(
+            &stmt,
+            &[
+                &workflow.id,
+                &workflow.name,
+                &workflow.description,
+                &workflow.queue,
+                &workflow.configuration,
+            ],
+        ).await?;
+        for activity in &workflow.activities {
+            self.add_workflow_activity(&txn, activity).await?;
+        }
+        txn.commit().await?;
         Ok(())
     }
 
@@ -176,19 +227,19 @@ impl WorkflowDataStore {
 
     /* workflow activities */
 
-    pub async fn add_workflow_activity(
+    async fn add_workflow_activity(
         &self,
+        txn: &Transaction<'_>,
         activity: &WorkflowActivityInput,
     ) -> Result<i64, Error> {
-        let connection = self.pool.get().await?;
         let execution_group = if activity.execution_group == 0 {
             1
         } else {
             activity.execution_group
         };
         let id: i64 = {
-            let stmt = connection.prepare_cached("insert into workflow_activities (workflow_id, activity_id, execution_group, queue, configuration) values ($1, $2, $3, $4, $5) returning id").await?;
-            let rows = connection
+            let stmt = txn.prepare_cached("insert into workflow_activities (workflow_id, activity_id, execution_group, queue, configuration) values ($1, $2, $3, $4, $5) returning id").await?;
+            let rows = txn
                 .query(
                     &stmt,
                     &[
@@ -203,44 +254,44 @@ impl WorkflowDataStore {
             rows.first().unwrap().get(0)
         };
         {
-            let stmt = connection.prepare_cached("insert into workflow_activity_inputs (activity_id, name, value) values ($1, $2, $3)").await?;
+            let stmt = txn.prepare_cached("insert into workflow_activity_inputs (activity_id, name, value) values ($1, $2, $3)").await?;
             for input in activity.inputs.iter() {
-                connection
+                txn
                     .execute(&stmt, &[&id, &input.name, &input.value])
                     .await?;
             }
         }
         {
-            let stmt = connection.prepare_cached("insert into workflow_activity_outputs (activity_id, name, value) values ($1, $2, $3)").await?;
+            let stmt = txn.prepare_cached("insert into workflow_activity_outputs (activity_id, name, value) values ($1, $2, $3)").await?;
             for input in activity.outputs.iter() {
-                connection
+                txn
                     .execute(&stmt, &[&id, &input.name, &input.value])
                     .await?;
             }
         }
         {
-            let stmt = connection.prepare_cached("insert into workflow_activity_models (activity_id, model_id, configuration) values ($1, $2, $3)").await?;
+            let stmt = txn.prepare_cached("insert into workflow_activity_models (activity_id, model_id, configuration) values ($1, $2, $3)").await?;
             for input in activity.models.iter() {
                 let mid = Uuid::parse_str(input.model_id.as_str())?;
-                connection
+                txn
                     .execute(&stmt, &[&id, &mid, &input.configuration])
                     .await?;
             }
         }
         {
-            let stmt = connection.prepare_cached("insert into workflow_activity_prompts (activity_id, prompt_id, configuration) values ($1, $2, $3)").await?;
+            let stmt = txn.prepare_cached("insert into workflow_activity_prompts (activity_id, prompt_id, configuration) values ($1, $2, $3)").await?;
             for input in activity.prompts.iter() {
                 let pid = Uuid::parse_str(input.prompt_id.as_str())?;
-                connection
+                txn
                     .execute(&stmt, &[&id, &pid, &input.configuration])
                     .await?;
             }
         }
         {
-            let stmt = connection.prepare_cached("insert into workflow_activity_storage_systems (activity_id, storage_system_id, configuration) values ($1, $2, $3)").await?;
+            let stmt = txn.prepare_cached("insert into workflow_activity_storage_systems (activity_id, storage_system_id, configuration) values ($1, $2, $3)").await?;
             for input in activity.storage_systems.iter() {
                 let sid = Uuid::parse_str(input.system_id.as_str())?;
-                connection
+                txn
                     .execute(&stmt, &[&id, &sid, &input.configuration])
                     .await?;
             }
@@ -717,7 +768,7 @@ impl WorkflowDataStore {
         collection_id: Option<Uuid>,
         metadata_id: Option<Uuid>,
         version: Option<i32>,
-        configuration: Option<&Vec<WorkflowConfigurationInput>>
+        configuration: Option<&Vec<WorkflowConfigurationInput>>,
     ) -> Result<WorkflowExecutionPlan, Error> {
         let mut jobs = Vec::<WorkflowJob>::new();
         let activities = self.get_workflow_activities(&workflow.id).await?;

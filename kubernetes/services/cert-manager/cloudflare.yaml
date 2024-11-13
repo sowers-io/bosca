@@ -4,4 +4,4 @@ metadata:
   name: cloudflare
   namespace: cert-manager
 spec:
-  itemPath: "vaults/KubernetesProduction/items/Cloudflare"
+  itemPath: "vaults/Kubernetes/items/Cloudflare"

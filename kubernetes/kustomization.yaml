@@ -9,6 +9,7 @@ resources:
   - secrets/postgres-bosca.yaml
   - secrets/postgres-bosca-direct.yaml
   - secrets/postgres-boscajobs.yaml
+  - secrets/runpod.yaml
   - services/otel.yaml
   - services/coroot-pg-agent.yaml
   - server
@@ -21,9 +22,6 @@ resources:
   - ollama
   - ingress.yaml
   - namespace.yaml
-#  - mail-secret.yaml
-#  - service-credentials.yaml
-#  - service-certificate-secret.yaml
 
 generatorOptions:
   disableNameSuffixHash: true

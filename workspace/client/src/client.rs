@@ -26,7 +26,7 @@ use crate::client::supplementary_download_url::SupplementaryDownloadUrlContentMe
 use graphql_client::{GraphQLQuery, QueryBody};
 use log::warn;
 use serde::de::DeserializeOwned;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use crate::client::add_metadata_bulk::AddMetadataBulkContentMetadataAddBulk;
 use crate::client::add_search_documents::SearchDocumentInput;
@@ -69,6 +69,48 @@ impl Client {
             token: None,
             client,
             url,
+        }
+    }
+
+    pub async fn execute_rest<Variables: Serialize, Response: DeserializeOwned + Clone>(
+        &self,
+        token: &str,
+        url: &str,
+        query: Option<Variables>,
+    ) -> Result<Response, Error> {
+        let response = if token.is_empty() {
+            if query.is_some() {
+                self.client
+                    .post(url)
+                    .json(query.as_ref().unwrap())
+                    .send()
+                    .await?
+            } else {
+                self.client
+                    .post(url)
+                    .send()
+                    .await?
+            }
+        }  else {
+            if query.is_some() {
+                self.client
+                    .post(url)
+                    .bearer_auth(token.to_owned())
+                    .json(query.as_ref().unwrap())
+                    .send()
+                    .await?
+            } else {
+                self.client
+                    .post(url)
+                    .bearer_auth(token.to_owned())
+                    .send()
+                    .await?
+            }
+        };
+        let text = response.text().await?;
+        match serde_json::from_str::<Response>(&text) {
+            Ok(response) => Ok(response),
+            Err(err) => Err(Error::new(format!("error decoding message: {} -> {}", err, text)))
         }
     }
 
@@ -693,7 +735,7 @@ pub struct SetWorkflowStateComplete;
 )]
 pub struct SetCollectionWorkflowStateComplete;
 
-#[derive(GraphQLQuery)]
+#[derive(GraphQLQuery, Serialize, Deserialize)]
 #[graphql(
     schema_path = "schema.json",
     query_path = "queries/metadata_download_url.graphql",

@@ -1,4 +1,5 @@
 pub mod activities;
+pub mod activities_mutation;
 pub mod activity;
 pub mod activity_parameter;
 pub mod model;

@@ -11,6 +11,7 @@ use std::time::Duration;
 use bosca_client::client::{Client, WorkflowExecution};
 use crate::collection::traits::CollectionTraitsActivity;
 use crate::collection::transition_to::CollectionTransitionToActivity;
+use crate::media::extract_mp3::ExtractMp3Activity;
 use crate::media::mux::MuxUploadActivity;
 use crate::media::transcribe::TranscribeActivity;
 
@@ -29,6 +30,7 @@ pub fn get_default_activities() -> Vec<Box<dyn Activity + Send + Sync>> {
         Box::new(MetadataTransitionToActivity::default()),
         Box::new(IndexActivity::default()),
         Box::new(MuxUploadActivity::default()),
+        Box::new(ExtractMp3Activity::default()),
         Box::new(TranscribeActivity::default()),
     ]
 }

@@ -368,8 +368,7 @@ async fn main() {
     initialize_workflow(&ctx).await;
     initialize_security(&ctx.security).await;
     initialize_content(&ctx).await;
-
-
+    
     let mut provider_builder = TracerProvider::builder().with_config(
         opentelemetry_sdk::trace::Config::default().with_resource(Resource::new(vec![KeyValue::new(
             opentelemetry_semantic_conventions::resource::SERVICE_NAME,

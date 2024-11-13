@@ -13,7 +13,7 @@ jobs:
     env:
       IMAGE_TAG: ${{ inputs.sha }}
       OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
-      KUBECTL_CONFIG: "op://KubernetesProduction/Kubernetes Config/config"
+      KUBECTL_CONFIG: "op://Kubernetes/Kubernetes Config/config"
     steps:
       - uses: actions/checkout@v3
       - run: sudo apt update && sudo apt install -y kubectl

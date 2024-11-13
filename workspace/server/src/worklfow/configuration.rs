@@ -11,6 +11,7 @@ use std::collections::HashMap;
 use uuid::Uuid;
 use yaml_rust2::Yaml;
 use crate::datastores::workflow::WorkflowDataStore;
+use crate::worklfow::yaml::into;
 
 pub async fn configure(yaml: &Yaml, datasource: &WorkflowDataStore) -> bool {
     let mut model_ids: HashMap<String, Uuid> = HashMap::new();
@@ -31,11 +32,9 @@ pub async fn configure(yaml: &Yaml, datasource: &WorkflowDataStore) -> bool {
             let mi: StorageSystemInput = s.into();
             let id = datasource.add_storage_system(&mi).await.unwrap();
             storage_system_ids.insert(key.as_str().unwrap().to_string(), id);
-
             if s["models"].is_null() || s["models"].is_badvalue() {
                 continue;
             }
-
             let m = s["models"].as_hash().unwrap();
             for key in m.keys() {
                 let m = m.get(key).unwrap();
@@ -64,24 +63,20 @@ pub async fn configure(yaml: &Yaml, datasource: &WorkflowDataStore) -> bool {
             }
         }
         {
-            let hash = workflows["workflows"].as_hash().unwrap();
-            for key in hash.keys() {
-                let w = hash.get(key).unwrap();
-                let mut wi: WorkflowInput = w.into();
-                wi.id = key.as_str().unwrap().to_string();
-                if wi.queue.is_empty() {
-                    wi.queue = "default".to_owned();
-                }
-                datasource.add_workflow(&wi).await.unwrap();
-
-                let hash = w["activities"].as_hash().unwrap();
-                for key in hash.keys() {
-                    let w = hash.get(key).unwrap();
+            let workflows_hash = workflows["workflows"].as_hash().unwrap();
+            for key in workflows_hash.keys() {
+                let workflow = workflows_hash.get(key).unwrap();
+                let workflow_id = key.as_str().unwrap().to_string();
+                let queue = workflow["queue"].as_str().unwrap().to_string();
+                let activities_hash = workflow["activities"].as_hash().unwrap();
+                let mut activities = Vec::new();
+                for key in activities_hash.keys() {
+                    let w = activities_hash.get(key).unwrap();
                     let mut a: WorkflowActivityInput = w.into();
-                    a.workflow_id = wi.id.clone();
+                    a.workflow_id = workflow_id.clone();
                     a.activity_id = key.as_str().unwrap().to_string();
                     if a.queue.is_empty() {
-                        a.queue = wi.queue.clone();
+                        a.queue = queue.clone();
                     }
                     a.models = a
                         .models
@@ -107,8 +102,20 @@ pub async fn configure(yaml: &Yaml, datasource: &WorkflowDataStore) -> bool {
                             p
                         })
                         .collect();
-                    datasource.add_workflow_activity(&a).await.unwrap();
+                    activities.push(a);
                 }
+                let workflow = WorkflowInput {
+                    id: workflow_id,
+                    name: workflow["name"].as_str().unwrap_or("").to_string(),
+                    queue: if !queue.is_empty() { queue.clone() } else { "default".to_owned() },
+                    description: workflow["description"]
+                        .as_str()
+                        .unwrap_or("")
+                        .to_string(),
+                    configuration: into(&workflow["configuration"]),
+                    activities
+                };
+                datasource.add_workflow(&workflow).await.unwrap();
             }
         }
         {
