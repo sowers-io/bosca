@@ -80,6 +80,11 @@ spec:
                 secretKeyRef:
                   name: runpod
                   key: url
+            - name: OPENAI_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: openai
+                  key: token
           envFrom:
             - configMapRef:
                 name: runner-env

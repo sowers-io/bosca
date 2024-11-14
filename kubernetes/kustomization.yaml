@@ -10,6 +10,7 @@ resources:
   - secrets/postgres-bosca-direct.yaml
   - secrets/postgres-boscajobs.yaml
   - secrets/runpod.yaml
+  - secrets/openai.yaml
   - services/otel.yaml
   - services/coroot-pg-agent.yaml
   - server
