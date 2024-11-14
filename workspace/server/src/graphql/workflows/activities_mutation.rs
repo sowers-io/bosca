@@ -7,7 +7,7 @@ use crate::models::workflow::activities::ActivityInput;
 
 pub struct ActivitiesMutationObject {}
 
-#[Object(name = "ModelsMutation")]
+#[Object(name = "ActivitiesMutation")]
 impl ActivitiesMutationObject {
     async fn add(
         &self,
@@ -16,10 +16,6 @@ impl ActivitiesMutationObject {
     ) -> Result<Option<ActivityObject>, Error> {
         check_has_group(ctx, WORKFLOW_MANAGERS_GROUP).await?;
         let ctx = ctx.data::<BoscaContext>()?;
-        let group = ctx.security.get_workflow_manager_group().await?;
-        if !ctx.principal.has_group(&group.id) {
-            return Err(Error::new("invalid permissions"));
-        }
         ctx.workflow.add_activity(&activity).await?;
         let activity = ctx.workflow.get_activity(&activity.id).await?;
         if let Some(activity) = activity {
@@ -38,10 +34,6 @@ impl ActivitiesMutationObject {
     ) -> Result<Option<ActivityObject>, Error> {
         check_has_group(ctx, WORKFLOW_MANAGERS_GROUP).await?;
         let ctx = ctx.data::<BoscaContext>()?;
-        let group = ctx.security.get_workflow_manager_group().await?;
-        if !ctx.principal.has_group(&group.id) {
-            return Err(Error::new("invalid permissions"));
-        }
         ctx.workflow.edit_activity(&activity).await?;
         let activity = ctx.workflow.get_activity(&activity.id).await?;
         if let Some(activity) = activity {
@@ -60,10 +52,6 @@ impl ActivitiesMutationObject {
     ) -> Result<bool, Error> {
         check_has_group(ctx, WORKFLOW_MANAGERS_GROUP).await?;
         let ctx = ctx.data::<BoscaContext>()?;
-        let group = ctx.security.get_workflow_manager_group().await?;
-        if !ctx.principal.has_group(&group.id) {
-            return Err(Error::new("invalid permissions"));
-        }
         ctx.workflow.delete_activity(&activity_id).await?;
         Ok(true)
     }

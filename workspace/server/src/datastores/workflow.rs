@@ -570,23 +570,48 @@ impl WorkflowDataStore {
     pub async fn add_prompt(&self, prompt: &PromptInput) -> Result<Uuid, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection.prepare_cached("insert into prompts (name, description, system_prompt, user_prompt, input_type, output_type) values ($1, $2, $3, $4, $5, $6) returning id").await?;
-        let rows = connection
-            .query(
-                &stmt,
-                &[
-                    &prompt.name,
-                    &prompt.description,
-                    &prompt.system_prompt,
-                    &prompt.user_prompt,
-                    &prompt.input_type,
-                    &prompt.output_type,
-                ],
-            )
-            .await?;
+        let rows = connection.query(
+            &stmt,
+            &[
+                &prompt.name,
+                &prompt.description,
+                &prompt.system_prompt,
+                &prompt.user_prompt,
+                &prompt.input_type,
+                &prompt.output_type,
+            ],
+        )
+        .await?;
         if rows.is_empty() {
             return Ok(Uuid::nil());
         }
         Ok(rows.first().unwrap().get(0))
+    }
+
+    pub async fn edit_prompt(&self, id: &Uuid, prompt: &PromptInput) -> Result<(), Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection.prepare_cached("update prompts set name = $1, description = $2, system_prompt = $3, user_prompt = $4, input_type = $5, output_type = $6 where id = $7").await?;
+        connection.execute(
+            &stmt,
+            &[
+                &prompt.name,
+                &prompt.description,
+                &prompt.system_prompt,
+                &prompt.user_prompt,
+                &prompt.input_type,
+                &prompt.output_type,
+                id,
+            ],
+        )
+        .await?;
+        Ok(())
+    }
+
+    pub async fn delete_prompt(&self, id: &Uuid) -> Result<(), Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection.prepare_cached("delete from prompts where id = $1").await?;
+        connection.execute(&stmt, &[id]).await?;
+        Ok(())
     }
 
     pub async fn get_prompts(&self) -> Result<Vec<Prompt>, Error> {

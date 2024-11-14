@@ -7,6 +7,7 @@ pub mod models;
 pub mod models_mutation;
 pub mod prompt;
 pub mod prompts;
+pub mod prompts_mutation;
 pub mod state;
 pub mod states;
 pub mod states_mutation;

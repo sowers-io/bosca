@@ -1,6 +1,7 @@
 use crate::datastores::security::WORKFLOW_MANAGERS_GROUP;
 use crate::graphql::workflows::models_mutation::ModelsMutationObject;
 use crate::graphql::workflows::states_mutation::WorkflowStatesMutationObject;
+use crate::graphql::workflows::prompts_mutation::PromptsMutationObject;
 use crate::graphql::workflows::workflow::WorkflowObject;
 use crate::graphql::workflows::workflow_execution_id::WorkflowExecutionIdObject;
 use crate::models::workflow::execution_plan::{WorkflowExecutionId, WorkflowExecutionIdInput, WorkflowJobIdInput};
@@ -12,6 +13,7 @@ use uuid::Uuid;
 use crate::context::BoscaContext;
 use crate::graphql::content::content::FindAttributeInput;
 use crate::graphql::content::metadata_mutation::WorkflowConfigurationInput;
+use crate::graphql::workflows::activities_mutation::ActivitiesMutationObject;
 use crate::models::workflow::transitions::BeginTransitionInput;
 use crate::util::transition::begin_transition;
 
@@ -26,10 +28,6 @@ impl WorkflowsMutationObject {
     ) -> Result<WorkflowObject, Error> {
         check_has_group(ctx, WORKFLOW_MANAGERS_GROUP).await?;
         let ctx = ctx.data::<BoscaContext>()?;
-        let group = ctx.security.get_workflow_manager_group().await?;
-        if !ctx.principal.has_group(&group.id) {
-            return Err(Error::new("invalid permissions"));
-        }
         ctx.workflow.add_workflow(&workflow).await?;
         if let Some(workflow) = ctx.workflow
             .get_workflow(&workflow.id)
@@ -49,11 +47,19 @@ impl WorkflowsMutationObject {
         WorkflowStatesMutationObject {}
     }
 
+    async fn activities(&self) -> ActivitiesMutationObject {
+        ActivitiesMutationObject {}
+    }
+
+    async fn prompts(&self) -> PromptsMutationObject {
+        PromptsMutationObject {}
+    }
+
     async fn begin_transition(
         &self,
         ctx: &Context<'_>,
         request: BeginTransitionInput,
-        configurations: Option<Vec<WorkflowConfigurationInput>>
+        configurations: Option<Vec<WorkflowConfigurationInput>>,
     ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         begin_transition(ctx, &request, configurations.as_ref()).await?;
