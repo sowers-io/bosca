@@ -4,7 +4,7 @@ use bosca_workflows::activity::{Activity, Error};
 use bosca_client::client::Client;
 use bosca_workflows::{get_default_activities, process_queue};
 use futures::future::join_all;
-use log::{info, warn};
+use log::{error, info, warn};
 use std::collections::HashMap;
 use std::env;
 use std::process::exit;
@@ -100,8 +100,8 @@ async fn main() {
         activities_by_id.insert(activity.id().clone(), Arc::new(activity));
     }
 
-    let mut client = Client::new(url);
-    client.login(username, password).await.unwrap();
+    let client = Client::new(url);
+    client.login(&username, &password).await.unwrap();
 
     info!(target: "workflow", "running");
 
@@ -119,6 +119,20 @@ async fn main() {
             _ = terminate.recv() => {
                 warn!("Receiving SIGTERM, shutting down");
                 shutdown_spawn.store(true, Relaxed);
+            }
+        }
+    });
+
+    let shutdown_login_spawn = Arc::clone(&shutdown);
+    let login_client = client.clone();
+    tokio::spawn(async move {
+        loop {
+            if shutdown_login_spawn.load(Relaxed) {
+                return;
+            }
+            tokio::time::sleep(Duration::from_secs(300)).await;
+            if let Err(err) = login_client.login(&username, &password).await {
+                error!("failed to refresh token: {}", err);
             }
         }
     });

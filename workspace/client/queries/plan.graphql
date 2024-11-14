@@ -90,6 +90,12 @@ fragment WorkflowJobFragment on WorkflowJob {
             name
             configuration
             models {
+                model {
+                    id
+                    name
+                    type
+                    configuration
+                }
                 configuration
             }
         }

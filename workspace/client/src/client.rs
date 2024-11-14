@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use std::time::Duration;
 use crate::Error;
 use crate::client::plan::{
@@ -28,12 +29,13 @@ use log::warn;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use tokio::sync::Mutex;
 use crate::client::add_metadata_bulk::AddMetadataBulkContentMetadataAddBulk;
 use crate::client::add_search_documents::SearchDocumentInput;
 
 #[derive(Clone)]
 pub struct Client {
-    token: Option<String>,
+    token: Arc<Mutex<String>>,
     url: String,
     client: reqwest::Client,
 }
@@ -66,7 +68,7 @@ impl Client {
             .build()
             .unwrap();
         Self {
-            token: None,
+            token: Arc::new(Mutex::new("".to_owned())),
             client,
             url,
         }
@@ -117,8 +119,9 @@ impl Client {
         query: &QueryBody<Variables>,
     ) -> Result<Response, Error> {
         let mut builder = self.client.post(self.url.as_str()).json(query);
-        if self.token.is_some() {
-            let token = &self.token.clone().unwrap();
+        let token = self.token.lock().await;
+        if !token.is_empty() {
+            let token = token.to_owned();
             builder = builder.bearer_auth(token);
         }
         let response = builder.json(&query).send().await?;
@@ -136,14 +139,16 @@ impl Client {
         Err(Error::new("missing data".to_owned()))
     }
 
-    pub async fn login(&mut self, identifier: String, password: String) -> Result<(), Error> {
+    pub async fn login(&self, identifier: &str, password: &str) -> Result<(), Error> {
         let variables = login::Variables {
-            identifier,
-            password,
+            identifier: identifier.to_owned(),
+            password: password.to_owned(),
         };
         let query = Login::build_query(variables);
         let response: login::ResponseData = self.execute(&query).await?;
-        self.token = Some(response.security.login.password.token.token);
+        let mut token = self.token.lock().await;
+        token.clear();
+        token.push_str(&response.security.login.password.token.token);
         Ok(())
     }
 

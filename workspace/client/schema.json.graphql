@@ -20,6 +20,12 @@ type Activities {
     all: [Activity!]!
 }
 
+type ActivitiesMutation {
+    add(activity: ActivityInput!): Activity
+    delete(activityId: String!): Boolean!
+    edit(activity: ActivityInput!): Activity
+}
+
 type Activity {
     childWorkflowId: String
     configuration: JSON!
@@ -310,6 +316,12 @@ type Prompts {
     prompt(id: String!): Prompt
 }
 
+type PromptsMutation {
+    add(prompt: PromptInput!): Prompt
+    delete(id: String!): Boolean!
+    edit(id: String!, prompt: PromptInput!): Prompt
+}
+
 type Query {
     content: Content!
     queues: Queues!
@@ -376,6 +388,7 @@ type StorageSystem {
 
 type StorageSystemModel {
     configuration: JSON!
+    model: Model
     modelId: String!
 }
 
@@ -524,12 +537,15 @@ type Workflows {
 }
 
 type WorkflowsMutation {
+    activities: ActivitiesMutation!
     add(workflow: WorkflowInput!): Workflow!
-    beginTransition(request: BeginTransitionInput!): Boolean!
+    beginTransition(configurations: [WorkflowConfigurationInput!], request: BeginTransitionInput!): Boolean!
     enqueueChildWorkflows(jobId: WorkflowExecutionIdInput!, workflowIds: [String!]!): [WorkflowExecutionId!]!
     enqueueJob(jobIndex: Int!, planId: WorkflowExecutionIdInput!): WorkflowExecutionId
     enqueueWorkflow(collectionId: String, configurations: [WorkflowConfigurationInput!], metadataId: String, version: Int, workflowId: String!): WorkflowExecutionId!
+    findAndEnqueueWorkflow(attributes: [FindAttributeInput!]!, configurations: [WorkflowConfigurationInput!], workflowId: String!): [WorkflowExecutionId!]!
     models: ModelsMutation!
+    prompts: PromptsMutation!
     setExecutionJobContext(context: JSON!, jobId: WorkflowExecutionIdInput!): Boolean!
     setExecutionPlanContext(context: JSON!, planId: WorkflowExecutionIdInput!): Boolean!
     setExecutionPlanJobCheckin(jobId: WorkflowJobIdInput!): Boolean!
@@ -592,6 +608,21 @@ scalar DateTime
 scalar JSON
 
 scalar Upload
+
+input ActivityInput {
+    childWorkflowId: String
+    configuration: JSON!
+    description: String!
+    id: String!
+    inputs: [ActivityParameterInput!]!
+    name: String!
+    outputs: [ActivityParameterInput!]!
+}
+
+input ActivityParameterInput {
+    name: String!
+    type: ActivityParameterType!
+}
 
 input AttributesFilterInput {
     attributes: [String!]!
@@ -726,6 +757,15 @@ input PermissionInput {
     groupId: String!
 }
 
+input PromptInput {
+    description: String!
+    inputType: String!
+    name: String!
+    outputType: String!
+    systemPrompt: String!
+    userPrompt: String!
+}
+
 input SearchDocumentInput {
     collectionId: String
     content: String!
@@ -740,6 +780,40 @@ input SearchQuery {
     storageSystemId: String!
 }
 
+input WorkflowActivityInput {
+    activityId: String!
+    configuration: JSON!
+    description: String!
+    executionGroup: Int!
+    inputs: [WorkflowActivityParameterInput!]!
+    models: [WorkflowActivityModelInput!]!
+    outputs: [WorkflowActivityParameterInput!]!
+    prompts: [WorkflowActivityPromptInput!]!
+    queue: String!
+    storageSystems: [WorkflowActivityStorageSystemInput!]!
+    workflowId: String!
+}
+
+input WorkflowActivityModelInput {
+    configuration: JSON!
+    modelId: String!
+}
+
+input WorkflowActivityParameterInput {
+    name: String!
+    value: String!
+}
+
+input WorkflowActivityPromptInput {
+    configuration: JSON!
+    promptId: String!
+}
+
+input WorkflowActivityStorageSystemInput {
+    configuration: JSON!
+    systemId: String!
+}
+
 input WorkflowConfigurationInput {
     activityId: String!
     configuration: JSON!
@@ -751,6 +825,7 @@ input WorkflowExecutionIdInput {
 }
 
 input WorkflowInput {
+    activities: [WorkflowActivityInput!]!
     configuration: JSON!
     description: String!
     id: String!

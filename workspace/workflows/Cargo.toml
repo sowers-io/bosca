@@ -24,3 +24,4 @@ rand = "0.8.5"
 tokenizers = "0.20.1"
 byteorder = "1.5.0"
 uuid = { version = "1.11.0", features = ["v4"] }
+langchain-rust = { version = "4.6.0", features = ["default", "ollama", "qdrant", "uuid", "qdrant-client", "fastembed"] }

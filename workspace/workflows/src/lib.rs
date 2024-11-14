@@ -9,6 +9,7 @@ use std::sync::atomic::{AtomicBool, AtomicI32};
 use std::sync::Arc;
 use std::time::Duration;
 use bosca_client::client::{Client, WorkflowExecution};
+use crate::ai::prompt::PromptActivity;
 use crate::collection::traits::CollectionTraitsActivity;
 use crate::collection::transition_to::CollectionTransitionToActivity;
 use crate::media::extract_mp3::ExtractMp3Activity;
@@ -21,6 +22,7 @@ pub mod collection;
 pub mod media;
 pub mod util;
 pub mod ml;
+mod ai;
 
 pub fn get_default_activities() -> Vec<Box<dyn Activity + Send + Sync>> {
     vec![
@@ -32,6 +34,7 @@ pub fn get_default_activities() -> Vec<Box<dyn Activity + Send + Sync>> {
         Box::new(MuxUploadActivity::default()),
         Box::new(ExtractMp3Activity::default()),
         Box::new(TranscribeActivity::default()),
+        Box::new(PromptActivity::default()),
     ]
 }
 
