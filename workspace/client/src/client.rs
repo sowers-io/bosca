@@ -91,21 +91,19 @@ impl Client {
                     .send()
                     .await?
             }
-        }  else {
-            if query.is_some() {
-                self.client
-                    .post(url)
-                    .bearer_auth(token.to_owned())
-                    .json(query.as_ref().unwrap())
-                    .send()
-                    .await?
-            } else {
-                self.client
-                    .post(url)
-                    .bearer_auth(token.to_owned())
-                    .send()
-                    .await?
-            }
+        }  else if query.is_some() {
+            self.client
+                .post(url)
+                .bearer_auth(token.to_owned())
+                .json(query.as_ref().unwrap())
+                .send()
+                .await?
+        } else {
+            self.client
+                .post(url)
+                .bearer_auth(token.to_owned())
+                .send()
+                .await?
         };
         let text = response.text().await?;
         match serde_json::from_str::<Response>(&text) {
