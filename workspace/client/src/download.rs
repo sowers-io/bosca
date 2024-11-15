@@ -5,13 +5,14 @@ use std::path::Path;
 use std::str::FromStr;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
+use uuid::Uuid;
 use crate::Error;
 
-pub async fn download_path(id: &String, download: &MetadataContentDownloadUrl) -> Result<String, Error> {
+pub async fn download_path(id: &str, download: &MetadataContentDownloadUrl) -> Result<String, Error> {
     download_path_with_extension(id, download, None).await
 }
 
-pub async fn download_path_with_extension(id: &String, download: &MetadataContentDownloadUrl, extension: Option<String>) -> Result<String, Error> {
+pub async fn download_path_with_extension(id: &str, download: &MetadataContentDownloadUrl, extension: Option<String>) -> Result<String, Error> {
     let mut headers = HeaderMap::new();
     for hdr in download.headers.iter() {
         headers.insert(
@@ -35,7 +36,7 @@ pub async fn download_path_with_extension(id: &String, download: &MetadataConten
         create_dir_all(parent_path)?;
     }
     let path = Path::new(path_str.as_str());
-    let mut file = File::create(path).await?;
+    let mut file = File::create_new(path).await?;
     while let Some(chunk) = response.chunk().await? {
         file.write_all(chunk.as_ref()).await?;
     }
@@ -43,7 +44,7 @@ pub async fn download_path_with_extension(id: &String, download: &MetadataConten
     Ok(path_str)
 }
 
-pub async fn download_supplementary_path(id: &String, download: &MetadataSupplementaryDownloadUrl) -> Result<String, Error> {
+pub async fn download_supplementary_path(id: &str, download: &MetadataSupplementaryDownloadUrl) -> Result<String, Error> {
     let mut headers = HeaderMap::new();
     for hdr in download.headers.iter() {
         headers.insert(
@@ -57,13 +58,13 @@ pub async fn download_supplementary_path(id: &String, download: &MetadataSupplem
         .headers(headers)
         .send()
         .await?;
-    let path_str = format!("/tmp/bosca/{}", id);
+    let path_str = format!("/tmp/bosca/{}-{}", id, Uuid::new_v4());
     let parent_path = Path::new("/tmp/bosca/");
     if !parent_path.exists() {
         create_dir_all(parent_path)?;
     }
     let path = Path::new(path_str.as_str());
-    let mut file = File::create(path).await?;
+    let mut file = File::create_new(path).await?;
     while let Some(chunk) = response.chunk().await? {
         file.write_all(chunk.as_ref()).await?;
     }

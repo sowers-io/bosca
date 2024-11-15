@@ -43,7 +43,7 @@ impl Activity for MuxUploadActivity {
         let metadata_id = &job.metadata.as_ref().unwrap().id;
         let download_url = client.get_metadata_download_url(metadata_id).await?;
         let download = download_path(metadata_id, &download_url).await?;
-        context.add_file_clean(download.clone());
+        context.add_file_clean(&download);
         let token_id = env::var("MUX_TOKEN_ID")?;
         let token_secret = env::var("MUX_TOKEN_SECRET")?;
         let authorization = BASE64_STANDARD.encode(format!("{}:{}", token_id, token_secret).as_str());

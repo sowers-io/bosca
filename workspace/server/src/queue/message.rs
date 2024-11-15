@@ -37,7 +37,7 @@ impl MessageObject {
     }
 }
 
-
+#[allow(clippy::large_enum_variant)]
 #[derive(Clone, Serialize, Deserialize)]
 pub enum MessageValue {
     Plan(WorkflowExecutionPlan),

@@ -36,10 +36,10 @@ impl Activity for ExtractMp3Activity {
         let metadata_id = &job.metadata.as_ref().unwrap().id;
         let download_url = client.get_metadata_download_url(metadata_id).await?;
         let download = download_path_with_extension(metadata_id, &download_url, Some("mp4".to_owned())).await?;
-        context.add_file_clean(download.clone());
+        context.add_file_clean(&download);
         let id = Uuid::new_v4();
         let path_str = format!("/tmp/bosca/{}-{}.mp3", metadata_id, id);
-        context.add_file_clean(path_str.clone());
+        context.add_file_clean(&path_str);
 
         let output = Command::new("ffmpeg")
             .arg("-i")

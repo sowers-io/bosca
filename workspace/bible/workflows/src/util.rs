@@ -36,7 +36,7 @@ pub async fn get_bible(client: &Client, context: &mut ActivityContext, job: &Wor
     let download_url = client.get_metadata_download_url(bible_metadata_id).await?;
     let path_id = format!("{}{}", metadata_id, bible_metadata_id);
     let download = download_path(&path_id, &download_url).await?;
-    context.add_file_clean(download.clone());
+    context.add_file_clean(&download);
     let bible = Arc::new(match process_path(download.as_str()) {
         Ok(bible) => bible,
         Err(e) => return Err(Error::new(e.to_string())),

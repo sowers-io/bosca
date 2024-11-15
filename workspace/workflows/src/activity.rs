@@ -2,7 +2,9 @@ use std::env::VarError;
 use async_trait::async_trait;
 use std::fmt::{Display, Formatter};
 use std::path::Path;
-use tokio::fs::remove_file;
+use tokio::fs::{remove_file, File};
+use tokio::io::AsyncWriteExt;
+use uuid::Uuid;
 use bosca_client::client::{Client, WorkflowJob};
 
 pub struct ActivityContext {
@@ -19,8 +21,18 @@ impl ActivityContext {
     pub fn new() -> Self {
         Self { files_to_clean: Vec::new() }
     }
-    pub fn add_file_clean(&mut self, name: String) {
-        self.files_to_clean.push(name);
+    pub fn add_file_clean(&mut self, name: &str) {
+        self.files_to_clean.push(name.to_owned());
+    }
+
+    pub async fn write_to_file(&mut self, content: &[u8]) -> Result<String, Error> {
+        let name = format!("/tmp/bosca/{}", Uuid::new_v4());
+        let mut file = File::create_new(&name).await.map_err(|e| Error::new(format!("error creating file: {e:?}")))?;
+        file.write_all(content)
+            .await
+            .map_err(|e| Error::new(format!("error writing to file: {e:?}")))?;
+        self.add_file_clean(&name);
+        Ok(name)
     }
 
     pub async fn close(&mut self) -> Result<(), Error> {

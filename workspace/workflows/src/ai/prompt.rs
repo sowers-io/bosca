@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::env;
 use crate::activity::{Activity, ActivityContext, Error};
 use async_trait::async_trait;
@@ -47,7 +47,7 @@ impl Activity for PromptActivity {
     async fn execute(&self, client: &Client, context: &mut ActivityContext, job: &WorkflowJob) -> Result<(), Error> {
         let metadata_id = &job.metadata.as_ref().unwrap().id;
         let prompt_definition = job.prompts.first().unwrap();
-        let inputs = job.workflow_activity.inputs.iter().map(|input| {
+        let inputs: HashSet<String> = job.workflow_activity.inputs.iter().map(|input| {
             input.value.to_owned()
         }).collect();
         let prompt = message_formatter![
@@ -56,7 +56,7 @@ impl Activity for PromptActivity {
             )),
             fmt_template!(HumanMessagePromptTemplate::new(PromptTemplate::new(
                 prompt_definition.prompt.user_prompt.to_owned(),
-                inputs,
+                inputs.iter().map(|s| s.to_owned()).collect(),
                 TemplateFormat::FString,
             ))),
         ];
@@ -109,12 +109,15 @@ impl Activity for PromptActivity {
         };
         let mut args = HashMap::<String, Value>::new();
         for supplementary in job.metadata.as_ref().unwrap().supplementary.iter() {
+            if !inputs.contains(&supplementary.key) {
+                continue;
+            }
             let download = client.get_metadata_supplementary_download(metadata_id, &supplementary.key).await?;
             if download.is_none() {
                 return Err(Error::new("missing supplementary file".to_owned()));
             }
             let file = download_supplementary_path(metadata_id, &download.unwrap()).await?;
-            context.add_file_clean(file.to_owned());
+            context.add_file_clean(&file);
             let mut file = File::open(file).await?;
             let mut result = String::new();
             file.read_to_string(&mut result).await?;

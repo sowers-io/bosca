@@ -58,7 +58,7 @@ impl Activity for IndexActivity {
         }
         let contents: String;
         if !path.is_empty() {
-            context.add_file_clean(path.clone());
+            context.add_file_clean(&path);
             let mut file = File::open(path).await?;
             let mut buffer = Vec::new();
             file.read_to_end(&mut buffer).await?;

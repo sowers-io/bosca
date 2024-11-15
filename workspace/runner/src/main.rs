@@ -100,7 +100,7 @@ async fn main() {
         activities_by_id.insert(activity.id().clone(), Arc::new(activity));
     }
 
-    let client = Client::new(url);
+    let client = Client::new(&url);
     client.login(&username, &password).await.unwrap();
 
     info!(target: "workflow", "running");

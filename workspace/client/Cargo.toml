@@ -17,3 +17,4 @@ bytes = "1.7.2"
 log = "0.4.22"
 graphql_client = "0.14.0"
 futures = "0.3.30"
+uuid = { version = "1.11.0", features = ["v4"] }

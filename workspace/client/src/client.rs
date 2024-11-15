@@ -60,7 +60,7 @@ pub type Collection = GetCollectionContentCollection;
 pub type DateTime = String;
 
 impl Client {
-    pub fn new(url: String) -> Client {
+    pub fn new(url: &str) -> Client {
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(600))
             .read_timeout(Duration::from_secs(600))
@@ -70,7 +70,7 @@ impl Client {
         Self {
             token: Arc::new(Mutex::new("".to_owned())),
             client,
-            url,
+            url: url.to_owned(),
         }
     }
 
@@ -638,7 +638,7 @@ pub struct SetMetadataSystemAttributes;
 #[graphql(
     schema_path = "schema.json",
     query_path = "queries/plan.graphql",
-    response_derives = "Debug, PartialEq, Eq, Clone"
+    response_derives = "Serialize, Deserialize, Debug, PartialEq, Eq, Clone"
 )]
 pub struct Plan;
 

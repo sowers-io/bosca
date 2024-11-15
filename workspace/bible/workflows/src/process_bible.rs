@@ -84,7 +84,7 @@ impl Activity for ProcessBibleActivity {
         let metadata_id = &job.metadata.as_ref().unwrap().id;
         let download_url = client.get_metadata_download_url(metadata_id).await?;
         let download = download_path(metadata_id, &download_url).await?;
-        context.add_file_clean(download.clone());
+        context.add_file_clean(&download);
         let bible = match process_path(download.as_str()) {
             Ok(bible) => bible,
             Err(e) => return Err(Error::new(e.to_string())),

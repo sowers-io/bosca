@@ -20,6 +20,7 @@ const PROMPTS: PromptsObject = PromptsObject {};
 const STATES: WorkflowStatesObject = WorkflowStatesObject {};
 const STORAGE_SYSTEMS: StorageSystemsObject = StorageSystemsObject {};
 
+#[allow(clippy::large_enum_variant)]
 #[derive(Union)]
 enum WorkflowExecution {
     Plan(WorkflowExecutionPlanObject),
