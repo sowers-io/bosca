@@ -39,6 +39,36 @@ impl WorkflowsMutationObject {
         Err(Error::new("missing workflow"))
     }
 
+    async fn edit(
+        &self,
+        ctx: &Context<'_>,
+        workflow: WorkflowInput,
+    ) -> Result<WorkflowObject, Error> {
+        check_has_group(ctx, WORKFLOW_MANAGERS_GROUP).await?;
+        let ctx = ctx.data::<BoscaContext>()?;
+        ctx.workflow.edit_workflow(&workflow).await?;
+        if let Some(workflow) = ctx.workflow
+            .get_workflow(&workflow.id)
+            .await?
+            .map(WorkflowObject::new)
+        {
+            return Ok(workflow);
+        }
+        Err(Error::new("missing workflow"))
+    }
+
+    async fn delete(
+        &self,
+        ctx: &Context<'_>,
+        id: String,
+    ) -> Result<bool, Error> {
+        check_has_group(ctx, WORKFLOW_MANAGERS_GROUP).await?;
+        let ctx = ctx.data::<BoscaContext>()?;
+        let id = Uuid::parse_str(&id)?;
+        ctx.workflow.delete_workflow(&id).await?;
+        Ok(true)
+    }
+
     async fn models(&self) -> ModelsMutationObject {
         ModelsMutationObject {}
     }
@@ -140,14 +170,18 @@ impl WorkflowsMutationObject {
             if version.is_none() {
                 return Err(Error::new("a version is required"));
             }
-            ctx.workflow
+            let plan = ctx.workflow
                 .enqueue_metadata_workflow(&workflow_id, &id, version.as_ref().unwrap(), configurations.as_ref(), None)
-                .await?
+                .await?;
+            ctx.content.add_metadata_plan(&id, plan.plan_id, &plan.workflow.queue).await?;
+            plan
         } else if let Some(collection_id) = collection_id {
             let id = Uuid::parse_str(collection_id.as_str())?;
-            ctx.workflow
+            let plan = ctx.workflow
                 .enqueue_collection_workflow(&workflow_id, &id, configurations.as_ref(), None)
-                .await?
+                .await?;
+            ctx.content.add_collection_plan(&id, plan.plan_id, &plan.workflow.queue).await?;
+            plan
         } else {
             return Err(Error::new("you must provide either a collection_id or a metadata_id"));
         };

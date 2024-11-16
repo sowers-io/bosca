@@ -35,6 +35,16 @@ impl ActivityContext {
         Ok(name)
     }
 
+    pub async fn new_file(&mut self, ext: &str) -> Result<String, Error> {
+        let name = if ext.len() > 0 {
+            format!("/tmp/bosca/{}.{}", Uuid::new_v4(), ext)
+        } else {
+            format!("/tmp/bosca/{}", Uuid::new_v4())
+        };
+        self.add_file_clean(&name);
+        Ok(name)
+    }
+
     pub async fn close(&mut self) -> Result<(), Error> {
         for file in self.files_to_clean.iter() {
             let _ = remove_file(Path::new(file)).await;

@@ -127,7 +127,7 @@ impl Activity for PromptActivity {
         let result_str = json!(result).to_string();
         let result_bytes = Bytes::from(result_str);
         let key = &job.activity.outputs.first().unwrap().name;
-        if job.metadata.as_ref().unwrap().supplementary.is_empty() {
+        if !job.metadata.as_ref().unwrap().supplementary.iter().any(|s| s.key == *key) {
             client.add_metadata_supplementary(MetadataSupplementaryInput {
                 metadata_id: metadata_id.to_owned(),
                 key: key.to_owned(),

@@ -73,7 +73,6 @@ pub async fn configure(yaml: &Yaml, datasource: &WorkflowDataStore) -> bool {
                 for key in activities_hash.keys() {
                     let w = activities_hash.get(key).unwrap();
                     let mut a: WorkflowActivityInput = w.into();
-                    a.workflow_id = workflow_id.clone();
                     a.activity_id = key.as_str().unwrap().to_string();
                     if a.queue.is_empty() {
                         a.queue = queue.clone();

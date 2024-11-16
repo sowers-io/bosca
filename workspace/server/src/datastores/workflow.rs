@@ -193,6 +193,13 @@ impl WorkflowDataStore {
     pub async fn add_workflow(&self, workflow: &WorkflowInput) -> Result<(), Error> {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
+        self.add_workflow_txn(&txn, workflow).await?;
+        txn.commit().await?;
+        self.create_workflow_queues(workflow).await?;
+        Ok(())
+    }
+
+    async fn add_workflow_txn(&self, txn: &Transaction<'_>, workflow: &WorkflowInput) -> Result<(), Error> {
         let stmt = txn.prepare_cached("insert into workflows (id, name, description, queue, configuration) values ($1, $2, $3, $4, $5) returning id").await?;
         txn.query(
             &stmt,
@@ -205,9 +212,35 @@ impl WorkflowDataStore {
             ],
         ).await?;
         for activity in &workflow.activities {
-            self.add_workflow_activity(&txn, activity).await?;
+            self.add_workflow_activity(&txn, &workflow.id, activity).await?;
         }
+        Ok(())
+    }
+
+    pub async fn edit_workflow(&self, workflow: &WorkflowInput) -> Result<(), Error> {
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        txn.execute("delete from workflows where id = $1", &[&workflow.id]).await?;
+        self.add_workflow_txn(&txn, workflow).await?;
         txn.commit().await?;
+        self.create_workflow_queues(workflow).await?;
+        Ok(())
+    }
+
+    pub async fn delete_workflow(&self, id: &Uuid) -> Result<(), Error> {
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        txn.execute("delete from workflows where id = $1", &[&id]).await?;
+        txn.commit().await?;
+        Ok(())
+    }
+
+    async fn create_workflow_queues(&self, workflow: &WorkflowInput) -> Result<(), Error> {
+        let _ = self.queues.create_queue(&workflow.queue).await;
+        for activity in &workflow.activities {
+            if activity.queue == "" { continue; }
+            let _ = self.queues.create_queue(&activity.queue).await;
+        }
         Ok(())
     }
 
@@ -230,6 +263,7 @@ impl WorkflowDataStore {
     async fn add_workflow_activity(
         &self,
         txn: &Transaction<'_>,
+        workflow_id: &str,
         activity: &WorkflowActivityInput,
     ) -> Result<i64, Error> {
         let execution_group = if activity.execution_group == 0 {
@@ -237,13 +271,14 @@ impl WorkflowDataStore {
         } else {
             activity.execution_group
         };
+        let workflow_id = workflow_id.to_owned();
         let id: i64 = {
             let stmt = txn.prepare_cached("insert into workflow_activities (workflow_id, activity_id, execution_group, queue, configuration) values ($1, $2, $3, $4, $5) returning id").await?;
             let rows = txn
                 .query(
                     &stmt,
                     &[
-                        &activity.workflow_id,
+                        &workflow_id,
                         &activity.activity_id,
                         &execution_group,
                         &activity.queue,
@@ -580,8 +615,7 @@ impl WorkflowDataStore {
                 &prompt.input_type,
                 &prompt.output_type,
             ],
-        )
-        .await?;
+        ).await?;
         if rows.is_empty() {
             return Ok(Uuid::nil());
         }
@@ -603,7 +637,7 @@ impl WorkflowDataStore {
                 id,
             ],
         )
-        .await?;
+            .await?;
         Ok(())
     }
 

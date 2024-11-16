@@ -96,7 +96,6 @@ pub struct WorkflowActivityPromptInput {
 
 #[derive(Serialize, Deserialize, InputObject)]
 pub struct WorkflowActivityInput {
-    pub workflow_id: String,
     pub activity_id: String,
     pub queue: String,
     pub execution_group: i32,
@@ -313,10 +312,6 @@ impl From<&Yaml> for WorkflowActivityInput {
         }
 
         Self {
-            workflow_id: yaml["workflow_id"]
-                .as_str()
-                .unwrap_or("")
-                .to_string(),
             activity_id: yaml["activity_id"]
                 .as_str()
                 .unwrap_or("")

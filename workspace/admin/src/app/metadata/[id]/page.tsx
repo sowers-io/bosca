@@ -25,6 +25,7 @@ import { JsonEditor } from '@/components/json-editor'
 import { Labels } from '@/components/labels'
 import React from 'react'
 import { Relationship } from '@/app/metadata/[id]/relationship'
+import { Workflows } from '@/app/metadata/[id]/workflows'
 
 export const metadata: Metadata = {
   title: 'Metadata',
@@ -127,6 +128,10 @@ const metadataQuery = gql`
       }
     }
     workflows {  
+      all {
+        id
+        name
+      }
       states {
         all {
           id
@@ -162,6 +167,16 @@ const markReadyMutation = gql`
     content {
       metadata {
         setMetadataReady(id: $id)
+      }
+    }
+  }
+`
+
+const executeWorkflow = gql`
+  mutation ExecuteWorkflow($id: String!, $version: Int!, $workflowId: String!) {
+    workflows {
+      enqueueWorkflow(metadataId: $id, version: $version, workflowId: $workflowId) {
+        id
       }
     }
   }
@@ -428,6 +443,11 @@ export default async function Page({ params, searchParams }: { params: { id: str
       await getClient().mutate({ mutation: markReadyMutation, variables: { id: params.id } })
       redirect('/metadata/' + params.id)
     }
+    if (searchParams && searchParams['workflow']) {
+      const { data } = await getClient().query({ query: metadataQuery, variables: { id: params.id } })
+      await getClient().mutate({ mutation: executeWorkflow, variables: { id: params.id, version: data.content.metadata.version, workflowId: searchParams['workflow'] } })
+      redirect('/metadata/' + params.id)
+    }
     const response = await getClient().query({ query: metadataQuery, variables: { id: params.id } })
     data = response.data
     if (!(data?.content?.metadata)) {
@@ -682,6 +702,7 @@ export default async function Page({ params, searchParams }: { params: { id: str
                             </CardDescription>
                           </CardHeader>
                           <CardContent>
+                            <Workflows workflows={data.workflows.all} id={data.content.metadata.id} />
                             <table>
                               <tbody>
                                 <tr>

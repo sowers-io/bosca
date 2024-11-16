@@ -18,7 +18,6 @@ export function Traits({ id, traits, current } : TraitsProps) {
   }
   return (
     <>
-      <Label htmlFor="traits">Trait to Add</Label>
       <Select onValueChange={onChange}>
         <SelectTrigger id="status" aria-label="Select trait to add">
           <SelectValue placeholder="Select trait to add"/>

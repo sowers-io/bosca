@@ -26,10 +26,11 @@ pub async fn download_path_with_extension(id: &str, download: &MetadataContentDo
         .headers(headers)
         .send()
         .await?;
+    let id2 = Uuid::new_v4().to_string();
     let path_str = if let Some(ext) = extension {
-        format!("/tmp/bosca/{}.{}", id, ext)
+        format!("/tmp/bosca/{}-{}.{}", id, id2, ext)
     } else {
-        format!("/tmp/bosca/{}", id)
+        format!("/tmp/bosca/{}-{}", id, id2)
     };
     let parent_path = Path::new("/tmp/bosca/");
     if !parent_path.exists() {
@@ -41,6 +42,7 @@ pub async fn download_path_with_extension(id: &str, download: &MetadataContentDo
         file.write_all(chunk.as_ref()).await?;
     }
     file.flush().await?;
+    file.sync_all().await?;
     Ok(path_str)
 }
 
@@ -69,5 +71,6 @@ pub async fn download_supplementary_path(id: &str, download: &MetadataSupplement
         file.write_all(chunk.as_ref()).await?;
     }
     file.flush().await?;
+    file.sync_all().await?;
     Ok(path_str)
 }

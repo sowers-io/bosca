@@ -3,12 +3,14 @@ use std::str::from_utf8;
 use crate::activity::{Activity, ActivityContext, Error};
 use async_trait::async_trait;
 use bytes::Bytes;
+use log::info;
 use serde_json::{json, Value};
+use tokio::fs::File;
 use tokio::process::Command;
 use bosca_client::client::{Client, WorkflowJob};
 use bosca_client::client::add_metadata_supplementary::MetadataSupplementaryInput;
-use bosca_client::download::{download_path, download_supplementary_path};
-use bosca_client::upload::upload_multipart_supplementary_bytes;
+use bosca_client::download::{download_path, download_path_with_extension, download_supplementary_path};
+use bosca_client::upload::{upload_multipart_supplementary_bytes, upload_multipart_supplementary_file};
 
 pub struct CommandActivity {
     id: String,
@@ -36,9 +38,11 @@ impl Activity for CommandActivity {
 
     async fn execute(&self, client: &Client, context: &mut ActivityContext, job: &WorkflowJob) -> Result<(), Error> {
         let metadata_id = job.metadata.as_ref().unwrap().id.to_owned();
-        let command = job.activity.configuration.get("command").unwrap().as_str().unwrap().to_owned();
-        let command_args = job.activity.configuration.get("command_args").unwrap().as_array().unwrap().iter().map(|arg| arg.as_str().unwrap().to_owned()).collect::<Vec<String>>();
-        let include_metadata = job.activity.configuration.get("include_metadata").unwrap_or(&Value::Bool(true)).as_bool().unwrap();
+        let command = job.workflow_activity.configuration.get("command").unwrap().as_str().unwrap().to_owned();
+        let input_file_ext = job.workflow_activity.configuration.get("input_ext").unwrap_or(&Value::String("".to_owned())).as_str().unwrap().to_owned();
+        let output_file_ext = job.workflow_activity.configuration.get("output_ext").unwrap_or(&Value::String("".to_owned())).as_str().unwrap().to_owned();
+
+        let include_metadata = job.workflow_activity.configuration.get("include_metadata").unwrap_or(&Value::Bool(true)).as_bool().unwrap();
 
         let inputs: HashSet<String> = job.workflow_activity.inputs.iter().map(|input| {
             input.value.to_owned()
@@ -61,20 +65,64 @@ impl Activity for CommandActivity {
             files.insert(supplementary.key.to_owned(), file);
         }
 
+        let metadata_file = if include_metadata {
+            let download = client.get_metadata_download_url(&metadata_id).await?;
+            let metadata_file = if input_file_ext.is_empty() {
+                download_path(&metadata_id, &download).await?
+            } else {
+                download_path_with_extension(&metadata_id, &download, Some(input_file_ext)).await?
+            };
+            context.add_file_clean(&metadata_file);
+            Some(metadata_file)
+        } else {
+            None
+        };
+
+        let output_file = context.new_file(&output_file_ext).await?;
+        let command_args = job.workflow_activity.configuration.get("command_args").unwrap().as_array().unwrap().iter().map(|arg| {
+            let arg = arg.as_str().unwrap().to_owned();
+            if arg.starts_with("$") {
+                let name = &arg.as_str()[1..];
+                match name {
+                    "BOSCA_JOB" => job_file.to_owned(),
+                    "BOSCA_METADATA" => if metadata_file.is_some() {
+                        metadata_file.as_ref().unwrap().to_owned()
+                    } else {
+                        "".to_owned()
+                    },
+                    "BOSCA_OUTPUT_FILE" => output_file.to_owned(),
+                    _ => {
+                        if name.starts_with("BOSCA_SUPPLEMENTARY_") {
+                            let key = &name[20..];
+                            if files.contains_key(key) {
+                                files.get(key).unwrap().to_owned()
+                            } else {
+                                "".to_owned()
+                            }
+                        } else {
+                            arg
+                        }
+                    }
+                }
+            } else {
+                arg
+            }
+        }).collect::<Vec<String>>();
+
         let mut cmd = Command::new(command);
         cmd.args(command_args);
         cmd.env("BOSCA_JOB", job_file);
-
-        if include_metadata {
-            let download = client.get_metadata_download_url(&metadata_id).await?;
-            let metadata_file = download_path(&metadata_id, &download).await?;
-            context.add_file_clean(&metadata_file);
+        if let Some(metadata_file) = metadata_file {
             cmd.env("BOSCA_METADATA", &metadata_file);
         }
+        cmd.env("BOSCA_OUTPUT_FILE", &output_file);
 
         for (key, file) in files.iter() {
             cmd.env(format!("BOSCA_SUPPLEMENTARY_{}", key), file);
         }
+
+        info!("{:?}", cmd);
+
         let output = cmd.output().await?;
 
         if !output.stderr.is_empty() {
@@ -84,33 +132,59 @@ impl Activity for CommandActivity {
         if !output.status.success() {
             return Err(Error::new(format!("invalid exit code: {:?}", output.status.code())));
         }
-
         if !job.activity.outputs.is_empty() {
+            let key = job.workflow_activity.outputs.first().unwrap().value.to_owned();
             let content_type = job.activity.configuration.get("command_content_type");
-            let mime_type = if content_type.is_some() {
-                content_type.unwrap().as_str().unwrap().to_owned()
-            } else {
-                let kind = infer::get(&output.stdout);
-                if kind.is_some() {
-                    kind.unwrap().mime_type().to_owned()
+            if tokio::fs::try_exists(&output_file).await? {
+                let mime_type = if content_type.is_some() {
+                    content_type.unwrap().as_str().unwrap().to_owned()
                 } else {
-                    "application/octet-stream".to_owned()
+                    let kind = infer::get_from_path(&output_file)?;
+                    if kind.is_some() {
+                        kind.unwrap().mime_type().to_owned()
+                    } else {
+                        "application/octet-stream".to_owned()
+                    }
+                };
+                if !job.metadata.as_ref().unwrap().supplementary.iter().any(|s| s.key == key) {
+                    client.add_metadata_supplementary(MetadataSupplementaryInput {
+                        metadata_id: metadata_id.to_owned(),
+                        key: key.to_owned(),
+                        name: "Command Output".to_owned(),
+                        content_type: mime_type.to_owned(),
+                        content_length: None,
+                        source_id: None,
+                        source_identifier: None,
+                    }).await?;
                 }
-            };
-            let key = &job.activity.outputs.first().unwrap().name;
-            if job.metadata.as_ref().unwrap().supplementary.is_empty() {
-                client.add_metadata_supplementary(MetadataSupplementaryInput {
-                    metadata_id: metadata_id.to_owned(),
-                    key: key.to_owned(),
-                    name: "Command Output".to_owned(),
-                    content_type: mime_type.to_owned(),
-                    content_length: None,
-                    source_id: None,
-                    source_identifier: None,
-                }).await?;
+                let file = File::open(&output_file).await?;
+                let upload_url = client.get_metadata_supplementary_upload(&metadata_id, &key).await?;
+                upload_multipart_supplementary_file(&metadata_id, &mime_type, &upload_url, file).await?;
+            } else {
+                let mime_type = if content_type.is_some() {
+                    content_type.unwrap().as_str().unwrap().to_owned()
+                } else {
+                    let kind = infer::get(&output.stdout);
+                    if kind.is_some() {
+                        kind.unwrap().mime_type().to_owned()
+                    } else {
+                        "application/octet-stream".to_owned()
+                    }
+                };
+                if !job.metadata.as_ref().unwrap().supplementary.iter().any(|s| s.key == key) {
+                    client.add_metadata_supplementary(MetadataSupplementaryInput {
+                        metadata_id: metadata_id.to_owned(),
+                        key: key.to_owned(),
+                        name: "Command Output".to_owned(),
+                        content_type: mime_type.to_owned(),
+                        content_length: None,
+                        source_id: None,
+                        source_identifier: None,
+                    }).await?;
+                }
+                let upload_url = client.get_metadata_supplementary_upload(&metadata_id, &key).await?;
+                upload_multipart_supplementary_bytes(&metadata_id, &mime_type, &upload_url, Bytes::from(output.stdout)).await?;
             }
-            let upload_url = client.get_metadata_supplementary_upload(&metadata_id, key).await?;
-            upload_multipart_supplementary_bytes(&metadata_id, &mime_type, &upload_url, Bytes::from(output.stdout)).await?;
         }
 
         Ok(())
