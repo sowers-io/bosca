@@ -220,17 +220,29 @@ impl WorkflowDataStore {
     pub async fn edit_workflow(&self, workflow: &WorkflowInput) -> Result<(), Error> {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
-        txn.execute("delete from workflows where id = $1", &[&workflow.id]).await?;
+        self.delete_workflow_txn(&txn, &workflow.id).await?;
         self.add_workflow_txn(&txn, workflow).await?;
         txn.commit().await?;
         self.create_workflow_queues(workflow).await?;
         Ok(())
     }
 
-    pub async fn delete_workflow(&self, id: &Uuid) -> Result<(), Error> {
+    async fn delete_workflow_txn(&self, txn: &Transaction<'_>, id: &String) -> Result<(), Error> {
+        txn.execute("delete from workflow_activity_inputs where activity_id in (select id from workflow_activities where workflow_id = $1)", &[id]).await?;
+        txn.execute("delete from workflow_activity_outputs where activity_id in (select id from workflow_activities where workflow_id = $1)", &[id]).await?;
+        txn.execute("delete from workflow_activity_models where activity_id in (select id from workflow_activities where workflow_id = $1)", &[id]).await?;
+        txn.execute("delete from workflow_activity_prompts where activity_id in (select id from workflow_activities where workflow_id = $1)", &[id]).await?;
+        txn.execute("delete from workflow_activity_storage_systems where activity_id in (select id from workflow_activities where workflow_id = $1)", &[id]).await?;
+        txn.execute("delete from workflow_activities where workflow_id = $1", &[id]).await?;
+        txn.execute("delete from workflows where id = $1", &[id]).await?;
+        Ok(())
+    }
+
+    pub async fn delete_workflow(&self, id: &str) -> Result<(), Error> {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
-        txn.execute("delete from workflows where id = $1", &[&id]).await?;
+        let id = id.to_owned();
+        self.delete_workflow_txn(&txn, &id).await?;
         txn.commit().await?;
         Ok(())
     }

@@ -745,7 +745,7 @@ impl ContentDataStore {
         supplementary: &MetadataSupplementaryInput,
     ) -> Result<(), Error> {
         let connection = self.pool.get().await?;
-        let stmt = connection.prepare_cached("insert into metadata_supplementary (metadata_id, key, name, content_type, content_length, source_id, source_identifier) values ($1, $2, $3, $4, $5, $6, $7)").await?;
+        let stmt = connection.prepare_cached("insert into metadata_supplementary (metadata_id, key, name, content_type, content_length, attributes, source_id, source_identifier) values ($1, $2, $3, $4, $5, $6, $7, $8)").await?;
         let id = Uuid::parse_str(supplementary.metadata_id.as_str())?;
         let sid = if supplementary.source_identifier.is_some() {
             Some(Uuid::parse_str(
@@ -763,6 +763,7 @@ impl ContentDataStore {
                     &supplementary.name,
                     &supplementary.content_type,
                     &supplementary.content_length,
+                    &supplementary.attributes,
                     &sid,
                     &supplementary.source_identifier,
                 ],

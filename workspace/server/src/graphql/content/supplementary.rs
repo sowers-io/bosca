@@ -130,6 +130,10 @@ impl MetadataSupplementaryObject {
         self.supplementary.modified.to_string()
     }
 
+    async fn attributes(&self) -> &Option<Value> {
+        &self.supplementary.attributes
+    }
+
     async fn uploaded(&self) -> Option<String> {
         if self.supplementary.uploaded.is_some() {
             Some(self.supplementary.uploaded.unwrap().to_string())

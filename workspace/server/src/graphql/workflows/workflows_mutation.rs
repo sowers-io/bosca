@@ -64,7 +64,6 @@ impl WorkflowsMutationObject {
     ) -> Result<bool, Error> {
         check_has_group(ctx, WORKFLOW_MANAGERS_GROUP).await?;
         let ctx = ctx.data::<BoscaContext>()?;
-        let id = Uuid::parse_str(&id)?;
         ctx.workflow.delete_workflow(&id).await?;
         Ok(true)
     }

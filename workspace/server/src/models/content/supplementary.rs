@@ -1,5 +1,6 @@
 use async_graphql::InputObject;
 use chrono::{DateTime, Utc};
+use serde_json::Value;
 use tokio_postgres::Row;
 use uuid::Uuid;
 
@@ -9,6 +10,7 @@ pub struct MetadataSupplementary {
     pub name: String,
     pub content_type: String,
     pub content_length: Option<i64>,
+    pub attributes: Option<Value>,
     pub created: DateTime<Utc>,
     pub modified: DateTime<Utc>,
     pub source_id: Option<Uuid>,
@@ -25,6 +27,7 @@ pub struct MetadataSupplementaryInput {
     pub content_length: Option<i64>,
     pub source_id: Option<String>,
     pub source_identifier: Option<String>,
+    pub attributes: Option<Value>,
 }
 
 impl From<&Row> for MetadataSupplementary {
@@ -34,6 +37,7 @@ impl From<&Row> for MetadataSupplementary {
             name: row.get("name"),
             content_type: row.get("content_type"),
             content_length: row.get("content_length"),
+            attributes: row.get("attributes"),
             created: row.get("created"),
             modified: row.get("modified"),
             source_id: row.get("source_id"),

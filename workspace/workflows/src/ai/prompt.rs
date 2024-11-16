@@ -7,11 +7,12 @@ use langchain_rust::chain::{Chain, ConversationalRetrieverChainBuilder, LLMChain
 use langchain_rust::{fmt_message, fmt_template, message_formatter};
 use langchain_rust::embedding::FastEmbed;
 use langchain_rust::llm::{OpenAI, OpenAIConfig};
+use langchain_rust::output_parsers::{MarkdownParser, OutputParser};
 use langchain_rust::prompt::{HumanMessagePromptTemplate, PromptTemplate, TemplateFormat};
 use langchain_rust::schemas::messages::Message;
 use langchain_rust::vectorstore::qdrant::{Qdrant, StoreBuilder};
 use langchain_rust::vectorstore::Retriever;
-use serde_json::{json, Value};
+use serde_json::Value;
 use tokio::fs::File;
 use tokio::io::AsyncReadExt;
 use bosca_client::client::{Client, WorkflowJob};
@@ -124,9 +125,10 @@ impl Activity for PromptActivity {
             args.insert(supplementary.key.to_owned(), Value::String(result));
         }
         let result = chain.execute(args).await.map_err(|e| Error::new(format!("error: {}", e)))?;
-        let result_str = json!(result).to_string();
-        let result_bytes = Bytes::from(result_str);
-        let key = &job.activity.outputs.first().unwrap().name;
+        let output = result.get("output").unwrap();
+        let content = MarkdownParser::new().parse(output.as_str().unwrap()).await.map_err(|e| Error::new(format!("error: {}", e)))?;
+        let result_bytes = Bytes::from(content);
+        let key = &job.workflow_activity.outputs.first().unwrap().value;
         if !job.metadata.as_ref().unwrap().supplementary.iter().any(|s| s.key == *key) {
             client.add_metadata_supplementary(MetadataSupplementaryInput {
                 metadata_id: metadata_id.to_owned(),

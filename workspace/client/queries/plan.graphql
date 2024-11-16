@@ -45,6 +45,7 @@ fragment WorkflowJobFragment on WorkflowJob {
         supplementary {
             key
             uploaded
+            attributes
             content {
                 type
                 length

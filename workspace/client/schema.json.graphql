@@ -231,6 +231,7 @@ type MetadataSource {
 }
 
 type MetadataSupplementary {
+    attributes: JSON
     content: MetadataSupplementaryContent!
     created: String!
     key: String!
@@ -540,6 +541,8 @@ type WorkflowsMutation {
     activities: ActivitiesMutation!
     add(workflow: WorkflowInput!): Workflow!
     beginTransition(configurations: [WorkflowConfigurationInput!], request: BeginTransitionInput!): Boolean!
+    delete(id: String!): Boolean!
+    edit(workflow: WorkflowInput!): Workflow!
     enqueueChildWorkflows(jobId: WorkflowExecutionIdInput!, workflowIds: [String!]!): [WorkflowExecutionId!]!
     enqueueJob(jobIndex: Int!, planId: WorkflowExecutionIdInput!): WorkflowExecutionId
     enqueueWorkflow(collectionId: String, configurations: [WorkflowConfigurationInput!], metadataId: String, version: Int, workflowId: String!): WorkflowExecutionId!
@@ -718,6 +721,7 @@ input MetadataSourceInput {
 }
 
 input MetadataSupplementaryInput {
+    attributes: JSON
     contentLength: Int
     contentType: String!
     key: String!
@@ -791,7 +795,6 @@ input WorkflowActivityInput {
     prompts: [WorkflowActivityPromptInput!]!
     queue: String!
     storageSystems: [WorkflowActivityStorageSystemInput!]!
-    workflowId: String!
 }
 
 input WorkflowActivityModelInput {
