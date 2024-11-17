@@ -5,13 +5,10 @@ use async_trait::async_trait;
 use bytes::Bytes;
 use langchain_rust::chain::{Chain, ConversationalRetrieverChainBuilder, LLMChainBuilder};
 use langchain_rust::{fmt_message, fmt_template, message_formatter};
-use langchain_rust::embedding::FastEmbed;
 use langchain_rust::llm::{OpenAI, OpenAIConfig};
 use langchain_rust::output_parsers::{MarkdownParser, OutputParser};
 use langchain_rust::prompt::{HumanMessagePromptTemplate, PromptTemplate, TemplateFormat};
 use langchain_rust::schemas::messages::Message;
-use langchain_rust::vectorstore::qdrant::{Qdrant, StoreBuilder};
-use langchain_rust::vectorstore::Retriever;
 use serde_json::Value;
 use tokio::fs::File;
 use tokio::io::AsyncReadExt;
@@ -79,27 +76,27 @@ impl Activity for PromptActivity {
                 .map_err(|e| Error::new(format!("error: {}", e)))?
                 .into()
         } else {
-            let mut chain_builder = ConversationalRetrieverChainBuilder::new()
+            let chain_builder = ConversationalRetrieverChainBuilder::new()
                 .prompt(prompt)
                 .llm(model);
             for storage in job.storage_systems.iter() {
                 if storage.system.type_ == StorageSystemType::VECTOR {
                     let type_ = storage.configuration.get("type").unwrap().as_str().unwrap();
                     if type_ == "qdrant" {
-                        let qdrant_url = env::var("QDRANT_URL")?;
-                        let client = Qdrant::from_url(&qdrant_url).build().unwrap();
-                        let collection = storage.configuration.get("indexName").unwrap().as_str().unwrap();
-                        // TODO: configure different embedders based on storage model
-                        let embedder = FastEmbed::try_new().map_err(|e| Error::new(format!("error: {}", e)))?;
-                        let store = StoreBuilder::new()
-                            .embedder(embedder)
-                            .client(client)
-                            .collection_name(collection)
-                            .build()
-                            .await
-                            .map_err(|e| Error::new(format!("error: {}", e)))?;
-                        chain_builder = chain_builder.retriever(Retriever::new(store, 25));
-                        break;
+                        // let qdrant_url = env::var("QDRANT_URL")?;
+                        // let client = Qdrant::from_url(&qdrant_url).build().unwrap();
+                        // let collection = storage.configuration.get("indexName").unwrap().as_str().unwrap();
+                        // // TODO: configure different embedders based on storage model
+                        // let embedder = FastEmbed::try_new().map_err(|e| Error::new(format!("error: {}", e)))?;
+                        // let store = StoreBuilder::new()
+                        //     .embedder(embedder)
+                        //     .client(client)
+                        //     .collection_name(collection)
+                        //     .build()
+                        //     .await
+                        //     .map_err(|e| Error::new(format!("error: {}", e)))?;
+                        // chain_builder = chain_builder.retriever(Retriever::new(store, 25));
+                        todo!();
                     }
                 }
             }
@@ -133,6 +130,7 @@ impl Activity for PromptActivity {
             client.add_metadata_supplementary(MetadataSupplementaryInput {
                 metadata_id: metadata_id.to_owned(),
                 key: key.to_owned(),
+                attributes: None,
                 name: "Prompt Result".to_owned(),
                 content_type: prompt_definition.prompt.output_type.to_owned(),
                 content_length: None,

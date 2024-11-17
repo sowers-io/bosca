@@ -1,5 +1,8 @@
 use std::env;
+#[cfg(unix)]
 use std::os::linux::fs::MetadataExt;
+#[cfg(windows)]
+use std::os::windows::fs::MetadataExt;
 use crate::activity::{Activity, ActivityContext, Error};
 use async_trait::async_trait;
 use std::str::FromStr;
@@ -95,7 +98,10 @@ impl Activity for MuxUploadActivity {
         }
         if !record.uploaded {
             let mut file = File::open(download.as_str()).await?;
+            #[cfg(unix)]
             let size = file.metadata().await?.st_size() as usize;
+            #[cfg(windows)]
+            let size = file.metadata().await?.file_size() as usize;
             const CHUNK_SIZE: usize = 1024 * 1024 * 30;
             let mut offset = 0;
             loop {

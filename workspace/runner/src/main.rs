@@ -17,7 +17,10 @@ use axum::response::IntoResponse;
 use axum::Router;
 use axum::routing::get;
 use tokio::net::TcpListener;
+#[cfg(unix)]
 use tokio::signal::unix::{signal, SignalKind};
+#[cfg(windows)]
+use tokio::signal::windows::ctrl_c;
 use bosca_bible_workflows::upload_book::BookUpload;
 use bosca_bible_workflows::upload_chapter::ChapterUpload;
 use bosca_bible_workflows::upload_verse::VerseUpload;
@@ -105,23 +108,41 @@ async fn main() {
 
     info!(target: "workflow", "running");
 
-    let mut interrupt = signal(SignalKind::interrupt()).unwrap();
-    let mut terminate = signal(SignalKind::terminate()).unwrap();
     let shutdown = Arc::new(AtomicBool::new(false));
+    #[cfg(unix)]
+    {
+        let mut interrupt = signal(SignalKind::interrupt()).unwrap();
+        let mut terminate = signal(SignalKind::terminate()).unwrap();
 
-    let shutdown_spawn = Arc::clone(&shutdown);
-    tokio::spawn(async move {
-        tokio::select! {
-            _ = interrupt.recv() => {
-                warn!("Receiving SIGINT, shutting down");
-                shutdown_spawn.store(true, Relaxed);
-            },
-            _ = terminate.recv() => {
-                warn!("Receiving SIGTERM, shutting down");
-                shutdown_spawn.store(true, Relaxed);
+        let shutdown_spawn = Arc::clone(&shutdown);
+        tokio::spawn(async move {
+            tokio::select! {
+                _ = interrupt.recv() => {
+                    warn!("Receiving SIGINT, shutting down");
+                    shutdown_spawn.store(true, Relaxed);
+                },
+                _ = terminate.recv() => {
+                    warn!("Receiving SIGTERM, shutting down");
+                    shutdown_spawn.store(true, Relaxed);
+                }
             }
-        }
-    });
+        });
+    }
+
+    #[cfg(windows)]
+    {
+        let mut interrupt = ctrl_c().unwrap();
+
+        let shutdown_spawn = Arc::clone(&shutdown);
+        tokio::spawn(async move {
+            tokio::select! {
+                _ = interrupt.recv() => {
+                    warn!("Receiving ctrl_c, shutting down");
+                    shutdown_spawn.store(true, Relaxed);
+                },
+            }
+        });
+    }
 
     let shutdown_login_spawn = Arc::clone(&shutdown);
     let login_client = client.clone();

@@ -63,6 +63,7 @@ impl Activity for ExtractMp3Activity {
         let key = &job.activity.outputs.first().unwrap().name;
         client.add_metadata_supplementary(MetadataSupplementaryInput {
             metadata_id: metadata_id.to_owned(),
+            attributes: None,
             key: key.to_owned(),
             name: "mp3".to_owned(),
             content_type: "audio/mp3".to_owned(),

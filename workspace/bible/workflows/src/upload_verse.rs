@@ -68,6 +68,7 @@ impl Activity for VerseUpload {
                 client.add_metadata_supplementary(MetadataSupplementaryInput {
                     metadata_id: metadata_id.to_owned(),
                     key: key.to_owned(),
+                    attributes: None,
                     name: "Verse Text".to_owned(),
                     content_type: mime_type.to_owned(),
                     content_length: None,

@@ -42,6 +42,7 @@ impl Activity for TranscribeActivity {
             client.add_metadata_supplementary(MetadataSupplementaryInput {
                 metadata_id: metadata_id.to_owned(),
                 key: key.to_owned(),
+                attributes: None,
                 name: "Transcription".to_owned(),
                 content_type: "application/json".to_owned(),
                 content_length: None,

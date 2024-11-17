@@ -58,7 +58,10 @@ use rustls::crypto::ring;
 use rustls::pki_types::CertificateDer;
 use rustls::pki_types::pem::PemObject;
 use rustls::RootCertStore;
+#[cfg(unix)]
 use tokio::signal::unix::{signal, SignalKind};
+#[cfg(windows)]
+use tokio::signal::windows::ctrl_c;
 use tokio_postgres::NoTls;
 use tokio_postgres_rustls::MakeRustlsConnect;
 use tower_http::timeout::TimeoutLayer;
@@ -306,6 +309,7 @@ async fn initialize_content(ctx: &BoscaContext) {
     }
 }
 
+#[cfg(unix)]
 async fn shutdown_hook() {
     let mut interrupt = signal(SignalKind::interrupt()).unwrap();
     let mut terminate = signal(SignalKind::terminate()).unwrap();
@@ -330,6 +334,23 @@ async fn shutdown_hook() {
                 }
             }
         }
+    }
+}
+
+#[cfg(windows)]
+async fn shutdown_hook() {
+    let mut interrupt = ctrl_c().unwrap();
+    tokio::select! {
+        _ = interrupt.recv() => {
+            warn!("Received ctr_c, shutting down");
+            loop {
+                if RUNNING_BACKGROUND.load(Relaxed) > 0 {
+                    tokio::time::sleep(Duration::from_millis(100)).await;
+                } else {
+                    break
+                }
+            }
+        },
     }
 }
 
