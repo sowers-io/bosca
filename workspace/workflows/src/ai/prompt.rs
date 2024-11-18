@@ -147,7 +147,7 @@ impl Activity for PromptActivity {
             .await
             .map_err(|e| Error::new(format!("error: {}", e)))?;
         let output = result.get("output").unwrap().as_str().unwrap();
-        let content = from_str::<Value>(&output)?.to_string();
+        let content = from_str::<Value>(output)?.to_string();
         let result_bytes = Bytes::from(content);
         let key = &job.workflow_activity.outputs.first().unwrap().value;
         if !job

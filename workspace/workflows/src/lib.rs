@@ -12,11 +12,10 @@ use bosca_client::client::{Client, WorkflowExecution};
 use crate::ai::prompt::PromptActivity;
 use crate::collection::traits::CollectionTraitsActivity;
 use crate::collection::transition_to::CollectionTransitionToActivity;
-use crate::media::extract_mp3::ExtractMp3Activity;
 use crate::media::mux::MuxUploadActivity;
-use crate::media::transcribe::TranscribeActivity;
 use crate::metadata::command::CommandActivity;
-use crate::ml::mapper::TranscriptionMapperActivity;
+use media::transcriptions::mapper::TranscriptionMapperActivity;
+use media::transcriptions::transcribe::TranscribeActivity;
 
 pub mod activity;
 pub mod metadata;
@@ -24,7 +23,7 @@ pub mod collection;
 pub mod media;
 pub mod util;
 pub mod ml;
-mod ai;
+pub mod ai;
 
 pub fn get_default_activities() -> Vec<Box<dyn Activity + Send + Sync>> {
     vec![
@@ -34,7 +33,6 @@ pub fn get_default_activities() -> Vec<Box<dyn Activity + Send + Sync>> {
         Box::new(MetadataTransitionToActivity::default()),
         Box::new(IndexActivity::default()),
         Box::new(MuxUploadActivity::default()),
-        Box::new(ExtractMp3Activity::default()),
         Box::new(TranscribeActivity::default()),
         Box::new(TranscriptionMapperActivity::default()),
         Box::new(PromptActivity::default()),

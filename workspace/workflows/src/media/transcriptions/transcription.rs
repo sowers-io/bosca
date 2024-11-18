@@ -93,7 +93,7 @@ impl Transcription {
 
 #[cfg(test)]
 mod tests {
-    use crate::ml::transcription::{Segment, Transcription, Word};
+    use crate::media::transcriptions::transcription::{Segment, Transcription, Word};
 
     #[test]
     pub fn test() {

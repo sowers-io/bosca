@@ -11,7 +11,7 @@ use bosca_client::client::{Client, WorkflowJob};
 use bosca_client::client::add_metadata_supplementary::MetadataSupplementaryInput;
 use bosca_client::download::download_supplementary_path;
 use bosca_client::upload::upload_multipart_supplementary_bytes;
-use crate::ml::transcription::{Transcription, TranscriptionResult};
+use crate::media::transcriptions::transcription::{Transcription, TranscriptionResult};
 
 pub struct TranscriptionMapperActivity {
     id: String,
