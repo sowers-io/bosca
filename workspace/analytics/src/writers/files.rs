@@ -1,7 +1,11 @@
 use std::error::Error;
 use std::fs;
-use std::fs::{create_dir_all, exists, File};
+use std::fs::{create_dir_all, File};
+#[cfg(unix)]
 use std::os::linux::fs::MetadataExt;
+#[cfg(windows)]
+use std::os::windows::fs::MetadataExt;
+use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, AtomicI64};
 use std::sync::atomic::Ordering::Relaxed;
@@ -33,10 +37,10 @@ pub struct Config {
 const MAX_UPLOAD_CHUNK_SIZE: usize = 5242880;
 
 pub fn find_file(index: usize, config: Config) -> Result<String, Box<dyn Error>> {
-    if !exists(&config.temp_dir)? {
+    if !PathBuf::from(&config.temp_dir).exists() {
         create_dir_all(&config.temp_dir)?;
     }
-    if !exists(&config.batches_dir)? {
+    if !PathBuf::from(&config.batches_dir).exists() {
         create_dir_all(&config.batches_dir)?;
     }
     let paths = fs::read_dir(&config.temp_dir)?;
@@ -44,8 +48,14 @@ pub fn find_file(index: usize, config: Config) -> Result<String, Box<dyn Error>>
     for path in paths.flatten() {
         if path.file_type()?.is_file() {
             let name = path.file_name().into_string().unwrap();
-            if name.starts_with(&prefix) && name.ends_with(".json") && path.metadata()?.st_size() < config.max_file_size {
-                return Ok(path.file_name().into_string().unwrap());
+            if name.starts_with(&prefix) && name.ends_with(".json") {
+                #[cfg(unix)]
+                let size = path.metadata()?.st_size();
+                #[cfg(windows)]
+                let size = path.metadata()?.file_size();
+                if size < config.max_file_size {
+                    return Ok(path.file_name().into_string().unwrap());
+                }
             }
         }
     }
@@ -175,7 +185,11 @@ async fn watch_json(writer: &Arc<EventsWriter>, schema: &Arc<SchemaDefinition>, 
             if let Ok(file_type) = entry.file_type().await {
                 if file_type.is_file() {
                     if let Ok(metadata) = entry.metadata().await {
-                        file_sizes += metadata.st_size();
+                        #[cfg(unix)]
+                        let size = metadata.st_size();
+                        #[cfg(windows)]
+                        let size = metadata.file_size();
+                        file_sizes += size;
                     }
                     files.push(entry);
                 }

@@ -23,7 +23,10 @@ use opentelemetry::trace::TracerProvider as _;
 use opentelemetry_otlp::WithExportConfig;
 use opentelemetry_sdk::{runtime, Resource};
 use opentelemetry_sdk::trace::{BatchConfigBuilder, BatchSpanProcessor, TracerProvider};
+#[cfg(unix)]
 use tokio::signal::unix::{signal, SignalKind};
+#[cfg(windows)]
+use tokio::signal::windows::ctrl_c;
 use tower_http::timeout::TimeoutLayer;
 
 use mimalloc::MiMalloc;
@@ -38,6 +41,7 @@ use crate::writers::writer::EventsWriter;
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
 
+#[cfg(unix)]
 async fn shutdown_hook(writer: Arc<EventsWriter>, watching: Arc<AtomicBool>) {
     let mut interrupt = signal(SignalKind::interrupt()).unwrap();
     let mut terminate = signal(SignalKind::terminate()).unwrap();
@@ -64,6 +68,24 @@ async fn shutdown_hook(writer: Arc<EventsWriter>, watching: Arc<AtomicBool>) {
                 }
             }
         }
+    }
+}
+
+#[cfg(windows)]
+async fn shutdown_hook(writer: Arc<EventsWriter>, watching: Arc<AtomicBool>) {
+    let mut interrupt = ctrl_c().unwrap();
+    tokio::select! {
+        _ = interrupt.recv() => {
+            warn!("Received ctrl_c, shutting down");
+            writer.stop().await;
+            loop {
+                if writer.is_active() || watching.load(Relaxed) {
+                    tokio::time::sleep(Duration::from_millis(100)).await;
+                } else {
+                    break
+                }
+            }
+        },
     }
 }
 

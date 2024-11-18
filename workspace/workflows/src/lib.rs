@@ -16,6 +16,7 @@ use crate::media::extract_mp3::ExtractMp3Activity;
 use crate::media::mux::MuxUploadActivity;
 use crate::media::transcribe::TranscribeActivity;
 use crate::metadata::command::CommandActivity;
+use crate::ml::mapper::TranscriptionMapperActivity;
 
 pub mod activity;
 pub mod metadata;
@@ -35,6 +36,7 @@ pub fn get_default_activities() -> Vec<Box<dyn Activity + Send + Sync>> {
         Box::new(MuxUploadActivity::default()),
         Box::new(ExtractMp3Activity::default()),
         Box::new(TranscribeActivity::default()),
+        Box::new(TranscriptionMapperActivity::default()),
         Box::new(PromptActivity::default()),
         Box::new(CommandActivity::default()),
     ]

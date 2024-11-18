@@ -4,7 +4,7 @@ use crate::activity::{Activity, ActivityContext, Error};
 use async_trait::async_trait;
 use bytes::Bytes;
 use log::info;
-use serde_json::{json, Value};
+use serde_json::{json, Map, Value};
 use tokio::fs::File;
 use tokio::process::Command;
 use bosca_client::client::{Client, WorkflowJob};
@@ -85,15 +85,14 @@ impl Activity for CommandActivity {
                 let name = &arg.as_str()[1..];
                 match name {
                     "BOSCA_JOB" => job_file.to_owned(),
-                    "BOSCA_METADATA" => if metadata_file.is_some() {
-                        metadata_file.as_ref().unwrap().to_owned()
+                    "BOSCA_METADATA" => if let Some(metadata_file) = metadata_file.as_ref() {
+                        metadata_file.to_owned()
                     } else {
                         "".to_owned()
                     },
                     "BOSCA_OUTPUT_FILE" => output_file.to_owned(),
                     _ => {
-                        if name.starts_with("BOSCA_SUPPLEMENTARY_") {
-                            let key = &name[20..];
+                        if let Some(key) = name.strip_prefix("BOSCA_SUPPLEMENTARY_") {
                             if files.contains_key(key) {
                                 files.get(key).unwrap().to_owned()
                             } else {
@@ -147,10 +146,14 @@ impl Activity for CommandActivity {
                     }
                 };
                 if !job.metadata.as_ref().unwrap().supplementary.iter().any(|s| s.key == key) {
+                    let mut attributes = Map::new();
+                    if let Some(source) = job.workflow_activity.configuration.get("source") {
+                        attributes.insert("source".to_owned(), source.clone());
+                    }
                     client.add_metadata_supplementary(MetadataSupplementaryInput {
                         metadata_id: metadata_id.to_owned(),
                         key: key.to_owned(),
-                        attributes: None,
+                        attributes: Some(Value::Object(attributes)),
                         name: "Command Output".to_owned(),
                         content_type: mime_type.to_owned(),
                         content_length: None,
@@ -173,10 +176,14 @@ impl Activity for CommandActivity {
                     }
                 };
                 if !job.metadata.as_ref().unwrap().supplementary.iter().any(|s| s.key == key) {
+                    let mut attributes = Map::new();
+                    if let Some(source) = job.workflow_activity.configuration.get("source") {
+                        attributes.insert("source".to_owned(), source.clone());
+                    }
                     client.add_metadata_supplementary(MetadataSupplementaryInput {
                         metadata_id: metadata_id.to_owned(),
                         key: key.to_owned(),
-                        attributes: None,
+                        attributes: Some(Value::Object(attributes)),
                         name: "Command Output".to_owned(),
                         content_type: mime_type.to_owned(),
                         content_length: None,

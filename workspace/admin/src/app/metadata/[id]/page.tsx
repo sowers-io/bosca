@@ -90,6 +90,7 @@ const metadataQuery = gql`
           name
           uploaded
           content {
+            type
             urls {
               download {
                 url
@@ -770,10 +771,9 @@ export default async function Page({ params, searchParams }: { params: { id: str
                                     <tr key={supplementary.key}>
                                       <td className="p-2">{supplementary.key}</td>
                                       <td className="p-2">{supplementary.name}</td>
+                                      <td className="p-2">{supplementary.content.type || '--'}</td>
                                       <td>
-                                        <ButtonLink
-                                          href={supplementary.content.urls.download.url}
-                                          variant="outline" size="sm">Download</ButtonLink>
+                                        <ButtonLink href={supplementary.content.urls.download.url} variant="outline" size="sm">Download</ButtonLink>
                                       </td>
                                     </tr>
                                   )

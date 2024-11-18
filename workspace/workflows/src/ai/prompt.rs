@@ -1,22 +1,21 @@
-use std::collections::{HashMap, HashSet};
-use std::env;
 use crate::activity::{Activity, ActivityContext, Error};
 use async_trait::async_trait;
-use bytes::Bytes;
-use langchain_rust::chain::{Chain, ConversationalRetrieverChainBuilder, LLMChainBuilder};
-use langchain_rust::{fmt_message, fmt_template, message_formatter};
-use langchain_rust::llm::{OpenAI, OpenAIConfig};
-use langchain_rust::output_parsers::{MarkdownParser, OutputParser};
-use langchain_rust::prompt::{HumanMessagePromptTemplate, PromptTemplate, TemplateFormat};
-use langchain_rust::schemas::messages::Message;
-use serde_json::Value;
-use tokio::fs::File;
-use tokio::io::AsyncReadExt;
-use bosca_client::client::{Client, WorkflowJob};
 use bosca_client::client::add_metadata_supplementary::MetadataSupplementaryInput;
 use bosca_client::client::plan::StorageSystemType;
+use bosca_client::client::{Client, WorkflowJob};
 use bosca_client::download::download_supplementary_path;
 use bosca_client::upload::upload_multipart_supplementary_bytes;
+use bytes::Bytes;
+use langchain_rust::chain::{Chain, ConversationalRetrieverChainBuilder, LLMChainBuilder};
+use langchain_rust::llm::{OpenAI, OpenAIConfig};
+use langchain_rust::prompt::{HumanMessagePromptTemplate, PromptTemplate, TemplateFormat};
+use langchain_rust::schemas::messages::Message;
+use langchain_rust::{fmt_message, fmt_template, message_formatter};
+use serde_json::{from_str, json, Map, Value};
+use std::collections::{HashMap, HashSet};
+use std::env;
+use tokio::fs::File;
+use tokio::io::AsyncReadExt;
 
 pub struct PromptActivity {
     id: String,
@@ -42,15 +41,35 @@ impl Activity for PromptActivity {
         &self.id
     }
 
-    async fn execute(&self, client: &Client, context: &mut ActivityContext, job: &WorkflowJob) -> Result<(), Error> {
+    async fn execute(
+        &self,
+        client: &Client,
+        context: &mut ActivityContext,
+        job: &WorkflowJob,
+    ) -> Result<(), Error> {
         let metadata_id = &job.metadata.as_ref().unwrap().id;
+        let tries = if job.context.is_null() {
+            0
+        } else {
+            job.context.get("tries").unwrap().as_i64().unwrap()
+        } + 1;
+        if tries > 5 {
+            return Err(Error::new(format!("exceeded {} tries", tries)));
+        }
+        let updated_context = json!({"tries": tries});
+        client
+            .set_job_context(job.id.id, &job.id.queue, &updated_context)
+            .await?;
         let prompt_definition = job.prompts.first().unwrap();
-        let inputs: HashSet<String> = job.workflow_activity.inputs.iter().map(|input| {
-            input.value.to_owned()
-        }).collect();
+        let inputs: HashSet<String> = job
+            .workflow_activity
+            .inputs
+            .iter()
+            .map(|input| input.value.to_owned())
+            .collect();
         let prompt = message_formatter![
             fmt_message!(Message::new_system_message(
-              prompt_definition.prompt.system_prompt.to_owned()
+                prompt_definition.prompt.system_prompt.to_owned()
             )),
             fmt_template!(HumanMessagePromptTemplate::new(PromptTemplate::new(
                 prompt_definition.prompt.user_prompt.to_owned(),
@@ -110,7 +129,9 @@ impl Activity for PromptActivity {
             if !inputs.contains(&supplementary.key) {
                 continue;
             }
-            let download = client.get_metadata_supplementary_download(metadata_id, &supplementary.key).await?;
+            let download = client
+                .get_metadata_supplementary_download(metadata_id, &supplementary.key)
+                .await?;
             if download.is_none() {
                 return Err(Error::new("missing supplementary file".to_owned()));
             }
@@ -121,25 +142,49 @@ impl Activity for PromptActivity {
             file.read_to_string(&mut result).await?;
             args.insert(supplementary.key.to_owned(), Value::String(result));
         }
-        let result = chain.execute(args).await.map_err(|e| Error::new(format!("error: {}", e)))?;
-        let output = result.get("output").unwrap();
-        let content = MarkdownParser::new().parse(output.as_str().unwrap()).await.map_err(|e| Error::new(format!("error: {}", e)))?;
+        let result = chain
+            .execute(args)
+            .await
+            .map_err(|e| Error::new(format!("error: {}", e)))?;
+        let output = result.get("output").unwrap().as_str().unwrap();
+        let content = from_str::<Value>(&output)?.to_string();
         let result_bytes = Bytes::from(content);
         let key = &job.workflow_activity.outputs.first().unwrap().value;
-        if !job.metadata.as_ref().unwrap().supplementary.iter().any(|s| s.key == *key) {
-            client.add_metadata_supplementary(MetadataSupplementaryInput {
-                metadata_id: metadata_id.to_owned(),
-                key: key.to_owned(),
-                attributes: None,
-                name: "Prompt Result".to_owned(),
-                content_type: prompt_definition.prompt.output_type.to_owned(),
-                content_length: None,
-                source_id: None,
-                source_identifier: None,
-            }).await?;
+        if !job
+            .metadata
+            .as_ref()
+            .unwrap()
+            .supplementary
+            .iter()
+            .any(|s| s.key == *key)
+        {
+            let mut attributes = Map::new();
+            if let Some(source) = job.workflow_activity.configuration.get("source") {
+                attributes.insert("source".to_owned(), source.clone());
+            }
+            client
+                .add_metadata_supplementary(MetadataSupplementaryInput {
+                    metadata_id: metadata_id.to_owned(),
+                    key: key.to_owned(),
+                    attributes: Some(Value::Object(attributes)),
+                    name: "Prompt Result".to_owned(),
+                    content_type: prompt_definition.prompt.output_type.to_owned(),
+                    content_length: None,
+                    source_id: None,
+                    source_identifier: None,
+                })
+                .await?;
         }
-        let upload_url = client.get_metadata_supplementary_upload(metadata_id, key).await?;
-        upload_multipart_supplementary_bytes(metadata_id, &prompt_definition.prompt.output_type, &upload_url, result_bytes).await?;
+        let upload_url = client
+            .get_metadata_supplementary_upload(metadata_id, key)
+            .await?;
+        upload_multipart_supplementary_bytes(
+            metadata_id,
+            &prompt_definition.prompt.output_type,
+            &upload_url,
+            result_bytes,
+        )
+        .await?;
         Ok(())
     }
 }
