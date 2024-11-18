@@ -7,9 +7,9 @@ pub struct Segment {
     pub end: f64,
     pub id: i64,
     pub no_speech_prob: f64,
-    pub seek: i64,
+    pub seek: f64,
     pub start: f64,
-    pub temperature: i64,
+    pub temperature: f64,
     pub text: String,
     pub tokens: Vec<i64>,
     pub words: Vec<Word>,
@@ -30,28 +30,33 @@ pub struct Transcription {
     pub text: String,
 }
 
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct TranscriptionResult {
+    pub transcription: Transcription
+}
+
 impl Transcription {
-    pub fn get_segment(&self, str: &str) -> Segment {
+    pub fn get_segment(&self, str: &str) -> Option<Segment> {
         let mut new_segment = Segment {
             avg_logprob: 0.0,
             start: f64::NEG_INFINITY,
-            temperature: 0,
-            text: str.to_owned(),
+            temperature: 0.0,
+            text: str.trim_ascii().to_owned(),
             tokens: vec![],
             end: f64::NEG_INFINITY,
             id: 0,
             no_speech_prob: 0.0,
             compression_ratio: 0.0,
-            seek: 0,
+            seek: 0.0,
             words: vec![],
         };
 
-        let mut search = str.trim_ascii();
+        let mut search = str.trim_ascii().to_lowercase();
 
         for segment in &self.segments {
             for word in &segment.words {
-                let w = word.word.trim_ascii();
-                if search.starts_with(w) {
+                let w = word.word.trim_ascii().to_lowercase();
+                if search.starts_with(&w) {
                     new_segment.words.push(word.clone());
                     new_segment.start = if new_segment.start.is_sign_negative() || word.start < new_segment.start {
                         word.start
@@ -63,21 +68,26 @@ impl Transcription {
                     } else {
                         new_segment.end
                     };
-                    search = search[w.len()..].trim_ascii();
+                    search = search[w.len()..].trim_ascii().parse().unwrap();
                     if search.is_empty() {
                         break;
                     }
                 } else if new_segment.start.is_nan() {
-                    search = str.trim_ascii();
+                    search = str.trim_ascii().parse().unwrap();
                     new_segment.start = f64::NEG_INFINITY;
                     new_segment.end = f64::NEG_INFINITY;
+                    new_segment.words.clear();
                 }
             }
             if search.is_empty() {
                 break;
             }
         }
-        new_segment
+        if !search.is_empty() {
+            None
+        } else {
+            Some(new_segment)
+        }
     }
 }
 
@@ -100,8 +110,8 @@ mod tests {
                     no_speech_prob: 0.0,
                     avg_logprob: 0.0,
                     compression_ratio: 0.0,
-                    seek: 0,
-                    temperature: 0,
+                    seek: 0.0,
+                    temperature: 0.0,
                     words: vec![
                         Word {
                             start: 0.0,
@@ -126,8 +136,8 @@ mod tests {
                     no_speech_prob: 0.0,
                     avg_logprob: 0.0,
                     compression_ratio: 0.0,
-                    seek: 0,
-                    temperature: 0,
+                    seek: 0.0,
+                    temperature: 0.0,
                     words: vec![
                         Word {
                             start: 10.0,
@@ -158,8 +168,8 @@ mod tests {
                     no_speech_prob: 0.0,
                     avg_logprob: 0.0,
                     compression_ratio: 0.0,
-                    seek: 0,
-                    temperature: 0,
+                    seek: 0.0,
+                    temperature: 0.0,
                     words: vec![
                         Word {
                             start: 17.0,
@@ -190,9 +200,9 @@ mod tests {
             ],
         };
 
-        let timing = transcript.get_segment("how are you?");
+        let timing = transcript.get_segment("world, how are you?").unwrap();
 
-        assert_eq!(timing.start, 10.0);
+        assert_eq!(timing.start, 2.0);
         assert_eq!(timing.end, 15.0);
     }
 }

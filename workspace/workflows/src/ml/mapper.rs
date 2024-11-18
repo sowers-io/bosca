@@ -11,7 +11,7 @@ use bosca_client::client::{Client, WorkflowJob};
 use bosca_client::client::add_metadata_supplementary::MetadataSupplementaryInput;
 use bosca_client::download::download_supplementary_path;
 use bosca_client::upload::upload_multipart_supplementary_bytes;
-use crate::ml::transcription::Transcription;
+use crate::ml::transcription::{Transcription, TranscriptionResult};
 
 pub struct TranscriptionMapperActivity {
     id: String,
@@ -42,11 +42,10 @@ impl Activity for TranscriptionMapperActivity {
         let inputs: HashSet<String> = job.workflow_activity.inputs.iter().map(|input| {
             input.value.to_owned()
         }).collect();
-
         let mut transcription: Option<Transcription> = None;
         let mut segments: Option<Vec<String>> = None;
         for supplementary in job.metadata.as_ref().unwrap().supplementary.iter() {
-            if !inputs.contains(&supplementary.key) {
+            if !inputs.contains(&supplementary.key) || supplementary.attributes.is_none() {
                 continue;
             }
             let download = client.get_metadata_supplementary_download(&metadata_id, &supplementary.key).await?;
@@ -55,13 +54,15 @@ impl Activity for TranscriptionMapperActivity {
             }
             let file = download_supplementary_path(&metadata_id, &download.unwrap()).await?;
             context.add_file_clean(&file);
-            let source = supplementary.attributes.as_ref().unwrap().get("source").unwrap().as_str().unwrap();
+            let attributes = supplementary.attributes.as_ref().unwrap();
+            let source = attributes.get("source").unwrap().as_str().unwrap();
             match source {
                 "transcription" => {
                     let mut f = File::open(&file).await?;
                     let mut s = String::new();
                     f.read_to_string(&mut s).await?;
-                    transcription = Some(Transcription::deserialize(Value::from_str(&s)?)?);
+                    let result = TranscriptionResult::deserialize(Value::from_str(&s)?)?;
+                    transcription = Some(result.transcription);
                 }
                 "segments" => {
                     let mut f = File::open(&file).await?;
@@ -80,8 +81,11 @@ impl Activity for TranscriptionMapperActivity {
             };
             if let Some(segments) = segments {
                 for segment in segments.iter() {
-                    let new_segment = transcription.get_segment(segment);
-                    new_transcription.segments.push(new_segment);
+                    if let Some(new_segment) = transcription.get_segment(segment) {
+                        if !new_segment.start.is_sign_negative() && !new_segment.end.is_sign_negative() {
+                            new_transcription.segments.push(new_segment);
+                        }
+                    }
                 }
                 let key = if job.workflow_activity.outputs.is_empty() {
                     "transcription_mapped".to_owned()
@@ -103,7 +107,7 @@ impl Activity for TranscriptionMapperActivity {
                     }).await?;
                 }
                 let upload_url = client.get_metadata_supplementary_upload(&metadata_id, &key).await?;
-                let response_bytes = Bytes::from(json!(transcription).to_string());
+                let response_bytes = Bytes::from(json!(new_transcription).to_string());
                 upload_multipart_supplementary_bytes(&metadata_id, "application/json", &upload_url, response_bytes).await?;
                 Ok(())
             } else {
