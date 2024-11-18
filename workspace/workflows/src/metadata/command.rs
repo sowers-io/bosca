@@ -85,15 +85,14 @@ impl Activity for CommandActivity {
                 let name = &arg.as_str()[1..];
                 match name {
                     "BOSCA_JOB" => job_file.to_owned(),
-                    "BOSCA_METADATA" => if metadata_file.is_some() {
-                        metadata_file.as_ref().unwrap().to_owned()
+                    "BOSCA_METADATA" => if let Some(metadata_file) = metadata_file.as_ref() {
+                        metadata_file.to_owned()
                     } else {
                         "".to_owned()
                     },
                     "BOSCA_OUTPUT_FILE" => output_file.to_owned(),
                     _ => {
-                        if name.starts_with("BOSCA_SUPPLEMENTARY_") {
-                            let key = &name[20..];
+                        if let Some(key) = name.strip_prefix("BOSCA_SUPPLEMENTARY_") {
                             if files.contains_key(key) {
                                 files.get(key).unwrap().to_owned()
                             } else {

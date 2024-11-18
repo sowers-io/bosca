@@ -36,7 +36,7 @@ impl ActivityContext {
     }
 
     pub async fn new_file(&mut self, ext: &str) -> Result<String, Error> {
-        let name = if ext.len() > 0 {
+        let name = if !ext.is_empty() {
             format!("/tmp/bosca/{}.{}", Uuid::new_v4(), ext)
         } else {
             format!("/tmp/bosca/{}", Uuid::new_v4())
