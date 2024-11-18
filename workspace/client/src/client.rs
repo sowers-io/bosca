@@ -417,6 +417,27 @@ impl Client {
         Ok(job)
     }
 
+    pub async fn enqueue_child_workflow(
+        &self,
+        job_id: i64,
+        queue: &str,
+        workflow_id: &str,
+        configurations: Vec<enqueue_child_workflow::WorkflowConfigurationInput>
+    ) -> Result<enqueue_child_workflow::EnqueueChildWorkflowWorkflowsEnqueueChildWorkflow, Error> {
+        let variables = enqueue_child_workflow::Variables {
+            job_id: enqueue_child_workflow::WorkflowExecutionIdInput {
+                id: job_id,
+                queue: queue.to_owned(),
+            },
+            workflow_id: workflow_id.to_owned(),
+            configurations,
+        };
+        let query = EnqueueChildWorkflow::build_query(variables);
+        let response: enqueue_child_workflow::ResponseData = self.execute(&query).await?;
+        let job = response.workflows.enqueue_child_workflow;
+        Ok(job)
+    }
+
     pub async fn get_next_execution(
         &self,
         queue: &str,
@@ -654,9 +675,17 @@ pub struct EnqueueJob;
 #[graphql(
     schema_path = "schema.json",
     query_path = "queries/enqueue_child_workflows.graphql",
-    response_derives = "Debug, PartialEq, Eq, Clone"
+    response_derives = "Serialize, Deserialize, Debug, PartialEq, Eq, Clone"
 )]
 pub struct EnqueueChildWorkflows;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "schema.json",
+    query_path = "queries/enqueue_child_workflow.graphql",
+    response_derives = "Serialize, Deserialize, Debug, PartialEq, Eq, Clone"
+)]
+pub struct EnqueueChildWorkflow;
 
 #[derive(GraphQLQuery)]
 #[graphql(

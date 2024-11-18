@@ -111,6 +111,18 @@ impl WorkflowsMutationObject {
             .collect())
     }
 
+    async fn enqueue_child_workflow(
+        &self,
+        ctx: &Context<'_>,
+        job_id: WorkflowExecutionIdInput,
+        workflow_id: String,
+        configurations: Option<Vec<WorkflowConfigurationInput>>,
+    ) -> Result<WorkflowExecutionIdObject, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        ctx.check_has_service_account().await?;
+        Ok(WorkflowExecutionIdObject::new(ctx.workflow.enqueue_job_child_workflow(&job_id.into(), &workflow_id, configurations.as_ref()).await?))
+    }
+
     async fn enqueue_job(
         &self,
         ctx: &Context<'_>,

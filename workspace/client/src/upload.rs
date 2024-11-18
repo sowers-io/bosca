@@ -1,10 +1,12 @@
-use crate::client::{MetadataContentUploadUrl, MetadataSupplementaryUploadUrl};
+use crate::client::{Client, MetadataContentUploadUrl, MetadataSupplementaryUploadUrl, WorkflowJob};
 use bytes::Bytes;
 use http::{HeaderMap, HeaderName, HeaderValue};
 use reqwest::{multipart, Body};
 use std::str::FromStr;
+use serde_json::{Map, Value};
 use tokio::fs::File;
 use tokio_util::io::ReaderStream;
+use crate::client::add_metadata_supplementary::MetadataSupplementaryInput;
 use crate::Error;
 
 pub async fn upload_multipart_file(
@@ -117,5 +119,42 @@ pub async fn upload_multipart_body(
             response_text
         )));
     }
+    Ok(())
+}
+
+pub async fn upload_supplementary(client: &Client, job: &WorkflowJob, name: &str, bytes: Bytes, content_type: Option<String>) -> Result<(), Error> {
+    let metadata_id = &job.metadata.as_ref().unwrap().id;
+    let key = &job.workflow_activity.outputs.first().unwrap().value;
+    let content_type = content_type.unwrap_or("application/octet-stream".to_string());
+
+    if !job.metadata.as_ref().unwrap().supplementary.iter().any(|s| s.key == *key) {
+        let mut attributes = Map::new();
+        if let Some(source) = job.workflow_activity.configuration.get("source") {
+            attributes.insert("source".to_owned(), source.clone());
+        }
+        client
+            .add_metadata_supplementary(MetadataSupplementaryInput {
+                metadata_id: metadata_id.to_owned(),
+                key: key.to_owned(),
+                attributes: Some(Value::Object(attributes)),
+                name: name.to_owned(),
+                content_type: content_type.to_owned(),
+                content_length: None,
+                source_id: None,
+                source_identifier: None,
+            })
+            .await?;
+    }
+
+    let upload_url = client
+        .get_metadata_supplementary_upload(metadata_id, key)
+        .await?;
+    upload_multipart_supplementary_bytes(
+        metadata_id,
+        &content_type,
+        &upload_url,
+        bytes,
+    ).await?;
+
     Ok(())
 }

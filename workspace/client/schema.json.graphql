@@ -543,6 +543,7 @@ type WorkflowsMutation {
     beginTransition(configurations: [WorkflowConfigurationInput!], request: BeginTransitionInput!): Boolean!
     delete(id: String!): Boolean!
     edit(workflow: WorkflowInput!): Workflow!
+    enqueueChildWorkflow(configurations: [WorkflowConfigurationInput!], jobId: WorkflowExecutionIdInput!, workflowId: String!): WorkflowExecutionId!
     enqueueChildWorkflows(jobId: WorkflowExecutionIdInput!, workflowIds: [String!]!): [WorkflowExecutionId!]!
     enqueueJob(jobIndex: Int!, planId: WorkflowExecutionIdInput!): WorkflowExecutionId
     enqueueWorkflow(collectionId: String, configurations: [WorkflowConfigurationInput!], metadataId: String, version: Int, workflowId: String!): WorkflowExecutionId!

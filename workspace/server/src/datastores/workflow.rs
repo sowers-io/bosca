@@ -786,6 +786,45 @@ impl WorkflowDataStore {
             .await
     }
 
+    pub async fn enqueue_job_child_workflow(
+        &self,
+        job_id: &WorkflowExecutionId,
+        workflow_id: &str,
+        configuration: Option<&Vec<WorkflowConfigurationInput>>,
+    ) -> Result<WorkflowExecutionId, Error> {
+        let workflow_id = workflow_id.to_owned();
+        let mut plans = Vec::<WorkflowExecutionPlan>::new();
+        let job = self.queues.get(job_id, false).await?;
+        if job.is_none() {
+            return Err(Error::new("missing job"));
+        }
+        let job = match job.unwrap() {
+            MessageValue::Job(job) => job,
+            _ => return Err(Error::new("unexpected job type")),
+        };
+        let metadata_id = job
+            .metadata_id
+            .map(|id| Uuid::parse_str(id.as_str()).unwrap());
+        let collection_id = job
+            .collection_id
+            .map(|id| Uuid::parse_str(id.as_str()).unwrap());
+        let workflow = self.get_workflow(&workflow_id).await?;
+        if workflow.is_none() {
+            return Err(Error::new("workflow not found"));
+        }
+        let workflow = workflow.unwrap();
+        let plan = self
+            .get_new_execution_plan(&workflow, collection_id, metadata_id, job.version, configuration)
+            .await?;
+        plans.push(plan);        
+        Ok(self.queues
+            .enqueue_job_child_workflows(job_id, &plans)
+            .await?
+            .first()
+            .unwrap()
+            .clone())
+    }
+
     pub async fn enqueue_execution_job(
         &self,
         plan_id: &WorkflowExecutionId,
