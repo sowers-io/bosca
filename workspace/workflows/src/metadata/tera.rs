@@ -61,6 +61,13 @@ impl Activity for MetadataTeraActivity {
             .unwrap()
             .as_str()
             .unwrap();
+        let content_type = job
+            .workflow_activity
+            .configuration
+            .get("content_type")
+            .unwrap()
+            .as_str()
+            .unwrap();
         let mut tera = Tera::default();
         tera.add_raw_template("template", template)
             .map_err(|e| Error::new(format!("Template generation error: {}", e)))?;
@@ -71,7 +78,7 @@ impl Activity for MetadataTeraActivity {
             .render("template", &tera_context)
             .map_err(|e| Error::new(format!("Template render error: {}", e)))?;
 
-        upload_supplementary(client, job, "Template Result", Bytes::from(result), None).await?;
+        upload_supplementary(client, job, "Template Result", Bytes::from(result), Some(content_type.parse().unwrap())).await?;
 
         Ok(())
     }

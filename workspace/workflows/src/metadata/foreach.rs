@@ -52,7 +52,6 @@ impl Activity for MetadataForEachActivity {
 
     async fn execute(&self, client: &Client, context: &mut ActivityContext, job: &WorkflowJob) -> Result<(), Error> {
         let metadata = job.metadata.as_ref().unwrap();
-        let workflow_id = job.workflow_activity.configuration.get("workflow_id").unwrap().as_str().unwrap();
         let mut executed: HashSet<i64>;
         if job.context.is_null() {
             executed = HashSet::new();
@@ -86,7 +85,7 @@ impl Activity for MetadataForEachActivity {
                 continue;
             }
             client
-                .enqueue_child_workflow(job.id.id, &job.id.queue, workflow_id, item.activities.iter().map(|a| WorkflowConfigurationInput {
+                .enqueue_child_workflow(job.id.id, &job.id.queue, &item.id, item.activities.iter().map(|a| WorkflowConfigurationInput {
                     activity_id: a.id.to_owned(),
                     configuration: a.configuration.clone(),
                 }).collect())
