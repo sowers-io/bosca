@@ -9,7 +9,7 @@ use langchain_rust::llm::{OpenAI, OpenAIConfig};
 use langchain_rust::output_parsers::{MarkdownParser, OutputParser};
 use langchain_rust::prompt::{HumanMessagePromptTemplate, PromptTemplate, TemplateFormat};
 use langchain_rust::schemas::messages::Message;
-use serde_json::Value;
+use serde_json::{Map, Value};
 use tokio::fs::File;
 use tokio::io::AsyncReadExt;
 use bosca_client::client::{Client, WorkflowJob};
@@ -127,10 +127,14 @@ impl Activity for PromptActivity {
         let result_bytes = Bytes::from(content);
         let key = &job.workflow_activity.outputs.first().unwrap().value;
         if !job.metadata.as_ref().unwrap().supplementary.iter().any(|s| s.key == *key) {
+            let mut attributes = Map::new();
+            if let Some(source) = job.workflow_activity.configuration.get("source") {
+                attributes.insert("source".to_owned(), source.clone());
+            }
             client.add_metadata_supplementary(MetadataSupplementaryInput {
                 metadata_id: metadata_id.to_owned(),
                 key: key.to_owned(),
-                attributes: None,
+                attributes: Some(Value::Object(attributes)),
                 name: "Prompt Result".to_owned(),
                 content_type: prompt_definition.prompt.output_type.to_owned(),
                 content_length: None,

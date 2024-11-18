@@ -212,7 +212,7 @@ impl WorkflowDataStore {
             ],
         ).await?;
         for activity in &workflow.activities {
-            self.add_workflow_activity(&txn, &workflow.id, activity).await?;
+            self.add_workflow_activity(txn, &workflow.id, activity).await?;
         }
         Ok(())
     }
@@ -250,7 +250,7 @@ impl WorkflowDataStore {
     async fn create_workflow_queues(&self, workflow: &WorkflowInput) -> Result<(), Error> {
         let _ = self.queues.create_queue(&workflow.queue).await;
         for activity in &workflow.activities {
-            if activity.queue == "" { continue; }
+            if activity.queue.is_empty() { continue; }
             let _ = self.queues.create_queue(&activity.queue).await;
         }
         Ok(())
