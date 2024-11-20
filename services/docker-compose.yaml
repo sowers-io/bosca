@@ -1,3 +1,5 @@
+name: bosca-services
+
 x-minio-common: &minio-common
   image: quay.io/minio/minio:RELEASE.2024-04-06T05-26-02Z
   command: server --console-address ":9011" http://minio{1...4}/data{1...2}
