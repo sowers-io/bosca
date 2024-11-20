@@ -11,6 +11,8 @@ use crate::models::workflow::execution_plan::WorkflowExecutionId;
 use crate::queue::message::MessageValue;
 use async_graphql::{Context, Error, Object, Union};
 use crate::context::BoscaContext;
+use crate::datastores::security::WORKFLOW_MANAGERS_GROUP;
+use crate::security::util::check_has_group;
 
 pub(crate) struct WorkflowsObject {}
 
@@ -30,6 +32,7 @@ enum WorkflowExecution {
 #[Object(name = "Workflows")]
 impl WorkflowsObject {
     async fn all(&self, ctx: &Context<'_>) -> Result<Vec<WorkflowObject>, Error> {
+        check_has_group(ctx, WORKFLOW_MANAGERS_GROUP).await?;
         let ctx = ctx.data::<BoscaContext>()?;
         let states = ctx.workflow.get_workflows().await?;
         Ok(states.into_iter().map(WorkflowObject::new).collect())
@@ -56,6 +59,7 @@ impl WorkflowsObject {
     }
 
     async fn transitions(&self, ctx: &Context<'_>) -> Result<Vec<TransitionObject>, Error> {
+        check_has_group(ctx, WORKFLOW_MANAGERS_GROUP).await?;
         let ctx = ctx.data::<BoscaContext>()?;
         let states = ctx.workflow.get_transitions().await?;
         Ok(states.into_iter().map(TransitionObject::new).collect())

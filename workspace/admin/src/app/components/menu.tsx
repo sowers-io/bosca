@@ -24,7 +24,7 @@ export function Menu({ parent }: MenuProps) {
   if (!parent) parent = '00000000-0000-0000-0000-000000000000'
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const [selection, setSelection] = useState<any | undefined>(undefined)
+  const [_, setSelection] = useState<any | undefined>(undefined)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [selectedCollection, setSelectedCollection] = useState<any | undefined>(undefined)
 
@@ -72,14 +72,14 @@ export function Menu({ parent }: MenuProps) {
                 <button onClick={async () => {
                   await addNewCollection('New Collection', selectedCollection.id)
                   refreshTree()
-                }}>Collection
+                }}>{selectedCollection ? 'Collection in ' + selectedCollection.name : 'Collection'}
                 </button>
               </MenubarItem>
               <MenubarItem disabled={!selectedCollection}>
                 <button onClick={async () => {
                   await addNewMetadata('New Metadata', selectedCollection.id)
                   refreshTree()
-                }}>Metadata
+                }}>{selectedCollection ? 'Metadata in ' + selectedCollection.name : 'Metadata'}
                 </button>
               </MenubarItem>
             </MenubarSubContent>
