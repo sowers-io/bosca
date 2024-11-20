@@ -66,13 +66,13 @@ impl CommandActivity {
             }
         }).collect::<Vec<String>>();
 
-        let mut cmd = Command::new(command.get("command").unwrap().as_str().unwrap().to_owned());
+        let mut cmd = Command::new(command.get("command").unwrap().as_str().unwrap());
         cmd.args(command_args);
         cmd.env("BOSCA_JOB", job_file);
         if let Some(metadata_file) = metadata_file {
             cmd.env("BOSCA_METADATA", &metadata_file);
         }
-        cmd.env("BOSCA_OUTPUT_FILE", &output_file);
+        cmd.env("BOSCA_OUTPUT_FILE", output_file);
         for (key, file) in files.iter() {
             cmd.env(format!("BOSCA_SUPPLEMENTARY_{}", key), file);
         }
@@ -136,7 +136,7 @@ impl Activity for CommandActivity {
                 return Err(Error::new(format!("stderr: {}", err)));
             }
             let var_value = from_utf8(&output.stdout).map_err(|e| Error::new(format!("error converting stdout: {}", e)))?;
-            env::set_var(format!("BOSCA_JOB_{}", key), &var_value);
+            env::set_var(format!("BOSCA_JOB_{}", key), var_value);
         }
 
         let output_file = context.new_file(&output_file_ext).await?;
