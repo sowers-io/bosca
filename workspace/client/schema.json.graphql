@@ -44,14 +44,14 @@ type ActivityParameter {
 type Collection {
     attributes(filter: AttributesFilterInput): JSON!
     collections(limit: Int!, offset: Int!): [Collection!]!
-    created: String!
+    created: DateTime!
     description: String
     id: String!
     itemAttributes: JSON
     items(limit: Int!, offset: Int!): [CollectionItem!]!
     labels: [String!]!
     metadata(limit: Int!, offset: Int!): [Metadata!]!
-    modified: String!
+    modified: DateTime!
     name: String!
     ordering: JSON
     parentCollections(limit: Int!, offset: Int!): [Collection!]!

@@ -843,7 +843,8 @@ pub struct AddMetadataSupplementary;
 #[graphql(
     schema_path = "schema.json",
     query_path = "queries/add_collection.graphql",
-    response_derives = "Debug, PartialEq, Eq, Clone"
+    variables_derives = "Deserialize, Debug, PartialEq, Eq, Clone",
+    response_derives = "Serialize, Deserialize, Debug, PartialEq, Eq, Clone"
 )]
 pub struct AddCollection;
 

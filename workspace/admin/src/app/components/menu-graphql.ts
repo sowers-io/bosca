@@ -54,3 +54,39 @@ export async function addNewMetadata(name: string, parentCollectionId: string) {
   })
   return data.content.metadata.add.id
 }
+
+const deleteMetadataMutation = gql`
+    mutation DeleteMetadata($id: String!) {
+        content {
+            metadata {
+                delete(metadataId: $id)
+            }
+        }
+    }
+`
+
+export async function deleteMetadata(id: string) {
+  await getClient().mutate({
+    mutation: deleteMetadataMutation, variables: {
+      id,
+    },
+  })
+}
+
+const deleteCollectionMutation = gql`
+    mutation DeleteCollection($id: String!) {
+        content {
+            collection {
+                delete(id: $id, recursive: true)
+            }
+        }
+    }
+`
+
+export async function deleteCollection(id: string) {
+  await getClient().mutate({
+    mutation: deleteCollectionMutation, variables: {
+      id,
+    },
+  })
+}

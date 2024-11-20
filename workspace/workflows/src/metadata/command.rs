@@ -1,4 +1,5 @@
 use std::collections::{HashMap, HashSet};
+use std::env;
 use std::str::from_utf8;
 use crate::activity::{Activity, ActivityContext, Error};
 use async_trait::async_trait;
@@ -28,6 +29,55 @@ impl CommandActivity {
             id: "metadata.command".to_string(),
         }
     }
+
+    pub fn build_command(&self, command: &Value, job_file: &str, metadata_file: Option<String>, output_file: &str, files: &HashMap<String, String>) -> Command {
+        let command_args = command.get("command_args").as_ref().unwrap().as_array().unwrap().iter().map(|arg| {
+            let arg = arg.as_str().unwrap().to_owned();
+            if arg.starts_with("$") {
+                let name = &arg.as_str()[1..];
+                match name {
+                    "BOSCA_JOB" => job_file.to_owned(),
+                    "BOSCA_METADATA" => if let Some(metadata_file) = metadata_file.as_ref() {
+                        metadata_file
+                    } else {
+                        ""
+                    }.to_owned(),
+                    "BOSCA_OUTPUT_FILE" => output_file.to_owned(),
+                    _ => {
+                        if let Some(key) = name.strip_prefix("BOSCA_SUPPLEMENTARY_") {
+                            if files.contains_key(key) {
+                                files.get(key).unwrap()
+                            } else {
+                                ""
+                            }.to_owned()
+                        } else if name.starts_with("BOSCA_JOB_") {
+                            if let Ok(value) = env::var(name) {
+                                value.to_owned()
+                            } else {
+                                arg
+                            }
+                        } else {
+                            arg
+                        }
+                    }
+                }
+            } else {
+                arg
+            }
+        }).collect::<Vec<String>>();
+
+        let mut cmd = Command::new(command.get("command").unwrap().as_str().unwrap().to_owned());
+        cmd.args(command_args);
+        cmd.env("BOSCA_JOB", job_file);
+        if let Some(metadata_file) = metadata_file {
+            cmd.env("BOSCA_METADATA", &metadata_file);
+        }
+        cmd.env("BOSCA_OUTPUT_FILE", &output_file);
+        for (key, file) in files.iter() {
+            cmd.env(format!("BOSCA_SUPPLEMENTARY_{}", key), file);
+        }
+        cmd
+    }
 }
 
 #[async_trait]
@@ -38,10 +88,10 @@ impl Activity for CommandActivity {
 
     async fn execute(&self, client: &Client, context: &mut ActivityContext, job: &WorkflowJob) -> Result<(), Error> {
         let metadata_id = job.metadata.as_ref().unwrap().id.to_owned();
-        let command = job.workflow_activity.configuration.get("command").unwrap().as_str().unwrap().to_owned();
         let input_file_ext = job.workflow_activity.configuration.get("input_ext").unwrap_or(&Value::String("".to_owned())).as_str().unwrap().to_owned();
         let output_file_ext = job.workflow_activity.configuration.get("output_ext").unwrap_or(&Value::String("".to_owned())).as_str().unwrap().to_owned();
-
+        let empty_env_commands = Value::Object(Map::new());
+        let env_commands = job.workflow_activity.configuration.get("env_commands").unwrap_or(&empty_env_commands).as_object().unwrap();
         let include_metadata = job.workflow_activity.configuration.get("include_metadata").unwrap_or(&Value::Bool(true)).as_bool().unwrap();
 
         let inputs: HashSet<String> = job.workflow_activity.inputs.iter().map(|input| {
@@ -78,48 +128,20 @@ impl Activity for CommandActivity {
             None
         };
 
-        let output_file = context.new_file(&output_file_ext).await?;
-        let command_args = job.workflow_activity.configuration.get("command_args").unwrap().as_array().unwrap().iter().map(|arg| {
-            let arg = arg.as_str().unwrap().to_owned();
-            if arg.starts_with("$") {
-                let name = &arg.as_str()[1..];
-                match name {
-                    "BOSCA_JOB" => job_file.to_owned(),
-                    "BOSCA_METADATA" => if let Some(metadata_file) = metadata_file.as_ref() {
-                        metadata_file.to_owned()
-                    } else {
-                        "".to_owned()
-                    },
-                    "BOSCA_OUTPUT_FILE" => output_file.to_owned(),
-                    _ => {
-                        if let Some(key) = name.strip_prefix("BOSCA_SUPPLEMENTARY_") {
-                            if files.contains_key(key) {
-                                files.get(key).unwrap().to_owned()
-                            } else {
-                                "".to_owned()
-                            }
-                        } else {
-                            arg
-                        }
-                    }
-                }
-            } else {
-                arg
+        for (key, value) in env_commands.iter() {
+            let mut cmd = self.build_command(value, &job_file, metadata_file.clone(), &output_file_ext, &files);
+            let output = cmd.output().await?;
+            if !output.stderr.is_empty() {
+                let err = from_utf8(&output.stderr).map_err(|e| Error::new(format!("error converting stderr: {}", e)))?;
+                return Err(Error::new(format!("stderr: {}", err)));
             }
-        }).collect::<Vec<String>>();
-
-        let mut cmd = Command::new(command);
-        cmd.args(command_args);
-        cmd.env("BOSCA_JOB", job_file);
-        if let Some(metadata_file) = metadata_file {
-            cmd.env("BOSCA_METADATA", &metadata_file);
-        }
-        cmd.env("BOSCA_OUTPUT_FILE", &output_file);
-
-        for (key, file) in files.iter() {
-            cmd.env(format!("BOSCA_SUPPLEMENTARY_{}", key), file);
+            let var_value = from_utf8(&output.stdout).map_err(|e| Error::new(format!("error converting stdout: {}", e)))?;
+            env::set_var(format!("BOSCA_JOB_{}", key), &var_value);
         }
 
+        let output_file = context.new_file(&output_file_ext).await?;
+
+        let mut cmd = self.build_command(&job.workflow_activity.configuration, &job_file, metadata_file, &output_file, &files);
         info!("{:?}", cmd);
 
         let output = cmd.output().await?;

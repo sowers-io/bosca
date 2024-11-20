@@ -77,12 +77,12 @@ impl CollectionObject {
         &self.collection.ordering
     }
 
-    async fn created(&self) -> String {
-        self.collection.created.to_string()
+    async fn created(&self) -> &DateTime<Utc> {
+        &self.collection.created
     }
 
-    async fn modified(&self) -> String {
-        self.collection.modified.to_string()
+    async fn modified(&self) -> &DateTime<Utc> {
+        &self.collection.modified
     }
 
     async fn parent_collections(&self, ctx: &Context<'_>, offset: i64, limit: i64) -> Result<Vec<CollectionObject>, Error> {

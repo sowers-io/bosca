@@ -18,6 +18,15 @@ export class SelectionEvent extends Event {
   public static readonly NAME = 'item-selection'
 }
 
+export class ClearSelectionEvent extends Event {
+
+  constructor() {
+    super(SelectionEvent.NAME)
+  }
+
+  public static readonly NAME = 'clear-selection'
+}
+
 export class RefreshSelectionEvent extends Event {
   public readonly selection: any
 

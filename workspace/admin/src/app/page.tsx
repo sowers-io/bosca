@@ -1,7 +1,7 @@
 import { Metadata } from 'next'
 import { CommandMenu } from '@/app/commands/dialog'
-import { AppSidebar } from '@/app/components/app-sidebar'
-import { Selection } from '@/app/components/selection'
+import { AppSidebar } from '@/app/components/sidebar/app-sidebar'
+import { Selection } from '@/app/components/content/selection'
 import { Menu } from '@/app/components/menu'
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
 

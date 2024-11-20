@@ -16,6 +16,7 @@ use crate::media::mux::MuxUploadActivity;
 use crate::metadata::command::CommandActivity;
 use media::transcriptions::mapper::TranscriptionMapperActivity;
 use media::transcriptions::transcribe::TranscribeActivity;
+use crate::media::transcriptions::mapper_to_foreach::TranscriptionMapperToForEachActivity;
 use crate::metadata::foreach::MetadataForEachActivity;
 use crate::metadata::tera::MetadataTeraActivity;
 
@@ -37,6 +38,7 @@ pub fn get_default_activities() -> Vec<Box<dyn Activity + Send + Sync>> {
         Box::new(MuxUploadActivity::default()),
         Box::new(TranscribeActivity::default()),
         Box::new(TranscriptionMapperActivity::default()),
+        Box::new(TranscriptionMapperToForEachActivity::default()),
         Box::new(PromptActivity::default()),
         Box::new(CommandActivity::default()),
         Box::new(MetadataTeraActivity::default()),
