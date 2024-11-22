@@ -118,6 +118,15 @@ jobs:
           tags: |
             ghcr.io/sowers-io/bosca/admin:latest
             ghcr.io/sowers-io/bosca/admin:${{ github.sha }}
+      - name: Build and push admin
+        uses: docker/build-push-action@v3
+        with:
+          context: workspace/admin
+          file: workspace/imageproxy/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/sowers-io/bosca/imageproxy:latest
+            ghcr.io/sowers-io/bosca/imageproxy:${{ github.sha }}
 
   publish-kubernetes:
     runs-on: ubuntu-22.04
