@@ -118,10 +118,10 @@ jobs:
           tags: |
             ghcr.io/sowers-io/bosca/admin:latest
             ghcr.io/sowers-io/bosca/admin:${{ github.sha }}
-      - name: Build and push admin
+      - name: Build and push imageproxy
         uses: docker/build-push-action@v3
         with:
-          context: workspace/admin
+          context: workspace/imageproxy
           file: workspace/imageproxy/Dockerfile
           push: true
           tags: |

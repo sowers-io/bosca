@@ -43,4 +43,4 @@ EXPOSE 8003
 
 ENV PORT=8003
 
-CMD ["node", "./lib/main.js"]
+CMD ["node", "/app/lib/main.js"]
