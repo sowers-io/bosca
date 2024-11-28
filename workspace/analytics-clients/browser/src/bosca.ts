@@ -68,6 +68,7 @@ export class BoscaSink extends AnalyticEventSink {
   readonly url: string
   readonly context: Context
   events: Events
+  timeout: any = 0
 
   constructor(url: string, appId: string, appVersion: string, clientId: string) {
     super()
@@ -107,7 +108,7 @@ export class BoscaSink extends AnalyticEventSink {
     const self = this
     setTimeout(() => {
       let _ = self.flush()
-    }, 30_000)
+    }, 1_000)
   }
 
   protected async onAdd(_: AnalyticEvent, event: AnalyticEvent): Promise<void> {
@@ -129,6 +130,14 @@ export class BoscaSink extends AnalyticEventSink {
         }),
         extras: event.element.extras,
       } as EventElement,
+    })
+    if (this.timeout > 0) {
+      clearTimeout(this.timeout)
+    }
+    const self = this
+    this.timeout = setTimeout(() => {
+      self.timeout = 0
+      self.flush()
     })
   }
 
@@ -215,6 +224,7 @@ async function getGeo(): Promise<Geo> {
 }
 
 async function generateInstallationId(): Promise<string> {
+  // TODO: use /register
   const timestamp = Date.now().toString(36)
   const randomStr = Math.random().toString(36).substring(2, 8)
   return `${timestamp}-${randomStr}`
