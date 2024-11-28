@@ -1,6 +1,6 @@
 {
   "name": "@bosca/analytics-client-browser",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "scripts": {
     "build": "tsc --build",
     "build.watch": "tsc --build --watch",
