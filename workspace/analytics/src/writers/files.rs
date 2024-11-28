@@ -1,3 +1,13 @@
+use crate::writers::arrow::copy::copy_to_parquet;
+use crate::writers::arrow::parquet::writer::new_arrow_writer;
+use crate::writers::arrow::schema::SchemaDefinition;
+use crate::writers::writer::EventsWriter;
+use bytes::{Buf, BytesMut};
+use chrono::Utc;
+use log::{error, info};
+use object_store::aws::AmazonS3Builder;
+use object_store::path::Path;
+use object_store::{MultipartUpload, ObjectStore};
 use std::error::Error;
 use std::fs;
 use std::fs::{create_dir_all, File};
@@ -6,23 +16,13 @@ use std::os::linux::fs::MetadataExt;
 #[cfg(windows)]
 use std::os::windows::fs::MetadataExt;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
-use std::sync::atomic::{AtomicBool, AtomicI64};
 use std::sync::atomic::Ordering::Relaxed;
+use std::sync::atomic::{AtomicBool, AtomicI64};
+use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use bytes::{Buf, BytesMut};
-use chrono::Utc;
-use log::{error, info};
-use object_store::aws::AmazonS3Builder;
-use object_store::{MultipartUpload, ObjectStore};
-use object_store::path::Path;
 use tokio::io::AsyncReadExt;
 use tokio::task;
 use ulid::Ulid;
-use crate::writers::arrow::copy::copy_to_parquet;
-use crate::writers::arrow::parquet::writer::new_arrow_writer;
-use crate::writers::arrow::schema::SchemaDefinition;
-use crate::writers::writer::EventsWriter;
 
 #[derive(Clone)]
 pub struct Config {
@@ -59,10 +59,19 @@ pub fn find_file(index: usize, config: Config) -> Result<String, Box<dyn Error>>
             }
         }
     }
-    Ok(format!("{}/events-{index}-{}.json", &config.temp_dir, Utc::now().timestamp_millis()))
+    Ok(format!(
+        "{}/events-{index}-{}.json",
+        &config.temp_dir,
+        Utc::now().timestamp_millis()
+    ))
 }
 
-pub async fn watch_files(writer: Arc<EventsWriter>, schema: Arc<SchemaDefinition>, config: Config, watching: Arc<AtomicBool>) {
+pub async fn watch_files(
+    writer: Arc<EventsWriter>,
+    schema: Arc<SchemaDefinition>,
+    config: Config,
+    watching: Arc<AtomicBool>,
+) {
     loop {
         if writer.is_stopped() {
             // TODO: is it necessary to interrupt the sleep if this happens?
@@ -76,12 +85,16 @@ pub async fn watch_files(writer: Arc<EventsWriter>, schema: Arc<SchemaDefinition
         }
         if let Ok(exists) = tokio::fs::try_exists(&config.batches_dir).await {
             if !exists {
-                tokio::fs::create_dir_all(&config.batches_dir).await.unwrap();
+                tokio::fs::create_dir_all(&config.batches_dir)
+                    .await
+                    .unwrap();
             }
         }
         if let Ok(exists) = tokio::fs::try_exists(&config.pending_objects_dir).await {
             if !exists {
-                tokio::fs::create_dir_all(&config.pending_objects_dir).await.unwrap();
+                tokio::fs::create_dir_all(&config.pending_objects_dir)
+                    .await
+                    .unwrap();
             }
         }
         if let Err(err) = watch_json(&writer, &schema, &config, false).await {
@@ -95,7 +108,12 @@ pub async fn watch_files(writer: Arc<EventsWriter>, schema: Arc<SchemaDefinition
     }
 }
 
-pub async fn watch_files_hourly(writer: Arc<EventsWriter>, schema: Arc<SchemaDefinition>, config: Config, watching: Arc<AtomicBool>) {
+pub async fn watch_files_hourly(
+    writer: Arc<EventsWriter>,
+    schema: Arc<SchemaDefinition>,
+    config: Config,
+    watching: Arc<AtomicBool>,
+) {
     loop {
         if writer.is_stopped() {
             // TODO: is it necessary to interrupt the sleep if this happens?
@@ -128,13 +146,22 @@ async fn watch_objects(config: &Config) -> Result<(), Box<dyn Error>> {
                 if file_type.is_file() {
                     if let Ok(file_name) = entry.file_name().into_string() {
                         if file_name.ends_with(".parquet") {
-                            info!("processing upload for: {}/{}", config.pending_objects_dir, file_name);
+                            info!(
+                                "processing upload for: {}/{}",
+                                config.pending_objects_dir, file_name
+                            );
                             let metadata = entry.metadata().await?;
                             let created = metadata.created()?;
-                            let utc = time::OffsetDateTime::UNIX_EPOCH + time::Duration::try_from(created.duration_since(std::time::UNIX_EPOCH).unwrap()).unwrap();
+                            let utc = time::OffsetDateTime::UNIX_EPOCH
+                                + time::Duration::try_from(
+                                    created.duration_since(std::time::UNIX_EPOCH).unwrap(),
+                                )
+                                .unwrap();
                             let path = Path::parse(format!(
                                 "ingest/raw/{}/{}/{}/events-{}.parquet",
-                                utc.year(), utc.month() as u8, utc.day(),
+                                utc.year(),
+                                utc.month() as u8,
+                                utc.day(),
                                 Ulid::new().to_string(),
                             ))?;
                             let mut upload = s3.put_multipart(&path).await?;
@@ -149,22 +176,20 @@ async fn watch_objects(config: &Config) -> Result<(), Box<dyn Error>> {
                                 if buf_len >= MAX_UPLOAD_CHUNK_SIZE {
                                     let copy = buf.copy_to_bytes(buf_len);
                                     buf.clear();
-                                    upload
-                                        .put_part(copy.into())
-                                        .await?;
+                                    upload.put_part(copy.into()).await?;
                                 }
                                 offset += chunk_len as u64;
                             }
                             if !buf.is_empty() {
                                 let copy = buf.copy_to_bytes(buf.len());
                                 buf.clear();
-                                upload
-                                    .put_part(copy.into())
-                                    .await?;
+                                upload.put_part(copy.into()).await?;
                             }
                             upload.complete().await?;
                             if let Err(err) = tokio::fs::remove_file(&file_name).await {
-                                return Err(format!("error deleting file: {} {:?}", file_name, err).into())
+                                return Err(
+                                    format!("error deleting file: {} {:?}", file_name, err).into()
+                                );
                             }
                         }
                     }
@@ -177,7 +202,12 @@ async fn watch_objects(config: &Config) -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-async fn watch_json(writer: &Arc<EventsWriter>, schema: &Arc<SchemaDefinition>, config: &Config, ignore_file_size: bool) -> Result<(), Box<dyn Error>> {
+async fn watch_json(
+    writer: &Arc<EventsWriter>,
+    schema: &Arc<SchemaDefinition>,
+    config: &Config,
+    ignore_file_size: bool,
+) -> Result<(), Box<dyn Error>> {
     if let Ok(mut read) = tokio::fs::read_dir(&config.temp_dir).await {
         let mut files = Vec::new();
         let mut file_sizes = 0u64;
@@ -195,12 +225,24 @@ async fn watch_json(writer: &Arc<EventsWriter>, schema: &Arc<SchemaDefinition>, 
                 }
             }
         }
-        if ignore_file_size || file_sizes >= config.max_file_size {
+        if (ignore_file_size || file_sizes >= config.max_file_size) && file_sizes > 0 {
             writer.recycle().await;
-            config.last_full_sync.store(Utc::now().timestamp_millis(), Relaxed);
-            let parquet_file = format!("{}/batch-{}.parquet", &config.batches_dir, Utc::now().timestamp_millis());
-            let finished_parquet_file = format!("{}/batch-{}.parquet", &config.pending_objects_dir, Utc::now().timestamp_millis());
-            let writer = Arc::new(Mutex::new(new_arrow_writer(Arc::clone(schema), &parquet_file, 10000).unwrap()));
+            config
+                .last_full_sync
+                .store(Utc::now().timestamp_millis(), Relaxed);
+            let parquet_file = format!(
+                "{}/batch-{}.parquet",
+                &config.batches_dir,
+                Utc::now().timestamp_millis()
+            );
+            let finished_parquet_file = format!(
+                "{}/batch-{}.parquet",
+                &config.pending_objects_dir,
+                Utc::now().timestamp_millis()
+            );
+            let writer = Arc::new(Mutex::new(
+                new_arrow_writer(Arc::clone(schema), &parquet_file, 10000)?,
+            ));
             let mut success = true;
             for file in &files {
                 if let Ok(file_name) = file.file_name().into_string() {
@@ -212,8 +254,13 @@ async fn watch_json(writer: &Arc<EventsWriter>, schema: &Arc<SchemaDefinition>, 
                         success = task::spawn_blocking(move || {
                             match File::open(spawn_file) {
                                 Ok(file) => {
-                                    if let Err(err) = copy_to_parquet(file, spawn_writer_schema, spawn_writer) {
-                                        error!("error copying file to parquet: {:?}", err);
+                                    match copy_to_parquet(file, spawn_writer_schema, spawn_writer) {
+                                        Ok(has_records) => {
+                                            return has_records
+                                        }
+                                        Err(err) => {
+                                            error!("error copying file to parquet: {:?}", err);
+                                        }
                                     }
                                 }
                                 Err(e) => {
@@ -222,14 +269,12 @@ async fn watch_json(writer: &Arc<EventsWriter>, schema: &Arc<SchemaDefinition>, 
                                 }
                             }
                             true
-                        }).await.unwrap_or_else(|e| {
+                        })
+                        .await
+                        .unwrap_or_else(|e| {
                             error!("error copying file: {:?}", e);
                             false
-                        });
-                        if !success {
-                            let _ = writer.lock().unwrap().finish();
-                            break;
-                        }
+                        }) || success;
                     }
                 }
             }
@@ -247,7 +292,12 @@ async fn watch_json(writer: &Arc<EventsWriter>, schema: &Arc<SchemaDefinition>, 
                 for file in files {
                     if let Ok(file_name) = file.file_name().into_string() {
                         if file_name.starts_with("events-") && file_name.ends_with(".json") {
-                            if let Err(err) = tokio::fs::remove_file(format!("{}/{}", &config.temp_dir, file_name)).await {
+                            if let Err(err) = tokio::fs::remove_file(format!(
+                                "{}/{}",
+                                &config.temp_dir, file_name
+                            ))
+                            .await
+                            {
                                 return Err(format!("error deleting file: {:?}", err).into());
                             }
                         }
@@ -257,7 +307,7 @@ async fn watch_json(writer: &Arc<EventsWriter>, schema: &Arc<SchemaDefinition>, 
                     return Err(format!("error deleting file: {:?}", err).into());
                 }
             } else if let Err(err) = tokio::fs::remove_file(parquet_file).await {
-                return Err(format!("error deleting file: {:?}", err).into())
+                return Err(format!("error deleting file: {:?}", err).into());
             }
         }
     } else {
