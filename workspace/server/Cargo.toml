@@ -47,7 +47,7 @@ opentelemetry-semantic-conventions = "0.26.0"
 
 meilisearch-sdk = "0.27.1"
 headers = "0.4.0"
-rustls = { version = "0.23.14", features = ["tls12", "ring"] }
+rustls = { version = "0.23.18", features = ["tls12", "ring"] }
 webpki-roots = "0.26.6"
 
 mimalloc = { version = "0.1.43", features = ["default"] }
