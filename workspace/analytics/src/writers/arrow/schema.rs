@@ -52,7 +52,13 @@ impl SchemaDefinition {
         let geo_struct: Fields = vec![
             Field::new("city", DataType::Utf8, true),
             Field::new("country", DataType::Utf8, true),
+            Field::new("continent", DataType::Utf8, true),
             Field::new("region", DataType::Utf8, true),
+            Field::new("region_code", DataType::Utf8, true),
+            Field::new("postal_code", DataType::Utf8, true),
+            Field::new("timezone", DataType::Utf8, true),
+            Field::new("longitude", DataType::Float64, true),
+            Field::new("latitude", DataType::Float64, true),
         ].into();
 
         // Context schema

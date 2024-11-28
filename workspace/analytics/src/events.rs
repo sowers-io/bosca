@@ -43,7 +43,13 @@ pub struct Event {
 pub struct Geo {
     pub city: Option<String>,
     pub country: Option<String>,
+    pub continent: Option<String>,
+    pub longitude: Option<f64>,
+    pub latitude: Option<f64>,
     pub region: Option<String>,
+    pub region_code: Option<String>,
+    pub postal_code: Option<String>,
+    pub timezone: Option<String>
 }
 
 #[derive(Serialize, Deserialize, Clone)]

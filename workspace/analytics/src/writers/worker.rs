@@ -8,13 +8,18 @@ use tokio::sync::mpsc::{Receiver, Sender};
 use tokio::sync::mpsc::error::SendError;
 use tokio::time::timeout;
 use crate::events::Events;
-use crate::events_sink::EventSink;
+use crate::events_sink::{EventSink, EventPipelineContext};
+
+pub struct WriterPayload {
+    context: EventPipelineContext,
+    events: Events,
+}
 
 pub struct WriterWorker {
     stopped: Arc<AtomicBool>,
     active: Arc<AtomicI32>,
     sink: Option<Box<dyn EventSink + Send + Sync + 'static>>,
-    sender: Option<Sender<Events>>,
+    sender: Option<Sender<WriterPayload>>,
     queue_size: usize,
 }
 
@@ -29,8 +34,12 @@ impl WriterWorker {
         }
     }
 
-    pub async fn write(&self, events: Events) -> Result<(), SendError<Events>> {
-        self.sender.as_ref().unwrap().send(events).await
+    pub async fn write(&self, context: EventPipelineContext, events: Events) -> Result<(), SendError<WriterPayload>> {
+        let payload = WriterPayload {
+            context,
+            events,
+        };
+        self.sender.as_ref().unwrap().send(payload).await
     }
 
     pub fn start(&mut self) {
@@ -45,12 +54,12 @@ impl WriterWorker {
         tokio::spawn(Self::process(stopped, active, recv, sink));
     }
 
-    async fn process(stopped: Arc<AtomicBool>, active: Arc<AtomicI32>, mut recv: Receiver<Events>, mut sink: Box<dyn EventSink + Send + Sync>) {
+    async fn process(stopped: Arc<AtomicBool>, active: Arc<AtomicI32>, mut recv: Receiver<WriterPayload>, mut sink: Box<dyn EventSink + Send + Sync>) {
         let mut done = false;
         while !done && !stopped.load(Relaxed) && !recv.is_closed() {
             match timeout(Duration::from_millis(3000), recv.recv()).await {
-                Ok(Some(events)) => {
-                    if let Err(error) = sink.add(events).await {
+                Ok(Some(mut payload)) => {
+                    if let Err(error) = sink.add(&mut payload.context, &payload.events).await {
                         error!("error adding events to sink: {:?}", error);
                     }
                 }

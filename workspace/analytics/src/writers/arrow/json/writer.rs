@@ -33,7 +33,7 @@ impl JsonWriter {
         Ok(())
     }
 
-    pub fn write(&mut self, events: Events) -> Result<(), Box<dyn std::error::Error>> {
+    pub fn write(&mut self, events: &Events) -> Result<(), Box<dyn std::error::Error>> {
         self.accumulator.add_batch(events);
         self.flush(false)?;
         Ok(())

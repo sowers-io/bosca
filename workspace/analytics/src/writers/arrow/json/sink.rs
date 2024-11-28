@@ -1,6 +1,6 @@
 use std::sync::Arc;
 use crate::events::Events;
-use crate::events_sink::EventSink;
+use crate::events_sink::{EventPipelineContext, EventSink};
 use crate::writers::arrow::json::writer::JsonWriter;
 use crate::writers::arrow::schema::SchemaDefinition;
 
@@ -18,7 +18,7 @@ impl JsonSink {
 
 #[async_trait::async_trait]
 impl EventSink for JsonSink {
-    async fn add(&mut self, events: Events) -> Result<(), Box<dyn std::error::Error>> {
+    async fn add(&mut self, _: &mut EventPipelineContext, events: &Events) -> Result<(), Box<dyn std::error::Error>> {
         self.writer.write(events)
     }
 

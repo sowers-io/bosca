@@ -6,8 +6,8 @@ use std::sync::atomic::Ordering::Relaxed;
 use tokio::sync::mpsc::error::SendError;
 use bosca_pool::Pool;
 use crate::events::Events;
-use crate::events_sink::EventSink;
-use crate::writers::worker::WriterWorker;
+use crate::events_sink::{EventSink, EventPipelineContext};
+use crate::writers::worker::{WriterPayload, WriterWorker};
 
 pub struct EventsWriter {
     active: Arc<AtomicI32>,
@@ -51,10 +51,10 @@ impl EventsWriter {
         self.active.load(Relaxed) > 0
     }
 
-    pub async fn write(&self, events: Events) -> Result<(), SendError<Events>> {
+    pub async fn write(&self, context: EventPipelineContext, events: Events) -> Result<(), SendError<WriterPayload>> {
         assert!(!self.stopped.load(Relaxed));
         let worker = self.pool.acquire().await;
-        match worker.object.write(events).await {
+        match worker.object.write(context, events).await {
             Ok(_) => {
                 assert!(self.pool.release(worker).await.err().is_none());
                 Ok(())

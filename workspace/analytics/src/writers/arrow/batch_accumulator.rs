@@ -1,5 +1,5 @@
 use std::sync::Arc;
-use arrow::array::{ArrayRef, Float32Builder, Int32Builder, ListBuilder, RecordBatch, StringBuilder, StructBuilder, TimestampMillisecondBuilder, UInt32Builder};
+use arrow::array::{ArrayRef, Float32Builder, Float64Builder, Int32Builder, ListBuilder, RecordBatch, StringBuilder, StructBuilder, TimestampMillisecondBuilder, UInt32Builder};
 use ulid::Ulid;
 use crate::events::Events;
 use crate::writers::arrow::schema::SchemaDefinition;
@@ -25,9 +25,9 @@ impl BatchAccumulator {
         self.events == 0
     }
 
-    pub fn add_batch(&mut self, events: Events) {
+    pub fn add_batch(&mut self, events: &Events) {
         self.events += events.events.len();
-        self.data.push(events);
+        self.data.push(events.clone());
     }
 
     pub fn is_full(&self) -> bool {
@@ -78,14 +78,26 @@ impl BatchAccumulator {
         // Geo struct builders
         let geo_city_builder = StringBuilder::new();
         let geo_country_builder = StringBuilder::new();
+        let geo_continent_builder = StringBuilder::new();
         let geo_region_builder = StringBuilder::new();
+        let geo_region_code_builder = StringBuilder::new();
+        let geo_postal_code_builder = StringBuilder::new();
+        let geo_timezone_builder = StringBuilder::new();
+        let geo_longitude_builder = Float64Builder::new();
+        let geo_latitude_builder = Float64Builder::new();
 
         let geo_struct_builder = StructBuilder::new(
             self.schema.geo_struct.clone(),
             vec![
                 Box::new(geo_city_builder),
                 Box::new(geo_country_builder),
+                Box::new(geo_continent_builder),
                 Box::new(geo_region_builder),
+                Box::new(geo_region_code_builder),
+                Box::new(geo_postal_code_builder),
+                Box::new(geo_timezone_builder),
+                Box::new(geo_longitude_builder),
+                Box::new(geo_latitude_builder),
             ],
         );
 
@@ -189,10 +201,40 @@ impl BatchAccumulator {
                 } else {
                     geo_struct_builder.field_builder::<StringBuilder>(1).unwrap().append_null();
                 }
-                if let Some(region) = &geo.region {
-                    geo_struct_builder.field_builder::<StringBuilder>(2).unwrap().append_value(region);
+                if let Some(continent) = &geo.continent {
+                    geo_struct_builder.field_builder::<StringBuilder>(2).unwrap().append_value(continent);
                 } else {
                     geo_struct_builder.field_builder::<StringBuilder>(2).unwrap().append_null();
+                }
+                if let Some(region) = &geo.region {
+                    geo_struct_builder.field_builder::<StringBuilder>(3).unwrap().append_value(region);
+                } else {
+                    geo_struct_builder.field_builder::<StringBuilder>(3).unwrap().append_null();
+                }
+                if let Some(region_code) = &geo.region_code {
+                    geo_struct_builder.field_builder::<StringBuilder>(4).unwrap().append_value(region_code);
+                } else {
+                    geo_struct_builder.field_builder::<StringBuilder>(4).unwrap().append_null();
+                }
+                if let Some(postal_code) = &geo.postal_code {
+                    geo_struct_builder.field_builder::<StringBuilder>(5).unwrap().append_value(postal_code);
+                } else {
+                    geo_struct_builder.field_builder::<StringBuilder>(5).unwrap().append_null();
+                }
+                if let Some(timezone) = &geo.timezone {
+                    geo_struct_builder.field_builder::<StringBuilder>(6).unwrap().append_value(timezone);
+                } else {
+                    geo_struct_builder.field_builder::<StringBuilder>(6).unwrap().append_null();
+                }
+                if let Some(longitude) = &geo.longitude {
+                    geo_struct_builder.field_builder::<Float64Builder>(7).unwrap().append_value(*longitude);
+                } else {
+                    geo_struct_builder.field_builder::<Float64Builder>(7).unwrap().append_null();
+                }
+                if let Some(latitude) = &geo.latitude {
+                    geo_struct_builder.field_builder::<Float64Builder>(8).unwrap().append_value(*latitude);
+                } else {
+                    geo_struct_builder.field_builder::<Float64Builder>(8).unwrap().append_null();
                 }
                 geo_struct_builder.append(true);
 
