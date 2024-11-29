@@ -18,6 +18,7 @@ resources:
   - runner
   - analytics-backend
   - analytics-frontend
+  - analytics-query
   - admin
   - meilisearch
   - ollama

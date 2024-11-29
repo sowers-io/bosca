@@ -1,0 +1,23 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Run bosca-analytics" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
+    <option name="command" value="run --package bosca-analytics --bin bosca-analytics" />
+    <option name="workingDirectory" value="file://$PROJECT_DIR$" />
+    <envs>
+      <env name="QUERY_AWS_ACCESS_KEY_ID" value="67fO5gFs6BuksBrh6rMp" />
+      <env name="QUERY_AWS_SECRET_ACCESS_KEY" value="eV4rlwomvXsM19CXorOTb5uYaFLeNXsPLKx5Uxdm" />
+      <env name="QUERY_AWS_ENDPOINT" value="127.0.0.1:9010" />
+    </envs>
+    <option name="emulateTerminal" value="true" />
+    <option name="channel" value="DEFAULT" />
+    <option name="requiredFeatures" value="true" />
+    <option name="allFeatures" value="false" />
+    <option name="withSudo" value="false" />
+    <option name="buildTarget" value="REMOTE" />
+    <option name="backtrace" value="SHORT" />
+    <option name="isRedirectInput" value="false" />
+    <option name="redirectInputPath" value="" />
+    <method v="2">
+      <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
+    </method>
+  </configuration>
+</component>
