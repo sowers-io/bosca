@@ -164,7 +164,7 @@ export class BoscaSink extends AnalyticEventSink {
       body: JSON.stringify(events),
     })
     if (response.status != 200) {
-      console.error('oops')
+      console.error('error sending events: ' + await response.text())
     }
   }
 }

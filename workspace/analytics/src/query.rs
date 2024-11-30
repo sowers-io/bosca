@@ -35,7 +35,7 @@ pub async fn query(extract::Json(query): extract::Json<Query>) -> impl IntoRespo
     };
     let mut response_headers = HeaderMap::new();
     response_headers.insert("Content-Type", "application/json".parse().unwrap());
-    Ok((response_headers, format!("{{\"results\": {results}}}")).into_response())
+    Ok((StatusCode::OK, response_headers, format!("{{\"results\": {results}}}")).into_response())
 }
 
 fn query_sync(query: &Query) -> Result<String, Box<dyn Error + Send + Sync>> {

@@ -259,7 +259,6 @@ async fn main() {
 
     let app = Router::new()
         .route("/", get(index))
-        .route("/query", get(query::query))
         .route("/query", post(query::query))
         .route("/health", get(health))
         .route("/register", get(register))
