@@ -4,9 +4,10 @@
     <option name="command" value="run --package bosca-analytics --bin bosca-analytics" />
     <option name="workingDirectory" value="file://$PROJECT_DIR$" />
     <envs>
+      <env name="POD_IP" value="192.168.10.254" />
       <env name="QUERY_AWS_ACCESS_KEY_ID" value="67fO5gFs6BuksBrh6rMp" />
-      <env name="QUERY_AWS_SECRET_ACCESS_KEY" value="eV4rlwomvXsM19CXorOTb5uYaFLeNXsPLKx5Uxdm" />
       <env name="QUERY_AWS_ENDPOINT" value="127.0.0.1:9010" />
+      <env name="QUERY_AWS_SECRET_ACCESS_KEY" value="eV4rlwomvXsM19CXorOTb5uYaFLeNXsPLKx5Uxdm" />
     </envs>
     <option name="emulateTerminal" value="true" />
     <option name="channel" value="DEFAULT" />

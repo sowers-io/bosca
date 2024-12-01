@@ -66,6 +66,10 @@ spec:
                 secretKeyRef:
                   name: s3-credentials
                   key: S3_ACCESS_KEY_ID
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
           envFrom:
             - configMapRef:
                 name: analytics-frontend-env

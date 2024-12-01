@@ -1,7 +1,9 @@
 use std::collections::HashSet;
 use std::env;
+use std::net::Ipv4Addr;
 use std::sync::{Mutex, OnceLock};
 use std::time::{Duration, SystemTime};
+use log::info;
 use rand::{thread_rng, Rng};
 use serde::{Deserialize, Serialize};
 use ulid::Ulid;
@@ -21,15 +23,18 @@ fn last() -> &'static Mutex<LastCreation> {
     LOCK.get_or_init(|| Mutex::new(LastCreation{millis: 0, created: HashSet::new()}))
 }
 
-const NODE_BITS: u8 = 2;
+const NODE_BITS: u16 = 8;
 
-fn node_id() -> &'static u8 {
-    static LOCK: OnceLock<u8> = OnceLock::new();
+fn node_id() -> &'static u16 {
+    static LOCK: OnceLock<u16> = OnceLock::new();
     LOCK.get_or_init(|| {
-        let node_id: u8 = env::var("NODE_ID").unwrap().parse().unwrap();
-        let max_node_id = (1 << NODE_BITS) - 1;
+        let ip: Ipv4Addr = env::var("POD_IP").unwrap().parse().unwrap();
+        let node_id: u16 = ip.octets()[3] as u16;
+        let max_node_id: u16 = (1 << NODE_BITS) - 1;
         if node_id > max_node_id {
-            panic!("node_id is too large for the specified number of bits");
+            panic!("node_id is too large for the specified number of bits: {}, {}", node_id, max_node_id);
+        } else {
+            info!(target: "bosca", "node_id: {}", node_id);
         }
         node_id
     })
