@@ -6,6 +6,7 @@ use serde::{Deserialize, Serialize};
 use std::error::Error;
 use std::str::from_utf8;
 use arrow::json::ArrayWriter;
+use log::info;
 use tokio::task;
 
 #[derive(Serialize, Deserialize)]
@@ -18,6 +19,8 @@ pub async fn query(extract::Json(query): extract::Json<Query>) -> impl IntoRespo
     if query.key != std::env::var("QUERY_KEY").unwrap() {
         return Err((StatusCode::FORBIDDEN, "Invalid key").into_response());
     }
+
+    info!(target: "bosca", "running query: {}", query.query);
 
     let results = match task::spawn_blocking(move || match query_sync(&query) {
         Ok(result) => Ok(result),
