@@ -68,8 +68,8 @@ export class DefaultAnalyticElement extends AnalyticElement {
 export class DefaultAnalyticEvent extends AnalyticEvent {
 
   private readonly event: IAnalyticEvent
+  private readonly _created = new Date()
   readonly element: AnalyticElement
-  readonly created: Date = new Date()
 
   constructor(event: IAnalyticEvent, element: AnalyticElement) {
     super()
@@ -81,8 +81,16 @@ export class DefaultAnalyticEvent extends AnalyticEvent {
     return this.event.type
   }
 
+  get created(): Date {
+    return this._created
+  }
+
   get name(): string {
     return this.event.type.toString()
+  }
+
+  toRaw(): IAnalyticEvent {
+    return this.event
   }
 
   toParameters(): any {

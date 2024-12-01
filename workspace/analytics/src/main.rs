@@ -261,7 +261,7 @@ async fn main() {
         .route("/", get(index))
         .route("/query", post(query::query))
         .route("/health", get(health))
-        .route("/register", get(register))
+        .route("/register", post(register))
         .route("/events", post(events))
         .layer(DefaultBodyLimit::disable())
         .layer(TimeoutLayer::new(Duration::from_secs(600)))

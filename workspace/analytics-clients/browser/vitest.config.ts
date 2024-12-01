@@ -5,5 +5,8 @@ export default defineConfig({
     include: ['**/*.spec.ts'],
     globals: true,
     environment: 'node',
+    browser: {
+      name: 'chrome',
+    },
   },
 })
