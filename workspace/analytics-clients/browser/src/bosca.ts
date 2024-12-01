@@ -120,7 +120,6 @@ export class BoscaSink extends AnalyticEventSink {
             self.flush()
           }, 30_000)
         }
-        console.log('error flushing events: ', e)
       }
     } finally {
       this.flushing = false
@@ -208,7 +207,7 @@ export class BoscaSink extends AnalyticEventSink {
           // eslint-disable-next-line no-undef
           localStorage.setItem('__iid', installationId!)
         } else {
-          throw new Error(response.statusText)
+          throw new Error(await response.json())
         }
       }
       return installationId

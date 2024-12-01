@@ -89,7 +89,6 @@ export class EventQueue {
 
   private async store() {
     if (!this.database) {
-      console.warn('database not ready')
       await this.queueStore()
       return
     }

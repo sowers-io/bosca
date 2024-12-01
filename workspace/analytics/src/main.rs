@@ -10,7 +10,7 @@ use axum::extract::{DefaultBodyLimit, State};
 use axum::routing::post;
 use axum::{extract, response::IntoResponse, routing::get, Router};
 use chrono::Utc;
-use http::{HeaderMap, HeaderName, HeaderValue, StatusCode};
+use http::{HeaderMap, HeaderName, HeaderValue, Method, StatusCode};
 use log::{info, warn};
 use opentelemetry::{global, KeyValue};
 use serde_json::json;
@@ -42,6 +42,7 @@ use crate::writers::files::{find_file, watch_files, watch_files_hourly, Config};
 use crate::writers::http::sink::HttpSink;
 use crate::writers::writer::EventsWriter;
 use mimalloc::MiMalloc;
+use tower_http::cors::{Any, CorsLayer};
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
@@ -263,6 +264,10 @@ async fn main() {
         .route("/health", get(health))
         .route("/register", post(register))
         .route("/events", post(events))
+        .layer(CorsLayer::new()
+            .allow_methods([Method::GET, Method::POST])
+            .allow_headers(Any)
+            .allow_origin(Any))
         .layer(DefaultBodyLimit::disable())
         .layer(TimeoutLayer::new(Duration::from_secs(600)))
         .with_state(Arc::clone(&writer));

@@ -3,6 +3,7 @@ import { BoscaSink } from './bosca'
 import { addSink, logImpression } from './sink'
 
 test('impression', async () => {
+  console.log('adding impressions...')
   const sink = new BoscaSink('http://127.0.0.1:8009', 'a', 'b', 'c')
   addSink(sink)
   const impressions = []
@@ -22,5 +23,10 @@ test('impression', async () => {
     }))
   }
   await Promise.all(impressions)
+  await new Promise((resolve) => {
+    setTimeout(resolve, 3000)
+  })
+  console.log('...impressions')
+
   await sink.flush()
 }, 600_000)
