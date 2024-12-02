@@ -123,11 +123,16 @@ pub async fn upload_multipart_body(
 }
 
 pub async fn upload_supplementary(client: &Client, job: &WorkflowJob, name: &str, bytes: Bytes, content_type: Option<String>) -> Result<(), Error> {
-    let metadata_id = &job.metadata.as_ref().unwrap().id;
     let key = &job.workflow_activity.outputs.first().unwrap().value;
+    upload_supplementary_with_key(client, job, key, name, bytes, content_type).await?;
+    Ok(())
+}
+
+pub async fn upload_supplementary_with_key(client: &Client, job: &WorkflowJob, key: &str, name: &str, bytes: Bytes, content_type: Option<String>) -> Result<(), Error> {
+    let metadata_id = &job.metadata.as_ref().unwrap().id;
     let content_type = content_type.unwrap_or("application/octet-stream".to_string());
 
-    if !job.metadata.as_ref().unwrap().supplementary.iter().any(|s| s.key == *key) {
+    if !job.metadata.as_ref().unwrap().supplementary.iter().any(|s| s.key == key) {
         let mut attributes = Map::new();
         if let Some(source) = job.workflow_activity.configuration.get("source") {
             attributes.insert("source".to_owned(), source.clone());

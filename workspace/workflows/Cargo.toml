@@ -6,6 +6,7 @@ edition = "2021"
 [dependencies]
 serde = "1.0.210"
 serde_json = "1.0.128"
+chrono = { version = "0.4.38", features = ["serde"] }
 reqwest = { version = "0.12.7", features = ["stream", "multipart", "json"] }
 tokio = { version = "1.38.1", features = ["full"] }
 tokio-tungstenite = { version = "0.24.0", features = ["default", "stream"] }
@@ -27,3 +28,6 @@ uuid = { version = "1.11.0", features = ["v4"] }
 langchain-rust = { version = "4.6.0", features = ["default", "ollama", "qdrant", "uuid", "qdrant-client"] }
 infer = "0.16.0"
 tera = "1.20.0"
+duckdb = { version = "1.1.1", features = ["serde_json", "parquet", "uuid"] }
+arrow = { version = "53.2.0", features = ["arrow-json", "chrono-tz"] }
+arrow-json = { version = "53.3.0" }

@@ -16,6 +16,7 @@ use crate::media::mux::MuxUploadActivity;
 use crate::metadata::command::CommandActivity;
 use media::transcriptions::mapper::TranscriptionMapperActivity;
 use media::transcriptions::transcribe::TranscribeActivity;
+use crate::analytics::query::QueryActivity;
 use crate::media::transcriptions::mapper_to_foreach::TranscriptionMapperToForEachActivity;
 use crate::metadata::foreach::MetadataForEachActivity;
 use crate::metadata::tera::MetadataTeraActivity;
@@ -27,6 +28,7 @@ pub mod media;
 pub mod util;
 pub mod ml;
 pub mod ai;
+pub mod analytics;
 
 pub fn get_default_activities() -> Vec<Box<dyn Activity + Send + Sync>> {
     vec![
@@ -43,6 +45,7 @@ pub fn get_default_activities() -> Vec<Box<dyn Activity + Send + Sync>> {
         Box::new(CommandActivity::default()),
         Box::new(MetadataTeraActivity::default()),
         Box::new(MetadataForEachActivity::default()),
+        Box::new(QueryActivity::default()),
     ]
 }
 
