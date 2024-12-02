@@ -12,7 +12,7 @@ export class BoscaSink extends AnalyticEventSink {
   private readonly context: Context
   private readonly queue = new EventQueue()
   private flushing = false
-  private timeout: any = 0
+  private timeout: any | null = null
   private sessionState: SessionState
 
   constructor(url: string, appId: string, appVersion: string, clientId: string) {
@@ -92,7 +92,7 @@ export class BoscaSink extends AnalyticEventSink {
     }
     const self = this
     this.timeout = setTimeout(() => {
-      self.timeout = 0
+      self.timeout = null
       self.flush()
     }, 1000)
   }
@@ -109,27 +109,29 @@ export class BoscaSink extends AnalyticEventSink {
       if (!allPendingEvents) return
       try {
         for (const pendingEvents of allPendingEvents.events) {
-          const events = {
-            context: pendingEvents.context,
-            events: pendingEvents.events,
-            sent: new Date().getTime(),
-            sent_micros: 0,
+          try {
+            const events = {
+              context: pendingEvents.context,
+              events: pendingEvents.events,
+              sent: new Date().getTime(),
+              sent_micros: 0,
+            }
+            const response = await fetch(this.url + '/events', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(events),
+            })
+            if (response.status != 200) {
+              throw new Error('error sending events: ' + await response.text())
+            }
+            await allPendingEvents.finish(pendingEvents)
+          } catch (e: any) {
+            console.error('failed to flush: ', e)
+            await allPendingEvents.onError(e)
           }
-          const response = await fetch(this.url + '/events', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(events),
-          })
-          if (response.status != 200) {
-            throw new Error('error sending events: ' + await response.text())
-          }
-          await allPendingEvents.finish(pendingEvents)
         }
-      } catch (e: any) {
-        console.error('failed to flush: ', e)
-        await allPendingEvents.onError(e)
       } finally {
         if (await allPendingEvents.close()) {
           this.queueFlush()

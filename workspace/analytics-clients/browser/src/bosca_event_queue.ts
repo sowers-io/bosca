@@ -2,9 +2,10 @@ import { Context, Event } from './bosca_models'
 
 export class PendingEvents {
   private readonly queue: EventQueue
-  hasErrors = false
   readonly eventCount: number
   readonly events: PendingContextEvents[] = []
+  hasErrors = false
+
   constructor(eventCount: number, queue: EventQueue, events: PendingContextEvents[]) {
     this.eventCount = eventCount
     this.queue = queue
@@ -43,7 +44,7 @@ interface PendingEvent {
 export class EventQueue {
 
   private pending: PendingEvent[] = []
-  private commitTimeout: any = null
+  private commitTimeout: any | null = null
   // eslint-disable-next-line no-undef
   private database: IDBDatabase | null = null
   private transaction = false
@@ -109,9 +110,9 @@ export class EventQueue {
   private async queueStore() {
     if (this.commitTimeout) {
       clearTimeout(this.commitTimeout)
-      this.commitTimeout = null
     }
     this.commitTimeout = setTimeout(async () => {
+      this.commitTimeout = null
       await this.store()
     }, 500)
   }
