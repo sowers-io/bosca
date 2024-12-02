@@ -3,6 +3,8 @@ use serde_json::Value;
 
 #[derive(Serialize, Deserialize, Eq, PartialEq, Ord, PartialOrd, Clone, Debug)]
 pub enum EventType {
+    #[serde(alias="session")]
+    Session,
     #[serde(alias="interaction")]
     Interaction,
     #[serde(alias="impression")]

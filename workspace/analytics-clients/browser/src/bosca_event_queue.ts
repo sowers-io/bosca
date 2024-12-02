@@ -1,28 +1,48 @@
-import { Event } from './bosca_models'
+import { Context, Event } from './bosca_models'
 
 export class PendingEvents {
   private readonly queue: EventQueue
+  hasErrors = false
   readonly eventCount: number
-  readonly events: Event[] = []
-
-  constructor(eventCount: number, queue: EventQueue, events: Event[]) {
+  readonly events: PendingContextEvents[] = []
+  constructor(eventCount: number, queue: EventQueue, events: PendingContextEvents[]) {
     this.eventCount = eventCount
     this.queue = queue
     this.events = events
   }
 
-  async commit() {
-    return await this.queue.commit(this)
+  async onError(_: any) {
+    this.hasErrors = true
   }
-    
-  async rollback() {
-    return await this.queue.rollback(this)
+
+  async finish(events: PendingContextEvents) {
+    return await this.queue.finish(events)
   }
+
+  async close() {
+    return await this.queue.close(this)
+  }
+}
+
+export class PendingContextEvents {
+  readonly context: Context
+  readonly events: Event[] = []
+
+  constructor(context: Context, events: Event[]) {
+    this.context = context
+    this.events = events
+  }
+}
+
+interface PendingEvent {
+  client_id: string
+  context: Context
+  event: Event
 }
 
 export class EventQueue {
 
-  private pending: Event[] = []
+  private pending: PendingEvent[] = []
   private commitTimeout: any = null
   // eslint-disable-next-line no-undef
   private database: IDBDatabase | null = null
@@ -45,9 +65,9 @@ export class EventQueue {
     this.database = await toResult(request)
   }
 
-  async add(event: Event) {
+  async add(context: Context, event: Event) {
     this.eventCount++
-    this.pending.push(event)
+    this.pending.push({ client_id: event.client_id, context: context, event: event })
     await this.queueStore()
   }
 
@@ -56,25 +76,34 @@ export class EventQueue {
     this.transaction = true
     const transaction = this.database!.transaction('events', 'readonly')
     const store = transaction.objectStore('events')
-    const events: Event[] = await toResult(store.getAll())
+    const events: PendingEvent[] = await toResult(store.getAll())
     if (events.length === 0) return null
-    return new PendingEvents(this.eventCount, this, events)
+    const pendingEvents: PendingContextEvents[] = []
+    let current: PendingContextEvents | null = null
+    let currentSessionId: string | null = null
+    for (const event of events) {
+      if (currentSessionId !== event.context.session_id) {
+        currentSessionId = event.context.session_id
+        current = new PendingContextEvents(event.context, [])
+        pendingEvents.push(current)
+      }
+      current!.events.push(event.event)
+    }
+    return new PendingEvents(this.eventCount, this, pendingEvents)
   }
 
-  async commit(events: PendingEvents) {
+  async finish(events: PendingContextEvents) {
     const transaction = this.database!.transaction('events', 'readwrite')
     const store = transaction.objectStore('events')
     for (const event of events.events) {
       store.delete(event.client_id)
     }
     transaction.commit()
-    this.transaction = false
-    return events.eventCount != this.eventCount
   }
 
-  async rollback(events: PendingEvents) {
+  async close(events: PendingEvents) {
     this.transaction = false
-    return events.eventCount != this.eventCount
+    return this.eventCount !== events.eventCount
   }
 
   private async queueStore() {

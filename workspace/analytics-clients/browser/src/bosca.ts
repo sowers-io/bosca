@@ -1,8 +1,10 @@
-import { AnalyticEvent } from './event'
+import { AnalyticEvent, AnalyticEventType } from './event'
 import { AnalyticEventSink } from './sink'
 import { ulid } from 'ulid'
 import { EventQueue } from './bosca_event_queue'
 import { Context, Device, EventContent, EventElement, Geo } from './bosca_models'
+import { SessionState } from './bosca_session_state'
+import { getAnalyticEventFactory } from './factory'
 
 export class BoscaSink extends AnalyticEventSink {
 
@@ -11,6 +13,7 @@ export class BoscaSink extends AnalyticEventSink {
   private readonly queue = new EventQueue()
   private flushing = false
   private timeout: any = 0
+  private sessionState: SessionState
 
   constructor(url: string, appId: string, appVersion: string, clientId: string) {
     super()
@@ -42,13 +45,26 @@ export class BoscaSink extends AnalyticEventSink {
       session_id: ulid(),
     }
     const self = this
-    setTimeout(() => {
-      let _ = self.flush()
-    }, 1_000)
+    this.sessionState = new SessionState(300000, async () => {
+      self.context.session_id = ulid()
+      const event = await getAnalyticEventFactory().createEvent({
+        type: AnalyticEventType.session,
+        element: {
+          id: self.context.session_id,
+          type: 'session',
+          content: [],
+          extras: {
+            start: 'true',
+          },
+        },
+      })
+      await self.add(event)
+    })
   }
 
   protected async onAdd(_: AnalyticEvent, event: AnalyticEvent): Promise<void> {
-    await this.queue.add({
+    this.sessionState.onEvent()
+    await this.queue.add(this.context, {
       client_id: ulid(),
       type: event.type,
       created: event.created.getTime(),
@@ -89,32 +105,35 @@ export class BoscaSink extends AnalyticEventSink {
     this.flushing = true
     try {
       await this.initializeContext()
-      const pendingEvents = await this.queue.get()
-      if (!pendingEvents) return
+      const allPendingEvents = await this.queue.get()
+      if (!allPendingEvents) return
       try {
-        const events = {
-          context: this.context,
-          events: pendingEvents.events,
-          sent: new Date().getTime(),
-          sent_micros: 0,
+        for (const pendingEvents of allPendingEvents.events) {
+          const events = {
+            context: pendingEvents.context,
+            events: pendingEvents.events,
+            sent: new Date().getTime(),
+            sent_micros: 0,
+          }
+          const response = await fetch(this.url + '/events', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(events),
+          })
+          if (response.status != 200) {
+            throw new Error('error sending events: ' + await response.text())
+          }
+          await allPendingEvents.finish(pendingEvents)
         }
-        const response = await fetch(this.url + '/events', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(events),
-        })
-        if (response.status != 200) {
-          throw new Error('error sending events: ' + await response.text())
-        }
-        if (await pendingEvents.commit()) {
+      } catch (e: any) {
+        console.error('failed to flush: ', e)
+        await allPendingEvents.onError(e)
+      } finally {
+        if (await allPendingEvents.close()) {
           this.queueFlush()
-        }
-      } catch (e) {
-        if (await pendingEvents.rollback()) {
-          this.queueFlush()
-        } else {
+        } else if (allPendingEvents.hasErrors) {
           const self = this
           setTimeout(() => {
             self.flush()
