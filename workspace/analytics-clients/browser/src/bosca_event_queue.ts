@@ -78,7 +78,7 @@ export class EventQueue {
     const transaction = this.database!.transaction('events', 'readonly')
     const store = transaction.objectStore('events')
     const events: PendingEvent[] = await toResult(store.getAll())
-    if (events.length === 0) return null
+    if (events.length === 0) return new PendingEvents(this.eventCount, this, [])
     const pendingEvents: PendingContextEvents[] = []
     let current: PendingContextEvents | null = null
     let currentSessionId: string | null = null
