@@ -1,12 +1,12 @@
 {
   "name": "@bosca/analytics-client-browser",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "scripts": {
     "build": "tsc --build",
     "build.watch": "tsc --build --watch",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "test": "vitest ."
+    "test": "vitest . --browser"
   },
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -33,10 +33,12 @@
     "@types/node": "^20.16.1",
     "@typescript-eslint/eslint-plugin": "^8.2.0",
     "@typescript-eslint/parser": "^8.2.0",
+    "@vitest/browser": "^1.6.0",
     "eslint": "^8.57.0",
     "eslint-config-prettier": "^8.10.0",
     "typescript": "^5.6.3",
-    "vitest": "^1.6.0"
+    "vitest": "^1.6.0",
+    "webdriverio": "^9.4.1"
   },
   "dependencies": {
     "ulid": "^2.3.0"

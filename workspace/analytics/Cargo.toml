@@ -12,7 +12,7 @@ arrow-json = { version = "53.3.0" }
 axum = { version = "0.7.5", features = ["default", "tokio", "multipart", "tracing", "json", "form", "ws"] }
 axum-streams = { version = "0.19.0", features = ["json"] }
 axum-extra = { version = "0.9.4", features = ["cookie"] }
-tower-http = { version = "0.6.1", features = ["timeout"] }
+tower-http = { version = "0.6.1", features = ["timeout", "cors"] }
 http = "1.1.0"
 tokio = { version = "1.38.1", features = ["full", "tracing"] }
 tokio-postgres = { version = "0.7.11", features = ["with-uuid-0_8"] }

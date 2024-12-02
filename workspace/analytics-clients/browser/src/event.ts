@@ -1,4 +1,5 @@
 export enum AnalyticEventType {
+  session = 'session',
   interaction = 'interaction',
   impression = 'impression',
   completion = 'completion',
