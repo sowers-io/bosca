@@ -63,7 +63,7 @@ export class BoscaSink extends AnalyticEventSink {
   }
 
   protected async onAdd(_: AnalyticEvent, event: AnalyticEvent): Promise<void> {
-    this.sessionState.onEvent()
+    await this.sessionState.onEvent()
     await this.queue.add(this.context, {
       client_id: ulid(),
       type: event.type,

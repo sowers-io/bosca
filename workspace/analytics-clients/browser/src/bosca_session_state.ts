@@ -1,22 +1,20 @@
 export class SessionState {
   private sessionTimeout: number
-  private onSessionStart: () => void
+  private onSessionStart: () => Promise<void>
   private isSessionActive: boolean
   private timeoutId: number | null = null
 
-  constructor(sessionTimeout: number, onSessionStart: () => void) {
+  constructor(sessionTimeout: number, onSessionStart: () => Promise<void>) {
     this.sessionTimeout = sessionTimeout // Default timeout: 30 minutes
     this.onSessionStart = onSessionStart || (() => console.log('Session started'))
-
     this.isSessionActive = false
     this.timeoutId = null
     document.addEventListener('visibilitychange', this.handleVisibilityChange.bind(this))
-
     this.startSession()
   }
 
-  onEvent() {
-    this.resumeSession()
+  async onEvent() {
+    await this.resumeSession()
   }
 
   handleVisibilityChange() {
@@ -27,10 +25,10 @@ export class SessionState {
     }
   }
 
-  startSession() {
+  async startSession() {
     if (!this.isSessionActive) {
       this.isSessionActive = true
-      this.onSessionStart()
+      await this.onSessionStart()
     }
     this.resetTimeout()
   }
@@ -41,9 +39,9 @@ export class SessionState {
     }
   }
 
-  resumeSession() {
+  async resumeSession() {
     if (!this.isSessionActive) {
-      this.startSession()
+      await this.startSession()
     } else {
       this.resetTimeout()
     }
