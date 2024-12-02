@@ -13,6 +13,7 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
           scope: '@bosca'
           always-auth: 'true'
+          token: '${{ secrets.NPM_TOKEN }}'
       - run: cd workspace/analytics-clients/browser && npm ci
       - run: cd workspace/analytics-clients/browser && npm publish --access public
         env:
