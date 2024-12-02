@@ -2,8 +2,11 @@ use std::env::VarError;
 use async_trait::async_trait;
 use std::fmt::{Display, Formatter};
 use std::path::Path;
+use std::str::Utf8Error;
+use duckdb::arrow::error::ArrowError;
 use tokio::fs::{remove_file, File};
 use tokio::io::AsyncWriteExt;
+use tokio::task::JoinError;
 use uuid::Uuid;
 use bosca_client::client::{Client, WorkflowJob};
 
@@ -79,6 +82,38 @@ impl Error {
 
 impl From<reqwest::Error> for Error {
     fn from(value: reqwest::Error) -> Self {
+        Self {
+            message: format!("{}", value),
+        }
+    }
+}
+
+impl From<Utf8Error> for Error {
+    fn from(value: Utf8Error) -> Self {
+        Self {
+            message: format!("{}", value),
+        }
+    }
+}
+
+impl From<JoinError> for Error {
+    fn from(value: JoinError) -> Self {
+        Self {
+            message: format!("{}", value),
+        }
+    }
+}
+
+impl From<duckdb::Error> for Error {
+    fn from(value: duckdb::Error) -> Self {
+        Self {
+            message: format!("{}", value),
+        }
+    }
+}
+
+impl From<ArrowError> for Error {
+    fn from(value: ArrowError) -> Self {
         Self {
             message: format!("{}", value),
         }
