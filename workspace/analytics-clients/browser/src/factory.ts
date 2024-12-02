@@ -8,7 +8,13 @@ export interface AnalyticEventFactory {
 
 let factory: AnalyticEventFactory = {
   async createEvent(event) {
-    return new DefaultAnalyticEvent(event, new DefaultAnalyticElement(event.element, event.element ? event.element.extras : {}, event.element && event.element.content ? event.element.content.map((c) => new DefaultContentElement(c)) : []))
+    return new DefaultAnalyticEvent(event,
+      new DefaultAnalyticElement(
+        event.element,
+        event.element ? (event.element.extras || {}) : {},
+        event.element && event.element.content ? event.element.content.map((c) => new DefaultContentElement(c)) : [],
+      ),
+    )
   },
 }
 
@@ -87,10 +93,6 @@ export class DefaultAnalyticEvent extends AnalyticEvent {
 
   get name(): string {
     return this.event.type.toString()
-  }
-
-  toRaw(): IAnalyticEvent {
-    return this.event
   }
 
   toParameters(): any {

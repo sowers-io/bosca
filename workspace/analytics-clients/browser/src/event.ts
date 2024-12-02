@@ -8,15 +8,15 @@ export enum AnalyticEventType {
 export interface IContentElement {
   id: string
   type: string
-  index: number | undefined
-  percent: number | undefined
+  index?: number | undefined
+  percent?: number | undefined
 }
 
 export interface IAnalyticElement {
   id: string
   type: string
-  content: IContentElement[]
-  extras: { [key: string]: string }
+  content?: IContentElement[] | undefined
+  extras?: { [key: string]: string } | undefined
 }
 
 export interface IAnalyticEvent {
