@@ -1,12 +1,13 @@
 import { fastify } from 'fastify'
 import sharp from 'sharp'
-import { Readable } from 'node:stream'
 import { encode } from 'blurhash'
 
 interface QueryOpts {
   u: string | undefined
   w: string | undefined
   h: string | undefined
+  pw: string | undefined
+  ph: string | undefined
   f: string | undefined
   ch: string | undefined
   cw: string | undefined
@@ -26,7 +27,7 @@ async function main() {
     reply.status(500).send({ ok: false })
   })
   server.get('/healthcheck', {}, async function(_, reply) {
-    reply.code(200).send({ok: true})
+    reply.code(200).send({ ok: true })
   })
   server.get('/imageproxy', {}, async function (request, reply) {
     const opts = request.query as QueryOpts
@@ -51,8 +52,10 @@ async function main() {
       reply.code(500).send()
       return
     }
+    // @ts-ignore
+    const image = await response.arrayBuffer()
     let contentType = response.headers.get('Content-Type')
-    let transformer = sharp()
+    let transformer = sharp(image)
     // @ts-ignore
     if (opts.w || opts.h) {
       let resize: Resize = { width: undefined, height: undefined }
@@ -70,11 +73,32 @@ async function main() {
       }
       transformer = transformer.resize(resize)
     }
+    if (opts.pw || opts.ph) {
+      let resize: Resize = { width: undefined, height: undefined }
+      if (opts.pw) {
+        resize.width = parseFloat(opts.pw)
+        if (isNaN(resize.width)) {
+          return reply.code(400).send()
+        }
+      }
+      if (opts.ph) {
+        resize.height = parseFloat(opts.ph)
+        if (isNaN(resize.height)) {
+          return reply.code(400).send()
+        }
+      }
+      const { width, height } = await transformer.metadata()
+      if (resize.width && width) {
+        resize.width = Math.floor(resize.width * width)
+      }
+      if (resize.height && height) {
+        resize.height = Math.floor(resize.height * height)
+      }
+      transformer = transformer.resize(resize)
+    }
     switch (opts.f) {
       case 'blurhash': {
-        transformer = transformer.raw().ensureAlpha()
-        // @ts-ignore
-        const result = await Readable.fromWeb(response.body).pipe(transformer).toBuffer({ resolveWithObject: true })
+        const result = await transformer.raw().ensureAlpha().toBuffer({ resolveWithObject: true })
         const img = Uint8ClampedArray.from(result.data)
         const cWidth = opts.cw ? parseInt(opts.cw) : 4
         const cHeight = opts.ch ? parseInt(opts.ch) : 4
@@ -107,9 +131,8 @@ async function main() {
         break
       }
     }
-    // @ts-ignore
-    const buffer = await Readable.fromWeb(response.body).pipe(transformer).toBuffer()
-    await reply.header('Content-Type', contentType).send(buffer)
+    const newBuffer = await transformer.toBuffer()
+    await reply.header('Content-Type', contentType).send(newBuffer)
   })
   await server.listen({ host: '0.0.0.0', port: 8003 })
   console.log('server listening on 0.0.0.0:8003')
