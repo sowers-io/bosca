@@ -12,7 +12,7 @@ impl EventPipelineContext {
     }
 
     pub fn get_header_value(&self, key: &str) -> Option<&str> {
-        self.headers.get(key).map(|v| v.to_str().unwrap())
+        self.headers.get(key).map(|v| v.to_str().unwrap_or(""))
     }
 }
 
