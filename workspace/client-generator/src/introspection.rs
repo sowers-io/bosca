@@ -1,9 +1,9 @@
 use crate::context::Context;
-use crate::model::{ClassModel, FieldModel, FieldType};
+use crate::model::{ClassModel, ClassType, FieldModel, FieldType};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 pub enum Kind {
     #[serde(rename = "NON_NULL")]
     NonNull,
@@ -40,6 +40,7 @@ impl Field {
         let mut model = FieldModel {
             name: self.name.clone(),
             field_type: FieldType::Unknown,
+            field_type_scalar: FieldType::Unknown,
             field_type_references: vec![],
             nullable: true,
         };
@@ -78,59 +79,94 @@ impl Field {
                 }
                 Kind::Scalar => match reference.name.as_ref().unwrap().as_str() {
                     "Boolean" => {
-                        model.field_type = FieldType::Boolean;
+                        if model.field_type == FieldType::Unknown {
+                            model.field_type = FieldType::Boolean;
+                        } else {
+                            model.field_type_scalar = FieldType::Boolean;
+                        }
                     }
                     "String" => {
-                        model.field_type = FieldType::String;
+                        if model.field_type == FieldType::Unknown {
+                            model.field_type = FieldType::String;
+                        } else {
+                            model.field_type_scalar = FieldType::String;
+                        }
                     }
                     "JSON" => {
-                        model.field_type = FieldType::JSON;
+                        if model.field_type == FieldType::Unknown {
+                            model.field_type = FieldType::Json;
+                        } else {
+                            model.field_type_scalar = FieldType::Json;
+                        }
                     }
                     "DateTime" => {
-                        model.field_type = FieldType::DateTime;
+                        if model.field_type == FieldType::Unknown {
+                            model.field_type = FieldType::DateTime;
+                        } else {
+                            model.field_type_scalar = FieldType::DateTime;
+                        }
                     }
                     "Int" => {
-                        model.field_type = FieldType::Int;
+                        if model.field_type == FieldType::Unknown {
+                            model.field_type = FieldType::Int;
+                        } else {
+                            model.field_type_scalar = FieldType::Int;
+                        }
                     }
                     "Float" => {
-                        model.field_type = FieldType::Float;
+                        if model.field_type == FieldType::Unknown {
+                            model.field_type = FieldType::Float;
+                        } else {
+                            model.field_type_scalar = FieldType::Float;
+                        }
                     }
                     "Double" => {
-                        model.field_type = FieldType::Double;
+                        if model.field_type == FieldType::Unknown {
+                            model.field_type = FieldType::Double;
+                        } else {
+                            model.field_type_scalar = FieldType::Double;
+                        }
                     }
                     _ => {
                         todo!("scalar: {:?}", reference.name)
                     }
                 },
                 Kind::Enum => {
-                    model.field_type = FieldType::Enum;
+                    if model.field_type == FieldType::Unknown {
+                        model.field_type = FieldType::Enum;
+                    }
                     model
                         .field_type_references
                         .push(context.register_reference(reference.name.as_ref().unwrap().as_str()))
                 }
                 Kind::Interface => {
-                    model.field_type = FieldType::Interface;
+                    if model.field_type == FieldType::Unknown {
+                        model.field_type = FieldType::Interface;
+                    }
                     model
                         .field_type_references
                         .push(context.register_reference(reference.name.as_ref().unwrap().as_str()))
                 }
                 Kind::Union => {
-                    model.field_type = FieldType::Union;
+                    if model.field_type == FieldType::Unknown {
+                        model.field_type = FieldType::Union;
+                    }
                     let name = reference.name.as_ref().unwrap().as_str();
                     let r = context.register_reference(name);
                     if r.get_model().is_none() {
-                        let model = ClassModel {
-                            type_name: name.to_owned(),
-                            name: name.to_owned(),
-                            fields: Some(vec![]),
-                            enum_values: None
-                        };
+                        let model = ClassModel::new(
+                            ClassType::Interface,
+                            name.to_owned(),
+                            name.to_owned(),
+                        );
                         context.register_model(Arc::new(model));
                     }
                     model.field_type_references.push(r)
                 }
                 Kind::List => {
-                    model.field_type = FieldType::List;
+                    if model.field_type == FieldType::Unknown {
+                        model.field_type = FieldType::List;
+                    }
                     if let Some(x) = &reference.of_type {
                         Field::update_type(context, x, model);
                     }
@@ -165,38 +201,26 @@ pub struct Type {
 
 impl Type {
     pub fn to_class_model(&self, context: &mut Context) -> Arc<ClassModel> {
-        let mut model = ClassModel {
-            type_name: self.name.clone(),
-            name: self.name.clone(),
-            fields: None,
-            enum_values: None
-        };
+        let mut model = ClassModel::new(
+            if self.kind == Kind::Union || self.kind == Kind::Interface { ClassType::Interface } else if self.kind == Kind::Scalar { ClassType::Scalar } else if self.kind == Kind::Enum { ClassType::Enum } else { ClassType::Class },
+            self.name.clone(),
+            self.name.clone(),
+        );
         if let Some(ref fields) = self.fields {
-            if model.fields.is_none() {
-                model.fields = Some(vec![]);
-            }
             for field in fields {
-                model.fields.as_mut().unwrap().push(field.to_field_model(context));
+                model.add_field_model(field.to_field_model(context));
             }
         }
         if let Some(ref fields) = self.input_fields {
-            if model.fields.is_none() {
-                model.fields = Some(vec![]);
-            }
             for field in fields {
-                model.fields.as_mut().unwrap().push(field.to_field_model(context));
+                model.add_field_model(field.to_field_model(context));
             }
         }
         if let Some(ref fields) = self.enum_values {
-            if model.enum_values.is_none() {
-                model.enum_values = Some(vec![]);
-            }
+            model.class_type = ClassType::Enum;
             for field in fields {
-                model.enum_values.as_mut().unwrap().push(field.name.as_ref().unwrap().to_string());
+                model.add_enum_value(field.name.as_ref().unwrap().to_string());
             }
-        }
-        if model.fields.is_none() && model.enum_values.is_none() {
-            model.fields = Some(vec![]);
         }
         let model = Arc::new(model);
         context.register_model(Arc::clone(&model));

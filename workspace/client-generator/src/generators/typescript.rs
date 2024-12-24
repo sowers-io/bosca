@@ -1,21 +1,30 @@
-use std::sync::Arc;
 use crate::context::Context;
-use crate::model::{ClassModel, FieldType};
+use crate::model::{ClassModel, ClassType, FieldModel, FieldType};
+use std::sync::Arc;
 
 pub fn generate(context: &Context, models: &Vec<Arc<ClassModel>>) {
     for model in models {
-        if model.name.starts_with("__") || model.name == "BaseJSON" || model.name == "JSON" {
+        if model.name.starts_with("__")
+            || model.name.starts_with("I__")
+            || model.name == "IJSON"
+            || model.name == "JSON"
+            || model.name == "String"
+            || model.name == "IString"
+            || model.name == "DateTime"
+        {
             continue;
         }
-        if model.enum_values.is_some() && !model.enum_values.as_ref().unwrap().is_empty() {
-            println!("export enum {} {{", model.name);
-            for enum_value in model.enum_values.as_ref().unwrap().iter() {
-                print!("  {} = \"{}\",", enum_value, enum_value);
-                println!();
+        if model.class_type == ClassType::Enum {
+            println!("export enum {} {{", model.name.replace('.', "_"));
+            if let Some(enum_values) = model.get_enum_values() {
+                for enum_value in enum_values {
+                    print!("  {} = \"{}\",", enum_value, enum_value);
+                    println!();
+                }
             }
             println!("}}")
-        } else if model.fields.is_some() {
-            print!("export interface {}", model.name);
+        } else if model.class_type == ClassType::Interface || model.class_type == ClassType::Class {
+            print!("export interface {}", model.name.replace('.', "_"));
 
             let ifaces = context.get_class_interfaces(&model.name);
             if !ifaces.is_empty() {
@@ -24,56 +33,82 @@ pub fn generate(context: &Context, models: &Vec<Arc<ClassModel>>) {
                     if i > 0 {
                         print!(", ");
                     }
-                    print!("{}", iface.name);
+                    print!("{}", iface.name.replace('.', "_"));
                 }
             }
 
             println!(" {{");
-            println!("  __typename?: \"{}\"", model.type_name);
-            for field in model.fields.as_ref().unwrap() {
-                print!("  {}", field.name);
-                if field.nullable {
-                    print!("?")
+            if !context.is_class_interface(model.name.as_str()) {
+                println!("  __typename?: \"{}\"", model.type_name);
+            } else if model.class_type == ClassType::Interface {
+                println!("  __typename?: string | null");
+            }
+            if let Some(fields) = model.get_fields() {
+                for field in fields {
+                    print!("  {}", field.name);
+                    if field.nullable {
+                        print!("?")
+                    }
+                    print!(": ");
+                    field_type(model, &field, &field.field_type);
+                    if field.nullable {
+                        print!(" | null")
+                    }
+                    println!()
                 }
-                print!(": ");
-                match field.field_type {
-                    FieldType::Unknown => panic!("unknown field type: {}.{}", model.name, field.name),
-                    FieldType::List => {
-                        if field.field_type_references.is_empty() {
-                            panic!("field must have a type reference: {}.{}", model.name, field.name);
-                        }
-                        print!("{}", field.field_type_references[0].name);
-                        print!("[]")
-                    }
-                    FieldType::Map => {}
-                    FieldType::Double | FieldType::Int | FieldType::Float => {
-                        print!("number")
-                    }
-                    FieldType::String => {
-                        print!("string")
-                    }
-                    FieldType::JSON => {
-                        print!("any")
-                    }
-                    FieldType::Boolean => {
-                        print!("boolean")
-                    }
-                    FieldType::Date | FieldType::DateTime => {
-                        print!("Date")
-                    }
-                    FieldType::Union | FieldType::Object | FieldType::Interface | FieldType::Enum => {
-                        if field.field_type_references.is_empty() {
-                            panic!("field must have a type reference: {}.{}", model.name, field.name);
-                        }
-                        print!("{}", field.field_type_references[0].name);
-                    }
-                }
-                if field.nullable {
-                    print!(" | null")
-                }
-                println!()
             }
             println!("}}")
+        }
+    }
+}
+
+fn field_type(model: &ClassModel, field: &FieldModel, ftype: &FieldType) {
+    match ftype {
+        FieldType::Unknown => {
+            panic!("unknown field type: {}.{}", model.name, field.name)
+        }
+        FieldType::List => {
+            if field.field_type_references.is_empty() {
+                if field.field_type_scalar != FieldType::Unknown {
+                    field_type(model, field, &field.field_type_scalar);
+                } else {
+                    panic!(
+                        "field must have a type reference: {}.{}",
+                        model.name, field.name
+                    );
+                }
+                print!("[]")
+            } else {
+                print!("{}", field.field_type_references[0].name);
+                print!("[]")
+            }
+        }
+        FieldType::Double | FieldType::Int | FieldType::Float => {
+            print!("number")
+        }
+        FieldType::String => {
+            print!("string")
+        }
+        FieldType::Json => {
+            print!("any")
+        }
+        FieldType::Boolean => {
+            print!("boolean")
+        }
+        FieldType::DateTime => {
+            print!("Date")
+        }
+        FieldType::Union
+        | FieldType::Object
+        | FieldType::Interface
+        | FieldType::Enum => {
+            if field.field_type_references.is_empty() {
+                panic!(
+                    "field must have a type reference: {}.{}",
+                    model.name, field.name
+                );
+            }
+            print!("{}", field.field_type_references[0].name.replace('.', "_"));
         }
     }
 }

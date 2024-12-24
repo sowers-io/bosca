@@ -1,6 +1,8 @@
 use std::env;
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 use std::os::linux::fs::MetadataExt;
+#[cfg(target_os = "macos")]
+use std::os::macos::fs::MetadataExt;
 #[cfg(windows)]
 use std::os::windows::fs::MetadataExt;
 use crate::activity::{Activity, ActivityContext, Error};

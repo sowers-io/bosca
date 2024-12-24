@@ -2,7 +2,7 @@ use serde::{Deserialize, Serialize};
 
 pub trait Fields {
     fn name(&self) -> &str;
-    fn get_fields(&self) -> Option<&Vec<Box<Field>>>;
+    fn get_fields(&self) -> Option<&Vec<Field>>;
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -16,7 +16,7 @@ pub enum DocumentType {
 pub struct Document {
     pub name: String,
     pub document_type: Option<DocumentType>,
-    pub fields: Option<Vec<Box<Field>>>,
+    pub fields: Option<Vec<Field>>,
 }
 
 impl Fields for Document {
@@ -24,7 +24,7 @@ impl Fields for Document {
         &self.name
     }
 
-    fn get_fields(&self) -> Option<&Vec<Box<Field>>> {
+    fn get_fields(&self) -> Option<&Vec<Field>> {
         self.fields.as_ref()
     }
 }
@@ -33,23 +33,25 @@ impl Fields for Document {
 pub struct Field {
     pub document_name: String,
     pub name: String,
-    pub fields: Option<Vec<Box<Field>>>,
+    pub fields: Option<Vec<Field>>,
 }
 
 impl Fields for Field {
+    #[allow(clippy::misnamed_getters)]
     fn name(&self) -> &str {
         &self.document_name
     }
-    fn get_fields(&self) -> Option<&Vec<Box<Field>>> {
+    fn get_fields(&self) -> Option<&Vec<Field>> {
         self.fields.as_ref()
     }
 }
 
 impl Fields for Box<Field> {
+    #[allow(clippy::misnamed_getters)]
     fn name(&self) -> &str {
         &self.document_name
     }
-    fn get_fields(&self) -> Option<&Vec<Box<Field>>> {
+    fn get_fields(&self) -> Option<&Vec<Field>> {
         self.fields.as_ref()
     }
 }
@@ -81,7 +83,7 @@ pub fn parse(query_to_parse: &str) -> Document {
                         buf.clear();
                     } else {
                         let last = current.fields.as_mut().unwrap().pop().unwrap();
-                        stack.push(*last);
+                        stack.push(last);
                     }
                 } else if document.name.is_empty() {
                     document.name = buf.trim().to_owned();
@@ -119,11 +121,11 @@ pub fn parse(query_to_parse: &str) -> Document {
                             buf.clear();
                         } else {
                             let children = field.fields.as_mut().unwrap();
-                            children.push(Box::from(Field {
+                            children.push(Field {
                                 document_name: document.name.clone(),
                                 name: buf.trim().to_owned(),
                                 fields: None,
-                            }));
+                            });
                             buf.clear();
                         }
                     } else if document.name.is_empty() {
@@ -149,7 +151,7 @@ pub fn parse(query_to_parse: &str) -> Document {
                         fields.push(field);
                     }
                 } else {
-                    stack.last_mut().unwrap().fields.as_mut().unwrap().push(Box::from(last));
+                    stack.last_mut().unwrap().fields.as_mut().unwrap().push(last);
                 }
             }
             _ => {

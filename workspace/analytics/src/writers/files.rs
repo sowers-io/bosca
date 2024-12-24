@@ -11,8 +11,10 @@ use object_store::{MultipartUpload, ObjectStore};
 use std::error::Error;
 use std::fs;
 use std::fs::{create_dir_all, File};
-#[cfg(unix)]
+#[cfg(target_os = "linux")]
 use std::os::linux::fs::MetadataExt;
+#[cfg(target_os = "macos")]
+use std::os::macos::fs::MetadataExt;
 #[cfg(windows)]
 use std::os::windows::fs::MetadataExt;
 use std::path::PathBuf;
@@ -49,7 +51,9 @@ pub fn find_file(index: usize, config: Config) -> Result<String, Box<dyn Error>>
         if path.file_type()?.is_file() {
             let name = path.file_name().into_string().unwrap();
             if name.starts_with(&prefix) && name.ends_with(".json") {
-                #[cfg(unix)]
+                #[cfg(target_os = "linux")]
+                let size = path.metadata()?.st_size();
+                #[cfg(target_os = "macos")]
                 let size = path.metadata()?.st_size();
                 #[cfg(windows)]
                 let size = path.metadata()?.file_size();

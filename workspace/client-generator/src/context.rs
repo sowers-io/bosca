@@ -1,42 +1,35 @@
-use crate::model::{ClassModel, FieldModel};
+use crate::model::{ClassModel, ClassType};
 use std::collections::{HashMap, HashSet};
+use std::hash::Hash;
 use std::sync::{Arc, Mutex};
 
+#[derive(Default)]
 pub struct Context {
     classes: HashMap<String, Arc<ClassReference>>,
     class_interfaces: HashMap<String, Vec<Arc<ClassReference>>>,
     interfaces: HashMap<String, Vec<Arc<ClassReference>>>,
-}
-
-impl Default for Context {
-    fn default() -> Self {
-        Self {
-            classes: HashMap::new(),
-            class_interfaces: HashMap::new(),
-            interfaces: HashMap::new(),
-        }
-    }
+    base_interfaces: HashSet<String>,
 }
 
 impl Context {
     fn register_base_interface(&mut self, class_name: &str) {
-        if class_name.starts_with("Base") {
+        if self.base_interfaces.contains(class_name) {
             return;
         }
-        let iface_name = format!("Base{}", class_name);
+        self.base_interfaces.insert(class_name.to_owned());
+        let iface_name = format!("I{}", class_name);
         if self.interfaces.contains_key(class_name) {
             return;
         }
         let iface = self.register_reference(&iface_name);
         if iface.get_model().is_none() {
-            let iface_model = ClassModel {
-                type_name: class_name.to_owned(),
-                name: iface_name.clone(),
-                fields: Some(Vec::new()),
-                enum_values: None,
-            };
-            self.register_model(Arc::new(iface_model));
-            let r = self.register_reference(&class_name);
+            let iface_model = ClassModel::new(
+                ClassType::Interface,
+                class_name.to_owned(),
+                iface_name.clone(),
+            );
+            self.register_model_and_base(Arc::new(iface_model), false);
+            let r = self.register_reference(class_name);
             self.register_interface_implementation(&iface_name, r);
         }
     }
@@ -63,7 +56,7 @@ impl Context {
 
     pub fn register_reference(&mut self, name: &str) -> Arc<ClassReference> {
         if let Some(existing) = self.classes.get(name) {
-            return Arc::clone(&existing);
+            return Arc::clone(existing);
         }
         let new_class = Arc::new(ClassReference::new(name));
         self.classes.insert(name.to_owned(), Arc::clone(&new_class));
@@ -71,10 +64,20 @@ impl Context {
     }
 
     pub fn register_model(&mut self, model: Arc<ClassModel>) -> Arc<ClassReference> {
-        self.register_base_interface(&model.name);
+        self.register_model_and_base(model, true)
+    }
+
+    pub fn register_model_and_base(
+        &mut self,
+        model: Arc<ClassModel>,
+        base_interfaces: bool,
+    ) -> Arc<ClassReference> {
+        if base_interfaces {
+            self.register_base_interface(&model.name);
+        }
         if let Some(existing) = self.classes.get(&model.name) {
             existing.set_model(model);
-            return Arc::clone(&existing);
+            return Arc::clone(existing);
         }
         let new_class = Arc::new(ClassReference::new(&model.name));
         self.classes
@@ -83,12 +86,53 @@ impl Context {
         new_class
     }
 
+    pub fn is_class_interface(&self, name: &str) -> bool {
+        self.interfaces.contains_key(name)
+    }
+
     pub fn get_class_interfaces(&self, name: &str) -> Vec<Arc<ClassReference>> {
         self.class_interfaces.get(name).unwrap_or(&vec![]).to_vec()
     }
 
-    pub fn get_all_class_interfaces(&self) -> Vec<Arc<ClassReference>> {
-        self.class_interfaces.values().flatten().cloned().collect()
+    pub fn build_interface_fields(&self) {
+        for model in self.classes.values() {
+            if let Some(model) = model.get_model() {
+                if model.class_type == ClassType::Interface {
+                    #[allow(clippy::mutable_key_type)]
+                    let mut fields = HashSet::new();
+                    let impls = self.interfaces.get(&model.name);
+                    if impls.is_none() || impls.unwrap().is_empty() {
+                        continue;
+                    }
+                    let impls = impls.unwrap();
+                    let mut fields_set = false;
+                    for i in impls {
+                        if let Some(i) = i.get_model() {
+                            if i.class_type == ClassType::Interface {
+                                continue;
+                            }
+                            if !i.has_fields() {
+                                fields.clear();
+                                break;
+                            }
+                            #[allow(clippy::mutable_key_type)]
+                            let class_fields = i
+                                .get_fields()
+                                .unwrap()
+                                .iter().cloned()
+                                .collect::<HashSet<_>>();
+                            if !fields_set && i.has_fields() {
+                                fields_set = true;
+                                fields.extend(class_fields);
+                            } else {
+                                fields = fields.intersection(&class_fields).cloned().collect()
+                            }
+                        }
+                    }
+                    model.set_fields(fields.into_iter().collect());
+                }
+            }
+        }
     }
 
     pub fn get_classes(&self) -> Vec<Arc<ClassReference>> {
@@ -102,6 +146,12 @@ pub struct ClassReference {
     model: Arc<Mutex<Option<Arc<ClassModel>>>>,
 }
 
+impl Hash for ClassReference {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.name.hash(state);
+    }
+}
+
 impl ClassReference {
     pub fn new(name: &str) -> Self {
         Self {
@@ -111,11 +161,7 @@ impl ClassReference {
     }
 
     pub fn get_model(&self) -> Option<Arc<ClassModel>> {
-        if let Some(model) = self.model.lock().unwrap().as_ref() {
-            Some(Arc::clone(model))
-        } else {
-            None
-        }
+        self.model.lock().unwrap().as_ref().map(Arc::clone)
     }
 
     fn set_model(&self, model: Arc<ClassModel>) {

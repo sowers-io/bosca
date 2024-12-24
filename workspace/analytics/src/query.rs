@@ -24,7 +24,7 @@ pub async fn query(extract::Json(query): extract::Json<Query>) -> impl IntoRespo
 
     let results = match task::spawn_blocking(move || match query_sync(&query) {
         Ok(result) => Ok(result),
-        Err(e) => return Err(e),
+        Err(e) => Err(e),
     })
     .await
     {

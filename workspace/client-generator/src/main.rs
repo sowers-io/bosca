@@ -41,6 +41,8 @@ async fn main() {
 
     query.apply(&mut context, &document);
 
+    context.build_interface_fields();
+
     let models = context.get_classes().iter().map(|x| {
         if let Some(x) = x.get_model() {
             return x
