@@ -118,8 +118,12 @@ impl ClassModel {
                 .into_iter()
                 .filter_map(|x| {
                     let model = x.get_model().unwrap();
-                    let filtered = model.apply(context, field);
-                    Some(context.register_reference(filtered?.name.as_str()))
+                    if model.class_type == ClassType::Enum {
+                        Some(context.register_reference(model.name.as_str()))
+                    } else {
+                        let filtered = model.apply(context, field);
+                        Some(context.register_reference(filtered?.name.as_str()))
+                    }
                 })
                 .collect();
             model.fields.as_mut().unwrap().lock().unwrap().push(new_field)

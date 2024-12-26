@@ -1,8 +1,9 @@
+use std::io::Write;
 use crate::context::Context;
 use crate::model::{ClassModel, ClassType, FieldModel, FieldType};
 use std::sync::Arc;
 
-pub fn generate(context: &Context, models: &Vec<Arc<ClassModel>>) {
+pub fn generate(context: &Context, models: &Vec<Arc<ClassModel>>, writer: &mut impl Write) {
     for model in models {
         if model.name.starts_with("__")
             || model.name.starts_with("I__")
@@ -15,54 +16,54 @@ pub fn generate(context: &Context, models: &Vec<Arc<ClassModel>>) {
             continue;
         }
         if model.class_type == ClassType::Enum {
-            println!("export enum {} {{", model.name.replace('.', "_"));
+            writer.write_all(format!("export enum {} {{", model.name.replace('.', "_")).as_bytes()).unwrap();
             if let Some(enum_values) = model.get_enum_values() {
                 for enum_value in enum_values {
-                    print!("  {} = \"{}\",", enum_value, enum_value);
-                    println!();
+                    writer.write_all(format!("  {} = \"{}\",", enum_value, enum_value).as_bytes()).unwrap();
+                    writer.write_all("\r\n".as_bytes()).unwrap();
                 }
             }
-            println!("}}")
+            writer.write_all("}\r\n".as_bytes()).unwrap();
         } else if model.class_type == ClassType::Interface || model.class_type == ClassType::Class {
-            print!("export interface {}", model.name.replace('.', "_"));
+            writer.write_all(format!("export interface {}", model.name.replace('.', "_")).as_bytes()).unwrap();
 
             let ifaces = context.get_class_interfaces(&model.name);
             if !ifaces.is_empty() {
-                print!(" extends ");
+                writer.write_all(" extends ".as_bytes()).unwrap();
                 for (i, iface) in ifaces.iter().enumerate() {
                     if i > 0 {
-                        print!(", ");
+                        writer.write_all(", ".as_bytes()).unwrap();
                     }
-                    print!("{}", iface.name.replace('.', "_"));
+                    writer.write_all(iface.name.replace('.', "_").as_bytes()).unwrap();
                 }
             }
-
-            println!(" {{");
+            writer.write_all(" {\r\n".as_bytes()).unwrap();
             if !context.is_class_interface(model.name.as_str()) {
-                println!("  __typename?: \"{}\"", model.type_name);
+                writer.write_all(format!("  __typename?: \"{}\"", model.type_name).as_bytes()).unwrap();
             } else if model.class_type == ClassType::Interface {
-                println!("  __typename?: string | null");
+                writer.write_all("  __typename?: string | null".as_bytes()).unwrap();
             }
+            writer.write_all("\r\n".as_bytes()).unwrap();
             if let Some(fields) = model.get_fields() {
                 for field in fields {
-                    print!("  {}", field.name);
+                    writer.write_all(format!("  {}", field.name).as_bytes()).unwrap();
                     if field.nullable {
-                        print!("?")
+                        writer.write_all("?".as_bytes()).unwrap();
                     }
-                    print!(": ");
-                    field_type(model, &field, &field.field_type);
+                    writer.write_all(": ".as_bytes()).unwrap();
+                    field_type(model, &field, &field.field_type, writer);
                     if field.nullable {
-                        print!(" | null")
+                        writer.write_all(" | null".as_bytes()).unwrap();
                     }
-                    println!()
+                    writer.write_all("\r\n".as_bytes()).unwrap();
                 }
             }
-            println!("}}")
+            writer.write_all("}\r\n".as_bytes()).unwrap();
         }
     }
 }
 
-fn field_type(model: &ClassModel, field: &FieldModel, ftype: &FieldType) {
+fn field_type(model: &ClassModel, field: &FieldModel, ftype: &FieldType, writer: &mut impl Write) {
     match ftype {
         FieldType::Unknown => {
             panic!("unknown field type: {}.{}", model.name, field.name)
@@ -70,33 +71,33 @@ fn field_type(model: &ClassModel, field: &FieldModel, ftype: &FieldType) {
         FieldType::List => {
             if field.field_type_references.is_empty() {
                 if field.field_type_scalar != FieldType::Unknown {
-                    field_type(model, field, &field.field_type_scalar);
+                    field_type(model, field, &field.field_type_scalar, writer);
                 } else {
                     panic!(
                         "field must have a type reference: {}.{}",
                         model.name, field.name
                     );
                 }
-                print!("[]")
+                writer.write_all("[]".as_bytes()).unwrap();
             } else {
-                print!("{}", field.field_type_references[0].name);
-                print!("[]")
+                writer.write_all(field.field_type_references[0].name.replace('.', "_").as_bytes()).unwrap();
+                writer.write_all("[]".as_bytes()).unwrap();
             }
         }
         FieldType::Double | FieldType::Int | FieldType::Float => {
-            print!("number")
+            writer.write_all("number".as_bytes()).unwrap()
         }
         FieldType::String => {
-            print!("string")
+            writer.write_all("string".as_bytes()).unwrap()
         }
         FieldType::Json => {
-            print!("any")
+            writer.write_all("any".as_bytes()).unwrap()
         }
         FieldType::Boolean => {
-            print!("boolean")
+            writer.write_all("boolean".as_bytes()).unwrap()
         }
         FieldType::DateTime => {
-            print!("Date")
+            writer.write_all("Date".as_bytes()).unwrap()
         }
         FieldType::Union
         | FieldType::Object
@@ -108,7 +109,7 @@ fn field_type(model: &ClassModel, field: &FieldModel, ftype: &FieldType) {
                     model.name, field.name
                 );
             }
-            print!("{}", field.field_type_references[0].name.replace('.', "_"));
+            writer.write_all(field.field_type_references[0].name.replace('.', "_").as_bytes()).unwrap()
         }
     }
 }

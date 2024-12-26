@@ -17,3 +17,7 @@ bytes = "1.7.2"
 log = "0.4.22"
 futures = "0.3.30"
 uuid = { version = "1.11.0", features = ["v4"] }
+sha2 = "0.10.8"
+hex = "0.4.3"
+regex = "1.11.1"
+clap = { version = "4.5.23", features = ["derive"] }

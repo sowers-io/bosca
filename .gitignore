@@ -6,3 +6,4 @@ services/ollama/ollama
 node_modules
 dist
 *.tsbuildinfo
+tmp

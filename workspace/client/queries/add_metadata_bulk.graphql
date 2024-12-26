@@ -1,4 +1,4 @@
-mutation AddMetadataBulk($metadatas: [MetadataInput!]!) {
+mutation AddMetadataBulk($metadatas: [MetadataChildInput!]!) {
     content {
         metadata {
             addBulk(metadatas: $metadatas) {
