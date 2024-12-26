@@ -3,8 +3,8 @@ use crate::context::Context;
 use crate::model::{ClassModel, ClassType, FieldModel, FieldType};
 use std::sync::Arc;
 
-pub fn generate(context: &Context, models: &Vec<Arc<ClassModel>>, writer: &mut impl Write) {
-    for model in models {
+pub fn generate(context: &Context, writer: &mut impl Write) {
+    for model in context.get_class_models() {
         if model.name.starts_with("__")
             || model.name.starts_with("I__")
             || model.name == "IJSON"
@@ -51,7 +51,7 @@ pub fn generate(context: &Context, models: &Vec<Arc<ClassModel>>, writer: &mut i
                         writer.write_all("?".as_bytes()).unwrap();
                     }
                     writer.write_all(": ".as_bytes()).unwrap();
-                    field_type(model, &field, &field.field_type, writer);
+                    field_type(&model, &field, &field.field_type, writer);
                     if field.nullable {
                         writer.write_all(" | null".as_bytes()).unwrap();
                     }
@@ -63,7 +63,7 @@ pub fn generate(context: &Context, models: &Vec<Arc<ClassModel>>, writer: &mut i
     }
 }
 
-fn field_type(model: &ClassModel, field: &FieldModel, ftype: &FieldType, writer: &mut impl Write) {
+fn field_type(model: &Arc<ClassModel>, field: &FieldModel, ftype: &FieldType, writer: &mut impl Write) {
     match ftype {
         FieldType::Unknown => {
             panic!("unknown field type: {}.{}", model.name, field.name)
@@ -84,7 +84,7 @@ fn field_type(model: &ClassModel, field: &FieldModel, ftype: &FieldType, writer:
                 writer.write_all("[]".as_bytes()).unwrap();
             }
         }
-        FieldType::Double | FieldType::Int | FieldType::Float => {
+        FieldType::Double | FieldType::Float | FieldType::Long | FieldType::Int => {
             writer.write_all("number".as_bytes()).unwrap()
         }
         FieldType::String => {

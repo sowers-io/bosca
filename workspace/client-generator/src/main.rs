@@ -16,6 +16,7 @@ mod parser;
 #[derive(ValueEnum, Clone, Debug)]
 enum Format {
     Typescript,
+    Rust,
 }
 
 #[derive(Parser, Debug)]
@@ -66,17 +67,17 @@ async fn main() {
 
     context.build_interface_fields();
 
-    let models = context
-        .get_classes()
-        .iter()
-        .map(|x| {
-            if let Some(x) = x.get_model() {
-                return x;
-            }
-            panic!("missing model: {}", x.name)
-        })
-        .collect::<Vec<_>>();
+    let mut file = File::create(format!("{}/context.json", args.output)).unwrap();
+    file.write_all(json!(context).to_string().as_bytes()).unwrap();
 
-    let mut file = File::create(format!("{}/models.ts", args.output)).unwrap();
-    generators::typescript::generate(&context, &models, &mut file);
+    match args.format {
+        Format::Typescript => {
+            let mut file = File::create(format!("{}/models.ts", args.output)).unwrap();
+            generators::typescript::generate(&context, &mut file)
+        },
+        Format::Rust => {
+            let mut file = File::create(format!("{}/models.rs", args.output)).unwrap();
+            generators::rust::generate(&context, &mut file)
+        },
+    }
 }

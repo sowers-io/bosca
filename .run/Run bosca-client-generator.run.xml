@@ -1,7 +1,7 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="Run bosca-client-generator" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
     <option name="buildProfileId" value="dev" />
-    <option name="command" value="run --package bosca-client-generator --bin bosca-client-generator -- --url https://api.bosca.io/graphql --queries ./workspace/client/queries --output tmp --format typescript" />
+    <option name="command" value="run --package bosca-client-generator --bin bosca-client-generator -- --url https://api.bosca.io/graphql --queries ./workspace/client/queries --output workspace/client/src --format rust" />
     <option name="workingDirectory" value="file://$PROJECT_DIR$" />
     <envs />
     <option name="emulateTerminal" value="true" />

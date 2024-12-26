@@ -5,7 +5,7 @@ edition = "2021"
 
 [dependencies]
 tera = "1"
-serde = { version = "1.0.210", features = ["derive"] }
+serde = { version = "1.0.210", features = ["derive", "rc"] }
 serde_json = "1.0.128"
 reqwest = { version = "0.12.7", features = ["stream", "multipart", "json"] }
 tokio = { version = "1.38.1", features = ["full"] }

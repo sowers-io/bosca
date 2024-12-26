@@ -515,7 +515,7 @@ impl Client {
         Ok(response.content.metadata)
     }
 
-    pub async fn add_metadata_bulk(&self, metadatas: Vec<add_metadata_bulk::MetadataInput>) -> Result<Vec<AddMetadataBulkContentMetadataAddBulk>, Error> {
+    pub async fn add_metadata_bulk(&self, metadatas: Vec<add_metadata_bulk::MetadataChildInput>) -> Result<Vec<AddMetadataBulkContentMetadataAddBulk>, Error> {
         let variables = add_metadata_bulk::Variables { metadatas };
         let query = AddMetadataBulk::build_query(variables);
         let response: add_metadata_bulk::ResponseData = self.execute(&query).await?;

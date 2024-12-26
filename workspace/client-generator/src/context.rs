@@ -1,9 +1,11 @@
+use crate::introspection::Kind;
 use crate::model::{ClassModel, ClassType};
+use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 use std::sync::{Arc, Mutex};
 
-#[derive(Default)]
+#[derive(Default, Serialize, Deserialize, Debug, Clone)]
 pub struct Context {
     classes: HashMap<String, Arc<ClassReference>>,
     class_interfaces: HashMap<String, Vec<Arc<ClassReference>>>,
@@ -12,7 +14,7 @@ pub struct Context {
 }
 
 impl Context {
-    fn register_base_interface(&mut self, class_name: &str) {
+    fn register_base_interface(&mut self, source_kind: Kind, class_name: &str) {
         if self.base_interfaces.contains(class_name) {
             return;
         }
@@ -25,6 +27,7 @@ impl Context {
         if iface.get_model().is_none() {
             let iface_model = ClassModel::new(
                 ClassType::Interface,
+                source_kind,
                 class_name.to_owned(),
                 iface_name.clone(),
             );
@@ -73,7 +76,7 @@ impl Context {
         base_interfaces: bool,
     ) -> Arc<ClassReference> {
         if base_interfaces {
-            self.register_base_interface(&model.name);
+            self.register_base_interface(model.source_kind.clone(), &model.name);
         }
         if let Some(existing) = self.classes.get(&model.name) {
             existing.set_model(model);
@@ -94,6 +97,10 @@ impl Context {
         self.class_interfaces.get(name).unwrap_or(&vec![]).to_vec()
     }
 
+    pub fn get_interface_implementations(&self, name: &str) -> Vec<Arc<ClassReference>> {
+        self.interfaces.get(name).unwrap_or(&vec![]).to_vec()
+    }
+
     pub fn build_interface_fields(&self) {
         for model in self.classes.values() {
             if let Some(model) = model.get_model() {
@@ -104,14 +111,14 @@ impl Context {
                     if impls.is_none() || impls.unwrap().is_empty() {
                         continue;
                     }
-                    let impls = impls.unwrap();
+                    if model.name == "ILogin" {
+                        println!("hi");
+                    }
+                    let impls = impls.unwrap().iter().filter(|i| i.get_model().is_some() && i.get_model().unwrap().has_fields());
                     let mut fields_set = false;
                     for i in impls {
                         if let Some(i) = i.get_model() {
-                            if i.class_type == ClassType::Interface {
-                                continue;
-                            }
-                            if !i.has_fields() {
+                            if !i.has_fields() || i.get_fields().unwrap().is_empty() {
                                 fields.clear();
                                 break;
                             }
@@ -119,13 +126,20 @@ impl Context {
                             let class_fields = i
                                 .get_fields()
                                 .unwrap()
-                                .iter().cloned()
+                                .iter()
+                                .cloned()
                                 .collect::<HashSet<_>>();
                             if !fields_set && i.has_fields() {
                                 fields_set = true;
                                 fields.extend(class_fields);
                             } else {
-                                fields = fields.intersection(&class_fields).cloned().collect()
+                                let mut new_fields = HashSet::new();
+                                for f in &class_fields {
+                                    if fields.contains(f) {
+                                        new_fields.insert(f.clone());
+                                    }
+                                }
+                                fields = new_fields;
                             }
                         }
                     }
@@ -138,11 +152,24 @@ impl Context {
     pub fn get_classes(&self) -> Vec<Arc<ClassReference>> {
         self.classes.iter().map(|x| Arc::clone(x.1)).collect()
     }
+
+    pub fn get_class_models(&self) -> Vec<Arc<ClassModel>> {
+        self.get_classes()
+            .iter()
+            .map(|x| {
+                if let Some(x) = x.get_model() {
+                    return x;
+                }
+                panic!("missing model: {}", x.name)
+            })
+            .collect::<Vec<_>>()
+    }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ClassReference {
     pub name: String,
+    #[serde(skip)]
     model: Arc<Mutex<Option<Arc<ClassModel>>>>,
 }
 
@@ -171,7 +198,19 @@ impl ClassReference {
 
 impl PartialEq<ClassReference> for ClassReference {
     fn eq(&self, other: &ClassReference) -> bool {
-        self.name == other.name
+        if self.name == other.name {
+            return true;
+        }
+
+        if let Some(self_model) = self.get_model() {
+            if let Some(other_model) = other.get_model() {
+                if self_model.type_name == other_model.type_name {
+                    return true;
+                }
+            }
+        }
+
+        false
     }
 }
 

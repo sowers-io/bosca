@@ -108,9 +108,9 @@ impl Field {
                     }
                     "Int" => {
                         if model.field_type == FieldType::Unknown {
-                            model.field_type = FieldType::Int;
+                            model.field_type = FieldType::Long;
                         } else {
-                            model.field_type_scalar = FieldType::Int;
+                            model.field_type_scalar = FieldType::Long;
                         }
                     }
                     "Float" => {
@@ -156,6 +156,7 @@ impl Field {
                     if r.get_model().is_none() {
                         let model = ClassModel::new(
                             ClassType::Interface,
+                            kind.clone(),
                             name.to_owned(),
                             name.to_owned(),
                         );
@@ -203,6 +204,7 @@ impl Type {
     pub fn to_class_model(&self, context: &mut Context) -> Arc<ClassModel> {
         let mut model = ClassModel::new(
             if self.kind == Kind::Union || self.kind == Kind::Interface { ClassType::Interface } else if self.kind == Kind::Scalar { ClassType::Scalar } else if self.kind == Kind::Enum { ClassType::Enum } else { ClassType::Class },
+            self.kind.clone(),
             self.name.clone(),
             self.name.clone(),
         );

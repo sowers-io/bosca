@@ -22,6 +22,7 @@ pub struct Document {
     pub document_type: Option<DocumentType>,
     #[serde(skip)]
     pub fields: Option<Vec<Field>>,
+    #[serde(skip)]
     pub inputs: Option<Vec<Field>>,
     pub query: String,
     pub sha256: String,

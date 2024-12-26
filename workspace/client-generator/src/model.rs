@@ -1,15 +1,20 @@
 use crate::context::{ClassReference, Context};
 use crate::parser::Fields;
 use std::collections::HashMap;
+use std::hash::{Hash, Hasher};
 use std::sync::{Arc, Mutex};
+use serde::{Deserialize, Serialize};
+use crate::introspection::Kind;
 
-#[derive(Clone, Eq, PartialEq, Debug, Hash)]
+#[derive(Clone, Eq, PartialEq, Debug, Hash, Serialize, Deserialize)]
 pub enum FieldType {
     Unknown,
     List,
     Float,
     Double,
+    #[allow(dead_code)]
     Int,
+    Long,
     String,
     Json,
     Boolean,
@@ -20,7 +25,7 @@ pub enum FieldType {
     Union,
 }
 
-#[derive(Clone, Eq, PartialEq, Debug)]
+#[derive(Clone, Eq, PartialEq, Debug, Serialize, Deserialize)]
 pub enum ClassType {
     Interface,
     Class,
@@ -28,9 +33,10 @@ pub enum ClassType {
     Enum,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ClassModel {
     pub class_type: ClassType,
+    pub source_kind: Kind,
     pub type_name: String,
     pub name: String,
     fields: Option<Arc<Mutex<Vec<FieldModel>>>>,
@@ -38,11 +44,12 @@ pub struct ClassModel {
 }
 
 impl ClassModel {
-    pub fn new(class_type: ClassType, type_name: String, name: String) -> Self {
+    pub fn new(class_type: ClassType, source_kind: Kind, type_name: String, name: String) -> Self {
         let fields = if class_type == ClassType::Class || class_type == ClassType::Interface { Some(Arc::new(Mutex::new(vec![]))) } else { None };
         let enum_values = if class_type == ClassType::Enum { Some(vec![]) } else { None };
         ClassModel {
             class_type,
+            source_kind,
             type_name,
             name,
             fields,
@@ -100,6 +107,7 @@ impl ClassModel {
 
         let mut model = ClassModel::new(
             self.class_type.clone(),
+            self.source_kind.clone(),
             self.name.clone(),
             format!("{}.{}", field.name(), self.name),
         );
@@ -136,7 +144,7 @@ impl ClassModel {
     }
 }
 
-#[derive(Clone, Eq, PartialEq, Debug, Hash)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct FieldModel {
     pub name: String,
     pub field_type: FieldType,
@@ -144,3 +152,35 @@ pub struct FieldModel {
     pub field_type_references: Vec<Arc<ClassReference>>,
     pub nullable: bool,
 }
+
+impl Hash for FieldModel {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.name.hash(state);
+        self.field_type.hash(state);
+        self.field_type_scalar.hash(state);
+        self.nullable.hash(state);
+        self.field_type_references.hash(state);
+    }
+}
+
+impl PartialEq<FieldModel> for FieldModel {
+    fn eq(&self, other: &FieldModel) -> bool {
+        if !(self.name == other.name &&
+            self.field_type == other.field_type &&
+            self.field_type_scalar == other.field_type_scalar &&
+            self.nullable == other.nullable) {
+            return false;
+        }
+        // if self.field_type_references.len() != other.field_type_references.len() {
+        //     return false;
+        // }
+        // for i in 0..self.field_type_references.len() {
+        //     if self.field_type_references[i] != other.field_type_references[i] {
+        //         return false;
+        //     }
+        // }
+        true
+    }
+}
+
+impl Eq for FieldModel {}
