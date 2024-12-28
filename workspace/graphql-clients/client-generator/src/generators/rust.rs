@@ -1,4 +1,3 @@
-use std::fmt::format;
 use crate::context::Context;
 use crate::model::{ClassModel, ClassType, FieldModel, FieldType};
 use std::io::Write;
@@ -26,27 +25,7 @@ pub fn generate(context: &Context, writer: &mut impl Write) {
 
     let models = context.get_class_models();
     for model in models {
-        if model.name.starts_with("__")
-            || model.name.starts_with("I__")
-            || model.name == "IJSON"
-            || model.name == "JSON"
-            || model.name == "IString"
-            || model.name == "String"
-            || model.name == "IDateTime"
-            || model.name == "DateTime"
-            || model.name == "IFloat"
-            || model.name == "Float"
-            || model.name == "ILong"
-            || model.name == "Long"
-            || model.name == "IInt"
-            || model.name == "Int"
-            || model.name == "IBoolean"
-            || model.name == "Boolean"
-            || model.name == "IID"
-            || model.name == "ID"
-            || model.name == "IUpload"
-            || model.name == "Upload"
-        {
+        if model.is_internal() {
             continue;
         }
         if model.class_type == ClassType::Interface {
@@ -83,7 +62,7 @@ pub fn generate(context: &Context, writer: &mut impl Write) {
                 .unwrap();
             if let Some(fields) = model.get_fields() {
                 for field in fields {
-                    writer.write_all("  ".as_bytes()).unwrap();
+                    writer.write_all("  pub ".as_bytes()).unwrap();
                     field_name(&field, writer);
                     writer.write_all(": ".as_bytes()).unwrap();
                     if field.nullable {

@@ -3,7 +3,6 @@ use std::fmt::{Display, Formatter};
 pub mod client;
 pub mod download;
 pub mod upload;
-mod models;
 
 #[derive(Debug)]
 pub struct Error {

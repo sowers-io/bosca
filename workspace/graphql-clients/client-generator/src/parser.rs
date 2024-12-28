@@ -2,13 +2,15 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::fmt::Write;
+use std::sync::Arc;
+use crate::model::ClassModel;
 
 pub trait Fields {
     fn name(&self) -> &str;
     fn get_fields(&self) -> Option<&Vec<Field>>;
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Eq, PartialEq, Clone, Copy)]
 pub enum DocumentType {
     Query,
     Mutation,
@@ -20,12 +22,26 @@ pub enum DocumentType {
 pub struct Document {
     pub name: String,
     pub document_type: Option<DocumentType>,
-    #[serde(skip)]
     pub fields: Option<Vec<Field>>,
-    #[serde(skip)]
     pub inputs: Option<Vec<Field>>,
+    pub input_object: Option<Arc<ClassModel>>,
+    pub output_object: Option<Arc<ClassModel>>,
     pub query: String,
     pub sha256: String,
+}
+
+impl Document {
+    pub fn to_input_fields(&self) -> DocumentInputFields {
+        DocumentInputFields {
+            name: self.name.clone(),
+            fields: if self.fields.is_none() { vec![] } else { self.fields.as_ref().unwrap().clone() },
+        }
+    }
+}
+
+pub struct DocumentInputFields {
+    pub name: String,
+    pub fields: Vec<Field>,
 }
 
 impl Fields for Document {
@@ -38,7 +54,17 @@ impl Fields for Document {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug)]
+impl Fields for DocumentInputFields {
+    fn name(&self) -> &str {
+        &self.name
+    }
+
+    fn get_fields(&self) -> Option<&Vec<Field>> {
+        Some(self.fields.as_ref())
+    }
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Field {
     #[serde(skip)]
     pub document_name: String,
@@ -89,6 +115,8 @@ pub fn parse(query_to_parse: &str) -> Document {
         fields: None,
         query: clean_query.to_string(),
         inputs: None,
+        input_object: None,
+        output_object: None,
         sha256: hex::encode(result),
     };
 

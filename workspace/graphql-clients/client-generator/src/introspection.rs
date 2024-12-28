@@ -229,7 +229,7 @@ impl Type {
         if let Some(ref types) = self.possible_types {
             for t in types.iter() {
                 let r = context.register_reference(t.name.as_ref().unwrap());
-                context.register_interface_implementation(&self.name, Arc::clone(&r))
+                context.register_interface_implementation(&self.name, r.clone())
             }
         }
         model

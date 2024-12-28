@@ -6,7 +6,6 @@ use tokio::fs::File;
 use tokio::io::AsyncReadExt;
 use bosca_client::client::{Client, WorkflowJob};
 use bosca_client::client::add_search_documents::SearchDocumentInput;
-use bosca_client::client::plan::WorkflowJobFragmentWorkflowActivityInputs;
 use bosca_client::download::{download_path, download_supplementary_path};
 
 pub struct IndexActivity {
@@ -35,7 +34,7 @@ impl Activity for IndexActivity {
 
     async fn execute(&self, client: &Client, context: &mut ActivityContext, job: &WorkflowJob) -> Result<(), Error> {
         let metadata = job.metadata.as_ref().unwrap();
-        let inputs: HashMap<&String, &WorkflowJobFragmentWorkflowActivityInputs> = job.workflow_activity.inputs.iter().map(|i| (&i.name, i)).collect();
+        let inputs: HashMap<_, _> = job.workflow_activity.inputs.iter().map(|i| (&i.name, i)).collect();
         let supplementary_key = "supplementaryId".to_string();
         let path: String;
         if inputs.contains_key(&supplementary_key) {
