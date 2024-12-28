@@ -51,23 +51,16 @@ pub fn generate(context: &Context, writer: &mut impl Write) {
         }
         if model.class_type == ClassType::Interface {
             writer
-                .write_all("#[derive(Serialize, Deserialize)]\r\n".as_bytes())
+                .write_all("#[derive(Serialize, Deserialize, Clone)]\r\n".as_bytes())
                 .unwrap();
             writer
                 .write_all(format!("pub enum {} {{\r\n", model.name.replace('.', "_")).as_bytes())
                 .unwrap();
             interface_enum(context, &model, writer);
             writer.write_all("}\r\n".as_bytes()).unwrap();
-            writer.write_all(format!("impl {} {{\r\n", model.name.replace('.', "_")).as_bytes());
-            if let Some(fields) = model.get_fields() {
-                for field in fields {
-                    interface_enum_field(context, &model, &field, writer);
-                }
-            }
-            writer.write_all("}\r\n".as_bytes()).unwrap();
         } else if model.class_type == ClassType::Enum {
             writer
-                .write_all("#[derive(Serialize, Deserialize)]\r\n".as_bytes())
+                .write_all("#[derive(Serialize, Deserialize, Clone)]\r\n".as_bytes())
                 .unwrap();
             writer
                 .write_all(format!("pub enum {} {{\r\n", model.name.replace('.', "_")).as_bytes())
@@ -83,7 +76,7 @@ pub fn generate(context: &Context, writer: &mut impl Write) {
             writer.write_all("}\r\n".as_bytes()).unwrap();
         } else if model.class_type == ClassType::Class {
             writer
-                .write_all("#[derive(Serialize, Deserialize)]\r\n".as_bytes())
+                .write_all("#[derive(Serialize, Deserialize, Clone)]\r\n".as_bytes())
                 .unwrap();
             writer
                 .write_all(format!("pub struct {} {{\r\n", model.name.replace('.', "_")).as_bytes())
@@ -155,29 +148,23 @@ fn interface_enum(context: &Context, model: &Arc<ClassModel>, writer: &mut impl 
     }
 }
 
-fn interface_enum_field(context: &Context, model: &Arc<ClassModel>, field: &FieldModel, writer: &mut impl Write) {
-    writer.write_all("  fn ".to_string().as_bytes()).unwrap();
-    field_name(&field, writer);
-    writer.write_all("(&self) -> &".as_bytes()).unwrap();
-    if field.nullable {
-        writer.write_all("Option<".as_bytes()).unwrap();
+fn field_type_recursion(model: &ClassModel, field: &FieldModel) -> bool {
+    if field.field_type != FieldType::Object || field.field_type_references.is_empty() {
+        return false
     }
-    field_type(context, model, field, &field.field_type, writer);
-    if field.nullable {
-        writer.write_all(">".as_bytes()).unwrap();
-    }
-    writer.write_all(" {\r\n".as_bytes()).unwrap();
-    let ifaces = context.get_interface_implementations(&model.name);
-    writer.write_all("    match self {\r\n".as_bytes()).unwrap();
-    for iface in ifaces {
-        if let Some(m) = iface.get_model() {
-            writer.write_all(format!("      {}::{}(m) => &m.", model.name.replace(".", "_"), m.name.replace(".", "_")).to_string().as_bytes()).unwrap();
-            field_name(&field, writer);
-            writer.write_all(",\r\n".as_bytes()).unwrap();
+    if let Some(m) = field.field_type_references[0].get_model() {
+        if let Some(fields) = m.get_fields() {
+            for field in &fields {
+                if field.field_type == FieldType::Object && field.field_type_references[0].name == model.name {
+                    return true;
+                }
+                if field_type_recursion(model, field) {
+                    return true;
+                }
+            }
         }
     }
-    writer.write_all("    }\r\n".as_bytes()).unwrap();
-    writer.write_all("  }\r\n".as_bytes()).unwrap();
+    false
 }
 
 fn field_type_struct(model: &ClassModel, field: &FieldModel, writer: &mut impl Write) {
@@ -187,14 +174,15 @@ fn field_type_struct(model: &ClassModel, field: &FieldModel, writer: &mut impl W
             model.name, field.name
         );
     }
-    if let Some(model) = field.field_type_references[0].get_model() {
-        writer
-            .write_all(
-                model.name
-                    .replace('.', "_")
-                    .as_bytes(),
-            )
-            .unwrap();
+    if let Some(m) = field.field_type_references[0].get_model() {
+        let r = field_type_recursion(model, field);
+        if r {
+            writer.write_all("Box<".as_bytes()).unwrap();
+        }
+        writer.write_all(m.name.replace('.', "_").as_bytes()).unwrap();
+        if r {
+            writer.write_all(">".as_bytes()).unwrap();
+        }
     } else {
         panic!(
             "field must have a type reference with a model: {}.{}",
@@ -218,18 +206,9 @@ fn field_type(
             writer.write_all("Vec<".as_bytes()).unwrap();
             if field.field_type_references.is_empty() {
                 if field.field_type_scalar != FieldType::Unknown {
-                    field_type(
-                        context,
-                        model,
-                        field,
-                        &field.field_type_scalar,
-                        writer,
-                    );
+                    field_type(context, model, field, &field.field_type_scalar, writer);
                 } else {
-                    panic!(
-                        "field must have a type reference: {}.{}",
-                        model.name, field.name
-                    );
+                    panic!("field must have a type reference: {}.{}", model.name, field.name);
                 }
             } else {
                 field_type_struct(model, field, writer);

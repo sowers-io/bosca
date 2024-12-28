@@ -144,7 +144,7 @@ impl ClassModel {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub struct FieldModel {
     pub name: String,
     pub field_type: FieldType,
@@ -152,35 +152,3 @@ pub struct FieldModel {
     pub field_type_references: Vec<Arc<ClassReference>>,
     pub nullable: bool,
 }
-
-impl Hash for FieldModel {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.name.hash(state);
-        self.field_type.hash(state);
-        self.field_type_scalar.hash(state);
-        self.nullable.hash(state);
-        self.field_type_references.hash(state);
-    }
-}
-
-impl PartialEq<FieldModel> for FieldModel {
-    fn eq(&self, other: &FieldModel) -> bool {
-        if !(self.name == other.name &&
-            self.field_type == other.field_type &&
-            self.field_type_scalar == other.field_type_scalar &&
-            self.nullable == other.nullable) {
-            return false;
-        }
-        // if self.field_type_references.len() != other.field_type_references.len() {
-        //     return false;
-        // }
-        // for i in 0..self.field_type_references.len() {
-        //     if self.field_type_references[i] != other.field_type_references[i] {
-        //         return false;
-        //     }
-        // }
-        true
-    }
-}
-
-impl Eq for FieldModel {}

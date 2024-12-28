@@ -67,6 +67,10 @@ async fn main() {
 
     context.build_interface_fields();
 
+    let models = context.get_class_models();
+    let mut file = File::create(format!("{}/models.json", args.output)).unwrap();
+    file.write_all(json!(models).to_string().as_bytes()).unwrap();
+
     let mut file = File::create(format!("{}/context.json", args.output)).unwrap();
     file.write_all(json!(context).to_string().as_bytes()).unwrap();
 

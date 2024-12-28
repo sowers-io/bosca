@@ -111,9 +111,6 @@ impl Context {
                     if impls.is_none() || impls.unwrap().is_empty() {
                         continue;
                     }
-                    if model.name == "ILogin" {
-                        println!("hi");
-                    }
                     let impls = impls.unwrap().iter().filter(|i| i.get_model().is_some() && i.get_model().unwrap().has_fields());
                     let mut fields_set = false;
                     for i in impls {
@@ -127,18 +124,13 @@ impl Context {
                                 .get_fields()
                                 .unwrap()
                                 .iter()
-                                .cloned()
+                                .map(|f| f.clone())
                                 .collect::<HashSet<_>>();
                             if !fields_set && i.has_fields() {
                                 fields_set = true;
                                 fields.extend(class_fields);
                             } else {
-                                let mut new_fields = HashSet::new();
-                                for f in &class_fields {
-                                    if fields.contains(f) {
-                                        new_fields.insert(f.clone());
-                                    }
-                                }
+                                let new_fields = fields.intersection(&class_fields).cloned().collect::<HashSet<_>>();
                                 fields = new_fields;
                             }
                         }
@@ -173,12 +165,6 @@ pub struct ClassReference {
     model: Arc<Mutex<Option<Arc<ClassModel>>>>,
 }
 
-impl Hash for ClassReference {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.name.hash(state);
-    }
-}
-
 impl ClassReference {
     pub fn new(name: &str) -> Self {
         Self {
@@ -193,6 +179,12 @@ impl ClassReference {
 
     fn set_model(&self, model: Arc<ClassModel>) {
         *self.model.lock().unwrap() = Some(model);
+    }
+}
+
+impl Hash for ClassReference {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.name.hash(state);
     }
 }
 
