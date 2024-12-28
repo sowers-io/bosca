@@ -68,7 +68,7 @@ pub fn generate(context: &Context, writer: &mut impl Write) {
                     if field.nullable {
                         writer.write_all("Option<".as_bytes()).unwrap();
                     }
-                    field_type(context, &model, &field, &field.field_type, writer);
+                    field_type(&model, &field, &field.field_type, writer);
                     if field.nullable {
                         writer.write_all(">".as_bytes()).unwrap();
                     }
@@ -103,7 +103,7 @@ fn field_name(field: &FieldModel, writer: &mut impl Write) {
             .write_all(format!("{}_", name).as_bytes())
             .unwrap(),
         _ => writer
-            .write_all(format!("{}", name).as_bytes())
+            .write_all(name.to_string().as_bytes())
             .unwrap(),
     }
 }
@@ -171,7 +171,6 @@ fn field_type_struct(model: &ClassModel, field: &FieldModel, writer: &mut impl W
 }
 
 fn field_type(
-    context: &Context,
     model: &ClassModel,
     field: &FieldModel,
     ftype: &FieldType,
@@ -185,7 +184,7 @@ fn field_type(
             writer.write_all("Vec<".as_bytes()).unwrap();
             if field.field_type_references.is_empty() {
                 if field.field_type_scalar != FieldType::Unknown {
-                    field_type(context, model, field, &field.field_type_scalar, writer);
+                    field_type(model, field, &field.field_type_scalar, writer);
                 } else {
                     panic!("field must have a type reference: {}.{}", model.name, field.name);
                 }

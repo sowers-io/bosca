@@ -30,15 +30,6 @@ pub struct Document {
     pub sha256: String,
 }
 
-impl Document {
-    pub fn to_input_fields(&self) -> DocumentInputFields {
-        DocumentInputFields {
-            name: self.name.clone(),
-            fields: if self.fields.is_none() { vec![] } else { self.fields.as_ref().unwrap().clone() },
-        }
-    }
-}
-
 pub struct DocumentInputFields {
     pub name: String,
     pub fields: Vec<Field>,
