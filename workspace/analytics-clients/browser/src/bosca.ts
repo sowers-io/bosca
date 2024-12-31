@@ -148,6 +148,9 @@ export class BoscaSink extends AnalyticEventSink {
               sent: new Date().getTime(),
               sent_micros: 0,
             }
+            if (!events.context.device.installation_id) {
+              events.context.device.installation_id = await this.generateInstallationId() || ''
+            }
             const response = await fetch(this.url + '/events', {
               method: 'POST',
               headers: {
