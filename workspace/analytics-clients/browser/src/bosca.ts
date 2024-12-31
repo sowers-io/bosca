@@ -12,8 +12,11 @@ export class BoscaSink extends AnalyticEventSink {
   private readonly context: Context
   private readonly queue = new EventQueue()
   private flushing = false
+  private _flushed = 0
+  private _failures = 0
   private timeout: any | null = null
   private sessionState: SessionState
+  private retryDelay = 3_000
 
   constructor(url: string, appId: string, appVersion: string, clientId: string) {
     super()
@@ -58,13 +61,33 @@ export class BoscaSink extends AnalyticEventSink {
           },
         },
       })
-      await self.add(event)
+      try {
+        await self.add(event)
+      } catch (e) {
+        console.error('failed to update session state: ', e)
+      }
     })
   }
 
+  get flushed() {
+    return this._flushed
+  }
+
+  get failures() {
+    return this._failures
+  }
+
+  async pendingSize(): Promise<number> {
+    return this.queue.pendingSize()
+  }
+
+  async size(): Promise<number> {
+    return this.queue.size()
+  }
+
   protected async onAdd(_: AnalyticEvent, event: AnalyticEvent): Promise<void> {
-    await this.sessionState.onEvent()
-    await this.queue.add(this.context, {
+    this.sessionState.onEvent().catch(e => console.error('failed to update session state: ', e))
+    this.queue.add(this.context, {
       client_id: ulid(),
       type: event.type,
       created: event.created.getTime(),
@@ -82,23 +105,31 @@ export class BoscaSink extends AnalyticEventSink {
         }),
         extras: event.element.extras,
       } as EventElement,
-    })
+    }).catch(e => console.error('failed to add event: ', e))
     this.queueFlush()
   }
 
+  private queueRequests = 0
+
   private queueFlush() {
     if (this.timeout) {
-      return
+      if (this.queueRequests > 10) {
+        return
+      }
+      clearTimeout(this.timeout)
     }
+    this.queueRequests++
     const self = this
     this.timeout = setTimeout(() => {
       self.timeout = null
-      self.flush()
+      self.queueRequests = 0
+      self.flush().catch(e => console.error('failed to flush: ', e))
     }, 1000)
   }
 
   async flush() {
     if (this.flushing) {
+      console.log('already flushing...')
       this.queueFlush()
       return
     }
@@ -107,6 +138,7 @@ export class BoscaSink extends AnalyticEventSink {
       await this.initializeContext()
       const allPendingEvents = await this.queue.get()
       if (!allPendingEvents) return
+      let errors = false
       try {
         for (const pendingEvents of allPendingEvents.events) {
           try {
@@ -127,19 +159,23 @@ export class BoscaSink extends AnalyticEventSink {
               throw new Error('error sending events: ' + await response.text())
             }
             await allPendingEvents.finish(pendingEvents)
+            this._flushed += pendingEvents.events.length
           } catch (e: any) {
+            errors = true
+            this._failures += pendingEvents.events.length
             console.error('failed to flush: ', e)
-            await allPendingEvents.onError(e)
+            await allPendingEvents.failed(pendingEvents)
           }
         }
       } finally {
         if (await allPendingEvents.close()) {
           this.queueFlush()
-        } else if (allPendingEvents.hasErrors) {
+        } else if (errors) {
+          this.retryDelay = Math.min(this.retryDelay * 2, 60_000)
           const self = this
           setTimeout(() => {
-            self.flush()
-          }, 30_000)
+            self.flush().catch(e => console.error('failed to flush: ', e))
+          }, this.retryDelay)
         }
       }
     } finally {
@@ -213,7 +249,7 @@ export class BoscaSink extends AnalyticEventSink {
   private async generateInstallationId(): Promise<string | null> {
     try {
       // eslint-disable-next-line no-undef
-      let installationId = localStorage.getItem('__iid')
+      let installationId = typeof localStorage === 'undefined' ? null : localStorage.getItem('__iid')
       if (!installationId) {
         const response = await fetch(this.url + '/register', {
           method: 'POST',
@@ -226,7 +262,10 @@ export class BoscaSink extends AnalyticEventSink {
           const data = await response.json()
           installationId = data.id
           // eslint-disable-next-line no-undef
-          localStorage.setItem('__iid', installationId!)
+          if (typeof localStorage !== 'undefined') {
+            // eslint-disable-next-line no-undef
+            localStorage.setItem('__iid', installationId!)
+          }
         } else {
           throw new Error(await response.json())
         }
