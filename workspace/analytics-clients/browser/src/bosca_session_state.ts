@@ -9,7 +9,10 @@ export class SessionState {
     this.onSessionStart = onSessionStart || (() => console.log('Session started'))
     this.isSessionActive = false
     this.timeoutId = null
-    document.addEventListener('visibilitychange', this.handleVisibilityChange.bind(this))
+    if (typeof document !== 'undefined') {
+      // eslint-disable-next-line no-undef
+      document.addEventListener('visibilitychange', this.handleVisibilityChange.bind(this))
+    }
     this.startSession()
   }
 
@@ -18,8 +21,10 @@ export class SessionState {
   }
 
   handleVisibilityChange() {
+    // eslint-disable-next-line no-undef
     if (document.visibilityState === 'hidden') {
       this.pauseSession()
+      // eslint-disable-next-line no-undef
     } else if (document.visibilityState === 'visible') {
       this.resumeSession()
     }
