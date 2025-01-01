@@ -1,4 +1,3 @@
-use redis::AsyncCommands;
 use crate::context::BoscaContext;
 use crate::graphql::content::content::FindAttributeInput;
 use crate::graphql::content::metadata_mutation::WorkflowConfigurationInput;
@@ -21,15 +20,16 @@ use crate::util::storage::index_documents;
 use crate::util::RUNNING_BACKGROUND;
 use async_graphql::*;
 use deadpool_postgres::{GenericClient, Pool, Transaction};
-use log::{debug, error};
+use log::{error, info};
 use postgres_types::ToSql;
+use redis::AsyncCommands;
 use serde_json::{Map, Value};
 use std::sync::atomic::Ordering::Relaxed;
 use std::sync::Arc;
 use tokio_postgres::Statement;
 use uuid::Uuid;
 
-use redis::{Client as RedisClient};
+use redis::Client as RedisClient;
 
 #[derive(Clone)]
 pub struct ContentDataStore {
@@ -39,25 +39,24 @@ pub struct ContentDataStore {
 
 impl ContentDataStore {
     pub fn new(pool: Arc<Pool>, redis: Arc<RedisClient>) -> Self {
-        Self {
-            pool,
-            redis,
-        }
+        Self { pool, redis }
     }
 
     async fn on_metadata_changed(&self, id: &Uuid) -> Result<(), Error> {
         let mut conn = self.redis.get_multiplexed_tokio_connection().await?;
         let id = id.to_string();
-        debug!("on_metadata_changed: {}", id);
-        conn.publish::<&str, String, ()>("metadata_changes", id).await?;
+        info!("on_metadata_changed: {}", id);
+        conn.publish::<&str, String, ()>("metadata_changes", id)
+            .await?;
         Ok(())
     }
 
     async fn on_collection_changed(&self, id: &Uuid) -> Result<(), Error> {
         let mut conn = self.redis.get_multiplexed_tokio_connection().await?;
         let id = id.to_string();
-        debug!("on_collection_changed: {}", id);
-        conn.publish::<&str, String, ()>("collection_changes", id).await?;
+        info!("on_collection_changed: {}", id);
+        conn.publish::<&str, String, ()>("collection_changes", id)
+            .await?;
         Ok(())
     }
 
@@ -404,10 +403,18 @@ impl ContentDataStore {
     pub async fn delete_collection(&self, id: &Uuid) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
+            .prepare_cached("select collection_id from collection_items where child_collection_id = $1")
+            .await?;
+        let rows = connection.query(&stmt, &[id]).await?;
+        let collection_ids: Vec<Uuid> = rows.iter().map(|r| r.get("collection_id")).collect();
+        let stmt = connection
             .prepare_cached("delete from collections where id = $1")
             .await?;
         connection.execute(&stmt, &[id]).await?;
         self.on_collection_changed(id).await?;
+        for collection_id in collection_ids {
+            self.on_collection_changed(&collection_id).await?;
+        }
         Ok(())
     }
 
@@ -561,11 +568,16 @@ impl ContentDataStore {
     pub async fn add_collection(&self, collection: &CollectionInput) -> Result<Uuid, Error> {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
-
+        let parent_id = if let Some(id) = &collection.parent_collection_id {
+            Uuid::parse_str(id)?
+        } else {
+            Uuid::parse_str("00000000-0000-0000-0000-000000000000")?
+        };
         match self.add_collection_txn(&txn, collection).await {
             Ok(value) => {
                 txn.commit().await?;
                 self.on_collection_changed(&value).await?;
+                self.on_collection_changed(&parent_id).await?;
                 Ok(value)
             }
             Err(err) => {
@@ -1008,6 +1020,11 @@ impl ContentDataStore {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
         let stmt = txn
+            .prepare_cached("select collection_id from collection_items where child_metadata_id = $1")
+            .await?;
+        let rows = txn.query(&stmt, &[metadata_id]).await?;
+        let collection_ids: Vec<Uuid> = rows.iter().map(|r| r.get("collection_id")).collect();
+        let stmt = txn
             .prepare_cached("delete from metadata where id = $1")
             .await?;
         txn.execute(&stmt, &[&metadata_id]).await?;
@@ -1017,6 +1034,9 @@ impl ContentDataStore {
         txn.execute(&stmt, &[&metadata_id]).await?;
         txn.commit().await?;
         self.on_metadata_changed(metadata_id).await?;
+        for collection_id in collection_ids {
+            self.on_collection_changed(&collection_id).await?;
+        }
         Ok(())
     }
 
@@ -1154,6 +1174,12 @@ impl ContentDataStore {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
 
+        let stmt = txn
+            .prepare_cached("select collection_id from collection_items where child_metadata_id = $1")
+            .await?;
+        let rows = txn.query(&stmt, &[id]).await?;
+        let collection_ids: Vec<Uuid> = rows.iter().map(|r| r.get("collection_id")).collect();
+        
         match self
             .edit_metadata_txn(&txn, id, metadata, &source_id, &source_identifier)
             .await
@@ -1161,6 +1187,9 @@ impl ContentDataStore {
             Ok(value) => {
                 txn.commit().await?;
                 self.on_metadata_changed(id).await?;
+                for collection_id in collection_ids {
+                    self.on_collection_changed(&collection_id).await?;
+                }
                 Ok(value)
             }
             Err(err) => {
@@ -1766,9 +1795,10 @@ impl ContentDataStore {
             });
         }
         for id in &ids {
-            self.on_collection_changed(id).await?;
+            self.on_collection_changed(&id.0).await?;
+            self.on_collection_changed(&id.1).await?;
         }
-        Ok(ids)
+        Ok(ids.into_iter().map(|(id, _)| id).collect())
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -1782,24 +1812,24 @@ impl ContentDataStore {
         search_documents: &mut Vec<SearchDocumentInput>,
         ignore_permission_check: bool,
         permissions: Option<Vec<Permission>>,
-    ) -> Result<Vec<Uuid>, Error> {
+    ) -> Result<Vec<(Uuid, Uuid)>, Error> {
         let mut new_collections = Vec::new();
         for collection_child in collections.iter_mut() {
             let collection = &mut collection_child.collection;
             let has_collection_id = collection.parent_collection_id.is_some();
-            let collection_id = match &collection.parent_collection_id {
+            let parent_collection_id = match &collection.parent_collection_id {
                 Some(id) => Uuid::parse_str(id.as_str())?,
                 None => Uuid::parse_str("00000000-0000-0000-0000-000000000000")?,
             };
             if !ignore_permission_check {
-                ctx.check_collection_action_txn(txn, &collection_id, PermissionAction::Edit)
+                ctx.check_collection_action_txn(txn, &parent_collection_id, PermissionAction::Edit)
                     .await?;
             }
             let id = self.add_collection_txn(txn, collection).await?;
             let permissions = if let Some(permissions) = &permissions {
                 permissions.clone()
             } else {
-                self.get_collection_permissions_txn(txn, &collection_id)
+                self.get_collection_permissions_txn(txn, &parent_collection_id)
                     .await?
             };
             for permission in permissions.iter() {
@@ -1814,7 +1844,7 @@ impl ContentDataStore {
             if has_collection_id {
                 self.add_child_collection_txn(
                     txn,
-                    &collection_id,
+                    &parent_collection_id,
                     &id,
                     &collection_child.attributes,
                 )
@@ -1861,7 +1891,7 @@ impl ContentDataStore {
             if collection.ready.unwrap_or(false) {
                 ready_collection_ids.push(id);
             }
-            new_collections.push(id);
+            new_collections.push((id, parent_collection_id));
         }
         Ok(new_collections)
     }
