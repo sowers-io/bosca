@@ -202,17 +202,17 @@ fn parse_type_name(
     stack: &mut Vec<Field>,
 ) -> usize {
     let mut alias = String::new();
-    // let mut ignore = false;
+    let mut ignore = false;
     let mut i = start;
     while i < chars.len() {
         let char = chars[i];
-        // if ignore {
-        //     if char == ')' {
-        //         ignore = false;
-        //     }
-        //     i += 1;
-        //     continue;
-        // }
+        if ignore {
+            if char == ')' {
+                ignore = false;
+            }
+            i += 1;
+            continue;
+        }
         match char {
             'A'..='Z' | 'a'..='z' | '_' => {
                 buf.push(char);
@@ -226,14 +226,17 @@ fn parse_type_name(
                 }
             }
             '(' => {
-                let (inputs, next_i) = parse_input(document, chars, i + 1);
-                i = next_i;
-                if stack.is_empty() {
-                    document.inputs = Some(inputs);
+                if document.inputs.is_none() {
+                    let (inputs, next_i) = parse_input(document, chars, i + 1);
+                    i = next_i;
+                    if stack.is_empty() {
+                        document.inputs = Some(inputs);
+                    } else {
+                        stack.last_mut().unwrap().inputs = Some(inputs);
+                    }
                 } else {
-                    stack.last_mut().unwrap().inputs = Some(inputs);
+                    ignore = true;
                 }
-                // ignore = true;
                 continue;
             }
             '{' => {

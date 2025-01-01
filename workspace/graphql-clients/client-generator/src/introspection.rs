@@ -3,8 +3,10 @@ use crate::model::{ClassModel, ClassType, FieldModel, FieldType};
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-#[derive(Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
+#[derive(Serialize, Deserialize, Debug, Clone, Default, Eq, PartialEq)]
 pub enum Kind {
+    #[default]
+    Unknown,
     #[serde(rename = "NON_NULL")]
     NonNull,
     #[serde(rename = "NULL")]
@@ -51,6 +53,9 @@ impl Field {
     fn update_type(context: &mut Context, reference: &TypeReference, model: &mut FieldModel) {
         if let Some(ref kind) = reference.kind {
             match kind {
+                Kind::Unknown => {
+                    panic!("unknown type: {:?}", reference.name)
+                }
                 Kind::NonNull => {
                     model.nullable = false;
                     if let Some(x) = &reference.of_type {
@@ -85,7 +90,7 @@ impl Field {
                             model.field_type_scalar = FieldType::Boolean;
                         }
                     }
-                    "String" => {
+                    "ID" | "String" => {
                         if model.field_type == FieldType::Unknown {
                             model.field_type = FieldType::String;
                         } else {
@@ -97,6 +102,13 @@ impl Field {
                             model.field_type = FieldType::Json;
                         } else {
                             model.field_type_scalar = FieldType::Json;
+                        }
+                    }
+                    "Date" => {
+                        if model.field_type == FieldType::Unknown {
+                            model.field_type = FieldType::Date;
+                        } else {
+                            model.field_type_scalar = FieldType::Date;
                         }
                     }
                     "DateTime" => {
@@ -185,7 +197,7 @@ pub struct TypeReference {
     pub of_type: Option<Box<TypeReference>>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Default, Clone)]
 pub struct Type {
     pub kind: Kind,
     pub name: String,
@@ -241,7 +253,7 @@ pub struct SchemaType {
     pub name: String,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Default, Debug, Clone)]
 pub struct Schema {
     #[serde(rename = "queryType")]
     pub query_type: Option<SchemaType>,
@@ -262,12 +274,13 @@ impl Schema {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Default, Debug, Clone)]
 pub struct Data {
     pub __schema: Schema,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Default, Debug, Clone)]
+#[serde(default)]
 pub struct Root {
     pub data: Data,
 }

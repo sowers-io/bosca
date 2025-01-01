@@ -18,6 +18,7 @@ pub enum FieldType {
     String,
     Json,
     Boolean,
+    Date,
     DateTime,
     Object,
     Enum,

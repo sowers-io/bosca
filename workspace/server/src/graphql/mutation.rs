@@ -2,6 +2,7 @@ use crate::graphql::content::content_mutation::ContentMutationObject;
 use crate::graphql::security::security_mutation::SecurityMutationObject;
 use crate::graphql::workflows::workflows_mutation::WorkflowsMutationObject;
 use async_graphql::Object;
+use crate::graphql::queries_mutation::PersistedQueriesMutationObject;
 use crate::graphql::queues::queues_mutation::QueuesMutationObject;
 
 pub(crate) struct MutationObject;
@@ -22,5 +23,9 @@ impl MutationObject {
 
     async fn queues(&self) -> QueuesMutationObject {
         QueuesMutationObject {}
+    }
+
+    async fn persisted_queries(&self) -> PersistedQueriesMutationObject {
+        PersistedQueriesMutationObject {}
     }
 }

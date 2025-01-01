@@ -200,7 +200,7 @@ fn field_type(
         FieldType::String => writer.write_all("String".as_bytes()).unwrap(),
         FieldType::Json => writer.write_all("Value".as_bytes()).unwrap(),
         FieldType::Boolean => writer.write_all("bool".as_bytes()).unwrap(),
-        FieldType::DateTime => writer.write_all("DateTime<Utc>".as_bytes()).unwrap(),
+        FieldType::DateTime | FieldType::Date => writer.write_all("DateTime<Utc>".as_bytes()).unwrap(),
         FieldType::Union => field_type_struct(model, field, writer),
         FieldType::Object | FieldType::Interface | FieldType::Enum => field_type_struct(model, field, writer),
     }

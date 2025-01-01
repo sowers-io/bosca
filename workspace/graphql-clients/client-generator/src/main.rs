@@ -41,11 +41,17 @@ async fn main() {
     let client = reqwest::Client::new();
     let response = client
         .post(args.url)
+        .header("Content-Type", "application/json")
+        .header("Accept", "application/json")
         .body(r#"{"query":"query IntrospectionQuery { __schema { queryType { name } mutationType { name } subscriptionType { name } types {  ...FullType } directives {  name  description   locations  args {  ...InputValue  } } }  }  fragment FullType on __Type { kind name description fields(includeDeprecated: true) { name description args {  ...InputValue } type {  ...TypeRef } isDeprecated deprecationReason } inputFields { ...InputValue } interfaces { ...TypeRef } enumValues(includeDeprecated: true) { name description isDeprecated deprecationReason } possibleTypes { ...TypeRef }  }  fragment InputValue on __InputValue { name description type { ...TypeRef } defaultValue } fragment TypeRef on __Type { kind name ofType { kind name ofType { kind name ofType { kind name ofType { kind name ofType { kind name ofType { kind name ofType { kind name ofType { kind name ofType { kind name } } } } } } } } } }","operationName":"IntrospectionQuery"}"#)
         .send()
         .await
         .unwrap();
-    let root = response.json::<Root>().await.unwrap();
+    if !response.status().is_success() {
+        panic!("failed to introspect schema: {} -> {}", response.status(), response.text().await.unwrap());
+    }
+    let introspection_response = response.text().await.unwrap();
+    let root = serde_json::from_str::<Root>(&introspection_response).unwrap();
     let mut context = Context::default();
     let models = root.data.__schema.to_class_models(&mut context);
 
@@ -57,6 +63,9 @@ async fn main() {
         let entry = entry.unwrap();
         let entry_path = entry.path();
         let path = entry_path.as_path();
+        if !path.display().to_string().ends_with(".graphql") {
+            continue;
+        }
         println!("parsing {}", path.display());
         let mut document = parse(fs::read_to_string(path).unwrap().as_str());
         let model_name = if document.document_type.unwrap() == parser::DocumentType::Mutation {
@@ -122,6 +131,10 @@ async fn main() {
 
     let mut file = File::create(format!("{}/context.json", args.output)).unwrap();
     file.write_all(json!(context).to_string().as_bytes())
+        .unwrap();
+
+    let mut file = File::create(format!("{}/schema.json", args.output)).unwrap();
+    file.write_all(introspection_response.as_bytes())
         .unwrap();
 
     match args.format {

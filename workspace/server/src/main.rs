@@ -7,6 +7,10 @@ mod security;
 mod util;
 mod worklfow;
 mod context;
+mod queries;
+mod logger;
+mod authed_subscription;
+mod schema;
 
 use crate::files::{download, upload};
 use crate::graphql::content::storage::{ObjectStorage, ObjectStorageInterface};
@@ -18,8 +22,8 @@ use crate::security::jwt::{Jwt, Keys};
 use crate::util::yaml::parse_string;
 use crate::worklfow::configuration::configure;
 use crate::worklfow::job_queue::JobQueues;
-use async_graphql::{http::GraphiQLSource, EmptySubscription, Schema};
-use async_graphql_axum::{GraphQLRequest, GraphQLResponse, GraphQLSubscription};
+use async_graphql::{http::GraphiQLSource, Schema};
+use async_graphql_axum::{GraphQLRequest, GraphQLResponse};
 use axum::extract::{DefaultBodyLimit, State};
 use axum::routing::post;
 use axum::{
@@ -44,6 +48,7 @@ use std::str::from_utf8;
 use std::sync::Arc;
 use std::sync::atomic::Ordering::Relaxed;
 use std::time::Duration;
+use async_graphql::extensions::apollo_persisted_queries::ApolloPersistedQueries;
 use base64::Engine;
 use object_store::aws::AmazonS3Builder;
 use opentelemetry::{global, KeyValue};
@@ -75,12 +80,18 @@ use crate::util::RUNNING_BACKGROUND;
 use crate::util::storage::index_documents_no_checks;
 
 use mimalloc::MiMalloc;
+use tower_http::cors::CorsLayer;
 use bosca_telemetry::graphql_opentelemetry::OpenTelemetry;
+use crate::datastores::persisted_queries::PersistedQueriesDataStore;
+
+use redis::Client as RedisClient;
+use crate::authed_subscription::AuthGraphQLSubscription;
+use crate::graphql::subscription::SubscriptionObject;
+use crate::logger::Logger;
+use crate::schema::BoscaSchema;
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
-
-type BoscaSchema = Schema<QueryObject, MutationObject, EmptySubscription>;
 
 async fn graphiql() -> impl IntoResponse {
     response::Html(
@@ -221,6 +232,15 @@ fn build_search_client() -> Arc<Client> {
         }
     };
     Arc::new(Client::new(url, Some(key)).unwrap())
+}
+
+fn build_redis_client() -> Arc<RedisClient> {
+    let url = match env::var("REDIS_URL") {
+        Ok(url) => url,
+        _ => "redis://127.0.0.1:6379".to_string(),
+    };
+    let client = RedisClient::open(url).unwrap();
+    Arc::new(client)
 }
 
 async fn initialize_workflow(ctx: &BoscaContext) {
@@ -370,6 +390,7 @@ async fn main() {
 
     let messages = MessageQueues::new(job_pool);
     let jobs = JobQueues::new(messages.clone());
+    let redis = build_redis_client();
     let ctx = BoscaContext {
         security: SecurityDataStore::new(
             Arc::clone(&bosca_pool),
@@ -379,7 +400,9 @@ async fn main() {
             Arc::clone(&bosca_pool),
             jobs.clone(),
         ),
-        content: ContentDataStore::new(bosca_pool),
+        redis: Arc::clone(&redis),
+        queries: PersistedQueriesDataStore::new(Arc::clone(&bosca_pool)).await,
+        content: ContentDataStore::new(bosca_pool, Arc::clone(&redis)),
         search: build_search_client(),
         storage: build_object_storage(),
         principal: get_anonymous_principal(),
@@ -425,10 +448,14 @@ async fn main() {
     let _ = global::set_tracer_provider(provider);
 
     let telemetry = OpenTelemetry::new(tracer);
+    let persisted_queries = ApolloPersistedQueries::new(ctx.queries.cache.clone());
 
-    let schema = Schema::build(QueryObject, MutationObject, EmptySubscription)
+    let schema = Schema::build(QueryObject, MutationObject, SubscriptionObject)
+        .data(ctx.clone())
         .extension(Authorization)
         .extension(telemetry)
+        .extension(persisted_queries)
+        .extension(Logger)
         .data(ctx.clone())
         .finish();
 
@@ -440,14 +467,16 @@ async fn main() {
     let files = Router::new()
         .route("/upload", post(upload))
         .route("/download", get(download))
-        .with_state(ctx);
+        .with_state(ctx.clone());
 
     let app = Router::new()
         .route("/", get(graphiql))
         .nest("/files", files)
         .route("/graphql", post(graphql_handler))
-        .route_service("/ws", GraphQLSubscription::new(schema.clone()))
+        .route("/graphql", get(graphql_handler))
+        .route_service("/ws", AuthGraphQLSubscription::new(schema.clone(), ctx))
         .layer(DefaultBodyLimit::max(upload_limit))
+        .layer(CorsLayer::permissive())
         .layer(TimeoutLayer::new(Duration::from_secs(600)))
         .with_state(schema);
 

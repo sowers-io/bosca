@@ -25,6 +25,9 @@ pub fn generate_client(_: &Context, documents: &Vec<Document>, writer: &mut impl
     }
     writer.write_all(" } from './models'\r\n\r\n".as_bytes()).unwrap();
     writer.write_all("export class Client extends BaseClient {\r\n".to_string().as_bytes()).unwrap();
+    writer.write_all("  constructor(url: string) {\r\n".to_string().as_bytes()).unwrap();
+    writer.write_all("    super(url)\r\n".to_string().as_bytes()).unwrap();
+    writer.write_all("  }\r\n".to_string().as_bytes()).unwrap();
     for document in documents {
         if document.input_object.is_none() || document.output_object.is_none() {
             continue;
@@ -144,7 +147,7 @@ fn field_type(model: &Arc<ClassModel>, field: &FieldModel, ftype: &FieldType, wr
         FieldType::Boolean => {
             writer.write_all("boolean".as_bytes()).unwrap()
         }
-        FieldType::DateTime => {
+        FieldType::Date | FieldType::DateTime => {
             writer.write_all("Date".as_bytes()).unwrap()
         }
         FieldType::Union

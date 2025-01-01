@@ -1,38 +1,64 @@
-use async_graphql::*;
-use std::sync::Arc;
-use std::sync::atomic::Ordering::Relaxed;
+use redis::AsyncCommands;
+use crate::context::BoscaContext;
 use crate::graphql::content::content::FindAttributeInput;
-use crate::models::content::collection::{Collection, CollectionChild, CollectionChildInput, CollectionInput, CollectionType, MetadataChildInput};
+use crate::graphql::content::metadata_mutation::WorkflowConfigurationInput;
+use crate::models::content::collection::{
+    Collection, CollectionChild, CollectionChildInput, CollectionInput, CollectionType,
+    MetadataChildInput,
+};
 use crate::models::content::metadata::{Metadata, MetadataInput};
 use crate::models::content::metadata_relationship::{
     MetadataRelationship, MetadataRelationshipInput,
 };
+use crate::models::content::search::SearchDocumentInput;
 use crate::models::content::source::Source;
 use crate::models::content::supplementary::{MetadataSupplementary, MetadataSupplementaryInput};
 use crate::models::security::permission::{Permission, PermissionAction};
 use crate::models::security::principal::Principal;
 use crate::models::workflow::traits::Trait;
 use crate::security::evaluator::Evaluator;
+use crate::util::storage::index_documents;
+use crate::util::RUNNING_BACKGROUND;
+use async_graphql::*;
 use deadpool_postgres::{GenericClient, Pool, Transaction};
-use log::error;
+use log::{debug, error};
 use postgres_types::ToSql;
 use serde_json::{Map, Value};
+use std::sync::atomic::Ordering::Relaxed;
+use std::sync::Arc;
 use tokio_postgres::Statement;
 use uuid::Uuid;
-use crate::context::BoscaContext;
-use crate::graphql::content::metadata_mutation::WorkflowConfigurationInput;
-use crate::models::content::search::SearchDocumentInput;
-use crate::util::RUNNING_BACKGROUND;
-use crate::util::storage::index_documents;
+
+use redis::{Client as RedisClient};
 
 #[derive(Clone)]
 pub struct ContentDataStore {
     pool: Arc<Pool>,
+    redis: Arc<RedisClient>,
 }
 
 impl ContentDataStore {
-    pub fn new(pool: Arc<Pool>) -> Self {
-        Self { pool }
+    pub fn new(pool: Arc<Pool>, redis: Arc<RedisClient>) -> Self {
+        Self {
+            pool,
+            redis,
+        }
+    }
+
+    async fn on_metadata_changed(&self, id: &Uuid) -> Result<(), Error> {
+        let mut conn = self.redis.get_multiplexed_tokio_connection().await?;
+        let id = id.to_string();
+        debug!("on_metadata_changed: {}", id);
+        conn.publish::<&str, String, ()>("metadata_changes", id).await?;
+        Ok(())
+    }
+
+    async fn on_collection_changed(&self, id: &Uuid) -> Result<(), Error> {
+        let mut conn = self.redis.get_multiplexed_tokio_connection().await?;
+        let id = id.to_string();
+        debug!("on_collection_changed: {}", id);
+        conn.publish::<&str, String, ()>("collection_changes", id).await?;
+        Ok(())
     }
 
     pub async fn get_sources(&self) -> Result<Vec<Source>, Error> {
@@ -111,10 +137,16 @@ impl ContentDataStore {
         principal: &Principal,
         action: PermissionAction,
     ) -> Result<bool, Error> {
-        if action == PermissionAction::View && collection.public && collection.workflow_state_id == "published" {
+        if action == PermissionAction::View
+            && collection.public
+            && collection.workflow_state_id == "published"
+        {
             return Ok(true);
         }
-        if action == PermissionAction::List && collection.public_list && collection.workflow_state_id == "published" {
+        if action == PermissionAction::List
+            && collection.public_list
+            && collection.workflow_state_id == "published"
+        {
             return Ok(true);
         }
         let eval = Evaluator::new(self.get_collection_permissions(&collection.id).await?);
@@ -128,13 +160,22 @@ impl ContentDataStore {
         principal: &Principal,
         action: PermissionAction,
     ) -> Result<bool, Error> {
-        if action == PermissionAction::View && collection.public && collection.workflow_state_id == "published" {
+        if action == PermissionAction::View
+            && collection.public
+            && collection.workflow_state_id == "published"
+        {
             return Ok(true);
         }
-        if action == PermissionAction::List && collection.public_list && collection.workflow_state_id == "published" {
+        if action == PermissionAction::List
+            && collection.public_list
+            && collection.workflow_state_id == "published"
+        {
             return Ok(true);
         }
-        let eval = Evaluator::new(self.get_collection_permissions_txn(txn, &collection.id).await?);
+        let eval = Evaluator::new(
+            self.get_collection_permissions_txn(txn, &collection.id)
+                .await?,
+        );
         Ok(eval.evaluate(principal, &action))
     }
 
@@ -209,8 +250,14 @@ impl ContentDataStore {
     }
 
     #[allow(dead_code)]
-    pub async fn get_collection_txn(&self, txn: &Transaction<'_>, id: &Uuid) -> Result<Option<Collection>, Error> {
-        let stmt = txn.prepare_cached("select * from collections where id = $1").await?;
+    pub async fn get_collection_txn(
+        &self,
+        txn: &Transaction<'_>,
+        id: &Uuid,
+    ) -> Result<Option<Collection>, Error> {
+        let stmt = txn
+            .prepare_cached("select * from collections where id = $1")
+            .await?;
         let rows = txn.query(&stmt, &[id]).await?;
         if rows.is_empty() {
             return Ok(None);
@@ -218,7 +265,12 @@ impl ContentDataStore {
         Ok(Some(rows.first().unwrap().into()))
     }
 
-    pub async fn get_collection_parent_collections(&self, id: &Uuid, offset: i64, limit: i64) -> Result<Vec<Collection>, Error> {
+    pub async fn get_collection_parent_collections(
+        &self,
+        id: &Uuid,
+        offset: i64,
+        limit: i64,
+    ) -> Result<Vec<Collection>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached("select c.* from collections c inner join collection_items ci on (c.id = ci.collection_id) where ci.child_collection_id = $1 offset $2 limit $3")
@@ -234,7 +286,11 @@ impl ContentDataStore {
         Ok(rows.iter().map(|r| r.into()).collect())
     }
 
-    pub async fn get_collection_permissions_txn(&self, txn: &Transaction<'_>, id: &Uuid) -> Result<Vec<Permission>, Error> {
+    pub async fn get_collection_permissions_txn(
+        &self,
+        txn: &Transaction<'_>,
+        id: &Uuid,
+    ) -> Result<Vec<Permission>, Error> {
         let stmt = txn.prepare_cached("select collection_id as entity_id, group_id, action from collection_permissions where collection_id = $1").await?;
         let rows = txn.query(&stmt, &[id]).await?;
         Ok(rows.iter().map(|r| r.into()).collect())
@@ -248,42 +304,40 @@ impl ContentDataStore {
         attributes: Option<Value>,
     ) -> Result<(), Error> {
         if child_collection_id.is_none() && child_metadata_id.is_none() {
-            return Err(Error::new("you must supply either a child collection id or child metadata id"));
+            return Err(Error::new(
+                "you must supply either a child collection id or child metadata id",
+            ));
         }
         if child_collection_id.is_some() && child_metadata_id.is_some() {
-            return Err(Error::new("you can only supply either a child collection id or child metadata id"));
+            return Err(Error::new(
+                "you can only supply either a child collection id or child metadata id",
+            ));
         }
         let connection = self.pool.get().await?;
         if let Some(child_id) = child_collection_id {
             let stmt = connection.prepare_cached("update collection_items set attributes = $1 where collection_id = $2 and child_collection_id = $3").await?;
-            connection.execute(&stmt, &[&attributes, collection_id, &child_id]).await?;
+            connection
+                .execute(&stmt, &[&attributes, collection_id, &child_id])
+                .await?;
         } else if let Some(child_id) = child_metadata_id {
             let stmt = connection.prepare_cached("update collection_items set attributes = $1 where collection_id = $2 and child_metadata_id = $3").await?;
-            connection.execute(&stmt, &[&attributes, collection_id, &child_id]).await?;
+            connection
+                .execute(&stmt, &[&attributes, collection_id, &child_id])
+                .await?;
         }
         Ok(())
     }
 
-    pub async fn set_collection_public(
-        &self,
-        id: &Uuid,
-        public: bool,
-    ) -> Result<(), Error> {
+    pub async fn set_collection_public(&self, id: &Uuid, public: bool) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
-            .prepare_cached(
-                "update collections set public = $1, modified = now() where id = $2",
-            )
+            .prepare_cached("update collections set public = $1, modified = now() where id = $2")
             .await?;
         connection.execute(&stmt, &[&public, id]).await?;
         Ok(())
     }
 
-    pub async fn set_collection_public_list(
-        &self,
-        id: &Uuid,
-        public: bool,
-    ) -> Result<(), Error> {
+    pub async fn set_collection_public_list(&self, id: &Uuid, public: bool) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached(
@@ -291,6 +345,7 @@ impl ContentDataStore {
             )
             .await?;
         connection.execute(&stmt, &[&public, id]).await?;
+        self.on_collection_changed(id).await?;
         Ok(())
     }
 
@@ -307,12 +362,25 @@ impl ContentDataStore {
                 ],
             )
             .await?;
+        self.on_collection_changed(&permission.entity_id).await?;
         Ok(())
     }
 
-    pub async fn add_collection_permission_txn(&self, txn: &Transaction<'_>, permission: &Permission) -> Result<(), Error> {
+    pub async fn add_collection_permission_txn(
+        &self,
+        txn: &Transaction<'_>,
+        permission: &Permission,
+    ) -> Result<(), Error> {
         let stmt = txn.prepare_cached("insert into collection_permissions (collection_id, group_id, action) values ($1, $2, $3)").await?;
-        txn.execute(&stmt, &[&permission.entity_id, &permission.group_id, &permission.action]).await?;
+        txn.execute(
+            &stmt,
+            &[
+                &permission.entity_id,
+                &permission.group_id,
+                &permission.action,
+            ],
+        )
+        .await?;
         Ok(())
     }
 
@@ -329,13 +397,17 @@ impl ContentDataStore {
                 ],
             )
             .await?;
+        self.on_collection_changed(&permission.entity_id).await?;
         Ok(())
     }
 
     pub async fn delete_collection(&self, id: &Uuid) -> Result<(), Error> {
         let connection = self.pool.get().await?;
-        let stmt = connection.prepare_cached("delete from collections where id = $1").await?;
+        let stmt = connection
+            .prepare_cached("delete from collections where id = $1")
+            .await?;
         connection.execute(&stmt, &[id]).await?;
+        self.on_collection_changed(id).await?;
         Ok(())
     }
 
@@ -349,7 +421,14 @@ impl ContentDataStore {
         }
     }
 
-    fn build_ordering<'a>(&self, attributes_column: &str, start_index: i32, ordering: &[Value], values: &mut Vec<&'a (dyn ToSql + Sync)>, names: &'a [String]) -> String {
+    fn build_ordering<'a>(
+        &self,
+        attributes_column: &str,
+        start_index: i32,
+        ordering: &[Value],
+        values: &mut Vec<&'a (dyn ToSql + Sync)>,
+        names: &'a [String],
+    ) -> String {
         let mut index = start_index;
         let mut buf = "order by ".to_owned();
         let mut n = 0;
@@ -369,7 +448,11 @@ impl ContentDataStore {
             }
             if a.contains_key("order") {
                 buf.push(' ');
-                buf.push_str(if a.get("order").unwrap().as_str().unwrap() == "asc" { "asc" } else { "desc" });
+                buf.push_str(if a.get("order").unwrap().as_str().unwrap() == "asc" {
+                    "asc"
+                } else {
+                    "desc"
+                });
             }
         }
         if buf == "order by " {
@@ -392,13 +475,15 @@ impl ContentDataStore {
                 self.build_ordering_names(ordering, &mut names);
                 self.build_ordering("attributes", 2, ordering, &mut values, &names)
             }
-            _ => String::new()
+            _ => String::new(),
         };
         let mut query = "select child_collection_id, child_metadata_id, attributes from collection_items where collection_id = $1 ".to_owned();
         if !ordering.is_empty() {
             query.push_str(ordering.as_str());
         }
-        query.push_str(format!(" offset ${} limit ${}", values.len() + 1, values.len() + 2).as_str());
+        query.push_str(
+            format!(" offset ${} limit ${}", values.len() + 1, values.len() + 2).as_str(),
+        );
         values.push(&offset as &(dyn ToSql + Sync));
         values.push(&limit as &(dyn ToSql + Sync));
         let connection = self.pool.get().await?;
@@ -421,7 +506,7 @@ impl ContentDataStore {
                 self.build_ordering_names(ordering, &mut names);
                 self.build_ordering("ci.attributes", 2, ordering, &mut values, &names)
             }
-            _ => String::new()
+            _ => String::new(),
         };
         let mut query = "select c.*, ci.attributes as item_attributes from collections c inner join collection_items ci on (ci.child_collection_id = c.id and ci.collection_id = $1) ".to_owned();
         if ordering.is_empty() {
@@ -429,7 +514,9 @@ impl ContentDataStore {
         } else {
             query.push_str(ordering.as_str());
         }
-        query.push_str(format!(" offset ${} limit ${}", values.len() + 1, values.len() + 2).as_str());
+        query.push_str(
+            format!(" offset ${} limit ${}", values.len() + 1, values.len() + 2).as_str(),
+        );
         values.push(&offset as &(dyn ToSql + Sync));
         values.push(&limit as &(dyn ToSql + Sync));
         let connection = self.pool.get().await?;
@@ -452,7 +539,7 @@ impl ContentDataStore {
                 self.build_ordering_names(ordering, &mut names);
                 self.build_ordering("ci.attributes", 2, ordering, &mut values, &names)
             }
-            _ => String::new()
+            _ => String::new(),
         };
         let mut query = "select m.*, ci.attributes as item_attributes from metadata m inner join collection_items ci on (ci.child_metadata_id = m.id and ci.collection_id = $1) ".to_owned();
         if ordering.is_empty() {
@@ -460,7 +547,9 @@ impl ContentDataStore {
         } else {
             query.push_str(ordering.as_str());
         }
-        query.push_str(format!(" offset ${} limit ${}", values.len() + 1, values.len() + 2).as_str());
+        query.push_str(
+            format!(" offset ${} limit ${}", values.len() + 1, values.len() + 2).as_str(),
+        );
         values.push(&offset as &(dyn ToSql + Sync));
         values.push(&limit as &(dyn ToSql + Sync));
         let connection = self.pool.get().await?;
@@ -476,6 +565,7 @@ impl ContentDataStore {
         match self.add_collection_txn(&txn, collection).await {
             Ok(value) => {
                 txn.commit().await?;
+                self.on_collection_changed(&value).await?;
                 Ok(value)
             }
             Err(err) => {
@@ -485,13 +575,18 @@ impl ContentDataStore {
         }
     }
 
-    pub async fn edit_collection(&self, id: &Uuid, collection: &CollectionInput) -> Result<(), Error> {
+    pub async fn edit_collection(
+        &self,
+        id: &Uuid,
+        collection: &CollectionInput,
+    ) -> Result<(), Error> {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
 
         match self.edit_collection_txn(&txn, id, collection).await {
             Ok(value) => {
                 txn.commit().await?;
+                self.on_collection_changed(id).await?;
                 Ok(value)
             }
             Err(err) => {
@@ -506,7 +601,9 @@ impl ContentDataStore {
         txn: &'a Transaction<'a>,
         collection: &CollectionInput,
     ) -> Result<Uuid, Error> {
-        let stmt: Statement = if collection.collection_type.unwrap_or(CollectionType::Folder) == CollectionType::Root {
+        let stmt: Statement = if collection.collection_type.unwrap_or(CollectionType::Folder)
+            == CollectionType::Root
+        {
             txn.prepare("insert into collections (id, name, description, type, labels, attributes, ordering) values ('00000000-0000-0000-0000-000000000000', $1, $2, $3, $4, $5, $6) returning id").await?
         } else {
             txn.prepare("insert into collections (name, description, type, labels, attributes, ordering) values ($1, $2, $3, $4, $5, $6) returning id").await?
@@ -548,39 +645,69 @@ impl ContentDataStore {
                 id,
             ],
         )
-            .await?;
+        .await?;
         Ok(())
     }
 
-    pub async fn add_child_collection(&self, id: &Uuid, collection_id: &Uuid, attributes: &Option<Value>) -> Result<(), Error> {
+    pub async fn add_child_collection(
+        &self,
+        id: &Uuid,
+        collection_id: &Uuid,
+        attributes: &Option<Value>,
+    ) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached(
                 "insert into collection_items (collection_id, child_collection_id, attributes) values ($1, $2, $3)",
             )
             .await?;
-        connection.execute(&stmt, &[id, collection_id, attributes]).await?;
+        connection
+            .execute(&stmt, &[id, collection_id, attributes])
+            .await?;
+        self.on_collection_changed(id).await?;
+        self.on_collection_changed(collection_id).await?;
         Ok(())
     }
 
-    pub async fn add_child_collection_txn(&self, txn: &Transaction<'_>, id: &Uuid, collection_id: &Uuid, attributes: &Option<Value>) -> Result<(), Error> {
+    pub async fn add_child_collection_txn(
+        &self,
+        txn: &Transaction<'_>,
+        id: &Uuid,
+        collection_id: &Uuid,
+        attributes: &Option<Value>,
+    ) -> Result<(), Error> {
         let stmt = txn.prepare_cached("insert into collection_items (collection_id, child_collection_id, attributes) values ($1, $2, $3)").await?;
         txn.execute(&stmt, &[id, collection_id, attributes]).await?;
         Ok(())
     }
 
-    pub async fn add_child_metadata(&self, id: &Uuid, metadata_id: &Uuid, attributes: &Option<Value>) -> Result<(), Error> {
+    pub async fn add_child_metadata(
+        &self,
+        id: &Uuid,
+        metadata_id: &Uuid,
+        attributes: &Option<Value>,
+    ) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached(
                 "insert into collection_items (collection_id, child_metadata_id, attributes) values ($1, $2, $3)",
             )
             .await?;
-        connection.execute(&stmt, &[id, metadata_id, attributes]).await?;
+        connection
+            .execute(&stmt, &[id, metadata_id, attributes])
+            .await?;
+        self.on_collection_changed(id).await?;
+        self.on_metadata_changed(metadata_id).await?;
         Ok(())
     }
 
-    pub async fn add_child_metadata_txn(&self, txn: &Transaction<'_>, id: &Uuid, metadata_id: &Uuid, attributes: &Option<Value>) -> Result<(), Error> {
+    pub async fn add_child_metadata_txn(
+        &self,
+        txn: &Transaction<'_>,
+        id: &Uuid,
+        metadata_id: &Uuid,
+        attributes: &Option<Value>,
+    ) -> Result<(), Error> {
         let stmt = txn
             .prepare_cached(
                 "insert into collection_items (collection_id, child_metadata_id, attributes) values ($1, $2, $3)",
@@ -590,7 +717,11 @@ impl ContentDataStore {
         Ok(())
     }
 
-    pub async fn remove_child_collection(&self, id: &Uuid, collection_id: &Uuid) -> Result<(), Error> {
+    pub async fn remove_child_collection(
+        &self,
+        id: &Uuid,
+        collection_id: &Uuid,
+    ) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached(
@@ -598,6 +729,8 @@ impl ContentDataStore {
             )
             .await?;
         connection.execute(&stmt, &[id, collection_id]).await?;
+        self.on_collection_changed(collection_id).await?;
+        self.on_collection_changed(id).await?;
         Ok(())
     }
 
@@ -609,6 +742,8 @@ impl ContentDataStore {
             )
             .await?;
         connection.execute(&stmt, &[id, metadata_id]).await?;
+        self.on_collection_changed(id).await?;
+        self.on_metadata_changed(metadata_id).await?;
         Ok(())
     }
 
@@ -618,7 +753,10 @@ impl ContentDataStore {
         principal: &Principal,
         action: PermissionAction,
     ) -> Result<bool, Error> {
-        if action == PermissionAction::View && metadata.public && metadata.workflow_state_id == "published" {
+        if action == PermissionAction::View
+            && metadata.public
+            && metadata.workflow_state_id == "published"
+        {
             return Ok(true);
         }
         let eval = Evaluator::new(self.get_metadata_permissions(&metadata.id).await?);
@@ -657,7 +795,11 @@ impl ContentDataStore {
         Ok(rows.iter().map(|r| r.into()).collect())
     }
 
-    pub async fn get_metadata_by_version(&self, id: &Uuid, version: i32) -> Result<Option<Metadata>, Error> {
+    pub async fn get_metadata_by_version(
+        &self,
+        id: &Uuid,
+        version: i32,
+    ) -> Result<Option<Metadata>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached("select * from metadata where id = $1 and version = $2")
@@ -669,7 +811,12 @@ impl ContentDataStore {
         Ok(Some(rows.first().unwrap().into()))
     }
 
-    pub async fn get_metadata_parent_collection_ids(&self, id: &Uuid, offset: i64, limit: i64) -> Result<Vec<Uuid>, Error> {
+    pub async fn get_metadata_parent_collection_ids(
+        &self,
+        id: &Uuid,
+        offset: i64,
+        limit: i64,
+    ) -> Result<Vec<Uuid>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached("select collection_id from collection_items where child_metadata_id = $1 offset $2 limit $3")
@@ -679,7 +826,12 @@ impl ContentDataStore {
     }
 
     #[allow(dead_code)]
-    pub async fn get_metadata_parent_collections(&self, id: &Uuid, offset: i64, limit: i64) -> Result<Vec<Collection>, Error> {
+    pub async fn get_metadata_parent_collections(
+        &self,
+        id: &Uuid,
+        offset: i64,
+        limit: i64,
+    ) -> Result<Vec<Collection>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached("select c.* from collections c inner join collection_items ci on (c.id = ci.collection_id) where ci.child_metadata_id = $1 offset $2 limit $3")
@@ -769,6 +921,7 @@ impl ContentDataStore {
                 ],
             )
             .await?;
+        self.on_metadata_changed(&id).await?;
         Ok(())
     }
 
@@ -787,20 +940,17 @@ impl ContentDataStore {
         connection
             .execute(&stmt, &[&content_type, &len, &metadata_id, &key])
             .await?;
+        self.on_metadata_changed(metadata_id).await?;
         Ok(())
     }
 
-    pub async fn set_metadata_ready(
-        &self,
-        id: &Uuid,
-    ) -> Result<(), Error> {
+    pub async fn set_metadata_ready(&self, id: &Uuid) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
-            .prepare_cached(
-                "update metadata set ready = now() where id = $1",
-            )
+            .prepare_cached("update metadata set ready = now() where id = $1")
             .await?;
         connection.execute(&stmt, &[id]).await?;
+        self.on_metadata_changed(id).await?;
         Ok(())
     }
 
@@ -818,6 +968,7 @@ impl ContentDataStore {
             .await?;
         let job_id = plan_id.to_string();
         connection.execute(&stmt, &[id, &job_id, queue]).await?;
+        self.on_metadata_changed(id).await?;
         Ok(())
     }
 
@@ -865,6 +1016,7 @@ impl ContentDataStore {
             .await?;
         txn.execute(&stmt, &[&metadata_id]).await?;
         txn.commit().await?;
+        self.on_metadata_changed(metadata_id).await?;
         Ok(())
     }
 
@@ -880,29 +1032,21 @@ impl ContentDataStore {
             )
             .await?;
         connection.execute(&stmt, &[&metadata_id, &key]).await?;
+        self.on_metadata_changed(metadata_id).await?;
         Ok(())
     }
 
-    pub async fn set_metadata_public(
-        &self,
-        id: &Uuid,
-        public: bool,
-    ) -> Result<(), Error> {
+    pub async fn set_metadata_public(&self, id: &Uuid, public: bool) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
-            .prepare_cached(
-                "update metadata set public = $1, modified = now() where id = $2",
-            )
+            .prepare_cached("update metadata set public = $1, modified = now() where id = $2")
             .await?;
         connection.execute(&stmt, &[&public, id]).await?;
+        self.on_metadata_changed(id).await?;
         Ok(())
     }
 
-    pub async fn set_metadata_public_content(
-        &self,
-        id: &Uuid,
-        public: bool,
-    ) -> Result<(), Error> {
+    pub async fn set_metadata_public_content(&self, id: &Uuid, public: bool) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached(
@@ -910,6 +1054,7 @@ impl ContentDataStore {
             )
             .await?;
         connection.execute(&stmt, &[&public, id]).await?;
+        self.on_metadata_changed(id).await?;
         Ok(())
     }
 
@@ -925,6 +1070,7 @@ impl ContentDataStore {
             )
             .await?;
         connection.execute(&stmt, &[&public, id]).await?;
+        self.on_metadata_changed(id).await?;
         Ok(())
     }
 
@@ -941,21 +1087,25 @@ impl ContentDataStore {
                 ],
             )
             .await?;
+        self.on_metadata_changed(&permission.entity_id).await?;
         Ok(())
     }
 
-    pub async fn add_metadata_permission_txn(&self, txn: &Transaction<'_>, permission: &Permission) -> Result<(), Error> {
+    pub async fn add_metadata_permission_txn(
+        &self,
+        txn: &Transaction<'_>,
+        permission: &Permission,
+    ) -> Result<(), Error> {
         let stmt = txn.prepare_cached("insert into metadata_permissions (metadata_id, group_id, action) values ($1, $2, $3)").await?;
-        txn
-            .execute(
-                &stmt,
-                &[
-                    &permission.entity_id,
-                    &permission.group_id,
-                    &permission.action,
-                ],
-            )
-            .await?;
+        txn.execute(
+            &stmt,
+            &[
+                &permission.entity_id,
+                &permission.group_id,
+                &permission.action,
+            ],
+        )
+        .await?;
         Ok(())
     }
 
@@ -972,6 +1122,7 @@ impl ContentDataStore {
                 ],
             )
             .await?;
+        self.on_metadata_changed(&permission.entity_id).await?;
         Ok(())
     }
 
@@ -980,12 +1131,10 @@ impl ContentDataStore {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
 
-        match self
-            .add_metadata_txn(&txn, metadata)
-            .await
-        {
+        match self.add_metadata_txn(&txn, metadata).await {
             Ok(value) => {
                 txn.commit().await?;
+                self.on_metadata_changed(&value.0).await?;
                 Ok(value)
             }
             Err(err) => {
@@ -1011,6 +1160,7 @@ impl ContentDataStore {
         {
             Ok(value) => {
                 txn.commit().await?;
+                self.on_metadata_changed(id).await?;
                 Ok(value)
             }
             Err(err) => {
@@ -1020,34 +1170,62 @@ impl ContentDataStore {
         }
     }
 
-    pub async fn set_metadata_attributes(&self, metadata_id: &Uuid, attributes: Value) -> Result<(), Error> {
+    pub async fn set_metadata_attributes(
+        &self,
+        metadata_id: &Uuid,
+        attributes: Value,
+    ) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached("update metadata set attributes = $1, modified = now() where id = $2")
             .await?;
-        connection.execute(&stmt, &[&attributes, &metadata_id]).await?;
+        connection
+            .execute(&stmt, &[&attributes, &metadata_id])
+            .await?;
+        self.on_metadata_changed(metadata_id).await?;
         Ok(())
     }
 
-    pub async fn set_metadata_system_attributes(&self, metadata_id: &Uuid, attributes: Value) -> Result<(), Error> {
+    pub async fn set_metadata_system_attributes(
+        &self,
+        metadata_id: &Uuid,
+        attributes: Value,
+    ) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
-            .prepare_cached("update metadata set system_attributes = $1, modified = now() where id = $2")
+            .prepare_cached(
+                "update metadata set system_attributes = $1, modified = now() where id = $2",
+            )
             .await?;
-        connection.execute(&stmt, &[&attributes, &metadata_id]).await?;
+        connection
+            .execute(&stmt, &[&attributes, &metadata_id])
+            .await?;
+        self.on_metadata_changed(metadata_id).await?;
         Ok(())
     }
 
-    pub async fn set_metadata_uploaded(&self, metadata_id: &Uuid, original_file_name: &Option<String>, content_type: &Option<String>, len: usize) -> Result<(), Error> {
+    pub async fn set_metadata_uploaded(
+        &self,
+        metadata_id: &Uuid,
+        original_file_name: &Option<String>,
+        content_type: &Option<String>,
+        len: usize,
+    ) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached("update metadata set uploaded = now(), system_attributes = $1, modified = now(), content_type = $2, content_length = $3 where id = $4")
             .await?;
         let len = len as i64;
         let mut attrs = Map::new();
-        attrs.insert("original_file_name".to_owned(), Value::String(original_file_name.clone().unwrap_or("--".to_owned())));
+        attrs.insert(
+            "original_file_name".to_owned(),
+            Value::String(original_file_name.clone().unwrap_or("--".to_owned())),
+        );
         let attrs = Value::Object(attrs);
-        connection.execute(&stmt, &[&attrs, content_type, &len, metadata_id]).await?;
+        connection
+            .execute(&stmt, &[&attrs, content_type, &len, metadata_id])
+            .await?;
+        self.on_metadata_changed(metadata_id).await?;
         Ok(())
     }
 
@@ -1057,6 +1235,7 @@ impl ContentDataStore {
             .prepare_cached("update metadata set uploaded = null, modified = now(), content_length = 0 where id = $1")
             .await?;
         connection.execute(&stmt, &[&metadata_id]).await?;
+        self.on_metadata_changed(metadata_id).await?;
         Ok(())
     }
 
@@ -1118,46 +1297,46 @@ impl ContentDataStore {
     ) -> Result<(), Error> {
         if let Some(trait_ids) = &metadata.trait_ids {
             if !trait_ids.is_empty() {
-                return Err(Error::new("cannot bulk set trait ids after metadata is created"));
+                return Err(Error::new(
+                    "cannot bulk set trait ids after metadata is created",
+                ));
             }
         }
 
         if let Some(category_ids) = &metadata.category_ids {
             if !category_ids.is_empty() {
-                return Err(Error::new("cannot bulk set category ids after metadata is created"));
+                return Err(Error::new(
+                    "cannot bulk set category ids after metadata is created",
+                ));
             }
         }
 
         let stmt = txn.prepare("update metadata set name = $1, labels = $2, attributes = $3, language_tag = $4, source_id = $5, source_identifier = $6 where id = $7").await?;
         let labels = metadata.labels.clone().unwrap_or_default();
-        txn
-            .query(
-                &stmt,
-                &[
-                    &metadata.name,
-                    &labels,
-                    &metadata.attributes.as_ref().or(Some(&Value::Null)),
-                    &metadata.language_tag,
-                    source_id,
-                    source_identifier,
-                    &id
-                ],
-            )
-            .await?;
+        txn.query(
+            &stmt,
+            &[
+                &metadata.name,
+                &labels,
+                &metadata.attributes.as_ref().or(Some(&Value::Null)),
+                &metadata.language_tag,
+                source_id,
+                source_identifier,
+                &id,
+            ],
+        )
+        .await?;
 
         Ok(())
     }
 
-    pub async fn delete_metadata_trait(
-        &self,
-        id: &Uuid,
-        trait_id: &String,
-    ) -> Result<(), Error> {
+    pub async fn delete_metadata_trait(&self, id: &Uuid, trait_id: &String) -> Result<(), Error> {
         let conn = self.pool.get().await?;
         let stmt = conn
             .prepare("delete from metadata_traits where metadata_id = $1 and trait_id = $2")
             .await?;
         conn.execute(&stmt, &[id, trait_id]).await?;
+        self.on_metadata_changed(id).await?;
         Ok(())
     }
 
@@ -1193,6 +1372,7 @@ impl ContentDataStore {
             .prepare_cached("insert into metadata_traits (metadata_id, trait_id) values ($1, $2)")
             .await?;
         connection.execute(&stmt, &[id, trait_id]).await?;
+        self.on_metadata_changed(id).await?;
         Ok(())
     }
 
@@ -1230,6 +1410,7 @@ impl ContentDataStore {
             )
             .await?;
         connection.execute(&stmt, &[id, category_id]).await?;
+        self.on_metadata_changed(id).await?;
         Ok(())
     }
 
@@ -1245,6 +1426,7 @@ impl ContentDataStore {
             )
             .await?;
         connection.execute(&stmt, &[id, category_id]).await?;
+        self.on_metadata_changed(id).await?;
         Ok(())
     }
 
@@ -1267,6 +1449,8 @@ impl ContentDataStore {
                 ],
             )
             .await?;
+        self.on_metadata_changed(&id1).await?;
+        self.on_metadata_changed(&id2).await?;
         Ok(())
     }
 
@@ -1306,11 +1490,20 @@ impl ContentDataStore {
         let relationship = relationship.to_owned();
         let connection = self.pool.get().await?;
         let stmt = connection.prepare("update metadata_relationships set relationship = $1, attributes = $2 where metadata1_id = $3 and metadata2_id = $4 and (relationship = $1 or relationship is null or relationship = '')").await?;
-        connection.query(&stmt, &[&relationship, &attributes, id1, id2]).await?;
+        connection
+            .query(&stmt, &[&relationship, &attributes, id1, id2])
+            .await?;
+        self.on_metadata_changed(id1).await?;
+        self.on_metadata_changed(id2).await?;
         Ok(())
     }
 
-    pub async fn delete_metadata_relationship(&self, id1: &Uuid, id2: &Uuid, relationship: &str) -> Result<(), Error> {
+    pub async fn delete_metadata_relationship(
+        &self,
+        id1: &Uuid,
+        id2: &Uuid,
+        relationship: &str,
+    ) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let relationship = relationship.to_owned();
         let stmt = connection
@@ -1318,7 +1511,11 @@ impl ContentDataStore {
                 "delete from metadata_relationships where metadata1_id = $1 and metadata2_id = $2 and relationship = $3",
             )
             .await?;
-        connection.execute(&stmt, &[id1, id2, &relationship]).await?;
+        connection
+            .execute(&stmt, &[id1, id2, &relationship])
+            .await?;
+        self.on_metadata_changed(id1).await?;
+        self.on_metadata_changed(id2).await?;
         Ok(())
     }
 
@@ -1348,7 +1545,7 @@ impl ContentDataStore {
                 &complete,
             ],
         )
-            .await?;
+        .await?;
         if !success {
             let stmt = txn
                 .prepare("update metadata set workflow_state_pending_id = null where id = $1")
@@ -1364,38 +1561,51 @@ impl ContentDataStore {
             txn.execute(&stmt, &[&state, &metadata.id]).await?;
         }
         txn.commit().await?;
+        self.on_metadata_changed(&metadata.id).await?;
         Ok(())
     }
 
-    pub async fn set_collection_attributes(&self, collection_id: &Uuid, attributes: Value) -> Result<(), Error> {
-        let connection = self.pool.get().await?;
-        let stmt = connection
-            .prepare_cached("update collections set attributes = $1, modified = now() where id = $2")
-            .await?;
-        connection.execute(&stmt, &[&attributes, &collection_id]).await?;
-        Ok(())
-    }
-
-    pub async fn set_collection_ordering(&self, collection_id: &Uuid, ordering: Value) -> Result<(), Error> {
-        let connection = self.pool.get().await?;
-        let stmt = connection
-            .prepare_cached("update collections set ordering = $1, modified = now() where id = $2")
-            .await?;
-        connection.execute(&stmt, &[&ordering, &collection_id]).await?;
-        Ok(())
-    }
-
-    pub async fn set_collection_ready(
+    pub async fn set_collection_attributes(
         &self,
-        id: &Uuid,
+        collection_id: &Uuid,
+        attributes: Value,
     ) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached(
-                "update collections set ready = now() where id = $1",
+                "update collections set attributes = $1, modified = now() where id = $2",
             )
             .await?;
+        connection
+            .execute(&stmt, &[&attributes, &collection_id])
+            .await?;
+        self.on_collection_changed(collection_id).await?;
+        Ok(())
+    }
+
+    pub async fn set_collection_ordering(
+        &self,
+        collection_id: &Uuid,
+        ordering: Value,
+    ) -> Result<(), Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("update collections set ordering = $1, modified = now() where id = $2")
+            .await?;
+        connection
+            .execute(&stmt, &[&ordering, &collection_id])
+            .await?;
+        self.on_collection_changed(collection_id).await?;
+        Ok(())
+    }
+
+    pub async fn set_collection_ready(&self, id: &Uuid) -> Result<(), Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("update collections set ready = now() where id = $1")
+            .await?;
         connection.execute(&stmt, &[id]).await?;
+        self.on_collection_changed(id).await?;
         Ok(())
     }
 
@@ -1413,6 +1623,7 @@ impl ContentDataStore {
             .await?;
         let job_id = plan_id.to_string();
         connection.execute(&stmt, &[id, &job_id, queue]).await?;
+        self.on_collection_changed(id).await?;
         Ok(())
     }
 
@@ -1442,7 +1653,7 @@ impl ContentDataStore {
                 &complete,
             ],
         )
-            .await?;
+        .await?;
         if !success {
             let stmt = txn
                 .prepare("update collections set workflow_state_pending_id = null where id = $1")
@@ -1458,17 +1669,33 @@ impl ContentDataStore {
             txn.execute(&stmt, &[&state, &collection.id]).await?;
         }
         txn.commit().await?;
+        self.on_collection_changed(&collection.id).await?;
         Ok(())
     }
 
-    pub async fn add_collections(&self, ctx: &BoscaContext, collections: &mut [CollectionChildInput]) -> Result<Vec<Uuid>, Error> {
+    pub async fn add_collections(
+        &self,
+        ctx: &BoscaContext,
+        collections: &mut [CollectionChildInput],
+    ) -> Result<Vec<Uuid>, Error> {
         let mut search_documents = Vec::new();
         let mut ready_collection_ids = Vec::new();
         let mut ready_metadata_ids = Vec::new();
         let ids = {
             let mut conn = self.pool.get().await?;
             let txn = conn.transaction().await?;
-            let ids = self.add_collections_txn(ctx, &txn, collections, &mut ready_collection_ids, &mut ready_metadata_ids, &mut search_documents, false, None).await?;
+            let ids = self
+                .add_collections_txn(
+                    ctx,
+                    &txn,
+                    collections,
+                    &mut ready_collection_ids,
+                    &mut ready_metadata_ids,
+                    &mut search_documents,
+                    false,
+                    None,
+                )
+                .await?;
             txn.commit().await?;
             ids
         };
@@ -1476,12 +1703,17 @@ impl ContentDataStore {
         tokio::spawn(async move {
             match new_ctx.workflow.get_default_search_storage_system().await {
                 Ok(storage_system) => {
-                    if let Err(err) = index_documents(&new_ctx, &search_documents, &storage_system).await {
+                    if let Err(err) =
+                        index_documents(&new_ctx, &search_documents, &storage_system).await
+                    {
                         error!("failed to index documents: {}", err.message);
                     }
                 }
                 Err(err) => {
-                    error!("failed to get storage system to index documents: {}", err.message);
+                    error!(
+                        "failed to get storage system to index documents: {}",
+                        err.message
+                    );
                 }
             }
         });
@@ -1491,7 +1723,11 @@ impl ContentDataStore {
                 RUNNING_BACKGROUND.fetch_add(1, Relaxed);
                 match new_ctx.content.get_collection(&id).await {
                     Ok(Some(collection)) => {
-                        if let Err(e) = new_ctx.content.set_collection_ready_and_enqueue(&new_ctx, &collection, None).await {
+                        if let Err(e) = new_ctx
+                            .content
+                            .set_collection_ready_and_enqueue(&new_ctx, &collection, None)
+                            .await
+                        {
                             error!("failed to queue all collections: {}", e.message);
                         }
                     }
@@ -1511,7 +1747,11 @@ impl ContentDataStore {
                 RUNNING_BACKGROUND.fetch_add(1, Relaxed);
                 match new_ctx.content.get_metadata_by_version(&id, version).await {
                     Ok(Some(metadata)) => {
-                        if let Err(e) = new_ctx.content.set_metadata_ready_and_enqueue(&new_ctx, &metadata, None).await {
+                        if let Err(e) = new_ctx
+                            .content
+                            .set_metadata_ready_and_enqueue(&new_ctx, &metadata, None)
+                            .await
+                        {
                             error!("failed to queue all metadata: {}", e.message);
                         }
                     }
@@ -1525,11 +1765,24 @@ impl ContentDataStore {
                 RUNNING_BACKGROUND.fetch_add(-1, Relaxed);
             });
         }
+        for id in &ids {
+            self.on_collection_changed(id).await?;
+        }
         Ok(ids)
     }
 
     #[allow(clippy::too_many_arguments)]
-    async fn add_collections_txn(&self, ctx: &BoscaContext, txn: &Transaction<'_>, collections: &mut [CollectionChildInput], ready_collection_ids: &mut Vec<Uuid>, ready_metadata_ids: &mut Vec<(Uuid, i32)>, search_documents: &mut Vec<SearchDocumentInput>, ignore_permission_check: bool, permissions: Option<Vec<Permission>>) -> Result<Vec<Uuid>, Error> {
+    async fn add_collections_txn(
+        &self,
+        ctx: &BoscaContext,
+        txn: &Transaction<'_>,
+        collections: &mut [CollectionChildInput],
+        ready_collection_ids: &mut Vec<Uuid>,
+        ready_metadata_ids: &mut Vec<(Uuid, i32)>,
+        search_documents: &mut Vec<SearchDocumentInput>,
+        ignore_permission_check: bool,
+        permissions: Option<Vec<Permission>>,
+    ) -> Result<Vec<Uuid>, Error> {
         let mut new_collections = Vec::new();
         for collection_child in collections.iter_mut() {
             let collection = &mut collection_child.collection;
@@ -1539,13 +1792,15 @@ impl ContentDataStore {
                 None => Uuid::parse_str("00000000-0000-0000-0000-000000000000")?,
             };
             if !ignore_permission_check {
-                ctx.check_collection_action_txn(txn, &collection_id, PermissionAction::Edit).await?;
+                ctx.check_collection_action_txn(txn, &collection_id, PermissionAction::Edit)
+                    .await?;
             }
             let id = self.add_collection_txn(txn, collection).await?;
             let permissions = if let Some(permissions) = &permissions {
                 permissions.clone()
             } else {
-                self.get_collection_permissions_txn(txn, &collection_id).await?
+                self.get_collection_permissions_txn(txn, &collection_id)
+                    .await?
             };
             for permission in permissions.iter() {
                 let collection_permission = Permission {
@@ -1553,22 +1808,48 @@ impl ContentDataStore {
                     group_id: permission.group_id,
                     action: permission.action,
                 };
-                self.add_collection_permission_txn(txn, &collection_permission).await?
+                self.add_collection_permission_txn(txn, &collection_permission)
+                    .await?
             }
             if has_collection_id {
-                self.add_child_collection_txn(txn, &collection_id, &id, &collection_child.attributes).await?;
+                self.add_child_collection_txn(
+                    txn,
+                    &collection_id,
+                    &id,
+                    &collection_child.attributes,
+                )
+                .await?;
             }
             if let Some(children) = &mut collection.collections {
                 for child in children.iter_mut() {
                     child.collection.parent_collection_id = Some(id.to_string());
                 }
-                Box::pin(self.add_collections_txn(ctx, txn, children, ready_collection_ids, ready_metadata_ids, search_documents, true, Some(permissions.clone()))).await?;
+                Box::pin(self.add_collections_txn(
+                    ctx,
+                    txn,
+                    children,
+                    ready_collection_ids,
+                    ready_metadata_ids,
+                    search_documents,
+                    true,
+                    Some(permissions.clone()),
+                ))
+                .await?;
             }
             if let Some(children) = &mut collection.metadata {
                 for child in children.iter_mut() {
                     child.metadata.parent_collection_id = Some(id.to_string());
                 }
-                self.add_metadatas_txn(ctx, txn, children, ready_metadata_ids, search_documents, true, Some(permissions.clone())).await?;
+                self.add_metadatas_txn(
+                    ctx,
+                    txn,
+                    children,
+                    ready_metadata_ids,
+                    search_documents,
+                    true,
+                    Some(permissions.clone()),
+                )
+                .await?;
             }
             if collection.index.unwrap_or(true) {
                 search_documents.push(SearchDocumentInput {
@@ -1585,25 +1866,52 @@ impl ContentDataStore {
         Ok(new_collections)
     }
 
-    pub async fn add_metadatas(&self, ctx: &BoscaContext, metadatas: &mut [MetadataChildInput]) -> Result<Vec<(Uuid, i32)>, Error> {
+    pub async fn add_metadatas(
+        &self,
+        ctx: &BoscaContext,
+        metadatas: &mut [MetadataChildInput],
+    ) -> Result<Vec<(Uuid, i32)>, Error> {
         let mut conn = self.pool.get().await?;
         let txn = conn.transaction().await?;
         let mut ready_metadata_ids = Vec::new();
         let mut search_documents = Vec::new();
-        let ids = self.add_metadatas_txn(ctx, &txn, metadatas, &mut ready_metadata_ids, &mut search_documents, false, None).await?;
+        let ids = self
+            .add_metadatas_txn(
+                ctx,
+                &txn,
+                metadatas,
+                &mut ready_metadata_ids,
+                &mut search_documents,
+                false,
+                None,
+            )
+            .await?;
         txn.commit().await?;
         let storage_system = ctx.workflow.get_default_search_storage_system().await?;
         index_documents(ctx, &search_documents, &storage_system).await?;
         for (id, version) in ready_metadata_ids {
             if let Some(metadata) = self.get_metadata_by_version(&id, version).await? {
-                self.set_metadata_ready_and_enqueue(ctx, &metadata, None).await?;
+                self.set_metadata_ready_and_enqueue(ctx, &metadata, None)
+                    .await?;
             }
+        }
+        for (id, _) in &ids {
+            self.on_metadata_changed(id).await?
         }
         Ok(ids)
     }
 
     #[allow(clippy::too_many_arguments)]
-    async fn add_metadatas_txn(&self, ctx: &BoscaContext, txn: &Transaction<'_>, metadatas: &[MetadataChildInput], ready_metadata_ids: &mut Vec<(Uuid, i32)>, search_documents: &mut Vec<SearchDocumentInput>, ignore_permission_check: bool, permissions: Option<Vec<Permission>>) -> Result<Vec<(Uuid, i32)>, Error> {
+    async fn add_metadatas_txn(
+        &self,
+        ctx: &BoscaContext,
+        txn: &Transaction<'_>,
+        metadatas: &[MetadataChildInput],
+        ready_metadata_ids: &mut Vec<(Uuid, i32)>,
+        search_documents: &mut Vec<SearchDocumentInput>,
+        ignore_permission_check: bool,
+        permissions: Option<Vec<Permission>>,
+    ) -> Result<Vec<(Uuid, i32)>, Error> {
         let mut new_metadatas = Vec::new();
         for metadata_child in metadatas {
             let metadata = &metadata_child.metadata;
@@ -1613,13 +1921,15 @@ impl ContentDataStore {
                 None => Uuid::parse_str("00000000-0000-0000-0000-000000000000")?,
             };
             if !ignore_permission_check {
-                ctx.check_collection_action_txn(txn, &collection_id, PermissionAction::Edit).await?;
+                ctx.check_collection_action_txn(txn, &collection_id, PermissionAction::Edit)
+                    .await?;
             }
             let (id, version) = self.add_metadata_txn(txn, metadata).await?;
             let permissions = if let Some(permissions) = &permissions {
                 permissions.clone()
             } else {
-                self.get_collection_permissions_txn(txn, &collection_id).await?
+                self.get_collection_permissions_txn(txn, &collection_id)
+                    .await?
             };
             for permission in permissions.iter() {
                 let metadata_permission = Permission {
@@ -1627,10 +1937,12 @@ impl ContentDataStore {
                     group_id: permission.group_id,
                     action: permission.action,
                 };
-                self.add_metadata_permission_txn(txn, &metadata_permission).await?
+                self.add_metadata_permission_txn(txn, &metadata_permission)
+                    .await?
             }
             if has_collection_id {
-                self.add_child_metadata_txn(txn, &collection_id, &id, &metadata_child.attributes).await?;
+                self.add_child_metadata_txn(txn, &collection_id, &id, &metadata_child.attributes)
+                    .await?;
             }
             if metadata.index.unwrap_or(true) {
                 search_documents.push(SearchDocumentInput {
@@ -1647,25 +1959,67 @@ impl ContentDataStore {
         Ok(new_metadatas)
     }
 
-    pub async fn set_collection_ready_and_enqueue(&self, ctx: &BoscaContext, collection: &Collection, configurations: Option<Vec<WorkflowConfigurationInput>>) -> Result<(), Error> {
+    pub async fn set_collection_ready_and_enqueue(
+        &self,
+        ctx: &BoscaContext,
+        collection: &Collection,
+        configurations: Option<Vec<WorkflowConfigurationInput>>,
+    ) -> Result<(), Error> {
         let datasource = &ctx.content;
         let workflow = &ctx.workflow;
         let process_id = "collection.process".to_owned();
-        self.set_collection_workflow_state(&ctx.principal, collection, "draft", "move to draft during set to ready", true, false).await?;
-        let plan = workflow.enqueue_collection_workflow(&process_id, &collection.id, configurations.as_ref(), None).await?;
+        self.set_collection_workflow_state(
+            &ctx.principal,
+            collection,
+            "draft",
+            "move to draft during set to ready",
+            true,
+            false,
+        )
+        .await?;
+        let plan = workflow
+            .enqueue_collection_workflow(&process_id, &collection.id, configurations.as_ref(), None)
+            .await?;
         datasource.set_collection_ready(&collection.id).await?;
-        datasource.add_collection_plan(&collection.id, plan.plan_id, &plan.workflow.queue).await?;
+        datasource
+            .add_collection_plan(&collection.id, plan.plan_id, &plan.workflow.queue)
+            .await?;
+        self.on_collection_changed(&collection.id).await?;
         Ok(())
     }
 
-    pub async fn set_metadata_ready_and_enqueue(&self, ctx: &BoscaContext, metadata: &Metadata, configurations: Option<Vec<WorkflowConfigurationInput>>) -> Result<(), Error> {
+    pub async fn set_metadata_ready_and_enqueue(
+        &self,
+        ctx: &BoscaContext,
+        metadata: &Metadata,
+        configurations: Option<Vec<WorkflowConfigurationInput>>,
+    ) -> Result<(), Error> {
         let datasource = &ctx.content;
         let workflow = &ctx.workflow;
         let process_id = "metadata.process".to_owned();
-        self.set_metadata_workflow_state(&ctx.principal, metadata, "draft", "move to draft during set to ready", true, false).await?;
-        let plan = workflow.enqueue_metadata_workflow(&process_id, &metadata.id, &metadata.version, configurations.as_ref(), None).await?;
+        self.set_metadata_workflow_state(
+            &ctx.principal,
+            metadata,
+            "draft",
+            "move to draft during set to ready",
+            true,
+            false,
+        )
+        .await?;
+        let plan = workflow
+            .enqueue_metadata_workflow(
+                &process_id,
+                &metadata.id,
+                &metadata.version,
+                configurations.as_ref(),
+                None,
+            )
+            .await?;
         datasource.set_metadata_ready(&metadata.id).await?;
-        datasource.add_metadata_plan(&metadata.id, plan.plan_id, &plan.workflow.queue).await?;
+        datasource
+            .add_metadata_plan(&metadata.id, plan.plan_id, &plan.workflow.queue)
+            .await?;
+        self.on_metadata_changed(&metadata.id).await?;
         Ok(())
     }
 }

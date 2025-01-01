@@ -4,6 +4,7 @@ use deadpool_postgres::Transaction;
 use meilisearch_sdk::client::Client;
 use uuid::Uuid;
 use crate::datastores::content::ContentDataStore;
+use crate::datastores::persisted_queries::PersistedQueriesDataStore;
 use crate::datastores::security::SecurityDataStore;
 use crate::datastores::workflow::WorkflowDataStore;
 use crate::graphql::content::storage::ObjectStorage;
@@ -13,12 +14,16 @@ use crate::models::security::permission::PermissionAction;
 use crate::models::security::principal::Principal;
 use crate::queue::message_queues::MessageQueues;
 
+use redis::Client as RedisClient;
+
 #[derive(Clone)]
 pub struct BoscaContext {
     pub content: ContentDataStore,
     pub security: SecurityDataStore,
     pub storage: ObjectStorage,
     pub workflow: WorkflowDataStore,
+    pub queries: PersistedQueriesDataStore,
+    pub redis: Arc<RedisClient>,
     pub search: Arc<Client>,
     pub principal: Principal,
     pub messages: MessageQueues,

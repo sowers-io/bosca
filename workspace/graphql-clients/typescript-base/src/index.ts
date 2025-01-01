@@ -30,6 +30,7 @@ export class RequestInterceptor {
     }
     const res = await response.json()
     if (res.errors) {
+      console.log(res);
       throw new ClientError(response.status, res.errors)
     }
     return res.data as T
