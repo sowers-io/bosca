@@ -1,7 +1,9 @@
+use crate::context::BoscaContext;
+use crate::graphql::security::groups::GroupsObject;
 use crate::graphql::security::login::LoginObject;
 use crate::graphql::security::principals::PrincipalObject;
+use crate::models::security::permission::PermissionAction;
 use async_graphql::*;
-use crate::context::BoscaContext;
 
 pub struct SecurityObject {}
 
@@ -12,7 +14,24 @@ impl SecurityObject {
         Ok(PrincipalObject::new(ctx.principal.clone()))
     }
 
+    async fn actions(&self) -> Result<Vec<String>, Error> {
+        Ok(vec![
+            PermissionAction::View,
+            PermissionAction::Edit,
+            PermissionAction::Delete,
+            PermissionAction::Manage,
+            PermissionAction::List,
+        ]
+        .iter()
+        .map(|id| format!("{:?}", id))
+        .collect())
+    }
+
     async fn login(&self) -> LoginObject {
         LoginObject {}
+    }
+
+    async fn groups(&self) -> GroupsObject {
+        GroupsObject {}
     }
 }

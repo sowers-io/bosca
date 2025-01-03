@@ -237,7 +237,7 @@ fn build_search_client() -> Arc<Client> {
 fn build_redis_client() -> Arc<RedisClient> {
     let url = match env::var("REDIS_URL") {
         Ok(url) => url,
-        _ => "redis://127.0.0.1:6379".to_string(),
+        _ => "redis://127.0.0.1:6380".to_string(),
     };
     let client = RedisClient::open(url).unwrap();
     Arc::new(client)

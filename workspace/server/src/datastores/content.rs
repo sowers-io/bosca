@@ -333,6 +333,7 @@ impl ContentDataStore {
             .prepare_cached("update collections set public = $1, modified = now() where id = $2")
             .await?;
         connection.execute(&stmt, &[&public, id]).await?;
+        self.on_collection_changed(id).await?;
         Ok(())
     }
 

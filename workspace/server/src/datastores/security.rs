@@ -37,6 +37,15 @@ impl SecurityDataStore {
         Ok(Group::new(id, name.clone()))
     }
 
+    pub async fn get_groups(&self) -> Result<Vec<Group>, Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("select * from groups")
+            .await?;
+        let results = connection.query(&stmt, &[]).await?;
+        Ok(results.iter().map(Group::from).collect())
+    }
+
     pub async fn get_group(&self, id: &Uuid) -> Result<Group, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
