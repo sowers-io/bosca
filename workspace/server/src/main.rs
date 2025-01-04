@@ -86,6 +86,7 @@ use crate::datastores::persisted_queries::PersistedQueriesDataStore;
 
 use redis::Client as RedisClient;
 use crate::authed_subscription::AuthGraphQLSubscription;
+use crate::datastores::content_notifier::ContentNotifier;
 use crate::graphql::subscription::SubscriptionObject;
 use crate::logger::Logger;
 use crate::schema::BoscaSchema;
@@ -234,13 +235,12 @@ fn build_search_client() -> Arc<Client> {
     Arc::new(Client::new(url, Some(key)).unwrap())
 }
 
-fn build_redis_client() -> Arc<RedisClient> {
+fn build_redis_client() -> RedisClient {
     let url = match env::var("REDIS_URL") {
         Ok(url) => url,
         _ => "redis://127.0.0.1:6380".to_string(),
     };
-    let client = RedisClient::open(url).unwrap();
-    Arc::new(client)
+    RedisClient::open(url).unwrap()
 }
 
 async fn initialize_workflow(ctx: &BoscaContext) {
@@ -305,7 +305,6 @@ async fn initialize_content(ctx: &BoscaContext) {
                 ordering: None,
                 metadata: None,
                 collections: None,
-                ready: Some(true),
             };
             ctx.content.add_collection(&input).await.unwrap();
             let group = ctx.security.get_administrators_group().await.unwrap();
@@ -390,7 +389,7 @@ async fn main() {
 
     let messages = MessageQueues::new(job_pool);
     let jobs = JobQueues::new(messages.clone());
-    let redis = build_redis_client();
+    let notifier = Arc::new(ContentNotifier::new(build_redis_client()));
     let ctx = BoscaContext {
         security: SecurityDataStore::new(
             Arc::clone(&bosca_pool),
@@ -400,9 +399,9 @@ async fn main() {
             Arc::clone(&bosca_pool),
             jobs.clone(),
         ),
-        redis: Arc::clone(&redis),
         queries: PersistedQueriesDataStore::new(Arc::clone(&bosca_pool)).await,
-        content: ContentDataStore::new(bosca_pool, Arc::clone(&redis)),
+        content: ContentDataStore::new(bosca_pool, Arc::clone(&notifier)),
+        notifier,
         search: build_search_client(),
         storage: build_object_storage(),
         principal: get_anonymous_principal(),

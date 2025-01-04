@@ -149,6 +149,9 @@ workflows:
     - from: draft
       to: published
       description: Publish a draft
+    - from: draft
+      to: pending-approval
+      description: Move draft to pending approval
     - from: pending-approval
       to: approved
       description: Approve
@@ -202,6 +205,16 @@ workflows:
     metadata.supplementary.text.index:
       inputs:
         supplementaryId: supplementary
+    collection.set.ready:
+      configuration:
+        collection_id: ""
+        recursive: false
+    collection.set.public:
+      configuration:
+        collection_id: ""
+        recursive: false
+    metadata.set.ready: { }
+    metadata.set.public: { }
     metadata.transition.complete: { }
     metadata.transition.fail: { }
     metadata.transition.to:
@@ -248,6 +261,14 @@ workflows:
           configuration:
             state: draft
             status:
+    metadata.set.ready:
+      queue: metadata
+      activities:
+        collection.set.ready:
+    metadata.set.public:
+      queue: metadata
+      activities:
+        collection.set.public:
     # collection workflows
     collection.process:
       queue: metadata
@@ -261,6 +282,14 @@ workflows:
           configuration:
             state: draft
             status:
+    collection.set.ready:
+      queue: metadata
+      activities:
+        collection.set.ready:
+    collection.set.public:
+      queue: metadata
+      activities:
+        collection.set.public:
     # bible workflows
     bible.usx:
       queue: bible

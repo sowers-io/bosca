@@ -4,5 +4,5 @@ set -e
 
 cargo install graphql_client_cli
 
-rm workspace/client/schema.json.graphql
+rm -f workspace/client/schema.json.graphql
 graphql-client introspect-schema http://127.0.0.1:8000/graphql --output workspace/client/schema.json

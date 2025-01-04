@@ -17,46 +17,38 @@ use crate::models::security::principal::Principal;
 use crate::models::workflow::traits::Trait;
 use crate::security::evaluator::Evaluator;
 use crate::util::storage::index_documents;
-use crate::util::RUNNING_BACKGROUND;
 use async_graphql::*;
 use deadpool_postgres::{GenericClient, Pool, Transaction};
-use log::{error, info};
+use log::error;
 use postgres_types::ToSql;
-use redis::AsyncCommands;
 use serde_json::{Map, Value};
-use std::sync::atomic::Ordering::Relaxed;
 use std::sync::Arc;
 use tokio_postgres::Statement;
 use uuid::Uuid;
-
-use redis::Client as RedisClient;
+use crate::datastores::content_notifier::ContentNotifier;
 
 #[derive(Clone)]
 pub struct ContentDataStore {
     pool: Arc<Pool>,
-    redis: Arc<RedisClient>,
+    notifier: Arc<ContentNotifier>,
 }
 
 impl ContentDataStore {
-    pub fn new(pool: Arc<Pool>, redis: Arc<RedisClient>) -> Self {
-        Self { pool, redis }
+    pub fn new(pool: Arc<Pool>, notifier: Arc<ContentNotifier>) -> Self {
+        Self { pool, notifier }
     }
 
     async fn on_metadata_changed(&self, id: &Uuid) -> Result<(), Error> {
-        let mut conn = self.redis.get_multiplexed_tokio_connection().await?;
-        let id = id.to_string();
-        info!("on_metadata_changed: {}", id);
-        conn.publish::<&str, String, ()>("metadata_changes", id)
-            .await?;
+        if let Err(e) = self.notifier.metadata_changed(id).await {
+            error!("Failed to notify metadata changes: {:?}", e);
+        }
         Ok(())
     }
 
     async fn on_collection_changed(&self, id: &Uuid) -> Result<(), Error> {
-        let mut conn = self.redis.get_multiplexed_tokio_connection().await?;
-        let id = id.to_string();
-        info!("on_collection_changed: {}", id);
-        conn.publish::<&str, String, ()>("collection_changes", id)
-            .await?;
+        if let Err(e) = self.notifier.collection_changed(id).await {
+            error!("Failed to notify collection changes: {:?}", e);
+        }
         Ok(())
     }
 
@@ -1180,7 +1172,7 @@ impl ContentDataStore {
             .await?;
         let rows = txn.query(&stmt, &[id]).await?;
         let collection_ids: Vec<Uuid> = rows.iter().map(|r| r.get("collection_id")).collect();
-        
+
         match self
             .edit_metadata_txn(&txn, id, metadata, &source_id, &source_identifier)
             .await
@@ -1709,8 +1701,6 @@ impl ContentDataStore {
         collections: &mut [CollectionChildInput],
     ) -> Result<Vec<Uuid>, Error> {
         let mut search_documents = Vec::new();
-        let mut ready_collection_ids = Vec::new();
-        let mut ready_metadata_ids = Vec::new();
         let ids = {
             let mut conn = self.pool.get().await?;
             let txn = conn.transaction().await?;
@@ -1719,8 +1709,6 @@ impl ContentDataStore {
                     ctx,
                     &txn,
                     collections,
-                    &mut ready_collection_ids,
-                    &mut ready_metadata_ids,
                     &mut search_documents,
                     false,
                     None,
@@ -1747,54 +1735,6 @@ impl ContentDataStore {
                 }
             }
         });
-        for id in ready_collection_ids {
-            let new_ctx = ctx.clone();
-            tokio::spawn(async move {
-                RUNNING_BACKGROUND.fetch_add(1, Relaxed);
-                match new_ctx.content.get_collection(&id).await {
-                    Ok(Some(collection)) => {
-                        if let Err(e) = new_ctx
-                            .content
-                            .set_collection_ready_and_enqueue(&new_ctx, &collection, None)
-                            .await
-                        {
-                            error!("failed to queue all collections: {}", e.message);
-                        }
-                    }
-                    Ok(None) => {
-                        error!("failed to get collection: not found");
-                    }
-                    Err(e) => {
-                        error!("failed to get collection: {}", e.message);
-                    }
-                }
-                RUNNING_BACKGROUND.fetch_add(-1, Relaxed);
-            });
-        }
-        for (id, version) in ready_metadata_ids {
-            let new_ctx = ctx.clone();
-            tokio::spawn(async move {
-                RUNNING_BACKGROUND.fetch_add(1, Relaxed);
-                match new_ctx.content.get_metadata_by_version(&id, version).await {
-                    Ok(Some(metadata)) => {
-                        if let Err(e) = new_ctx
-                            .content
-                            .set_metadata_ready_and_enqueue(&new_ctx, &metadata, None)
-                            .await
-                        {
-                            error!("failed to queue all metadata: {}", e.message);
-                        }
-                    }
-                    Ok(None) => {
-                        error!("failed to get metadata: not found");
-                    }
-                    Err(e) => {
-                        error!("failed to get metadata: {}", e.message);
-                    }
-                }
-                RUNNING_BACKGROUND.fetch_add(-1, Relaxed);
-            });
-        }
         for id in &ids {
             self.on_collection_changed(&id.0).await?;
             self.on_collection_changed(&id.1).await?;
@@ -1808,8 +1748,6 @@ impl ContentDataStore {
         ctx: &BoscaContext,
         txn: &Transaction<'_>,
         collections: &mut [CollectionChildInput],
-        ready_collection_ids: &mut Vec<Uuid>,
-        ready_metadata_ids: &mut Vec<(Uuid, i32)>,
         search_documents: &mut Vec<SearchDocumentInput>,
         ignore_permission_check: bool,
         permissions: Option<Vec<Permission>>,
@@ -1859,8 +1797,6 @@ impl ContentDataStore {
                     ctx,
                     txn,
                     children,
-                    ready_collection_ids,
-                    ready_metadata_ids,
                     search_documents,
                     true,
                     Some(permissions.clone()),
@@ -1875,7 +1811,6 @@ impl ContentDataStore {
                     ctx,
                     txn,
                     children,
-                    ready_metadata_ids,
                     search_documents,
                     true,
                     Some(permissions.clone()),
@@ -1889,9 +1824,6 @@ impl ContentDataStore {
                     content: "".to_owned(),
                 });
             }
-            if collection.ready.unwrap_or(false) {
-                ready_collection_ids.push(id);
-            }
             new_collections.push((id, parent_collection_id));
         }
         Ok(new_collections)
@@ -1904,14 +1836,12 @@ impl ContentDataStore {
     ) -> Result<Vec<(Uuid, i32)>, Error> {
         let mut conn = self.pool.get().await?;
         let txn = conn.transaction().await?;
-        let mut ready_metadata_ids = Vec::new();
         let mut search_documents = Vec::new();
         let ids = self
             .add_metadatas_txn(
                 ctx,
                 &txn,
                 metadatas,
-                &mut ready_metadata_ids,
                 &mut search_documents,
                 false,
                 None,
@@ -1920,12 +1850,6 @@ impl ContentDataStore {
         txn.commit().await?;
         let storage_system = ctx.workflow.get_default_search_storage_system().await?;
         index_documents(ctx, &search_documents, &storage_system).await?;
-        for (id, version) in ready_metadata_ids {
-            if let Some(metadata) = self.get_metadata_by_version(&id, version).await? {
-                self.set_metadata_ready_and_enqueue(ctx, &metadata, None)
-                    .await?;
-            }
-        }
         for (id, _) in &ids {
             self.on_metadata_changed(id).await?
         }
@@ -1938,7 +1862,6 @@ impl ContentDataStore {
         ctx: &BoscaContext,
         txn: &Transaction<'_>,
         metadatas: &[MetadataChildInput],
-        ready_metadata_ids: &mut Vec<(Uuid, i32)>,
         search_documents: &mut Vec<SearchDocumentInput>,
         ignore_permission_check: bool,
         permissions: Option<Vec<Permission>>,
@@ -1981,9 +1904,6 @@ impl ContentDataStore {
                     collection_id: None,
                     content: "".to_owned(),
                 });
-            }
-            if metadata.ready.unwrap_or(false) {
-                ready_metadata_ids.push((id, version));
             }
             new_metadatas.push((id, version));
         }

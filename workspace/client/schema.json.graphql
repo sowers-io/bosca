@@ -3,12 +3,13 @@
 schema {
     query: Query
     mutation: Mutation
+    subscription: Subscription
 }
 
 """
 
 Indicates that an Input Object is a OneOf Input Object (and thus requires
-exactly one of its field be provided)
+                        exactly one of its field be provided)
 """
 directive @oneOf on INPUT_OBJECT
 
@@ -115,6 +116,10 @@ type ContentMutation {
 type Group {
     id: String!
     name: String!
+}
+
+type Groups {
+    all: [Group!]!
 }
 
 type Login {
@@ -286,6 +291,7 @@ type ModelsMutation {
 
 type Mutation {
     content: ContentMutation!
+    persistedQueries: PersistedQueriesMutation!
     queues: QueuesMutation!
     security: SecurityMutation!
     workflows: WorkflowsMutation!
@@ -295,6 +301,23 @@ type Permission {
     action: PermissionAction!
     group: Group!
     groupId: String!
+}
+
+type PersistedQueriesMutation {
+    add(query: String!, sha256: String!): Boolean!
+    addAll(queries: [PersistedQueryInput!]!): Boolean!
+    delete(sha256: String!): Boolean!
+    deleteAll: Boolean!
+}
+
+type PersistedQueriesObject {
+    all: [PersistedQuery!]!
+    query(sha256: String!): PersistedQuery
+}
+
+type PersistedQuery {
+    query: String!
+    sha256: String!
 }
 
 type Principal {
@@ -325,6 +348,7 @@ type PromptsMutation {
 
 type Query {
     content: Content!
+    persistedQueries: PersistedQueriesObject!
     queues: Queues!
     security: Security!
     workflows: Workflows!
@@ -352,6 +376,8 @@ type SearchResultObject {
 }
 
 type Security {
+    actions: [String!]!
+    groups: Groups!
     login: Login!
     principal: Principal!
 }
@@ -396,6 +422,11 @@ type StorageSystemModel {
 type StorageSystems {
     all: [StorageSystem!]!
     storageSystem(id: String!): StorageSystem
+}
+
+type Subscription {
+    collection: String!
+    metadata: String!
 }
 
 type Token {
@@ -659,7 +690,6 @@ input CollectionInput {
     name: String!
     ordering: JSON
     parentCollectionId: String
-    ready: Boolean
     state: CollectionWorkflowInput
 }
 
@@ -702,7 +732,6 @@ input MetadataInput {
     name: String!
     parentCollectionId: String
     parentId: String
-    ready: Boolean
     source: MetadataSourceInput
     state: MetadataWorkflowInput
     traitIds: [String!]
@@ -760,6 +789,11 @@ input PermissionInput {
     action: PermissionAction!
     entityId: String!
     groupId: String!
+}
+
+input PersistedQueryInput {
+    query: String!
+    sha256: String!
 }
 
 input PromptInput {

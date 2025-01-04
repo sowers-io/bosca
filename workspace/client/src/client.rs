@@ -460,6 +460,17 @@ impl Client {
         Ok(response.content.collection)
     }
 
+    pub async fn delete_collection(
+        &self,
+        collection_id: &str,
+        recursive: bool,
+    ) -> Result<(), Error> {
+        let variables = delete_collection::Variables { id: collection_id.to_owned(), recursive };
+        let query = DeleteCollection::build_query(variables);
+        self.execute(&query).await?;
+        Ok(())
+    }
+
     pub async fn add_child_collection(
         &self,
         id: &str,
@@ -513,6 +524,16 @@ impl Client {
         let query = AddMetadata::build_query(variables);
         let response: add_metadata::ResponseData = self.execute(&query).await?;
         Ok(response.content.metadata)
+    }
+
+    pub async fn delete_metadata(
+        &self,
+        metadata_id: &str
+    ) -> Result<(), Error> {
+        let variables = delete_metadata::Variables { id: metadata_id.to_owned() };
+        let query = DeleteMetadata::build_query(variables);
+        self.execute(&query).await?;
+        Ok(())
     }
 
     pub async fn add_metadata_bulk(&self, metadatas: Vec<add_metadata_bulk::MetadataChildInput>) -> Result<Vec<AddMetadataBulkContentMetadataAddBulk>, Error> {
@@ -826,6 +847,15 @@ pub struct AddMetadata;
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "schema.json",
+    query_path = "queries/delete_metadata.graphql",
+    variables_derives = "Deserialize, Debug, PartialEq, Eq, Clone",
+    response_derives = "Serialize, Deserialize, Debug, PartialEq, Eq, Clone"
+)]
+pub struct DeleteMetadata;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "schema.json",
     query_path = "queries/add_metadata_bulk.graphql",
     response_derives = "Debug, PartialEq, Eq, Clone"
 )]
@@ -847,6 +877,15 @@ pub struct AddMetadataSupplementary;
     response_derives = "Serialize, Deserialize, Debug, PartialEq, Eq, Clone"
 )]
 pub struct AddCollection;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "schema.json",
+    query_path = "queries/delete_collection.graphql",
+    variables_derives = "Deserialize, Debug, PartialEq, Eq, Clone",
+    response_derives = "Serialize, Deserialize, Debug, PartialEq, Eq, Clone"
+)]
+pub struct DeleteCollection;
 
 #[derive(GraphQLQuery)]
 #[graphql(

@@ -14,7 +14,7 @@ use crate::models::security::permission::PermissionAction;
 use crate::models::security::principal::Principal;
 use crate::queue::message_queues::MessageQueues;
 
-use redis::Client as RedisClient;
+use crate::datastores::content_notifier::ContentNotifier;
 
 #[derive(Clone)]
 pub struct BoscaContext {
@@ -23,7 +23,7 @@ pub struct BoscaContext {
     pub storage: ObjectStorage,
     pub workflow: WorkflowDataStore,
     pub queries: PersistedQueriesDataStore,
-    pub redis: Arc<RedisClient>,
+    pub notifier: Arc<ContentNotifier>,
     pub search: Arc<Client>,
     pub principal: Principal,
     pub messages: MessageQueues,

@@ -4,3 +4,6 @@ pub mod index;
 pub mod command;
 pub mod foreach;
 pub mod tera;
+pub mod set_public;
+pub mod set_ready;
+pub mod delete;

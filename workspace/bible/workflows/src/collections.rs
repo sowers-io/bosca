@@ -27,8 +27,7 @@ pub fn new_bible_collection(bible: &Bible, raw_bible_id: &str, bible_collection_
         index: None,
         ordering: Some(serde_json::from_str("[{\"path\": [\"bible.book.order\"], \"order\": \"asc\"}]").unwrap()),
         collections: Some(books),
-        metadata: None,
-        ready: Some(true)
+        metadata: None
     }
 }
 
@@ -56,8 +55,7 @@ pub fn new_book_collection(bible: &Bible, book: &Arc<Mutex<Book>>, book_order: u
             index: None,
             ordering: Some(serde_json::from_str("[{\"path\": [\"bible.chapter.order\"], \"order\": \"asc\"}]").unwrap()),
             collections: Some(chapters_verses),
-            metadata: Some(chapters),
-            ready: Some(true)
+            metadata: Some(chapters)
         },
         attributes: Some(serde_json::from_str(format!("{{\"bible.book.order\": {}}}", book_order).to_string().as_str()).unwrap()),
     }
@@ -88,8 +86,7 @@ pub fn new_chapter(bible: &Bible, book: &Arc<Mutex<Book>>, book_order: usize, ch
             source: Some(MetadataSourceInput {
                 id: source.id.clone(),
                 identifier: "".to_string(),
-            }),
-            ready: Some(true)
+            })
         },
         attributes: Some(serde_json::from_str(format!("{{\"bible.chapter.order\": {}}}", chapter_order).to_string().as_str()).unwrap()),
     }
@@ -124,8 +121,7 @@ fn new_chapter_verse_collection(bible: &Bible, book: &Arc<Mutex<Book>>, book_ord
             index: None,
             ordering: Some(serde_json::from_str("[{\"path\": [\"bible.verse.order\"], \"order\": \"asc\"}]").unwrap()),
             collections: None,
-            metadata: Some(verses_metadata),
-            ready: Some(true)
+            metadata: Some(verses_metadata)
         },
         attributes: Some(serde_json::from_str(format!("{{\"bible.chapter.order\": {}}}", chapter_order).to_string().as_str()).unwrap()),
     }
@@ -161,8 +157,7 @@ fn new_verse(bible: &Bible, book: &Arc<Mutex<Book>>, book_order: usize, chapter:
             source: Some(MetadataSourceInput {
                 id: source.id.clone(),
                 identifier: "".to_owned(),
-            }),
-            ready: Some(true)
+            })
         },
         attributes: Some(serde_json::from_str(format!("{{\"bible.verse.order\": {}}}", verse_order).to_string().as_str()).unwrap()),
     }

@@ -1,6 +1,5 @@
 use crate::context::BoscaContext;
 use async_graphql::*;
-use futures_util::StreamExt;
 use tokio_stream::Stream;
 
 pub struct SubscriptionObject;
@@ -13,13 +12,7 @@ impl SubscriptionObject {
         if ctx.principal.anonymous {
             return Err(Error::new("Unauthorized"));
         }
-        let mut pubsub = ctx.redis.get_async_pubsub().await?;
-        pubsub.subscribe("metadata_changes").await?;
-        Ok(pubsub
-            .into_on_message()
-            .filter_map(|msg| async move {
-                msg.get_payload().ok()
-            }))
+        ctx.notifier.listen_metadata_changes().await
     }
 
     async fn collection(&self, ctx: &Context<'_>) -> Result<impl Stream<Item = String>> {
@@ -27,12 +20,6 @@ impl SubscriptionObject {
         if ctx.principal.anonymous {
             return Err(Error::new("Unauthorized"));
         }
-        let mut pubsub = ctx.redis.get_async_pubsub().await?;
-        pubsub.subscribe("collection_changes").await?;
-        Ok(pubsub
-            .into_on_message()
-            .filter_map(|msg| async move {
-                msg.get_payload().ok()
-            }))
+        ctx.notifier.listen_collection_changes().await
     }
 }

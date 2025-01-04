@@ -1,0 +1,7 @@
+mutation DeleteCollection($id: String!, $recursive: Boolean!) {
+    content {
+        collection {
+            delete(id: $id, recursive: $recursive)
+        }
+    }
+}

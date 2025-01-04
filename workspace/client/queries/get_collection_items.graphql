@@ -5,6 +5,8 @@ query GetCollectionItems($id: String!, $offset: Int!, $limit: Int!) {
                 ... on Collection {
                     id
                     ready
+                    public
+                    publicList
                     workflow {
                         state
                         pending
@@ -13,6 +15,9 @@ query GetCollectionItems($id: String!, $offset: Int!, $limit: Int!) {
                 ... on Metadata {
                     id
                     ready
+                    public
+                    publicContent
+                    publicSupplementary
                     workflow {
                         state
                         pending

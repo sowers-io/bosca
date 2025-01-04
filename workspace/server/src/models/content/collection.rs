@@ -99,7 +99,6 @@ pub struct CollectionInput {
     pub index: Option<bool>,
     pub collections: Option<Vec<CollectionChildInput>>,
     pub metadata: Option<Vec<MetadataChildInput>>,
-    pub ready: Option<bool>,
 }
 
 impl From<&Row> for Collection {

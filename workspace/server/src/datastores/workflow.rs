@@ -790,7 +790,7 @@ impl WorkflowDataStore {
         &self,
         job_id: &WorkflowExecutionId,
         workflow_id: &str,
-        configuration: Option<&Vec<WorkflowConfigurationInput>>,
+        configurations: Option<&Vec<WorkflowConfigurationInput>>,
     ) -> Result<WorkflowExecutionId, Error> {
         let workflow_id = workflow_id.to_owned();
         let mut plans = Vec::<WorkflowExecutionPlan>::new();
@@ -814,9 +814,9 @@ impl WorkflowDataStore {
         }
         let workflow = workflow.unwrap();
         let plan = self
-            .get_new_execution_plan(&workflow, collection_id, metadata_id, job.version, configuration)
+            .get_new_execution_plan(&workflow, collection_id, metadata_id, job.version, configurations)
             .await?;
-        plans.push(plan);        
+        plans.push(plan);
         Ok(self.queues
             .enqueue_job_child_workflows(job_id, &plans)
             .await?
@@ -878,21 +878,23 @@ impl WorkflowDataStore {
         collection_id: Option<Uuid>,
         metadata_id: Option<Uuid>,
         version: Option<i32>,
-        configuration: Option<&Vec<WorkflowConfigurationInput>>,
+        configurations: Option<&Vec<WorkflowConfigurationInput>>,
     ) -> Result<WorkflowExecutionPlan, Error> {
         let mut jobs = Vec::<WorkflowJob>::new();
         let activities = self.get_workflow_activities(&workflow.id).await?;
         let mut pending = HashSet::<WorkflowJobId>::new();
         let mut current = Vec::<WorkflowJobId>::new();
         let mut configuration_overrides = HashMap::new();
-        if let Some(overrides) = configuration {
+        if let Some(overrides) = configurations {
             for o in overrides.iter() {
                 configuration_overrides.insert(o.activity_id.to_owned(), o.configuration.to_owned());
             }
         }
         for mut workflow_activity in activities.into_iter() {
             if let Some(Value::Object(o)) = configuration_overrides.get(&workflow_activity.activity_id) {
-                if let Value::Object(ref mut o2) = workflow_activity.configuration {
+                if workflow_activity.configuration.is_null() {
+                    workflow_activity.configuration = Value::Object(o.clone());
+                } else if let Value::Object(ref mut o2) = workflow_activity.configuration {
                     for (k, v) in o.iter() {
                         o2.insert(k.to_owned(), v.to_owned());
                     }
@@ -1030,12 +1032,12 @@ impl WorkflowDataStore {
 
     pub async fn enqueue_collection_workflow(
         &self,
-        workflow_id: &String,
+        workflow_id: &str,
         collection_id: &Uuid,
         configurations: Option<&Vec<WorkflowConfigurationInput>>,
         wait_for_completion: Option<bool>,
     ) -> Result<WorkflowExecutionPlan, Error> {
-        if let Some(workflow) = self.get_workflow(workflow_id).await? {
+        if let Some(workflow) = self.get_workflow(&workflow_id.to_string()).await? {
             let mut plan = self
                 .get_new_execution_plan(&workflow, Some(*collection_id), None, None, configurations)
                 .await?;

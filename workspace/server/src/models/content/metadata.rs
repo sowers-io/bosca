@@ -94,7 +94,6 @@ pub struct MetadataInput {
     pub state: Option<MetadataWorkflowInput>,
     pub source: Option<MetadataSourceInput>,
     pub index: Option<bool>,
-    pub ready: Option<bool>,
 }
 
 impl From<&Row> for Metadata {

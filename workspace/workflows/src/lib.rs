@@ -17,8 +17,14 @@ use crate::metadata::command::CommandActivity;
 use media::transcriptions::mapper::TranscriptionMapperActivity;
 use media::transcriptions::transcribe::TranscribeActivity;
 use crate::analytics::query::QueryActivity;
+use crate::collection::delete::CollectionDeleteActivity;
+use crate::collection::set_public::CollectionSetPublicActivity;
+use crate::collection::set_ready::CollectionSetReadyActivity;
 use crate::media::transcriptions::mapper_to_foreach::TranscriptionMapperToForEachActivity;
+use crate::metadata::delete::MetadataDeleteActivity;
 use crate::metadata::foreach::MetadataForEachActivity;
+use crate::metadata::set_public::MetadataSetPublicActivity;
+use crate::metadata::set_ready::MetadataSetReadyActivity;
 use crate::metadata::tera::MetadataTeraActivity;
 
 pub mod activity;
@@ -34,8 +40,16 @@ pub fn get_default_activities() -> Vec<Box<dyn Activity + Send + Sync>> {
     vec![
         Box::new(CollectionTraitsActivity::default()),
         Box::new(CollectionTransitionToActivity::default()),
+        Box::new(CollectionSetReadyActivity::default()),
+        Box::new(CollectionSetPublicActivity::default()),
+        Box::new(CollectionDeleteActivity::default()),
         Box::new(MetadataTraitsActivity::default()),
         Box::new(MetadataTransitionToActivity::default()),
+        Box::new(MetadataTeraActivity::default()),
+        Box::new(MetadataForEachActivity::default()),
+        Box::new(MetadataSetReadyActivity::default()),
+        Box::new(MetadataSetPublicActivity::default()),
+        Box::new(MetadataDeleteActivity::default()),
         Box::new(IndexActivity::default()),
         Box::new(MuxUploadActivity::default()),
         Box::new(TranscribeActivity::default()),
@@ -43,8 +57,6 @@ pub fn get_default_activities() -> Vec<Box<dyn Activity + Send + Sync>> {
         Box::new(TranscriptionMapperToForEachActivity::default()),
         Box::new(PromptActivity::default()),
         Box::new(CommandActivity::default()),
-        Box::new(MetadataTeraActivity::default()),
-        Box::new(MetadataForEachActivity::default()),
         Box::new(QueryActivity::default()),
     ]
 }
