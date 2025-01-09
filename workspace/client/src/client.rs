@@ -7,7 +7,7 @@ use crate::client::plan::{
 
 use crate::client::add_collection::{AddCollectionContentCollection, CollectionInput};
 use crate::client::enqueue_child_workflows::EnqueueChildWorkflowsWorkflowsEnqueueChildWorkflows;
-use crate::client::enqueue_job::{EnqueueJobWorkflowsEnqueueJob, WorkflowExecutionIdInput};
+use crate::client::enqueue_job::WorkflowExecutionIdInput;
 use crate::client::find_collection::{FindAttributeInput, FindCollectionContentFindCollection};
 use crate::client::find_metadata::FindMetadataContentFindMetadata;
 use crate::client::get_collection::GetCollectionContentCollection;
@@ -44,7 +44,6 @@ pub type Trait = TraitByIdContentTrait;
 pub type Source = SourceByIdContentSource;
 pub type WorkflowExecution = PlanWorkflowsNextWorkflowExecution;
 pub type WorkflowJob = PlanWorkflowsNextWorkflowExecutionOnWorkflowJob;
-pub type EnqueuedJobId = EnqueueJobWorkflowsEnqueueJob;
 pub type EnqueuedChildWorkflowId = EnqueueChildWorkflowsWorkflowsEnqueueChildWorkflows;
 pub type MetadataContentDownloadUrl = MetadataDownloadUrlContentMetadataContentUrlsDownload;
 pub type MetadataContentUploadUrl = MetadataUploadUrlContentMetadataContentUrlsUpload;
@@ -154,13 +153,13 @@ impl Client {
 
     pub async fn set_plan_context(
         &self,
-        id: i64,
+        id: &str,
         queue: &str,
         context: &Value,
     ) -> Result<bool, Error> {
         let variables = set_workflow_plan_context::Variables {
             plan_id: set_workflow_plan_context::WorkflowExecutionIdInput {
-                id,
+                id: id.to_owned(),
                 queue: queue.to_owned(),
             },
             context: context.clone(),
@@ -172,14 +171,16 @@ impl Client {
 
     pub async fn set_job_context(
         &self,
-        id: i64,
+        id: &str,
+        index: i64,
         queue: &str,
         context: &Value,
     ) -> Result<bool, Error> {
         let variables = set_workflow_job_context::Variables {
-            job_id: set_workflow_job_context::WorkflowExecutionIdInput {
-                id,
+            job_id: set_workflow_job_context::WorkflowJobIdInput {
+                id: id.to_owned(),
                 queue: queue.to_owned(),
+                index
             },
             context: context.clone(),
         };
@@ -262,13 +263,13 @@ impl Client {
 
     pub async fn set_workflow_job_checkin(
         &self,
-        job_id: i64,
+        job_id: &str,
         index: i64,
         queue: &str,
     ) -> Result<bool, Error> {
         let variables = set_execution_plan_job_checkin::Variables {
             job_id: set_execution_plan_job_checkin::WorkflowJobIdInput {
-                id: job_id,
+                id: job_id.to_owned(),
                 index,
                 queue: queue.to_owned(),
             },
@@ -280,13 +281,13 @@ impl Client {
 
     pub async fn set_workflow_job_complete(
         &self,
-        job_id: i64,
+        job_id: &str,
         index: i64,
         queue: &str,
     ) -> Result<bool, Error> {
-        let variables = set_workflow_job_complete::Variables {
+            let variables = set_workflow_job_complete::Variables {
             job_id: set_workflow_job_complete::WorkflowJobIdInput {
-                id: job_id,
+                id: job_id.to_owned(),
                 index,
                 queue: queue.to_owned(),
             },
@@ -298,7 +299,7 @@ impl Client {
 
     pub async fn set_workflow_job_failed(
         &self,
-        job_id: i64,
+        job_id: &str,
         index: i64,
         queue: &str,
         error: &str,
@@ -306,7 +307,7 @@ impl Client {
         warn!(target: "workflow", "notifying that job failed: {}", error);
         let variables = set_workflow_job_failed::Variables {
             job_id: set_workflow_job_failed::WorkflowJobIdInput {
-                id: job_id,
+                id: job_id.to_owned(),
                 index,
                 queue: queue.to_owned(),
             },
@@ -381,14 +382,14 @@ impl Client {
 
     pub async fn enqueue_job(
         &self,
-        plan_id: i64,
+        plan_id: &str,
         queue: &str,
         job_index: i64,
-    ) -> Result<Option<EnqueuedJobId>, Error> {
+    ) -> Result<bool, Error> {
         let variables = enqueue_job::Variables {
             job_index,
             plan_id: WorkflowExecutionIdInput {
-                id: plan_id,
+                id: plan_id.to_owned(),
                 queue: queue.to_owned(),
             },
         };
@@ -400,14 +401,16 @@ impl Client {
 
     pub async fn enqueue_child_workflows(
         &self,
-        job_id: i64,
+        job_id: &str,
+        index: i64,
         queue: &str,
         workflow_ids: Vec<String>,
     ) -> Result<Vec<EnqueuedChildWorkflowId>, Error> {
         let variables = enqueue_child_workflows::Variables {
-            job_id: enqueue_child_workflows::WorkflowExecutionIdInput {
-                id: job_id,
+            job_id: enqueue_child_workflows::WorkflowJobIdInput {
+                id: job_id.to_owned(),
                 queue: queue.to_owned(),
+                index
             },
             workflow_ids: workflow_ids.clone(),
         };
@@ -419,15 +422,17 @@ impl Client {
 
     pub async fn enqueue_child_workflow(
         &self,
-        job_id: i64,
+        job_id: &str,
+        index: i64,
         queue: &str,
         workflow_id: &str,
         configurations: Vec<enqueue_child_workflow::WorkflowConfigurationInput>
     ) -> Result<enqueue_child_workflow::EnqueueChildWorkflowWorkflowsEnqueueChildWorkflow, Error> {
         let variables = enqueue_child_workflow::Variables {
-            job_id: enqueue_child_workflow::WorkflowExecutionIdInput {
-                id: job_id,
+            job_id: enqueue_child_workflow::WorkflowJobIdInput {
+                id: job_id.to_owned(),
                 queue: queue.to_owned(),
+                index
             },
             workflow_id: workflow_id.to_owned(),
             configurations,
@@ -467,7 +472,7 @@ impl Client {
     ) -> Result<(), Error> {
         let variables = delete_collection::Variables { id: collection_id.to_owned(), recursive };
         let query = DeleteCollection::build_query(variables);
-        self.execute(&query).await?;
+        let _: delete_collection::ResponseData = self.execute(&query).await?;
         Ok(())
     }
 
@@ -532,7 +537,7 @@ impl Client {
     ) -> Result<(), Error> {
         let variables = delete_metadata::Variables { id: metadata_id.to_owned() };
         let query = DeleteMetadata::build_query(variables);
-        self.execute(&query).await?;
+        let _: delete_metadata::ResponseData = self.execute(&query).await?;
         Ok(())
     }
 

@@ -29,6 +29,9 @@ impl Activity for CollectionTraitsActivity {
     }
 
     async fn execute(&self, client: &Client, _: &mut ActivityContext, job: &WorkflowJob) -> Result<(), Error> {
+        if job.collection.is_none() {
+            return Err(Error::new("missing collection".to_string()));
+        }
         let collection = job.collection.as_ref().unwrap();
         let mut executed: HashSet<String>;
         if job.context.is_null() {
@@ -56,12 +59,12 @@ impl Activity for CollectionTraitsActivity {
                 continue;
             }
             client
-                .enqueue_child_workflows(job.id.id, &job.id.queue, trait_.unwrap().workflow_ids)
+                .enqueue_child_workflows(&job.id.id, job.id.index, &job.id.queue, trait_.unwrap().workflow_ids)
                 .await?;
             executed.insert(trait_id.clone());
             let updated_context = json!({"executed": executed.clone()});
             client
-                .set_job_context(job.id.id, &job.id.queue, &updated_context)
+                .set_job_context(&job.id.id, job.id.index, &job.id.queue, &updated_context)
                 .await?;
         }
         Ok(())

@@ -1,3 +1,4 @@
+use crate::graphql::content::metadata_mutation::WorkflowConfigurationInput;
 use crate::models::workflow::activities::{
     Activity, ActivityInput, ActivityParameter, WorkflowActivity, WorkflowActivityInput,
     WorkflowActivityModel, WorkflowActivityParameter, WorkflowActivityPrompt,
@@ -14,8 +15,8 @@ use crate::models::workflow::storage_systems::{StorageSystem, StorageSystemInput
 use crate::models::workflow::traits::TraitInput;
 use crate::models::workflow::transitions::{Transition, TransitionInput};
 use crate::models::workflow::workflows::{Workflow, WorkflowInput};
-use crate::queue::message::MessageValue;
-use crate::worklfow::job_queue::JobQueues;
+use crate::worklfow::item::JobQueueItem;
+use crate::worklfow::queue::JobQueues;
 use async_graphql::*;
 use chrono::Utc;
 use deadpool_postgres::{GenericClient, Pool, Transaction};
@@ -24,7 +25,6 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::Duration;
 use uuid::Uuid;
-use crate::graphql::content::metadata_mutation::WorkflowConfigurationInput;
 
 #[derive(Clone)]
 pub struct WorkflowDataStore {
@@ -83,28 +83,34 @@ impl WorkflowDataStore {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
         let stmt = txn.prepare_cached("update activities set name = $2, description = $3, child_workflow_id = $4, configuration = $5 where id = $1").await?;
-        txn
-            .query(
-                &stmt,
-                &[
-                    &activity.id,
-                    &activity.name,
-                    &activity.description,
-                    &activity.child_workflow_id,
-                    &activity.configuration,
-                ],
-            )
-            .await?;
-        txn.query("delete from activity_inputs where activity_id = $1", &[&activity.id]).await?;
-        txn.query("delete from activity_outputs where activity_id = $1", &[&activity.id]).await?;
+        txn.query(
+            &stmt,
+            &[
+                &activity.id,
+                &activity.name,
+                &activity.description,
+                &activity.child_workflow_id,
+                &activity.configuration,
+            ],
+        )
+        .await?;
+        txn.query(
+            "delete from activity_inputs where activity_id = $1",
+            &[&activity.id],
+        )
+        .await?;
+        txn.query(
+            "delete from activity_outputs where activity_id = $1",
+            &[&activity.id],
+        )
+        .await?;
         let stmt = txn
             .prepare_cached(
                 "insert into activity_inputs (activity_id, name, type) values ($1, $2, $3)",
             )
             .await?;
         for input in activity.inputs.iter() {
-            txn
-                .execute(&stmt, &[&activity.id, &input.name, &input.parameter_type])
+            txn.execute(&stmt, &[&activity.id, &input.name, &input.parameter_type])
                 .await?;
         }
         let stmt = txn
@@ -113,8 +119,7 @@ impl WorkflowDataStore {
             )
             .await?;
         for input in activity.outputs.iter() {
-            txn
-                .execute(&stmt, &[&activity.id, &input.name, &input.parameter_type])
+            txn.execute(&stmt, &[&activity.id, &input.name, &input.parameter_type])
                 .await?;
         }
         txn.commit().await?;
@@ -123,7 +128,9 @@ impl WorkflowDataStore {
 
     pub async fn delete_activity(&self, activity_id: &str) -> Result<(), Error> {
         let connection = self.pool.get().await?;
-        connection.execute("delete from activities where id = $1", &[&activity_id]).await?;
+        connection
+            .execute("delete from activities where id = $1", &[&activity_id])
+            .await?;
         Ok(())
     }
 
@@ -195,11 +202,14 @@ impl WorkflowDataStore {
         let txn = connection.transaction().await?;
         self.add_workflow_txn(&txn, workflow).await?;
         txn.commit().await?;
-        self.create_workflow_queues(workflow).await?;
         Ok(())
     }
 
-    async fn add_workflow_txn(&self, txn: &Transaction<'_>, workflow: &WorkflowInput) -> Result<(), Error> {
+    async fn add_workflow_txn(
+        &self,
+        txn: &Transaction<'_>,
+        workflow: &WorkflowInput,
+    ) -> Result<(), Error> {
         let stmt = txn.prepare_cached("insert into workflows (id, name, description, queue, configuration) values ($1, $2, $3, $4, $5) returning id").await?;
         txn.query(
             &stmt,
@@ -210,9 +220,11 @@ impl WorkflowDataStore {
                 &workflow.queue,
                 &workflow.configuration,
             ],
-        ).await?;
+        )
+        .await?;
         for activity in &workflow.activities {
-            self.add_workflow_activity(txn, &workflow.id, activity).await?;
+            self.add_workflow_activity(txn, &workflow.id, activity)
+                .await?;
         }
         Ok(())
     }
@@ -223,7 +235,6 @@ impl WorkflowDataStore {
         self.delete_workflow_txn(&txn, &workflow.id).await?;
         self.add_workflow_txn(&txn, workflow).await?;
         txn.commit().await?;
-        self.create_workflow_queues(workflow).await?;
         Ok(())
     }
 
@@ -233,8 +244,13 @@ impl WorkflowDataStore {
         txn.execute("delete from workflow_activity_models where activity_id in (select id from workflow_activities where workflow_id = $1)", &[id]).await?;
         txn.execute("delete from workflow_activity_prompts where activity_id in (select id from workflow_activities where workflow_id = $1)", &[id]).await?;
         txn.execute("delete from workflow_activity_storage_systems where activity_id in (select id from workflow_activities where workflow_id = $1)", &[id]).await?;
-        txn.execute("delete from workflow_activities where workflow_id = $1", &[id]).await?;
-        txn.execute("delete from workflows where id = $1", &[id]).await?;
+        txn.execute(
+            "delete from workflow_activities where workflow_id = $1",
+            &[id],
+        )
+        .await?;
+        txn.execute("delete from workflows where id = $1", &[id])
+            .await?;
         Ok(())
     }
 
@@ -244,15 +260,6 @@ impl WorkflowDataStore {
         let id = id.to_owned();
         self.delete_workflow_txn(&txn, &id).await?;
         txn.commit().await?;
-        Ok(())
-    }
-
-    async fn create_workflow_queues(&self, workflow: &WorkflowInput) -> Result<(), Error> {
-        let _ = self.queues.create_queue(&workflow.queue).await;
-        for activity in &workflow.activities {
-            if activity.queue.is_empty() { continue; }
-            let _ = self.queues.create_queue(&activity.queue).await;
-        }
         Ok(())
     }
 
@@ -303,16 +310,14 @@ impl WorkflowDataStore {
         {
             let stmt = txn.prepare_cached("insert into workflow_activity_inputs (activity_id, name, value) values ($1, $2, $3)").await?;
             for input in activity.inputs.iter() {
-                txn
-                    .execute(&stmt, &[&id, &input.name, &input.value])
+                txn.execute(&stmt, &[&id, &input.name, &input.value])
                     .await?;
             }
         }
         {
             let stmt = txn.prepare_cached("insert into workflow_activity_outputs (activity_id, name, value) values ($1, $2, $3)").await?;
             for input in activity.outputs.iter() {
-                txn
-                    .execute(&stmt, &[&id, &input.name, &input.value])
+                txn.execute(&stmt, &[&id, &input.name, &input.value])
                     .await?;
             }
         }
@@ -320,8 +325,7 @@ impl WorkflowDataStore {
             let stmt = txn.prepare_cached("insert into workflow_activity_models (activity_id, model_id, configuration) values ($1, $2, $3)").await?;
             for input in activity.models.iter() {
                 let mid = Uuid::parse_str(input.model_id.as_str())?;
-                txn
-                    .execute(&stmt, &[&id, &mid, &input.configuration])
+                txn.execute(&stmt, &[&id, &mid, &input.configuration])
                     .await?;
             }
         }
@@ -329,8 +333,7 @@ impl WorkflowDataStore {
             let stmt = txn.prepare_cached("insert into workflow_activity_prompts (activity_id, prompt_id, configuration) values ($1, $2, $3)").await?;
             for input in activity.prompts.iter() {
                 let pid = Uuid::parse_str(input.prompt_id.as_str())?;
-                txn
-                    .execute(&stmt, &[&id, &pid, &input.configuration])
+                txn.execute(&stmt, &[&id, &pid, &input.configuration])
                     .await?;
             }
         }
@@ -338,8 +341,7 @@ impl WorkflowDataStore {
             let stmt = txn.prepare_cached("insert into workflow_activity_storage_systems (activity_id, storage_system_id, configuration) values ($1, $2, $3)").await?;
             for input in activity.storage_systems.iter() {
                 let sid = Uuid::parse_str(input.system_id.as_str())?;
-                txn
-                    .execute(&stmt, &[&id, &sid, &input.configuration])
+                txn.execute(&stmt, &[&id, &sid, &input.configuration])
                     .await?;
             }
         }
@@ -617,17 +619,19 @@ impl WorkflowDataStore {
     pub async fn add_prompt(&self, prompt: &PromptInput) -> Result<Uuid, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection.prepare_cached("insert into prompts (name, description, system_prompt, user_prompt, input_type, output_type) values ($1, $2, $3, $4, $5, $6) returning id").await?;
-        let rows = connection.query(
-            &stmt,
-            &[
-                &prompt.name,
-                &prompt.description,
-                &prompt.system_prompt,
-                &prompt.user_prompt,
-                &prompt.input_type,
-                &prompt.output_type,
-            ],
-        ).await?;
+        let rows = connection
+            .query(
+                &stmt,
+                &[
+                    &prompt.name,
+                    &prompt.description,
+                    &prompt.system_prompt,
+                    &prompt.user_prompt,
+                    &prompt.input_type,
+                    &prompt.output_type,
+                ],
+            )
+            .await?;
         if rows.is_empty() {
             return Ok(Uuid::nil());
         }
@@ -637,25 +641,28 @@ impl WorkflowDataStore {
     pub async fn edit_prompt(&self, id: &Uuid, prompt: &PromptInput) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection.prepare_cached("update prompts set name = $1, description = $2, system_prompt = $3, user_prompt = $4, input_type = $5, output_type = $6 where id = $7").await?;
-        connection.execute(
-            &stmt,
-            &[
-                &prompt.name,
-                &prompt.description,
-                &prompt.system_prompt,
-                &prompt.user_prompt,
-                &prompt.input_type,
-                &prompt.output_type,
-                id,
-            ],
-        )
+        connection
+            .execute(
+                &stmt,
+                &[
+                    &prompt.name,
+                    &prompt.description,
+                    &prompt.system_prompt,
+                    &prompt.user_prompt,
+                    &prompt.input_type,
+                    &prompt.output_type,
+                    id,
+                ],
+            )
             .await?;
         Ok(())
     }
 
     pub async fn delete_prompt(&self, id: &Uuid) -> Result<(), Error> {
         let connection = self.pool.get().await?;
-        let stmt = connection.prepare_cached("delete from prompts where id = $1").await?;
+        let stmt = connection
+            .prepare_cached("delete from prompts where id = $1")
+            .await?;
         connection.execute(&stmt, &[id]).await?;
         Ok(())
     }
@@ -723,7 +730,11 @@ impl WorkflowDataStore {
         Ok(rows.into_iter().map(Transition::from).collect())
     }
 
-    pub async fn get_transition(&self, from_state_id: &str, to_state_id: &str) -> Result<Option<Transition>, Error> {
+    pub async fn get_transition(
+        &self,
+        from_state_id: &str,
+        to_state_id: &str,
+    ) -> Result<Option<Transition>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached("select * from workflow_state_transitions where from_state_id = $1 and to_state_id = $2")
@@ -738,38 +749,16 @@ impl WorkflowDataStore {
 
     /* queues */
 
-    pub async fn create_queues(&self) -> Result<(), Error> {
-        self.queues.initialize().await?;
-        let connection = self.pool.get().await?;
-        let stmt = connection.prepare_cached("select distinct queue from (select queue from workflows union select queue from workflow_activities)").await?;
-        let rows = connection.query(&stmt, &[]).await?;
-        for row in rows.iter() {
-            let queue: String = row.get("queue");
-            self.queues.create_queue(&queue).await?;
-        }
-        Ok(())
-    }
-
     pub async fn enqueue_job_child_workflows(
         &self,
-        job_id: &WorkflowExecutionId,
+        job_id: &WorkflowJobId,
         workflow_ids: &Vec<String>,
     ) -> Result<Vec<WorkflowExecutionId>, Error> {
         let mut plans = Vec::<WorkflowExecutionPlan>::new();
-        let job = self.queues.get(job_id, false).await?;
-        if job.is_none() {
-            return Err(Error::new("missing job"));
-        }
-        let job = match job.unwrap() {
-            MessageValue::Job(job) => job,
-            _ => return Err(Error::new("unexpected job type")),
+        let Some(plan) = self.queues.get_plan_by_job(job_id).await? else {
+            return Err(Error::new("missing plan"));
         };
-        let metadata_id = job
-            .metadata_id
-            .map(|id| Uuid::parse_str(id.as_str()).unwrap());
-        let collection_id = job
-            .collection_id
-            .map(|id| Uuid::parse_str(id.as_str()).unwrap());
+        let job = plan.jobs.get(job_id.index as usize).unwrap();
         for workflow_id in workflow_ids {
             let workflow = self.get_workflow(workflow_id).await?;
             if workflow.is_none() {
@@ -777,7 +766,17 @@ impl WorkflowDataStore {
             }
             let workflow = workflow.unwrap();
             let plan = self
-                .get_new_execution_plan(&workflow, collection_id, metadata_id, job.version, None)
+                .get_new_execution_plan(
+                    &workflow,
+                    job.collection_id
+                        .as_ref()
+                        .map(|id| Uuid::parse_str(&id).unwrap()),
+                    job.metadata_id
+                        .as_ref()
+                        .map(|id| Uuid::parse_str(&id).unwrap()),
+                    job.metadata_version.clone(),
+                    None,
+                )
                 .await?;
             plans.push(plan);
         }
@@ -788,25 +787,23 @@ impl WorkflowDataStore {
 
     pub async fn enqueue_job_child_workflow(
         &self,
-        job_id: &WorkflowExecutionId,
+        job_id: &WorkflowJobId,
         workflow_id: &str,
         configurations: Option<&Vec<WorkflowConfigurationInput>>,
     ) -> Result<WorkflowExecutionId, Error> {
         let workflow_id = workflow_id.to_owned();
         let mut plans = Vec::<WorkflowExecutionPlan>::new();
-        let job = self.queues.get(job_id, false).await?;
-        if job.is_none() {
-            return Err(Error::new("missing job"));
-        }
-        let job = match job.unwrap() {
-            MessageValue::Job(job) => job,
-            _ => return Err(Error::new("unexpected job type")),
+        let Some(plan) = self.queues.get_plan_by_job(job_id).await? else {
+            return Err(Error::new("missing plan"));
         };
+        let job = plan.jobs.get(job_id.index as usize).unwrap();
         let metadata_id = job
             .metadata_id
+            .as_ref()
             .map(|id| Uuid::parse_str(id.as_str()).unwrap());
         let collection_id = job
             .collection_id
+            .as_ref()
             .map(|id| Uuid::parse_str(id.as_str()).unwrap());
         let workflow = self.get_workflow(&workflow_id).await?;
         if workflow.is_none() {
@@ -814,10 +811,17 @@ impl WorkflowDataStore {
         }
         let workflow = workflow.unwrap();
         let plan = self
-            .get_new_execution_plan(&workflow, collection_id, metadata_id, job.version, configurations)
+            .get_new_execution_plan(
+                &workflow,
+                collection_id,
+                metadata_id,
+                job.metadata_version,
+                configurations,
+            )
             .await?;
         plans.push(plan);
-        Ok(self.queues
+        Ok(self
+            .queues
             .enqueue_job_child_workflows(job_id, &plans)
             .await?
             .first()
@@ -829,14 +833,17 @@ impl WorkflowDataStore {
         &self,
         plan_id: &WorkflowExecutionId,
         job_index: i32,
-    ) -> Result<Option<WorkflowExecutionId>, Error> {
-        self.queues.enqueue_execution_job(plan_id, job_index).await
+    ) -> Result<bool, Error> {
+        self.queues
+            .enqueue_execution_job(plan_id, job_index)
+            .await?;
+        Ok(true)
     }
 
     pub async fn dequeue_next_execution(
         &self,
         queue: &String,
-    ) -> Result<Option<MessageValue>, Error> {
+    ) -> Result<Option<JobQueueItem>, Error> {
         self.queues.dequeue(queue).await
     }
 
@@ -844,22 +851,7 @@ impl WorkflowDataStore {
         &self,
         id: &WorkflowExecutionId,
     ) -> Result<Option<WorkflowExecutionPlan>, Error> {
-        let plan = self.queues.get(id, false).await?;
-        if plan.is_none() {
-            let plan = self.queues.get(id, true).await?;
-            if plan.is_none() {
-                return Ok(None);
-            }
-            match plan.unwrap() {
-                MessageValue::Plan(plan) => Ok(Some(plan)),
-                _ => Ok(None),
-            }
-        } else {
-            match plan.unwrap() {
-                MessageValue::Plan(plan) => Ok(Some(plan)),
-                _ => Ok(None),
-            }
-        }
+        Ok(self.queues.get_plan(id).await?)
     }
 
     pub async fn get_execution_plans(
@@ -867,9 +859,8 @@ impl WorkflowDataStore {
         queue: &str,
         offset: i64,
         limit: i64,
-        archived: bool,
-    ) -> Result<Vec<MessageValue>, Error> {
-        self.queues.get_all(queue, offset, limit, archived).await
+    ) -> Result<Vec<WorkflowExecutionPlan>, Error> {
+        self.queues.get_all_plans(queue, offset, limit).await
     }
 
     pub async fn get_new_execution_plan(
@@ -877,21 +868,25 @@ impl WorkflowDataStore {
         workflow: &Workflow,
         collection_id: Option<Uuid>,
         metadata_id: Option<Uuid>,
-        version: Option<i32>,
+        metadata_version: Option<i32>,
         configurations: Option<&Vec<WorkflowConfigurationInput>>,
     ) -> Result<WorkflowExecutionPlan, Error> {
         let mut jobs = Vec::<WorkflowJob>::new();
         let activities = self.get_workflow_activities(&workflow.id).await?;
-        let mut pending = HashSet::<WorkflowJobId>::new();
-        let mut current = Vec::<WorkflowJobId>::new();
+        let mut pending = HashSet::<i32>::new();
+        let mut current_execution_group = Vec::<i32>::new();
         let mut configuration_overrides = HashMap::new();
         if let Some(overrides) = configurations {
             for o in overrides.iter() {
-                configuration_overrides.insert(o.activity_id.to_owned(), o.configuration.to_owned());
+                configuration_overrides
+                    .insert(o.activity_id.to_owned(), o.configuration.to_owned());
             }
         }
+        let plan_id = Uuid::new_v4();
         for mut workflow_activity in activities.into_iter() {
-            if let Some(Value::Object(o)) = configuration_overrides.get(&workflow_activity.activity_id) {
+            if let Some(Value::Object(o)) =
+                configuration_overrides.get(&workflow_activity.activity_id)
+            {
                 if workflow_activity.configuration.is_null() {
                     workflow_activity.configuration = Value::Object(o.clone());
                 } else if let Value::Object(ref mut o2) = workflow_activity.configuration {
@@ -923,19 +918,19 @@ impl WorkflowDataStore {
                 .await?;
             let id = WorkflowJobId {
                 queue: workflow_activity.queue.clone(),
-                id: 0,
+                id: plan_id.clone(),
                 index: jobs.len() as i32,
             };
             let job = WorkflowJob {
-                id: id.clone(),
-                execution_plan: WorkflowExecutionId {
-                    queue: workflow.queue.clone(),
-                    id: 0,
+                plan_id: WorkflowExecutionId {
+                    id: plan_id.clone(),
+                    queue: workflow.queue.to_owned(),
                 },
+                id: id.clone(),
                 error: None,
                 workflow_id: workflow.id.to_string(),
                 metadata_id: metadata_id.map(|id| id.to_string()),
-                version,
+                metadata_version,
                 workflow_activity,
                 workflow_inputs,
                 workflow_outputs,
@@ -952,19 +947,23 @@ impl WorkflowDataStore {
                 completed_children: HashSet::new(),
                 failed_children: HashSet::new(),
                 complete: false,
+                finished: None,
             };
             if job.workflow_activity.execution_group == 1 {
-                current.push(id.clone());
+                current_execution_group.push(id.index);
             }
-            pending.insert(id.clone());
+            pending.insert(id.index);
             jobs.push(job);
         }
         Ok(WorkflowExecutionPlan {
-            plan_id: 0,
+            id: WorkflowExecutionId {
+                queue: workflow.queue.to_owned(),
+                id: plan_id,
+            },
             enqueued: Utc::now(),
             error: None,
             pending,
-            current,
+            current_execution_group,
             running: HashSet::new(),
             complete: HashSet::new(),
             failed: HashSet::new(),
@@ -975,8 +974,9 @@ impl WorkflowDataStore {
             parent: None,
             next: None,
             supplementary_id: None,
-            version,
-            collection_id: None,
+            metadata_version,
+            collection_id: collection_id.map(|id| id.to_string()),
+            finished: None,
         })
     }
 
@@ -989,18 +989,23 @@ impl WorkflowDataStore {
         wait_for_completion: Option<bool>,
     ) -> Result<WorkflowExecutionPlan, Error> {
         if let Some(workflow) = self.get_workflow(workflow_id).await? {
-            let mut plan = self
-                .get_new_execution_plan(&workflow, None, Some(*metadata_id), Some(*version), configurations)
+            let plan = self
+                .get_new_execution_plan(
+                    &workflow,
+                    None,
+                    Some(*metadata_id),
+                    Some(*version),
+                    configurations,
+                )
                 .await?;
-            let value = MessageValue::Plan(plan.clone());
-            let id = self.queues.enqueue(&plan.workflow.queue, &value).await?;
-            plan.plan_id = id;
+            let id = self.queues.enqueue(&plan).await?;
             if wait_for_completion.is_some() && wait_for_completion.unwrap() {
                 // TODO: use subscription
                 loop {
-                    let exists = self.queues.exists(&plan.workflow.queue, id).await?;
-                    if !exists {
-                        break;
+                    if let Some(plan) = self.queues.get_plan(&id).await? {
+                        if plan.complete.len() == plan.jobs.len() {
+                            break;
+                        }
                     }
                     tokio::time::sleep(Duration::from_secs(1)).await;
                 }
@@ -1019,12 +1024,10 @@ impl WorkflowDataStore {
     ) -> Result<Vec<WorkflowExecutionPlan>, Error> {
         let mut plans = Vec::<WorkflowExecutionPlan>::new();
         for workflow in self.get_workflows_by_trait(trait_id).await? {
-            let mut plan = self
+            let plan = self
                 .get_new_execution_plan(&workflow, None, Some(*metadata_id), Some(*version), None)
                 .await?;
-            let value = MessageValue::Plan(plan.clone());
-            let id = self.queues.enqueue(&workflow.queue, &value).await?;
-            plan.plan_id = id;
+            self.queues.enqueue(&plan).await?;
             plans.push(plan);
         }
         Ok(plans)
@@ -1038,18 +1041,17 @@ impl WorkflowDataStore {
         wait_for_completion: Option<bool>,
     ) -> Result<WorkflowExecutionPlan, Error> {
         if let Some(workflow) = self.get_workflow(&workflow_id.to_string()).await? {
-            let mut plan = self
+            let plan = self
                 .get_new_execution_plan(&workflow, Some(*collection_id), None, None, configurations)
                 .await?;
-            let value = MessageValue::Plan(plan.clone());
-            let id = self.queues.enqueue(&plan.workflow.queue, &value).await?;
-            plan.plan_id = id;
+            let id = self.queues.enqueue(&plan).await?;
             if wait_for_completion.is_some() && wait_for_completion.unwrap() {
                 // TODO: use subscription
                 loop {
-                    let exists = self.queues.exists(&plan.workflow.queue, id).await?;
-                    if !exists {
-                        break;
+                    if let Some(plan) = self.queues.get_plan(&id).await? {
+                        if plan.complete.len() == plan.jobs.len() {
+                            break;
+                        }
                     }
                     tokio::time::sleep(Duration::from_secs(1)).await;
                 }
@@ -1072,7 +1074,7 @@ impl WorkflowDataStore {
 
     pub async fn set_execution_job_context(
         &self,
-        job_id: &WorkflowExecutionId,
+        job_id: &WorkflowJobId,
         context: &Value,
     ) -> Result<(), Error> {
         self.queues.set_execution_job_context(job_id, context).await

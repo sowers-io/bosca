@@ -22,23 +22,22 @@ impl WorkflowExecutionPlanObject {
 
 #[Object(name = "WorkflowExecutionPlan")]
 impl WorkflowExecutionPlanObject {
-    async fn id(&self) -> i64 {
-        self.plan.plan_id
+    async fn id(&self) -> WorkflowExecutionIdObject {
+        WorkflowExecutionIdObject::new(self.plan.id.clone())
     }
-    async fn parent(&self) -> Option<WorkflowExecutionIdObject> {
+    async fn parent(&self) -> Option<WorkflowJobIdObject> {
         let parent = self.plan.parent.clone();
         if parent.is_none() {
             None
         } else {
-            parent.map(WorkflowExecutionIdObject::new)
+            parent.map(WorkflowJobIdObject::new)
         }
     }
     async fn workflow(&self) -> WorkflowObject {
         self.plan.workflow.clone().into()
     }
-    async fn next(&self) -> Option<WorkflowJobIdObject> {
-        let plan = &self.plan;
-        plan.next.clone().map(WorkflowJobIdObject::new)
+    async fn next(&self) -> Option<i32> {
+        self.plan.next
     }
     async fn jobs(&self) -> Vec<WorkflowJobObject> {
         self.plan.jobs.iter().map(|j| j.clone().into()).collect()
@@ -56,8 +55,8 @@ impl WorkflowExecutionPlanObject {
         let metadata = ctx.check_metadata_action(&id, PermissionAction::View).await?;
         Ok(Some(MetadataObject::from(metadata)))
     }
-    async fn version(&self) -> Option<i32> {
-        self.plan.version
+    async fn metadata_version(&self) -> Option<i32> {
+        self.plan.metadata_version
     }
     async fn collection_id(&self) -> &Option<String> {
         &self.plan.collection_id
@@ -68,40 +67,20 @@ impl WorkflowExecutionPlanObject {
     async fn context(&self) -> &Value {
         &self.plan.context
     }
-    async fn pending(&self) -> Vec<WorkflowJobIdObject> {
-        self.plan
-            .pending
-            .iter()
-            .map(WorkflowJobIdObject::from)
-            .collect()
+    async fn pending(&self) -> Vec<i32> {
+        self.plan.pending.iter().cloned().collect()
     }
-    async fn current(&self) -> Vec<WorkflowJobIdObject> {
-        self.plan
-            .current
-            .iter()
-            .map(WorkflowJobIdObject::from)
-            .collect()
+    async fn current_execution_group(&self) -> Vec<i32> {
+        self.plan.current_execution_group.iter().cloned().collect()
     }
-    async fn running(&self) -> Vec<WorkflowJobIdObject> {
-        self.plan
-            .running
-            .iter()
-            .map(WorkflowJobIdObject::from)
-            .collect()
+    async fn running(&self) -> Vec<i32> {
+        self.plan.running.iter().cloned().collect()
     }
-    async fn complete(&self) -> Vec<WorkflowJobIdObject> {
-        self.plan
-            .complete
-            .iter()
-            .map(WorkflowJobIdObject::from)
-            .collect()
+    async fn complete(&self) -> Vec<i32> {
+        self.plan.complete.iter().cloned().collect()
     }
-    async fn failed(&self) -> Vec<WorkflowJobIdObject> {
-        self.plan
-            .failed
-            .iter()
-            .map(WorkflowJobIdObject::from)
-            .collect()
+    async fn failed(&self) -> Vec<i32> {
+        self.plan.failed.iter().cloned().collect()
     }
     async fn error(&self) -> &Option<String> {
         &self.plan.error

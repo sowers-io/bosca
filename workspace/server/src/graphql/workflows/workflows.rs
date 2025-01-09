@@ -1,3 +1,5 @@
+use crate::context::BoscaContext;
+use crate::datastores::security::WORKFLOW_MANAGERS_GROUP;
 use crate::graphql::workflows::activities::ActivitiesObject;
 use crate::graphql::workflows::models::ModelsObject;
 use crate::graphql::workflows::prompts::PromptsObject;
@@ -8,11 +10,10 @@ use crate::graphql::workflows::workflow::WorkflowObject;
 use crate::graphql::workflows::workflow_execution_plan::WorkflowExecutionPlanObject;
 use crate::graphql::workflows::workflow_job::WorkflowJobObject;
 use crate::models::workflow::execution_plan::WorkflowExecutionId;
-use crate::queue::message::MessageValue;
-use async_graphql::{Context, Error, Object, Union};
-use crate::context::BoscaContext;
-use crate::datastores::security::WORKFLOW_MANAGERS_GROUP;
 use crate::security::util::check_has_group;
+use crate::worklfow::item::JobQueueItem;
+use async_graphql::{Context, Error, Object, Union};
+use uuid::Uuid;
 
 pub(crate) struct WorkflowsObject {}
 
@@ -74,13 +75,13 @@ impl WorkflowsObject {
         ctx.check_has_service_account().await?;
         let message = ctx.workflow.dequeue_next_execution(&queue).await?;
         if message.is_none() {
-            return Ok(None)
+            return Ok(None);
         }
         Ok(message.map(|execution| match execution {
-            MessageValue::Plan(plan) => {
+            JobQueueItem::Plan(plan) => {
                 WorkflowExecution::Plan(WorkflowExecutionPlanObject::new(plan))
             }
-            MessageValue::Job(job) => WorkflowExecution::Job(WorkflowJobObject::new(job)),
+            JobQueueItem::Job(job) => WorkflowExecution::Job(WorkflowJobObject::new(job)),
         }))
     }
 
@@ -88,12 +89,17 @@ impl WorkflowsObject {
         &self,
         ctx: &Context<'_>,
         queue: String,
-        id: i64,
+        id: String,
     ) -> Result<Option<WorkflowExecutionPlanObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         ctx.check_has_service_account().await?;
+        let id = Uuid::parse_str(&id)?;
         let id = WorkflowExecutionId { queue, id };
-        Ok(ctx.workflow.get_execution_plan(&id).await?.map(|p| p.into()))
+        Ok(ctx
+            .workflow
+            .get_execution_plan(&id)
+            .await?
+            .map(|p| p.into()))
     }
 
     async fn executions(
@@ -102,20 +108,16 @@ impl WorkflowsObject {
         queue: String,
         offset: i64,
         limit: i64,
-        archived: bool,
     ) -> Result<Vec<WorkflowExecution>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         ctx.check_has_service_account().await?;
-        Ok(ctx.workflow
-            .get_execution_plans(&queue, offset, limit, archived)
-            .await?
+        let items = ctx
+            .workflow
+            .get_execution_plans(&queue, offset, limit)
+            .await?;
+        Ok(items
             .into_iter()
-            .map(|execution| match execution {
-                MessageValue::Plan(plan) => {
-                    WorkflowExecution::Plan(WorkflowExecutionPlanObject::new(plan))
-                }
-                MessageValue::Job(job) => WorkflowExecution::Job(WorkflowJobObject::new(job)),
-            })
+            .map(|plan| WorkflowExecution::Plan(WorkflowExecutionPlanObject::new(plan)))
             .collect())
     }
 }

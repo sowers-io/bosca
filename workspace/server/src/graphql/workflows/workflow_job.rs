@@ -26,6 +26,10 @@ impl WorkflowJobObject {
 
 #[Object(name = "WorkflowJob")]
 impl WorkflowJobObject {
+    async fn plan_id(&self) -> WorkflowExecutionIdObject {
+        WorkflowExecutionIdObject::new(self.job.plan_id.clone())
+    }
+
     async fn id(&self) -> WorkflowJobIdObject {
         WorkflowJobIdObject::new(self.job.id.clone())
     }
@@ -68,8 +72,8 @@ impl WorkflowJobObject {
             .map(MetadataObject::from))
     }
 
-    async fn version(&self) -> Option<i32> {
-        self.job.version
+    async fn metadata_version(&self) -> Option<i32> {
+        self.job.metadata_version
     }
 
     async fn supplementary_id(&self) -> &Option<String> {

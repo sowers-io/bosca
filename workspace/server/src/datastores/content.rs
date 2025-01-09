@@ -26,6 +26,7 @@ use std::sync::Arc;
 use tokio_postgres::Statement;
 use uuid::Uuid;
 use crate::datastores::content_notifier::ContentNotifier;
+use crate::models::workflow::execution_plan::WorkflowExecutionId;
 
 #[derive(Clone)]
 pub struct ContentDataStore {
@@ -961,9 +962,8 @@ impl ContentDataStore {
 
     pub async fn add_metadata_plan(
         &self,
-        id: &Uuid,
-        plan_id: i64,
-        queue: &String,
+        metadata_id: &Uuid,
+        id: &WorkflowExecutionId,
     ) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -971,9 +971,9 @@ impl ContentDataStore {
                 "insert into metadata_workflow_plans (id, plan_id, queue) values ($1, $2, $3)",
             )
             .await?;
-        let job_id = plan_id.to_string();
-        connection.execute(&stmt, &[id, &job_id, queue]).await?;
-        self.on_metadata_changed(id).await?;
+        let plan_id = id.id.to_string();
+        connection.execute(&stmt, &[metadata_id, &plan_id, &id.queue]).await?;
+        self.on_metadata_changed(metadata_id).await?;
         Ok(())
     }
 
@@ -1634,8 +1634,7 @@ impl ContentDataStore {
     pub async fn add_collection_plan(
         &self,
         id: &Uuid,
-        plan_id: i64,
-        queue: &String,
+        plan: &WorkflowExecutionId,
     ) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -1643,8 +1642,8 @@ impl ContentDataStore {
                 "insert into collection_workflow_plans (id, plan_id, queue) values ($1, $2, $3)",
             )
             .await?;
-        let job_id = plan_id.to_string();
-        connection.execute(&stmt, &[id, &job_id, queue]).await?;
+        let job_id = plan.id.to_string();
+        connection.execute(&stmt, &[id, &job_id, &plan.queue]).await?;
         self.on_collection_changed(id).await?;
         Ok(())
     }
@@ -1933,7 +1932,7 @@ impl ContentDataStore {
             .await?;
         datasource.set_collection_ready(&collection.id).await?;
         datasource
-            .add_collection_plan(&collection.id, plan.plan_id, &plan.workflow.queue)
+            .add_collection_plan(&collection.id, &plan.id)
             .await?;
         self.on_collection_changed(&collection.id).await?;
         Ok(())
@@ -1968,7 +1967,7 @@ impl ContentDataStore {
             .await?;
         datasource.set_metadata_ready(&metadata.id).await?;
         datasource
-            .add_metadata_plan(&metadata.id, plan.plan_id, &plan.workflow.queue)
+            .add_metadata_plan(&metadata.id, &plan.id)
             .await?;
         self.on_metadata_changed(&metadata.id).await?;
         Ok(())

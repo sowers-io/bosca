@@ -2,7 +2,6 @@ mod datastores;
 mod files;
 mod graphql;
 mod models;
-mod queue;
 mod security;
 mod util;
 mod worklfow;
@@ -11,6 +10,7 @@ mod queries;
 mod logger;
 mod authed_subscription;
 mod schema;
+mod redis;
 
 use crate::files::{download, upload};
 use crate::graphql::content::storage::{ObjectStorage, ObjectStorageInterface};
@@ -21,7 +21,7 @@ use crate::security::authorization_extension::{get_anonymous_principal, get_auth
 use crate::security::jwt::{Jwt, Keys};
 use crate::util::yaml::parse_string;
 use crate::worklfow::configuration::configure;
-use crate::worklfow::job_queue::JobQueues;
+use crate::worklfow::queue::JobQueues;
 use async_graphql::{http::GraphiQLSource, Schema};
 use async_graphql_axum::{GraphQLRequest, GraphQLResponse};
 use axum::extract::{DefaultBodyLimit, State};
@@ -36,7 +36,7 @@ use deadpool_postgres::{Config, ManagerConfig, Pool, RecyclingMethod, Runtime};
 use graphql::mutation::MutationObject;
 use graphql::query::QueryObject;
 use http::HeaderMap;
-use log::{info, warn};
+use log::{error, info, warn};
 use meilisearch_sdk::client::Client;
 use object_store::local::LocalFileSystem;
 use serde_json::Value;
@@ -75,7 +75,6 @@ use crate::datastores::content::ContentDataStore;
 use crate::datastores::security::SecurityDataStore;
 use crate::datastores::workflow::WorkflowDataStore;
 use crate::models::content::search::SearchDocumentInput;
-use crate::queue::message_queues::MessageQueues;
 use crate::util::RUNNING_BACKGROUND;
 use crate::util::storage::index_documents_no_checks;
 
@@ -84,11 +83,12 @@ use tower_http::cors::CorsLayer;
 use bosca_telemetry::graphql_opentelemetry::OpenTelemetry;
 use crate::datastores::persisted_queries::PersistedQueriesDataStore;
 
-use redis::Client as RedisClient;
+use tokio::time::sleep;
 use crate::authed_subscription::AuthGraphQLSubscription;
 use crate::datastores::content_notifier::ContentNotifier;
 use crate::graphql::subscription::SubscriptionObject;
 use crate::logger::Logger;
+use crate::redis::RedisClient;
 use crate::schema::BoscaSchema;
 
 #[global_allocator]
@@ -240,7 +240,7 @@ fn build_redis_client() -> RedisClient {
         Ok(url) => url,
         _ => "redis://127.0.0.1:6380".to_string(),
     };
-    RedisClient::open(url).unwrap()
+    RedisClient::new(url)
 }
 
 async fn initialize_workflow(ctx: &BoscaContext) {
@@ -259,8 +259,6 @@ async fn initialize_workflow(ctx: &BoscaContext) {
         let mut settings = index.get_settings().await.unwrap();
         settings.filterable_attributes = Some(vec!["_type".to_owned()]);
         index.set_settings(&settings).await.unwrap();
-    } else {
-        ctx.workflow.create_queues().await.unwrap();
     }
 }
 
@@ -385,11 +383,10 @@ async fn main() {
     ring::default_provider().install_default().unwrap();
 
     let bosca_pool = build_pool("DATABASE_URL");
-    let job_pool = build_pool("DATABASE_JOBS_URL");
 
-    let messages = MessageQueues::new(job_pool);
-    let jobs = JobQueues::new(messages.clone());
-    let notifier = Arc::new(ContentNotifier::new(build_redis_client()));
+    let redis_client = build_redis_client();
+    let jobs = JobQueues::new(Arc::clone(&bosca_pool), redis_client.clone());
+    let notifier = Arc::new(ContentNotifier::new(redis_client.clone()));
     let ctx = BoscaContext {
         security: SecurityDataStore::new(
             Arc::clone(&bosca_pool),
@@ -405,13 +402,24 @@ async fn main() {
         search: build_search_client(),
         storage: build_object_storage(),
         principal: get_anonymous_principal(),
-        messages,
     };
 
     initialize_workflow(&ctx).await;
     initialize_security(&ctx.security).await;
     initialize_content(&ctx).await;
-    
+
+    let jobs_expiration = jobs.clone();
+    tokio::spawn(async move {
+        loop {
+            RUNNING_BACKGROUND.fetch_add(1, Relaxed);
+            if let Err(e) = jobs_expiration.check_for_expiration().await {
+                error!(target: "workflow", "failed to check for expiration: {:?}", e);
+            }
+            RUNNING_BACKGROUND.fetch_add(-1, Relaxed);
+            sleep(Duration::from_secs(3)).await;
+        }
+    });
+
     let mut provider_builder = TracerProvider::builder().with_config(
         opentelemetry_sdk::trace::Config::default().with_resource(Resource::new(vec![KeyValue::new(
             opentelemetry_semantic_conventions::resource::SERVICE_NAME,
@@ -421,14 +429,12 @@ async fn main() {
 
     if let Ok(endpoint) = env::var("OTLP_TRACE_ENDPOINT") {
         info!(target: "bosca", "sending traces to: {}", endpoint);
-
         let exporter = opentelemetry_otlp::new_exporter()
             .http()
             .with_http_client(reqwest::Client::new())
             .with_endpoint(endpoint)
             .build_span_exporter()
             .unwrap();
-
         let batch = BatchSpanProcessor::builder(exporter, runtime::Tokio)
             .with_batch_config(
                 BatchConfigBuilder::default()
@@ -436,7 +442,6 @@ async fn main() {
                     .build()
             )
             .build();
-
         provider_builder = provider_builder.with_span_processor(batch);
     } else {
         info!(target: "bosca", "no exporter configured");

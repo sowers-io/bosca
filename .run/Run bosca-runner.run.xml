@@ -1,5 +1,5 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="Run bosca-runner" type="CargoCommandRunConfiguration" factoryName="Cargo Command" singleton="true">
+  <configuration default="false" name="Run bosca-runner" type="CargoCommandRunConfiguration" factoryName="Cargo Command" singleton="false">
     <option name="buildProfileId" value="dev" />
     <option name="command" value="run --package bosca-runner --bin bosca-runner" />
     <option name="workingDirectory" value="file://$PROJECT_DIR$" />

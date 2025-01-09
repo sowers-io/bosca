@@ -17,8 +17,8 @@ impl WorkflowExecutionIdObject {
         &self.id.queue
     }
 
-    async fn id(&self) -> i64 {
-        self.id.id
+    async fn id(&self) -> String {
+        self.id.id.to_string()
     }
 }
 

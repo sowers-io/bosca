@@ -86,7 +86,7 @@ impl Activity for MuxUploadActivity {
                 uploaded: false,
             };
             let record_json = json!(record);
-            client.set_job_context(job.id.id, job.id.queue.as_str(), &record_json).await?;
+            client.set_job_context(&job.id.id, job.id.index, job.id.queue.as_str(), &record_json).await?;
             record
         } else {
             serde_json::from_value::<MuxRecord>(job.context.clone())?
@@ -142,7 +142,7 @@ impl Activity for MuxUploadActivity {
             }
             record.uploaded = true;
             let record_json = json!(record.clone());
-            client.set_job_context(job.id.id, job.id.queue.as_str(), &record_json).await?;
+            client.set_job_context(&job.id.id, job.id.index, job.id.queue.as_str(), &record_json).await?;
         }
         let response = reqwest::Client::builder()
             .build()?
@@ -178,7 +178,7 @@ impl Activity for MuxUploadActivity {
         let mut system_attributes_map = Map::new();
 
         let record_json = json!(record);
-        client.set_job_context(job.id.id, job.id.queue.as_str(), &record_json).await?;
+        client.set_job_context(&job.id.id, job.id.index, job.id.queue.as_str(), &record_json).await?;
 
         // build attributes
         let playback_id = &playback_ids.first().unwrap().id;

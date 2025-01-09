@@ -56,12 +56,12 @@ impl Activity for MetadataTraitsActivity {
                 continue;
             }
             client
-                .enqueue_child_workflows(job.id.id, &job.id.queue, trait_.unwrap().workflow_ids)
+                .enqueue_child_workflows(&job.id.id, job.id.index, &job.id.queue, trait_.unwrap().workflow_ids)
                 .await?;
             executed.insert(trait_id.clone());
             let updated_context = json!({"executed": executed.clone()});
             client
-                .set_job_context(job.id.id, &job.id.queue, &updated_context)
+                .set_job_context(&job.id.id, job.id.index, &job.id.queue, &updated_context)
                 .await?;
         }
         Ok(())

@@ -199,7 +199,7 @@ pub async fn upload(
                     .await
                     .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Server Error".to_owned()))?;
                 ctx.content
-                    .add_metadata_plan(&id, plan.plan_id, &plan.workflow.queue)
+                    .add_metadata_plan(&id, &plan.id)
                     .await
                     .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Server Error".to_owned()))?;
             }

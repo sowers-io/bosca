@@ -58,7 +58,7 @@ impl Activity for PromptActivity {
         }
         let updated_context = json!({"tries": tries});
         client
-            .set_job_context(job.id.id, &job.id.queue, &updated_context)
+            .set_job_context(&job.id.id, job.id.index, &job.id.queue, &updated_context)
             .await?;
         let prompt_definition = job.prompts.first().unwrap();
         let inputs: HashSet<String> = job

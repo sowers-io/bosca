@@ -1,8 +1,5 @@
 mutation EnqueueJob($planId: WorkflowExecutionIdInput!, $jobIndex: Int!) {
     workflows {
-        enqueueJob(planId: $planId, jobIndex: $jobIndex) {
-            id
-            queue
-        }
+        enqueueJob(planId: $planId, jobIndex: $jobIndex)
     }
 }

@@ -4,7 +4,7 @@ use crate::graphql::workflows::states_mutation::WorkflowStatesMutationObject;
 use crate::graphql::workflows::prompts_mutation::PromptsMutationObject;
 use crate::graphql::workflows::workflow::WorkflowObject;
 use crate::graphql::workflows::workflow_execution_id::WorkflowExecutionIdObject;
-use crate::models::workflow::execution_plan::{WorkflowExecutionId, WorkflowExecutionIdInput, WorkflowJobIdInput};
+use crate::models::workflow::execution_plan::{WorkflowExecutionIdInput, WorkflowJobIdInput};
 use crate::models::workflow::workflows::WorkflowInput;
 use crate::security::util::check_has_group;
 use async_graphql::{Context, Error, Object};
@@ -98,7 +98,7 @@ impl WorkflowsMutationObject {
     async fn enqueue_child_workflows(
         &self,
         ctx: &Context<'_>,
-        job_id: WorkflowExecutionIdInput,
+        job_id: WorkflowJobIdInput,
         workflow_ids: Vec<String>,
     ) -> Result<Vec<WorkflowExecutionIdObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
@@ -114,7 +114,7 @@ impl WorkflowsMutationObject {
     async fn enqueue_child_workflow(
         &self,
         ctx: &Context<'_>,
-        job_id: WorkflowExecutionIdInput,
+        job_id: WorkflowJobIdInput,
         workflow_id: String,
         configurations: Option<Vec<WorkflowConfigurationInput>>,
     ) -> Result<WorkflowExecutionIdObject, Error> {
@@ -128,13 +128,12 @@ impl WorkflowsMutationObject {
         ctx: &Context<'_>,
         plan_id: WorkflowExecutionIdInput,
         job_index: i32,
-    ) -> Result<Option<WorkflowExecutionIdObject>, Error> {
+    ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         ctx.check_has_service_account().await?;
         Ok(ctx.workflow
             .enqueue_execution_job(&plan_id.into(), job_index)
-            .await?
-            .map(WorkflowExecutionIdObject::new))
+            .await?)
     }
 
     async fn find_and_enqueue_workflow(
@@ -159,10 +158,7 @@ impl WorkflowsMutationObject {
                 .await?;
             ids.push(id);
         }
-        Ok(ids.into_iter().map(|plan| WorkflowExecutionIdObject::new(WorkflowExecutionId {
-            id: plan.plan_id,
-            queue: plan.workflow.queue,
-        })).collect())
+        Ok(ids.into_iter().map(|plan| WorkflowExecutionIdObject::new(plan.id.clone())).collect())
     }
 
     async fn enqueue_workflow(
@@ -184,22 +180,19 @@ impl WorkflowsMutationObject {
             let plan = ctx.workflow
                 .enqueue_metadata_workflow(&workflow_id, &id, version.as_ref().unwrap(), configurations.as_ref(), None)
                 .await?;
-            ctx.content.add_metadata_plan(&id, plan.plan_id, &plan.workflow.queue).await?;
+            ctx.content.add_metadata_plan(&id, &plan.id).await?;
             plan
         } else if let Some(collection_id) = collection_id {
             let id = Uuid::parse_str(collection_id.as_str())?;
             let plan = ctx.workflow
                 .enqueue_collection_workflow(&workflow_id, &id, configurations.as_ref(), None)
                 .await?;
-            ctx.content.add_collection_plan(&id, plan.plan_id, &plan.workflow.queue).await?;
+            ctx.content.add_collection_plan(&id, &plan.id).await?;
             plan
         } else {
             return Err(Error::new("you must provide either a collection_id or a metadata_id"));
         };
-        Ok(WorkflowExecutionIdObject::new(WorkflowExecutionId {
-            id: workflow.plan_id,
-            queue: workflow.workflow.queue.to_owned(),
-        }))
+        Ok(WorkflowExecutionIdObject::new(workflow.id.clone()))
     }
 
     async fn set_execution_plan_context(
@@ -219,7 +212,7 @@ impl WorkflowsMutationObject {
     async fn set_execution_job_context(
         &self,
         ctx: &Context<'_>,
-        job_id: WorkflowExecutionIdInput,
+        job_id: WorkflowJobIdInput,
         context: Value,
     ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;

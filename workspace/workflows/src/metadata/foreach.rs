@@ -85,7 +85,7 @@ impl Activity for MetadataForEachActivity {
                 continue;
             }
             client
-                .enqueue_child_workflow(job.id.id, &job.id.queue, &item.id, item.activities.iter().map(|a| WorkflowConfigurationInput {
+                .enqueue_child_workflow(&job.id.id, job.id.index, &job.id.queue, &item.id, item.activities.iter().map(|a| WorkflowConfigurationInput {
                     activity_id: a.id.to_owned(),
                     configuration: a.configuration.clone(),
                 }).collect())
@@ -93,7 +93,7 @@ impl Activity for MetadataForEachActivity {
             executed.insert(i as i64);
             let updated_context = json!({"executed": executed.clone()});
             client
-                .set_job_context(job.id.id, &job.id.queue, &updated_context)
+                .set_job_context(&job.id.id, job.id.index, &job.id.queue, &updated_context)
                 .await?;
         }
         Ok(())

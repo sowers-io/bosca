@@ -12,7 +12,6 @@ use crate::models::content::collection::Collection;
 use crate::models::content::metadata::Metadata;
 use crate::models::security::permission::PermissionAction;
 use crate::models::security::principal::Principal;
-use crate::queue::message_queues::MessageQueues;
 
 use crate::datastores::content_notifier::ContentNotifier;
 
@@ -26,7 +25,6 @@ pub struct BoscaContext {
     pub notifier: Arc<ContentNotifier>,
     pub search: Arc<Client>,
     pub principal: Principal,
-    pub messages: MessageQueues,
 }
 
 impl BoscaContext {

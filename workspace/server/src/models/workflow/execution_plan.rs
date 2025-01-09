@@ -9,11 +9,12 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashSet;
 use std::fmt::{Display, Formatter};
+use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
 pub struct WorkflowExecutionId {
     pub queue: String,
-    pub id: i64,
+    pub id: Uuid,
 }
 
 impl Display for WorkflowExecutionId {
@@ -25,13 +26,13 @@ impl Display for WorkflowExecutionId {
 #[derive(InputObject, Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
 pub struct WorkflowExecutionIdInput {
     pub queue: String,
-    pub id: i64,
+    pub id: String,
 }
 
 impl From<WorkflowExecutionIdInput> for WorkflowExecutionId {
     fn from(value: WorkflowExecutionIdInput) -> Self {
         WorkflowExecutionId {
-            id: value.id,
+            id: Uuid::parse_str(&value.id).unwrap(),
             queue: value.queue,
         }
     }
@@ -40,7 +41,7 @@ impl From<WorkflowExecutionIdInput> for WorkflowExecutionId {
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
 pub struct WorkflowJobId {
     pub queue: String,
-    pub id: i64,
+    pub id: Uuid,
     pub index: i32,
 }
 
@@ -57,14 +58,14 @@ impl Display for WorkflowJobId {
 #[derive(InputObject, Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
 pub struct WorkflowJobIdInput {
     pub queue: String,
-    pub id: i64,
+    pub id: String,
     pub index: i32,
 }
 
 impl From<WorkflowJobIdInput> for WorkflowJobId {
     fn from(value: WorkflowJobIdInput) -> Self {
         WorkflowJobId {
-            id: value.id,
+            id: Uuid::parse_str(&value.id).unwrap(),
             index: value.index,
             queue: value.queue,
         }
@@ -73,33 +74,34 @@ impl From<WorkflowJobIdInput> for WorkflowJobId {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorkflowExecutionPlan {
-    pub parent: Option<WorkflowExecutionId>,
-    pub plan_id: i64,
+    pub parent: Option<WorkflowJobId>,
+    pub id: WorkflowExecutionId,
     pub enqueued: DateTime<Utc>,
+    pub finished: Option<DateTime<Utc>>,
     pub workflow: Workflow,
     pub jobs: Vec<WorkflowJob>,
     pub metadata_id: Option<String>,
-    pub version: Option<i32>,
+    pub metadata_version: Option<i32>,
     pub collection_id: Option<String>,
     pub supplementary_id: Option<String>,
     pub context: Value,
-    pub next: Option<WorkflowJobId>,
-    pub pending: HashSet<WorkflowJobId>,
-    pub current: Vec<WorkflowJobId>,
-    pub running: HashSet<WorkflowJobId>,
-    pub complete: HashSet<WorkflowJobId>,
-    pub failed: HashSet<WorkflowJobId>,
+    pub next: Option<i32>,
+    pub pending: HashSet<i32>,
+    pub current_execution_group: Vec<i32>,
+    pub running: HashSet<i32>,
+    pub complete: HashSet<i32>,
+    pub failed: HashSet<i32>,
     pub error: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorkflowJob {
+    pub plan_id: WorkflowExecutionId,
     pub id: WorkflowJobId,
-    pub execution_plan: WorkflowExecutionId,
     pub workflow_id: String,
     pub collection_id: Option<String>,
     pub metadata_id: Option<String>,
-    pub version: Option<i32>,
+    pub metadata_version: Option<i32>,
     pub supplementary_id: Option<String>,
     pub activity: Activity,
     pub activity_inputs: Vec<ActivityParameter>,
@@ -116,4 +118,5 @@ pub struct WorkflowJob {
     pub completed_children: HashSet<WorkflowExecutionId>,
     pub failed_children: HashSet<WorkflowExecutionId>,
     pub complete: bool,
+    pub finished: Option<DateTime<Utc>>,
 }

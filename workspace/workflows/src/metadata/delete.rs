@@ -1,9 +1,6 @@
 use crate::activity::{Activity, ActivityContext, Error};
 use async_trait::async_trait;
-use bosca_client::client::enqueue_child_workflow::WorkflowConfigurationInput;
-use bosca_client::client::get_collection_items::GetCollectionItemsContentCollectionItems;
 use bosca_client::client::{Client, WorkflowJob};
-use serde_json::Value;
 
 pub struct MetadataDeleteActivity {
     id: String,

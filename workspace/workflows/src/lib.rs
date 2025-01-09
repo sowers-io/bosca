@@ -78,24 +78,31 @@ pub async fn process_queue(
         if running.load(Relaxed) >= max_running {
             tokio::time::sleep(Duration::from_millis(1000)).await;
         }
-        if let Ok(Some(execution)) = client.get_next_execution(&queue).await {
-            running.fetch_add(1, Relaxed);
-            let activities_by_id = Arc::clone(&activities_by_id);
-            let running = Arc::clone(&running);
-            let client = client.clone();
-            tokio::spawn(async move {
-                match process(activities_by_id, &client, execution).await {
-                    Ok(_) => {
-                        running.fetch_add(-1, Relaxed);
+        match client.get_next_execution(&queue).await {
+            Ok(Some(execution)) => {
+                running.fetch_add(1, Relaxed);
+                let activities_by_id = Arc::clone(&activities_by_id);
+                let running = Arc::clone(&running);
+                let client = client.clone();
+                tokio::spawn(async move {
+                    match process(activities_by_id, &client, execution).await {
+                        Ok(_) => {
+                            running.fetch_add(-1, Relaxed);
+                        }
+                        Err(error) => {
+                            error!(target: "workflow", "error: {}", error.to_string());
+                            running.fetch_add(-1, Relaxed);
+                        }
                     }
-                    Err(error) => {
-                        error!(target: "workflow", "error: {}", error.to_string());
-                        running.fetch_add(-1, Relaxed);
-                    }
-                }
-            });
-        } else {
-            tokio::time::sleep(Duration::from_millis(1000)).await;
+                });
+            }
+            Ok(None) => {
+                tokio::time::sleep(Duration::from_millis(1000)).await;
+            }
+            Err(e) => {
+                error!(target: "workflow", "error getting pending events: {}", e);
+                tokio::time::sleep(Duration::from_millis(1000)).await;
+            }
         }
     }
     loop {
@@ -114,11 +121,11 @@ async fn process(
 ) -> Result<(), Error> {
     match execution {
         bosca_client::client::plan::PlanWorkflowsNextWorkflowExecution::WorkflowExecutionPlan(plan) => {
-            info!(target: "workflow", "processing execution plan: {} -> {}", plan.workflow.queue.clone(), plan.plan_id.clone());
-            let id = plan.plan_id;
+            info!(target: "workflow", "processing execution plan: {} -> {}", plan.workflow.queue.clone(), plan.plan_id.id.clone());
+            let id = plan.plan_id.id.clone();
             let queue = plan.workflow.queue;
-            let next_index = plan.next.unwrap().index;
-            client.enqueue_job(id, &queue, next_index).await?;
+            let next_index = plan.next.unwrap();
+            client.enqueue_job(&id, &queue, next_index).await?;
         }
         bosca_client::client::plan::PlanWorkflowsNextWorkflowExecution::WorkflowJob(job) => {
             info!(target: "workflow", "processing execution job: {}", job.id.queue);
@@ -127,7 +134,7 @@ async fn process(
                 error!(target: "workflow", "missing activity: {}", job.activity.id);
                 let msg = format!("missing activity: {}", job.activity.id);
                 if let Err(err) = client
-                    .set_workflow_job_failed(job.id.id, job.id.index, &job.id.queue, &msg)
+                    .set_workflow_job_failed(&job.id.id, job.id.index, &job.id.queue, &msg)
                     .await {
                     error!(target: "workflow", "failed to set job failed: {}, {}, {}, {} -- {} -- {}", job.id.id, job.id.index, job.id.queue, job.activity.id, msg, err);
                 }
@@ -146,7 +153,7 @@ async fn process(
                         tokio::time::sleep(Duration::from_secs(3600)).await;
                         match keepalive_client
                             .set_workflow_job_checkin(
-                                keepalive_id.id,
+                                &keepalive_id.id,
                                 keepalive_id.index,
                                 &keepalive_id.queue,
                             )
@@ -166,7 +173,7 @@ async fn process(
                         keepalive_active.store(false, Relaxed);
                         info!(target: "workflow", "job processed: {}, {}, {}, {}", job.id.id, job.id.index, job.id.queue, job.activity.id);
                         if let Err(err) = client
-                            .set_workflow_job_complete(job.id.id, job.id.index, &job.id.queue)
+                            .set_workflow_job_complete(&job.id.id, job.id.index, &job.id.queue)
                             .await {
                             error!(target: "workflow", "failed to set job complete: {}, {}, {}, {} -- {}", job.id.id, job.id.index, job.id.queue, job.activity.id, err);
                         }
@@ -177,7 +184,7 @@ async fn process(
                         info!(target: "workflow", "job failed: {}", err);
                         let msg = err.to_string();
                         if let Err(err) = client
-                            .set_workflow_job_failed(job.id.id, job.id.index, &job.id.queue, &msg)
+                            .set_workflow_job_failed(&job.id.id, job.id.index, &job.id.queue, &msg)
                             .await {
                             error!(target: "workflow", "failed to set job failed: {}, {}, {}, {} -- {}", job.id.id, job.id.index, job.id.queue, job.activity.id, err);
                         }

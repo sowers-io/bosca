@@ -141,6 +141,5 @@ pub async fn configure(yaml: &Yaml, datasource: &WorkflowDataStore) -> bool {
             datasource.add_trait(&ti).await.unwrap();
         }
     }
-    datasource.create_queues().await.unwrap();
     true
 }

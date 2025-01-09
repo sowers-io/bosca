@@ -1,4 +1,4 @@
-mutation SetWorkflowJobContext($jobId: WorkflowExecutionIdInput!, $context: JSON!) {
+mutation SetWorkflowJobContext($jobId: WorkflowJobIdInput!, $context: JSON!) {
     workflows {
         setExecutionJobContext(jobId: $jobId, context: $context)
     }

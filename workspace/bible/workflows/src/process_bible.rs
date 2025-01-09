@@ -97,7 +97,8 @@ impl Activity for ProcessBibleActivity {
         configuration.insert("collection_id".to_owned(), Value::String(result.add.id.to_owned()));
         client
             .enqueue_child_workflow(
-                job.id.id,
+                &job.id.id,
+                job.id.index,
                 &job.id.queue,
                 "collection.set.ready",
                 vec![WorkflowConfigurationInput {

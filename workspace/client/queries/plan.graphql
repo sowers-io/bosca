@@ -3,6 +3,10 @@ query Plan($queue: String!) {
         nextWorkflowExecution(queue: $queue) {
             __typename
             ... on WorkflowJob {
+                planId {
+                    id
+                    queue
+                }
                 id {
                     id
                     index
@@ -61,7 +65,6 @@ query Plan($queue: String!) {
                     }
                     ready
                 }
-                version
                 activity {
                     id
                     childWorkflowId
@@ -128,13 +131,14 @@ query Plan($queue: String!) {
                 }
             }
             ... on WorkflowExecutionPlan {
-                planId: id
+                planId: id {
+                    id
+                    queue
+                }
                 workflow {
                     queue
                 }
-                next {
-                    index
-                }
+                next
             }
         }
     }
