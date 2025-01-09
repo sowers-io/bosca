@@ -168,6 +168,10 @@ async fn main() {
         if queue_cfg.len() == 2 {
             max_running = queue_cfg.last().unwrap().parse::<i32>().unwrap();
         }
+        if max_running == 0 {
+            warn!("queue {} has no max running, skipping", queue);
+            continue;
+        }
         let activities_by_id = Arc::clone(&activities_by_id);
         processors.push(start(
             Arc::clone(&shutdown),

@@ -22,7 +22,7 @@ use crate::security::jwt::{Jwt, Keys};
 use crate::util::yaml::parse_string;
 use crate::worklfow::configuration::configure;
 use crate::worklfow::queue::JobQueues;
-use async_graphql::{http::GraphiQLSource, Schema};
+use async_graphql::{http::GraphiQLSource, Error, Schema};
 use async_graphql_axum::{GraphQLRequest, GraphQLResponse};
 use axum::extract::{DefaultBodyLimit, State};
 use axum::routing::post;
@@ -50,6 +50,7 @@ use std::sync::atomic::Ordering::Relaxed;
 use std::time::Duration;
 use async_graphql::extensions::apollo_persisted_queries::ApolloPersistedQueries;
 use base64::Engine;
+use chrono::Utc;
 use object_store::aws::AmazonS3Builder;
 use opentelemetry::{global, KeyValue};
 use tokio::net::TcpListener;
@@ -235,12 +236,12 @@ fn build_search_client() -> Arc<Client> {
     Arc::new(Client::new(url, Some(key)).unwrap())
 }
 
-fn build_redis_client() -> RedisClient {
+async fn build_redis_client() -> Result<RedisClient, Error> {
     let url = match env::var("REDIS_URL") {
         Ok(url) => url,
         _ => "redis://127.0.0.1:6380".to_string(),
     };
-    RedisClient::new(url)
+    Ok(RedisClient::new(url).await?)
 }
 
 async fn initialize_workflow(ctx: &BoscaContext) {
@@ -384,7 +385,7 @@ async fn main() {
 
     let bosca_pool = build_pool("DATABASE_URL");
 
-    let redis_client = build_redis_client();
+    let redis_client = build_redis_client().await.unwrap();
     let jobs = JobQueues::new(Arc::clone(&bosca_pool), redis_client.clone());
     let notifier = Arc::new(ContentNotifier::new(redis_client.clone()));
     let ctx = BoscaContext {
@@ -412,7 +413,8 @@ async fn main() {
     tokio::spawn(async move {
         loop {
             RUNNING_BACKGROUND.fetch_add(1, Relaxed);
-            if let Err(e) = jobs_expiration.check_for_expiration().await {
+            let now = Utc::now().timestamp();
+            if let Err(e) = jobs_expiration.check_for_expiration(now).await {
                 error!(target: "workflow", "failed to check for expiration: {:?}", e);
             }
             RUNNING_BACKGROUND.fetch_add(-1, Relaxed);

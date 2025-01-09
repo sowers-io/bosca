@@ -1,4 +1,5 @@
 use async_graphql::Error;
+use redis::aio::{ConnectionManager, PubSub};
 use redis::Client;
 
 #[derive(Clone)]
@@ -8,25 +9,29 @@ pub struct RedisClient {
 
 #[derive(Clone)]
 pub struct RedisConnection {
-    client: Client
+    client: Client,
+    manager: ConnectionManager
 }
 
 impl RedisConnection {
 
-    pub async fn get_connection(&self) -> Result<redis::aio::MultiplexedConnection, Error> {
-        Ok(self.client.get_multiplexed_tokio_connection().await?)
+    pub async fn get_connection(&self) -> Result<ConnectionManager, Error> {
+        Ok(self.manager.clone())
     }
 
-    pub async fn get_pubsub(&self) -> Result<redis::aio::PubSub, Error> {
+    pub async fn get_pubsub(&self) -> Result<PubSub, Error> {
         Ok(self.client.get_async_pubsub().await?)
     }
 }
 
 impl RedisClient {
-    pub fn new(url: String) -> Self {
-        Self {
-            connection: RedisConnection { client: Client::open(url.clone()).unwrap() },
-        }
+    pub async fn new(url: String) -> Result<Self, Error> {
+        Ok(Self {
+            connection: RedisConnection {
+                client: Client::open(url.clone())?,
+                manager: ConnectionManager::new(Client::open(url.clone())?).await?,
+            },
+        })
     }
 
     pub async fn get(&self) -> Result<&RedisConnection, Error> {

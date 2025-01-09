@@ -35,7 +35,7 @@ tokio-stream = "0.1.16"
 async-stream = "0.3.5"
 structured-logger = "1.0.3"
 object_store = { version = "0.11.0", features = ["aws"] }
-redis = { version = "0.27.6", features = ["aio", "tokio-comp", "r2d2", "streams"] }
+redis = { version = "0.27.6", features = ["aio", "tokio-comp", "r2d2", "streams", "connection-manager"] }
 r2d2 = "0.8.10"
 
 reqwest = "0.12.8"

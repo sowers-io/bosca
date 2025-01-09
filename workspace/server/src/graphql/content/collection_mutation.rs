@@ -278,6 +278,9 @@ impl CollectionMutationObject {
         let ctx = ctx.data::<BoscaContext>()?;
         let collection_id = Uuid::parse_str(id.as_str())?;
         let collection = ctx.check_collection_action(&collection_id, PermissionAction::Manage).await?;
+        if collection.ready.is_some() {
+            return Err(Error::new("collection already ready"));
+        }
         ctx.content.set_collection_ready_and_enqueue(ctx, &collection, None).await?;
         Ok(true)
     }

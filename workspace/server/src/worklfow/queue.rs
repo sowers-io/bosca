@@ -1,8 +1,5 @@
-use crate::models::workflow::execution_plan::{
-    WorkflowExecutionId, WorkflowExecutionPlan, WorkflowJobId,
-};
+use crate::models::workflow::execution_plan::{WorkflowExecutionId, WorkflowExecutionPlan, WorkflowJob, WorkflowJobId};
 use crate::redis::RedisClient;
-use crate::worklfow::item::JobQueueItem;
 use crate::worklfow::transaction::{Transaction, TransactionOp};
 use async_graphql::Error;
 use chrono::Utc;
@@ -47,7 +44,7 @@ impl JobQueues {
     async fn incr(&self, key: &str) -> Result<(), Error> {
         let conn = self.redis.get().await?;
         let mut conn = conn.get_connection().await?;
-        conn.incr(&key, 1).await?;
+        let _: i64 = conn.incr(&key, 1).await?;
         Ok(())
     }
 
@@ -144,7 +141,7 @@ impl JobQueues {
         Ok(plans)
     }
 
-    pub async fn check_for_expiration(&self) -> Result<(), Error> {
+    pub async fn check_for_expiration(&self, time: i64) -> Result<(), Error> {
         let pooled_connection = self.redis.get().await?;
         let mut connection = pooled_connection.get_connection().await?;
         let script = Script::new(
@@ -154,9 +151,11 @@ impl JobQueues {
             local current_timestamp = tonumber(ARGV[1])
             local expired_items = redis.call('ZRANGEBYSCORE', running_queue, 0, current_timestamp)
             if #expired_items > 0 then
-                redis.call('RPUSH', pending_queue, unpack(expired_items))
-                redis.call('ZREM', running_queue, unpack(expired_items))
-                redis.call('INCR', 'queue::expired::count')
+                for i, item in ipairs(expired_items) do
+                    redis.call('RPUSH', pending_queue, item)
+                    redis.call('ZREM', running_queue, item)
+                    redis.call('INCR', 'queue::expired::count')
+                end
             end
             return #expired_items
         ",
@@ -168,7 +167,7 @@ impl JobQueues {
             let result: i32 = script
                 .key(JobQueues::queue_key(&queue))
                 .key(JobQueues::running_queue_key(&queue))
-                .arg(Utc::now().timestamp())
+                .arg(time)
                 .invoke_async(&mut connection)
                 .await?;
             if result > 0 {
@@ -254,7 +253,7 @@ impl JobQueues {
         Ok(ids)
     }
 
-    pub async fn enqueue_execution_job(
+    async fn enqueue_execution_job(
         &self,
         id: &WorkflowExecutionId,
         job_index: i32,
@@ -374,65 +373,86 @@ impl JobQueues {
         }
     }
 
-    pub async fn dequeue(&self, queue: &str) -> Result<Option<JobQueueItem>, Error> {
-        let Some((mut plan, job_index)) = self.dequeue_from_redis(queue).await? else {
-            return Ok(None);
-        };
-
-        let mut dequeue = true;
+    async fn prepare_plan(&self, plan: &mut WorkflowExecutionPlan) -> Result<(), Error> {
         let mut update = false;
-
-        if job_index == -1 {
-            if let Some(id) = &plan.next {
-                let job_id = WorkflowJobId {
-                    id: plan.id.id.clone(),
-                    queue: plan.id.queue.clone(),
-                    index: id.clone(),
-                };
-                warn!(target: "workflow", "plan already has a next: {:?}", job_id);
-            } else {
-                if plan.current_execution_group.is_empty() && plan.running.is_empty() {
-                    info!("updating plan current job: {}", plan.id);
-                    plan.current_execution_group = plan
-                        .jobs
-                        .iter()
-                        .filter(|job| job.workflow_activity.execution_group == 1)
-                        .map(|job| job.id.index)
-                        .collect();
-                    update = true;
-                }
-                if !plan.current_execution_group.is_empty() {
-                    info!(
+        if let Some(id) = &plan.next {
+            let job_id = WorkflowJobId {
+                id: plan.id.id.clone(),
+                queue: plan.id.queue.clone(),
+                index: id.clone(),
+            };
+            warn!(target: "workflow", "plan already has a next: {:?}", job_id);
+        } else {
+            if plan.current_execution_group.is_empty() && plan.running.is_empty() {
+                info!("updating plan current job: {}", plan.id);
+                plan.current_execution_group = plan
+                    .jobs
+                    .iter()
+                    .filter(|job| job.workflow_activity.execution_group == 1)
+                    .map(|job| job.id.index)
+                    .collect();
+                update = true;
+            }
+            if !plan.current_execution_group.is_empty() {
+                info!(
                         "removing job from current list and queueing as next: {}",
                         plan.id
                     );
-                    let next = plan.current_execution_group.remove(0);
-                    plan.next = Some(next.clone());
-                    update = true;
-                }
-                if plan.next.is_none() {
-                    error!(target: "workflow", "plan is missing next, not returning: {}", plan.id);
-                    dequeue = false;
-                }
+                let next = plan.current_execution_group.remove(0);
+                plan.next = Some(next.clone());
+                update = true;
             }
-            if update {
-                let mut connection = self.pool.get().await?;
-                let transaction = connection.transaction().await?;
-                self.set_plan(&transaction, &plan).await?;
-                transaction.commit().await?;
+            if plan.next.is_none() {
+                warn!(target: "workflow", "plan is missing next, not returning: {}", plan.id);
             }
         }
-
-        if !dequeue {
-            return Ok(None);
+        if update {
+            let mut connection = self.pool.get().await?;
+            let transaction = connection.transaction().await?;
+            self.set_plan(&transaction, &plan).await?;
+            transaction.commit().await?;
         }
+        Ok(())
+    }
 
-        if job_index != -1 {
-            Ok(Some(JobQueueItem::Job(
-                plan.jobs.get_mut(job_index as usize).unwrap().clone(),
-            )))
-        } else {
-            Ok(Some(JobQueueItem::Plan(plan)))
+    pub async fn dequeue(&self, queue: &str) -> Result<Option<WorkflowJob>, Error> {
+        loop {
+            let Some((mut plan, mut job_index)) = self.dequeue_from_redis(queue).await? else {
+                return Ok(None);
+            };
+
+            while plan.finished.is_some() || plan.complete.contains(&job_index) {
+                let mut transaction = Transaction::new();
+                if plan.finished.is_some() {
+                    warn!(target: "workflow", "plan is already complete: {}", plan.id);
+                    transaction.add_op(TransactionOp::RemovePlanRunning(plan.id.clone()));
+                }
+                if job_index != -1 {
+                    let id = WorkflowJobId {
+                        id: plan.id.id.clone(),
+                        queue: plan.id.queue.clone(),
+                        index: job_index,
+                    };
+                    warn!(target: "workflow", "job is already complete: {}", id);
+                    transaction.add_op(TransactionOp::RemoveJobRunning(id));
+                }
+                transaction.execute(&self.redis).await?;
+                let Some((plan2, job_index2)) = self.dequeue_from_redis(queue).await? else {
+                    return Ok(None);
+                };
+                plan = plan2;
+                job_index = job_index2;
+            }
+
+            if job_index != -1 {
+                return Ok(Some(plan.jobs.get_mut(job_index as usize).unwrap().clone()))
+            } else {
+                self.prepare_plan(&mut plan).await?;
+                if let Some(next) = plan.next {
+                    self.enqueue_execution_job(&plan.id, next).await?;
+                }
+                continue;
+            }
         }
     }
 

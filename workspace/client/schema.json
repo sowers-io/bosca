@@ -10760,10 +10760,10 @@
               "deprecationReason": null,
               "description": null,
               "isDeprecated": false,
-              "name": "nextWorkflowExecution",
+              "name": "nextJob",
               "type": {
-                "kind": "UNION",
-                "name": "WorkflowExecution",
+                "kind": "OBJECT",
+                "name": "WorkflowJob",
                 "ofType": null
               }
             },
@@ -11044,6 +11044,22 @@
               }
             },
             {
+              "args": [],
+              "deprecationReason": null,
+              "description": null,
+              "isDeprecated": false,
+              "name": "expireAll",
+              "type": {
+                "kind": "NON_NULL",
+                "name": null,
+                "ofType": {
+                  "kind": "SCALAR",
+                  "name": "Boolean",
+                  "ofType": null
+                }
+              }
+            },
+            {
               "args": [
                 {
                   "defaultValue": null,
@@ -11212,51 +11228,6 @@
                 "ofType": {
                   "kind": "OBJECT",
                   "name": "WorkflowExecutionId",
-                  "ofType": null
-                }
-              }
-            },
-            {
-              "args": [
-                {
-                  "defaultValue": null,
-                  "description": null,
-                  "name": "planId",
-                  "type": {
-                    "kind": "NON_NULL",
-                    "name": null,
-                    "ofType": {
-                      "kind": "INPUT_OBJECT",
-                      "name": "WorkflowExecutionIdInput",
-                      "ofType": null
-                    }
-                  }
-                },
-                {
-                  "defaultValue": null,
-                  "description": null,
-                  "name": "jobIndex",
-                  "type": {
-                    "kind": "NON_NULL",
-                    "name": null,
-                    "ofType": {
-                      "kind": "SCALAR",
-                      "name": "Int",
-                      "ofType": null
-                    }
-                  }
-                }
-              ],
-              "deprecationReason": null,
-              "description": null,
-              "isDeprecated": false,
-              "name": "enqueueJob",
-              "type": {
-                "kind": "NON_NULL",
-                "name": null,
-                "ofType": {
-                  "kind": "SCALAR",
-                  "name": "Boolean",
                   "ofType": null
                 }
               }

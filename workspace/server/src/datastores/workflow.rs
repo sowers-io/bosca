@@ -15,7 +15,6 @@ use crate::models::workflow::storage_systems::{StorageSystem, StorageSystemInput
 use crate::models::workflow::traits::TraitInput;
 use crate::models::workflow::transitions::{Transition, TransitionInput};
 use crate::models::workflow::workflows::{Workflow, WorkflowInput};
-use crate::worklfow::item::JobQueueItem;
 use crate::worklfow::queue::JobQueues;
 use async_graphql::*;
 use chrono::Utc;
@@ -749,6 +748,11 @@ impl WorkflowDataStore {
 
     /* queues */
 
+    pub async fn expire_all(&self) -> Result<(), Error> {
+        self.queues.check_for_expiration(i64::MAX).await?;
+        Ok(())
+    }
+
     pub async fn enqueue_job_child_workflows(
         &self,
         job_id: &WorkflowJobId,
@@ -829,21 +833,10 @@ impl WorkflowDataStore {
             .clone())
     }
 
-    pub async fn enqueue_execution_job(
-        &self,
-        plan_id: &WorkflowExecutionId,
-        job_index: i32,
-    ) -> Result<bool, Error> {
-        self.queues
-            .enqueue_execution_job(plan_id, job_index)
-            .await?;
-        Ok(true)
-    }
-
     pub async fn dequeue_next_execution(
         &self,
         queue: &String,
-    ) -> Result<Option<JobQueueItem>, Error> {
+    ) -> Result<Option<WorkflowJob>, Error> {
         self.queues.dequeue(queue).await
     }
 

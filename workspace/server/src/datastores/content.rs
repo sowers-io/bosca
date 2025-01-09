@@ -1915,6 +1915,9 @@ impl ContentDataStore {
         collection: &Collection,
         configurations: Option<Vec<WorkflowConfigurationInput>>,
     ) -> Result<(), Error> {
+        if collection.ready.is_some() {
+            return Err(Error::new("collection already ready"));
+        }
         let datasource = &ctx.content;
         let workflow = &ctx.workflow;
         let process_id = "collection.process".to_owned();
@@ -1944,6 +1947,9 @@ impl ContentDataStore {
         metadata: &Metadata,
         configurations: Option<Vec<WorkflowConfigurationInput>>,
     ) -> Result<(), Error> {
+        if metadata.ready.is_some() {
+            return Err(Error::new("metadata already ready"));
+        }
         let datasource = &ctx.content;
         let workflow = &ctx.workflow;
         let process_id = "metadata.process".to_owned();

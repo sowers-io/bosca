@@ -1,7 +1,7 @@
 use crate::activity::{Activity, ActivityContext, Error};
 use async_trait::async_trait;
 use bosca_client::client::add_metadata_supplementary::MetadataSupplementaryInput;
-use bosca_client::client::plan::StorageSystemType;
+use bosca_client::client::next_job::StorageSystemType;
 use bosca_client::client::{Client, WorkflowJob};
 use bosca_client::download::download_supplementary_path;
 use bosca_client::upload::upload_multipart_supplementary_bytes;

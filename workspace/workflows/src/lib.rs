@@ -8,7 +8,7 @@ use std::sync::atomic::Ordering::Relaxed;
 use std::sync::atomic::{AtomicBool, AtomicI32};
 use std::sync::Arc;
 use std::time::Duration;
-use bosca_client::client::{Client, WorkflowExecution};
+use bosca_client::client::{Client, WorkflowJob};
 use crate::ai::prompt::PromptActivity;
 use crate::collection::traits::CollectionTraitsActivity;
 use crate::collection::transition_to::CollectionTransitionToActivity;
@@ -77,15 +77,16 @@ pub async fn process_queue(
         }
         if running.load(Relaxed) >= max_running {
             tokio::time::sleep(Duration::from_millis(1000)).await;
+            continue;
         }
-        match client.get_next_execution(&queue).await {
-            Ok(Some(execution)) => {
+        match client.get_next_job(&queue).await {
+            Ok(Some(job)) => {
                 running.fetch_add(1, Relaxed);
                 let activities_by_id = Arc::clone(&activities_by_id);
                 let running = Arc::clone(&running);
                 let client = client.clone();
                 tokio::spawn(async move {
-                    match process(activities_by_id, &client, execution).await {
+                    match process(activities_by_id, &client, job).await {
                         Ok(_) => {
                             running.fetch_add(-1, Relaxed);
                         }
@@ -117,83 +118,72 @@ pub async fn process_queue(
 async fn process(
     activities_by_id: Arc<HashMap<String, Arc<Box<dyn Activity + Send + Sync>>>>,
     client: &Client,
-    execution: WorkflowExecution,
+    job: WorkflowJob,
 ) -> Result<(), Error> {
-    match execution {
-        bosca_client::client::plan::PlanWorkflowsNextWorkflowExecution::WorkflowExecutionPlan(plan) => {
-            info!(target: "workflow", "processing execution plan: {} -> {}", plan.workflow.queue.clone(), plan.plan_id.id.clone());
-            let id = plan.plan_id.id.clone();
-            let queue = plan.workflow.queue;
-            let next_index = plan.next.unwrap();
-            client.enqueue_job(&id, &queue, next_index).await?;
+    info!(target: "workflow", "processing job: {}", job.id.queue);
+    let activity = activities_by_id.get(&job.activity.id);
+    if activity.is_none() {
+        error!(target: "workflow", "missing activity: {}", job.activity.id);
+        let msg = format!("missing activity: {}", job.activity.id);
+        if let Err(err) = client
+            .set_workflow_job_failed(&job.id.id, job.id.index, &job.id.queue, &msg)
+            .await {
+            error!(target: "workflow", "failed to set job failed: {}, {}, {}, {} -- {} -- {}", job.id.id, job.id.index, job.id.queue, job.activity.id, msg, err);
         }
-        bosca_client::client::plan::PlanWorkflowsNextWorkflowExecution::WorkflowJob(job) => {
-            info!(target: "workflow", "processing execution job: {}", job.id.queue);
-            let activity = activities_by_id.get(&job.activity.id);
-            if activity.is_none() {
-                error!(target: "workflow", "missing activity: {}", job.activity.id);
-                let msg = format!("missing activity: {}", job.activity.id);
+    } else {
+        let activity = activity.unwrap();
+        let mut context = ActivityContext::new();
+        let keepalive_active = Arc::new(AtomicBool::new(true));
+        let keepalive_id = job.id.clone();
+        let keepalive_client = client.clone();
+        let keepalive_active_loop = Arc::clone(&keepalive_active);
+        let keepalive = tokio::spawn(async move {
+            loop {
+                if !keepalive_active_loop.load(Relaxed) {
+                    break;
+                }
+                tokio::time::sleep(Duration::from_secs(600)).await;
+                match keepalive_client
+                    .set_workflow_job_checkin(
+                        &keepalive_id.id,
+                        keepalive_id.index,
+                        &keepalive_id.queue,
+                    )
+                    .await {
+                    Ok(_) => {}
+                    Err(e) => {
+                        error!(target: "workflow", "failed to checkin: {}", e);
+                        if e.to_string().contains("couldn't find message to update") {
+                            break;
+                        }
+                    }
+                }
+            }
+        });
+        match activity.execute(client, &mut context, &job).await {
+            Ok(_) => {
+                keepalive_active.store(false, Relaxed);
+                info!(target: "workflow", "job processed: {}, {}, {}, {}", job.id.id, job.id.index, job.id.queue, job.activity.id);
+                if let Err(err) = client
+                    .set_workflow_job_complete(&job.id.id, job.id.index, &job.id.queue)
+                    .await {
+                    error!(target: "workflow", "failed to set job complete: {}, {}, {}, {} -- {}", job.id.id, job.id.index, job.id.queue, job.activity.id, err);
+                }
+                let _ = context.close().await;
+            }
+            Err(err) => {
+                keepalive_active.store(false, Relaxed);
+                info!(target: "workflow", "job failed: {}", err);
+                let msg = err.to_string();
                 if let Err(err) = client
                     .set_workflow_job_failed(&job.id.id, job.id.index, &job.id.queue, &msg)
                     .await {
-                    error!(target: "workflow", "failed to set job failed: {}, {}, {}, {} -- {} -- {}", job.id.id, job.id.index, job.id.queue, job.activity.id, msg, err);
+                    error!(target: "workflow", "failed to set job failed: {}, {}, {}, {} -- {}", job.id.id, job.id.index, job.id.queue, job.activity.id, err);
                 }
-            } else {
-                let activity = activity.unwrap();
-                let mut context = ActivityContext::new();
-                let keepalive_active = Arc::new(AtomicBool::new(true));
-                let keepalive_id = job.id.clone();
-                let keepalive_client = client.clone();
-                let keepalive_active_loop = Arc::clone(&keepalive_active);
-                let keepalive = tokio::spawn(async move {
-                    loop {
-                        if !keepalive_active_loop.load(Relaxed) {
-                            break;
-                        }
-                        tokio::time::sleep(Duration::from_secs(3600)).await;
-                        match keepalive_client
-                            .set_workflow_job_checkin(
-                                &keepalive_id.id,
-                                keepalive_id.index,
-                                &keepalive_id.queue,
-                            )
-                            .await {
-                            Ok(_) => {}
-                            Err(e) => {
-                                error!(target: "workflow", "failed to checkin: {}", e);
-                                if e.to_string().contains("couldn't find message to update") {
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                });
-                match activity.execute(client, &mut context, &job).await {
-                    Ok(_) => {
-                        keepalive_active.store(false, Relaxed);
-                        info!(target: "workflow", "job processed: {}, {}, {}, {}", job.id.id, job.id.index, job.id.queue, job.activity.id);
-                        if let Err(err) = client
-                            .set_workflow_job_complete(&job.id.id, job.id.index, &job.id.queue)
-                            .await {
-                            error!(target: "workflow", "failed to set job complete: {}, {}, {}, {} -- {}", job.id.id, job.id.index, job.id.queue, job.activity.id, err);
-                        }
-                        let _ = context.close().await;
-                    }
-                    Err(err) => {
-                        keepalive_active.store(false, Relaxed);
-                        info!(target: "workflow", "job failed: {}", err);
-                        let msg = err.to_string();
-                        if let Err(err) = client
-                            .set_workflow_job_failed(&job.id.id, job.id.index, &job.id.queue, &msg)
-                            .await {
-                            error!(target: "workflow", "failed to set job failed: {}, {}, {}, {} -- {}", job.id.id, job.id.index, job.id.queue, job.activity.id, err);
-                        }
-                        let _ = context.close().await;
-                    }
-                }
-                keepalive.abort();
+                let _ = context.close().await;
             }
         }
+        keepalive.abort();
     }
     Ok(())
 }

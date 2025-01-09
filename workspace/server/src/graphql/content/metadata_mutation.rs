@@ -488,7 +488,7 @@ impl MetadataMutationObject {
         let metadata_id = Uuid::parse_str(id.as_str())?;
         let metadata = ctx.check_metadata_action(&metadata_id, PermissionAction::Edit).await?;
         ctx.content.set_metadata_uploaded(&metadata_id, &None, &content_type, len).await?;
-        if ready.is_some() && ready.unwrap() {
+        if ready.is_some() && ready.unwrap() && !metadata.ready.is_some() {
             ctx.content.set_metadata_ready_and_enqueue(ctx, &metadata, configurations).await?;
         }
         Ok(true)
@@ -498,6 +498,9 @@ impl MetadataMutationObject {
         let ctx = ctx.data::<BoscaContext>()?;
         let metadata_id = Uuid::parse_str(id.as_str())?;
         let metadata = ctx.check_metadata_action(&metadata_id, PermissionAction::Edit).await?;
+        if metadata.ready.is_some() {
+            return Err(Error::new("metadata already ready"));
+        }
         ctx.content.set_metadata_ready_and_enqueue(ctx, &metadata, configurations).await?;
         Ok(true)
     }

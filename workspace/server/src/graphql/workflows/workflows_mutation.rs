@@ -84,6 +84,13 @@ impl WorkflowsMutationObject {
         PromptsMutationObject {}
     }
 
+    async fn expire_all(&self, ctx: &Context<'_>) -> Result<bool, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        ctx.check_has_service_account().await?;
+        ctx.workflow.expire_all().await?;
+        Ok(true)
+    }
+
     async fn begin_transition(
         &self,
         ctx: &Context<'_>,
@@ -121,19 +128,6 @@ impl WorkflowsMutationObject {
         let ctx = ctx.data::<BoscaContext>()?;
         ctx.check_has_service_account().await?;
         Ok(WorkflowExecutionIdObject::new(ctx.workflow.enqueue_job_child_workflow(&job_id.into(), &workflow_id, configurations.as_ref()).await?))
-    }
-
-    async fn enqueue_job(
-        &self,
-        ctx: &Context<'_>,
-        plan_id: WorkflowExecutionIdInput,
-        job_index: i32,
-    ) -> Result<bool, Error> {
-        let ctx = ctx.data::<BoscaContext>()?;
-        ctx.check_has_service_account().await?;
-        Ok(ctx.workflow
-            .enqueue_execution_job(&plan_id.into(), job_index)
-            .await?)
     }
 
     async fn find_and_enqueue_workflow(

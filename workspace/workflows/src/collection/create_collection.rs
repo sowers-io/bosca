@@ -3,7 +3,7 @@ use async_trait::async_trait;
 use serde::Deserialize;
 use bosca_client::client::{Client, WorkflowJob};
 use bosca_client::client::add_collection::CollectionInput;
-use bosca_client::client::plan::ActivityParameterType;
+use bosca_client::client::next_job::ActivityParameterType;
 
 pub struct CollectionCreateActivity {
     id: String,

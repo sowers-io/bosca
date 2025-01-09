@@ -11,7 +11,6 @@ use crate::graphql::workflows::workflow_execution_plan::WorkflowExecutionPlanObj
 use crate::graphql::workflows::workflow_job::WorkflowJobObject;
 use crate::models::workflow::execution_plan::WorkflowExecutionId;
 use crate::security::util::check_has_group;
-use crate::worklfow::item::JobQueueItem;
 use async_graphql::{Context, Error, Object, Union};
 use uuid::Uuid;
 
@@ -66,23 +65,14 @@ impl WorkflowsObject {
         Ok(states.into_iter().map(TransitionObject::new).collect())
     }
 
-    async fn next_workflow_execution(
+    async fn next_job(
         &self,
         ctx: &Context<'_>,
         queue: String,
-    ) -> Result<Option<WorkflowExecution>, Error> {
+    ) -> Result<Option<WorkflowJobObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         ctx.check_has_service_account().await?;
-        let message = ctx.workflow.dequeue_next_execution(&queue).await?;
-        if message.is_none() {
-            return Ok(None);
-        }
-        Ok(message.map(|execution| match execution {
-            JobQueueItem::Plan(plan) => {
-                WorkflowExecution::Plan(WorkflowExecutionPlanObject::new(plan))
-            }
-            JobQueueItem::Job(job) => WorkflowExecution::Job(WorkflowJobObject::new(job)),
-        }))
+        Ok(ctx.workflow.dequeue_next_execution(&queue).await?.map(WorkflowJobObject::new))
     }
 
     async fn execution_plan(

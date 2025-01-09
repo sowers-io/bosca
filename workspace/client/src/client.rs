@@ -1,13 +1,9 @@
 use std::sync::Arc;
 use std::time::Duration;
 use crate::Error;
-use crate::client::plan::{
-    PlanWorkflowsNextWorkflowExecution, PlanWorkflowsNextWorkflowExecutionOnWorkflowJob,
-};
 
 use crate::client::add_collection::{AddCollectionContentCollection, CollectionInput};
 use crate::client::enqueue_child_workflows::EnqueueChildWorkflowsWorkflowsEnqueueChildWorkflows;
-use crate::client::enqueue_job::WorkflowExecutionIdInput;
 use crate::client::find_collection::{FindAttributeInput, FindCollectionContentFindCollection};
 use crate::client::find_metadata::FindMetadataContentFindMetadata;
 use crate::client::get_collection::GetCollectionContentCollection;
@@ -32,6 +28,7 @@ use serde_json::Value;
 use tokio::sync::Mutex;
 use crate::client::add_metadata_bulk::AddMetadataBulkContentMetadataAddBulk;
 use crate::client::add_search_documents::SearchDocumentInput;
+use crate::client::next_job::NextJobWorkflowsNextJob;
 
 #[derive(Clone)]
 pub struct Client {
@@ -42,8 +39,7 @@ pub struct Client {
 
 pub type Trait = TraitByIdContentTrait;
 pub type Source = SourceByIdContentSource;
-pub type WorkflowExecution = PlanWorkflowsNextWorkflowExecution;
-pub type WorkflowJob = PlanWorkflowsNextWorkflowExecutionOnWorkflowJob;
+// pub type WorkflowJob = PlanWorkflowsNextWorkflowExecutionOnWorkflowJob;
 pub type EnqueuedChildWorkflowId = EnqueueChildWorkflowsWorkflowsEnqueueChildWorkflows;
 pub type MetadataContentDownloadUrl = MetadataDownloadUrlContentMetadataContentUrlsDownload;
 pub type MetadataContentUploadUrl = MetadataUploadUrlContentMetadataContentUrlsUpload;
@@ -57,6 +53,7 @@ pub type AddedMetadata = AddMetadataContentMetadata;
 pub type AddedMetadataSupplementary = AddMetadataSupplementaryContentMetadataAddSupplementary;
 pub type Collection = GetCollectionContentCollection;
 pub type DateTime = String;
+pub type WorkflowJob = NextJobWorkflowsNextJob;
 
 impl Client {
     pub fn new(url: &str) -> Client {
@@ -380,25 +377,6 @@ impl Client {
         Ok(response.content.metadata.unwrap().content.urls.upload)
     }
 
-    pub async fn enqueue_job(
-        &self,
-        plan_id: &str,
-        queue: &str,
-        job_index: i64,
-    ) -> Result<bool, Error> {
-        let variables = enqueue_job::Variables {
-            job_index,
-            plan_id: WorkflowExecutionIdInput {
-                id: plan_id.to_owned(),
-                queue: queue.to_owned(),
-            },
-        };
-        let query = EnqueueJob::build_query(variables);
-        let response: enqueue_job::ResponseData = self.execute(&query).await?;
-        let job = response.workflows.enqueue_job;
-        Ok(job)
-    }
-
     pub async fn enqueue_child_workflows(
         &self,
         job_id: &str,
@@ -443,16 +421,16 @@ impl Client {
         Ok(job)
     }
 
-    pub async fn get_next_execution(
+    pub async fn get_next_job(
         &self,
         queue: &str,
-    ) -> Result<Option<WorkflowExecution>, Error> {
-        let variables = plan::Variables {
+    ) -> Result<Option<WorkflowJob>, Error> {
+        let variables = next_job::Variables {
             queue: queue.to_owned(),
         };
-        let query = Plan::build_query(variables);
-        let response: plan::ResponseData = self.execute(&query).await?;
-        Ok(response.workflows.next_workflow_execution)
+        let query = NextJob::build_query(variables);
+        let response: next_job::ResponseData = self.execute(&query).await?;
+        Ok(response.workflows.next_job)
     }
 
     pub async fn add_collection(
@@ -684,18 +662,10 @@ pub struct SetMetadataSystemAttributes;
 #[derive(GraphQLQuery)]
 #[graphql(
     schema_path = "schema.json",
-    query_path = "queries/plan.graphql",
+    query_path = "queries/NextJob.graphql",
     response_derives = "Serialize, Deserialize, Debug, PartialEq, Eq, Clone"
 )]
-pub struct Plan;
-
-#[derive(GraphQLQuery)]
-#[graphql(
-    schema_path = "schema.json",
-    query_path = "queries/enqueue_job.graphql",
-    response_derives = "Debug, PartialEq, Eq, Clone"
-)]
-pub struct EnqueueJob;
+pub struct NextJob;
 
 #[derive(GraphQLQuery)]
 #[graphql(
