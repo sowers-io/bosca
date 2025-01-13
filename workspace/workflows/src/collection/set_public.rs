@@ -65,7 +65,12 @@ impl Activity for CollectionSetPublicActivity {
             recursive = r.as_bool().unwrap_or(false);
         }
         let id = if let Some(r) = job.workflow_activity.configuration.get("collection_id") {
-            r.as_str().unwrap_or("").to_owned()
+            let id = r.as_str().unwrap_or("").to_owned();
+            if id.len() > 0 {
+                id
+            } else {
+                job.collection.as_ref().unwrap().id.to_owned()
+            }
         } else {
             job.collection.as_ref().unwrap().id.to_owned()
         };

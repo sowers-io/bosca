@@ -17,4 +17,11 @@ impl ActivitiesObject {
         }
         Ok(activities)
     }
+
+    async fn activity(&self, ctx: &Context<'_>, id: String) -> Result<Option<ActivityObject>, Error> {
+        check_has_group(ctx, WORKFLOW_MANAGERS_GROUP).await?;
+        let ctx = ctx.data::<BoscaContext>()?;
+        let activity = ctx.workflow.get_activity(&id).await?;
+        Ok(activity.map(|activity| ActivityObject::new(&activity, None, None)))
+    }
 }

@@ -250,7 +250,7 @@ impl ObjectStorage {
             }
         };
         Ok(SignedUrl {
-            url,
+            url: datasource.sign_url(&url),
             headers: vec![SignedUrlHeader {
                 name: "Authorization".to_string(),
                 value: format!("Bearer {}", token),

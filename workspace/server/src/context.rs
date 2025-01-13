@@ -13,7 +13,7 @@ use crate::models::content::metadata::Metadata;
 use crate::models::security::permission::PermissionAction;
 use crate::models::security::principal::Principal;
 
-use crate::datastores::content_notifier::ContentNotifier;
+use crate::datastores::notifier::Notifier;
 
 #[derive(Clone)]
 pub struct BoscaContext {
@@ -22,7 +22,7 @@ pub struct BoscaContext {
     pub storage: ObjectStorage,
     pub workflow: WorkflowDataStore,
     pub queries: PersistedQueriesDataStore,
-    pub notifier: Arc<ContentNotifier>,
+    pub notifier: Arc<Notifier>,
     pub search: Arc<Client>,
     pub principal: Principal,
 }

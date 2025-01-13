@@ -38,6 +38,13 @@ impl WorkflowsObject {
         Ok(states.into_iter().map(WorkflowObject::new).collect())
     }
 
+    async fn workflow(&self, ctx: &Context<'_>, id: String) -> Result<Option<WorkflowObject>, Error> {
+        check_has_group(ctx, WORKFLOW_MANAGERS_GROUP).await?;
+        let ctx = ctx.data::<BoscaContext>()?;
+        let workflow = ctx.workflow.get_workflow(&id).await?;
+        Ok(workflow.map(WorkflowObject::new))
+    }
+
     async fn activities(&self) -> &ActivitiesObject {
         &ACTIVITIES
     }

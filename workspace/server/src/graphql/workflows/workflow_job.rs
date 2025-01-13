@@ -105,7 +105,7 @@ impl WorkflowJobObject {
     }
 
     async fn workflow_activity(&self) -> WorkflowActivityObject {
-        WorkflowActivityObject::new(&self.job, &self.job.workflow_activity)
+        WorkflowActivityObject::new(Some(self.job.clone()), &self.job.workflow_activity)
     }
 
     async fn prompts(&self) -> Vec<WorkflowActivityPromptObject> {

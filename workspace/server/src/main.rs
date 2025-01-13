@@ -86,7 +86,7 @@ use crate::datastores::persisted_queries::PersistedQueriesDataStore;
 
 use tokio::time::sleep;
 use crate::authed_subscription::AuthGraphQLSubscription;
-use crate::datastores::content_notifier::ContentNotifier;
+use crate::datastores::notifier::Notifier;
 use crate::graphql::subscription::SubscriptionObject;
 use crate::logger::Logger;
 use crate::redis::RedisClient;
@@ -384,18 +384,27 @@ async fn main() {
     ring::default_provider().install_default().unwrap();
 
     let bosca_pool = build_pool("DATABASE_URL");
+    let url_secret_key = match env::var("URL_SECRET_KEY") {
+        Ok(url_secret_key) => url_secret_key,
+        _ => {
+            println!("Environment variable URL_SECRET_KEY could not be read, generating a random value");
+            Uuid::new_v4().to_string()
+        }
+    };
 
     let redis_client = build_redis_client().await.unwrap();
     let jobs = JobQueues::new(Arc::clone(&bosca_pool), redis_client.clone());
-    let notifier = Arc::new(ContentNotifier::new(redis_client.clone()));
+    let notifier = Arc::new(Notifier::new(redis_client.clone()));
     let ctx = BoscaContext {
         security: SecurityDataStore::new(
             Arc::clone(&bosca_pool),
             build_jwt(),
+            url_secret_key,
         ),
         workflow: WorkflowDataStore::new(
             Arc::clone(&bosca_pool),
             jobs.clone(),
+            Arc::clone(&notifier),
         ),
         queries: PersistedQueriesDataStore::new(Arc::clone(&bosca_pool)).await,
         content: ContentDataStore::new(bosca_pool, Arc::clone(&notifier)),

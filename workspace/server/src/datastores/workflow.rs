@@ -24,16 +24,18 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::Duration;
 use uuid::Uuid;
+use crate::datastores::notifier::Notifier;
 
 #[derive(Clone)]
 pub struct WorkflowDataStore {
     pool: Arc<Pool>,
     queues: JobQueues,
+    notifier: Arc<Notifier>,
 }
 
 impl WorkflowDataStore {
-    pub fn new(pool: Arc<Pool>, queues: JobQueues) -> Self {
-        Self { pool, queues }
+    pub fn new(pool: Arc<Pool>, queues: JobQueues, notifier: Arc<Notifier>) -> Self {
+        Self { pool, queues, notifier }
     }
 
     /* activities */
@@ -75,6 +77,7 @@ impl WorkflowDataStore {
                 .execute(&stmt, &[&activity.id, &input.name, &input.parameter_type])
                 .await?;
         }
+        self.notifier.activity_changed(&activity.id).await?;
         Ok(())
     }
 
@@ -122,6 +125,7 @@ impl WorkflowDataStore {
                 .await?;
         }
         txn.commit().await?;
+        self.notifier.activity_changed(&activity.id).await?;
         Ok(())
     }
 
@@ -130,6 +134,7 @@ impl WorkflowDataStore {
         connection
             .execute("delete from activities where id = $1", &[&activity_id])
             .await?;
+        self.notifier.activity_changed(activity_id).await?;
         Ok(())
     }
 
@@ -201,6 +206,7 @@ impl WorkflowDataStore {
         let txn = connection.transaction().await?;
         self.add_workflow_txn(&txn, workflow).await?;
         txn.commit().await?;
+        self.notifier.workflow_changed(&workflow.id).await?;
         Ok(())
     }
 
@@ -231,13 +237,29 @@ impl WorkflowDataStore {
     pub async fn edit_workflow(&self, workflow: &WorkflowInput) -> Result<(), Error> {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
-        self.delete_workflow_txn(&txn, &workflow.id).await?;
-        self.add_workflow_txn(&txn, workflow).await?;
+        self.delete_workflow_txn(&txn, &workflow.id, false).await?;
+        let stmt = txn.prepare_cached("update workflows set name = $2, description = $3, queue = $4, configuration = $5 where id = $1").await?;
+        txn.query(
+            &stmt,
+            &[
+                &workflow.id,
+                &workflow.name,
+                &workflow.description,
+                &workflow.queue,
+                &workflow.configuration,
+            ],
+        )
+            .await?;
+        for activity in &workflow.activities {
+            self.add_workflow_activity(&txn, &workflow.id, activity)
+                .await?;
+        }
         txn.commit().await?;
+        self.notifier.workflow_changed(&workflow.id).await?;
         Ok(())
     }
 
-    async fn delete_workflow_txn(&self, txn: &Transaction<'_>, id: &String) -> Result<(), Error> {
+    async fn delete_workflow_txn(&self, txn: &Transaction<'_>, id: &String, include_workflow: bool) -> Result<(), Error> {
         txn.execute("delete from workflow_activity_inputs where activity_id in (select id from workflow_activities where workflow_id = $1)", &[id]).await?;
         txn.execute("delete from workflow_activity_outputs where activity_id in (select id from workflow_activities where workflow_id = $1)", &[id]).await?;
         txn.execute("delete from workflow_activity_models where activity_id in (select id from workflow_activities where workflow_id = $1)", &[id]).await?;
@@ -248,8 +270,10 @@ impl WorkflowDataStore {
             &[id],
         )
         .await?;
-        txn.execute("delete from workflows where id = $1", &[id])
-            .await?;
+        if include_workflow {
+            txn.execute("delete from workflows where id = $1", &[id])
+                .await?;
+        }
         Ok(())
     }
 
@@ -257,8 +281,9 @@ impl WorkflowDataStore {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
         let id = id.to_owned();
-        self.delete_workflow_txn(&txn, &id).await?;
+        self.delete_workflow_txn(&txn, &id, true).await?;
         txn.commit().await?;
+        self.notifier.workflow_changed(&id).await?;
         Ok(())
     }
 

@@ -5,11 +5,11 @@ use redis::AsyncCommands;
 use uuid::Uuid;
 use crate::redis::RedisClient;
 
-pub struct ContentNotifier {
+pub struct Notifier {
     redis: RedisClient,
 }
 
-impl ContentNotifier {
+impl Notifier {
     pub fn new(redis: RedisClient) -> Self {
         Self { redis }
     }
@@ -36,6 +36,28 @@ impl ContentNotifier {
             }))
     }
 
+    pub async fn listen_workflow_changes(&self) -> Result<impl Stream<Item=String>, Error> {
+        let connection = self.redis.get().await?;
+        let mut pubsub = connection.get_pubsub().await?;
+        pubsub.subscribe("workflow_changes").await?;
+        Ok(pubsub
+            .into_on_message()
+            .filter_map(|msg| async move {
+                msg.get_payload().ok()
+            }))
+    }
+
+    pub async fn listen_activity_changes(&self) -> Result<impl Stream<Item=String>, Error> {
+        let connection = self.redis.get().await?;
+        let mut pubsub = connection.get_pubsub().await?;
+        pubsub.subscribe("activity_changes").await?;
+        Ok(pubsub
+            .into_on_message()
+            .filter_map(|msg| async move {
+                msg.get_payload().ok()
+            }))
+    }
+
     pub async fn metadata_changed(&self, id: &Uuid) -> async_graphql::Result<(), Error> {
         let connection = self.redis.get().await?;
         let mut conn = connection.get_connection().await?;
@@ -50,6 +72,24 @@ impl ContentNotifier {
         let mut conn = connection.get_connection().await?;
         let id = id.to_string();
         conn.publish::<&str, String, ()>("collection_changes", id)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn workflow_changed(&self, id: &str) -> async_graphql::Result<(), Error> {
+        let connection = self.redis.get().await?;
+        let mut conn = connection.get_connection().await?;
+        let id = id.to_string();
+        conn.publish::<&str, String, ()>("workflow_changes", id)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn activity_changed(&self, id: &str) -> async_graphql::Result<(), Error> {
+        let connection = self.redis.get().await?;
+        let mut conn = connection.get_connection().await?;
+        let id = id.to_string();
+        conn.publish::<&str, String, ()>("activity_changes", id)
             .await?;
         Ok(())
     }

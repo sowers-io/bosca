@@ -25,17 +25,17 @@ use serde_json::{Map, Value};
 use std::sync::Arc;
 use tokio_postgres::Statement;
 use uuid::Uuid;
-use crate::datastores::content_notifier::ContentNotifier;
+use crate::datastores::notifier::Notifier;
 use crate::models::workflow::execution_plan::WorkflowExecutionId;
 
 #[derive(Clone)]
 pub struct ContentDataStore {
     pool: Arc<Pool>,
-    notifier: Arc<ContentNotifier>,
+    notifier: Arc<Notifier>,
 }
 
 impl ContentDataStore {
-    pub fn new(pool: Arc<Pool>, notifier: Arc<ContentNotifier>) -> Self {
+    pub fn new(pool: Arc<Pool>, notifier: Arc<Notifier>) -> Self {
         Self { pool, notifier }
     }
 

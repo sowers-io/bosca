@@ -1,18 +1,20 @@
-use std::io::Write;
+use crate::context::BoscaContext;
 use crate::models::content::supplementary::MetadataSupplementary;
 use crate::models::security::permission::PermissionAction;
 use crate::models::security::principal::Principal;
-use crate::security::authorization_extension::{get_auth_header, get_cookie_header, get_principal};
+use crate::security::authorization_extension::{
+    get_anonymous_principal, get_auth_header, get_cookie_header, get_principal,
+};
 use async_graphql::Error;
 use axum::body::Body;
-use axum::extract::State;
+use axum::extract::{Request, State};
 use axum::extract::{Multipart, Query};
 use bytes::{Buf, BufMut, BytesMut};
 use http::{HeaderMap, HeaderValue, StatusCode};
 use object_store::MultipartUpload;
 use serde::Deserialize;
+use std::io::Write;
 use uuid::Uuid;
-use crate::context::BoscaContext;
 
 #[derive(Debug, Deserialize)]
 pub struct Params {
@@ -31,7 +33,7 @@ async fn get_principal_from_headers(
     } else if let Some(data) = get_cookie_header(headers) {
         Ok(get_principal(&data, &ctx.security).await?)
     } else {
-        Err(Error::new("Unauthorized"))
+        Ok(get_anonymous_principal())
     }
 }
 
@@ -53,6 +55,7 @@ pub async fn download(
     State(ctx): State<BoscaContext>,
     Query(params): Query<Params>,
     headers: HeaderMap,
+    request: Request<Body>,
 ) -> Result<(HeaderMap, Body), (StatusCode, String)> {
     let principal = get_principal_from_headers(&ctx, &headers)
         .await
@@ -60,13 +63,22 @@ pub async fn download(
     let id_str = params.id.as_deref().unwrap_or("");
     let id =
         Uuid::parse_str(id_str).map_err(|_| (StatusCode::BAD_REQUEST, "Bad Request".to_owned()))?;
-    let metadata = ctx.check_metadata_action_principal(
-        &principal,
-        &id,
-        PermissionAction::Edit,
-    )
-    .await
-    .map_err(|_| (StatusCode::FORBIDDEN, "Forbidden".to_owned()))?;
+    let url = format!("/files{}", request.uri().path_and_query().unwrap().to_string());
+    let metadata = if ctx.security.verify_signed_url(&url) {
+        let metadata = ctx
+            .content
+            .get_metadata(&id)
+            .await
+            .map_err(|_| (StatusCode::FORBIDDEN, "Forbidden".to_owned()))?;
+        if metadata.is_none() {
+            return Err((StatusCode::FORBIDDEN, "Forbidden".to_owned()))?;
+        }
+        metadata.unwrap()
+    } else {
+        ctx.check_metadata_action_principal(&principal, &id, PermissionAction::View)
+            .await
+            .map_err(|_| (StatusCode::FORBIDDEN, "Forbidden".to_owned()))?
+    };
     let supplementary = get_supplementary(&ctx, &params, &metadata.id)
         .await
         .map_err(|_| {
@@ -77,7 +89,7 @@ pub async fn download(
         })?;
     let path = ctx
         .storage
-        .get_metadata_path(&metadata, supplementary.as_ref().map(|s|s.key.clone()))
+        .get_metadata_path(&metadata, supplementary.as_ref().map(|s| s.key.clone()))
         .await
         .map_err(|_| {
             (
@@ -85,12 +97,11 @@ pub async fn download(
                 "Internal Server Error".to_owned(),
             )
         })?;
-    let buf = ctx.storage.get_buffer(&path).await.map_err(|e| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            e.to_string(),
-        )
-    })?;
+    let buf = ctx
+        .storage
+        .get_buffer(&path)
+        .await
+        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
     let body = Body::from_stream(buf);
     let mut headers = HeaderMap::new();
     headers.insert(
@@ -125,13 +136,10 @@ pub async fn upload(
         .map_err(|_| (StatusCode::UNAUTHORIZED, "Unauthorized".to_owned()))?;
     let id = Uuid::parse_str(params.id.as_ref().unwrap().as_str())
         .map_err(|_| (StatusCode::BAD_REQUEST, "Bad Request".to_owned()))?;
-    let metadata = ctx.check_metadata_action_principal(
-        &principal,
-        &id,
-        PermissionAction::Edit,
-    )
-    .await
-    .map_err(|_| (StatusCode::FORBIDDEN, "Forbidden".to_owned()))?;
+    let metadata = ctx
+        .check_metadata_action_principal(&principal, &id, PermissionAction::Edit)
+        .await
+        .map_err(|_| (StatusCode::FORBIDDEN, "Forbidden".to_owned()))?;
     let supplementary = get_supplementary(&ctx, &params, &metadata.id)
         .await
         .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Error".to_owned()))?;
@@ -142,7 +150,7 @@ pub async fn upload(
     {
         let path = ctx
             .storage
-            .get_metadata_path(&metadata, supplementary.as_ref().map(|s|s.key.clone()))
+            .get_metadata_path(&metadata, supplementary.as_ref().map(|s| s.key.clone()))
             .await
             .map_err(|err| (StatusCode::BAD_REQUEST, err.to_string()))?;
         let mut upload = ctx
@@ -185,8 +193,8 @@ pub async fn upload(
             .await
             .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?;
         if supplementary.is_none() {
-            let content_type = field.content_type().map(|s|s.to_owned());
-            let file_name = field.file_name().map(|s|s.to_owned());
+            let content_type = field.content_type().map(|s| s.to_owned());
+            let file_name = field.file_name().map(|s| s.to_owned());
             ctx.content
                 .set_metadata_uploaded(&id, &file_name, &content_type, len)
                 .await
@@ -215,9 +223,20 @@ pub async fn upload(
     if params.redirect.is_some() {
         let redirect = params.redirect.unwrap();
         let mut headers = HeaderMap::new();
-        headers.insert("Location", HeaderValue::from_str(redirect.as_str()).unwrap());
-        Ok((StatusCode::SEE_OTHER, headers, "Upload successful".to_owned()))
+        headers.insert(
+            "Location",
+            HeaderValue::from_str(redirect.as_str()).unwrap(),
+        );
+        Ok((
+            StatusCode::SEE_OTHER,
+            headers,
+            "Upload successful".to_owned(),
+        ))
     } else {
-        Ok((StatusCode::CREATED, HeaderMap::new(), "Upload successful".to_owned()))
+        Ok((
+            StatusCode::CREATED,
+            HeaderMap::new(),
+            "Upload successful".to_owned(),
+        ))
     }
 }

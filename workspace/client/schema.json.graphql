@@ -416,6 +416,7 @@ type Transition {
 }
 
 type Workflow {
+    activities: [WorkflowActivity!]!
     configuration: JSON!
     description: String!
     id: String!
@@ -424,12 +425,16 @@ type Workflow {
 }
 
 type WorkflowActivity {
+    activityId: String!
     configuration: JSON!
     executionGroup: Int!
     id: Int!
     inputs: [WorkflowActivityParameter!]!
+    models: [WorkflowActivityModel!]!
     outputs: [WorkflowActivityParameter!]!
+    prompts: [WorkflowActivityPrompt!]!
     queue: String!
+    storageSystems: [WorkflowActivityStorageSystem!]!
 }
 
 type WorkflowActivityModel {
@@ -535,6 +540,7 @@ type Workflows {
     states: WorkflowStates!
     storageSystems: StorageSystems!
     transitions: [Transition!]!
+    workflow(id: String!): Workflow
 }
 
 type WorkflowsMutation {

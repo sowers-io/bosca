@@ -253,37 +253,31 @@ impl JobQueues {
         Ok(ids)
     }
 
-    async fn enqueue_execution_job(
+    async fn update_for_dequeue(
         &self,
+        transaction: &deadpool_postgres::Transaction<'_>,
         id: &WorkflowExecutionId,
         job_index: i32,
     ) -> Result<(), Error> {
-        let mut connection = self.pool.get().await?;
-        let transaction = connection.transaction().await?;
-
         let Some(mut plan) = self.get_plan_and_lock(&transaction, &id).await? else {
             return Err(Error::new("can't enqueue job, missing plan"));
         };
 
         if plan.finished.is_some() {
-            transaction.rollback().await?;
             return Err(Error::new("plan is already complete"));
         }
 
         if plan.complete.contains(&job_index) {
-            transaction.rollback().await?;
             return Err(Error::new("job is already complete"));
         }
 
         if plan.running.contains(&job_index) {
-            transaction.rollback().await?;
             return Err(Error::new("job is already running"));
         }
 
         if !plan.current_execution_group.contains(&job_index)
             && (plan.next.is_none() || !plan.next.as_ref().is_some_and(|id| *id == job_index))
         {
-            transaction.rollback().await?;
             error!(target: "workflow", "not enqueuing job, it's not marked as a current execution group or next job: {} {}", id, job_index);
             return Ok(());
         }
@@ -293,19 +287,12 @@ impl JobQueues {
         plan.pending.remove(&job_index);
 
         self.set_plan(&transaction, &plan).await?;
-        transaction.commit().await?;
-
-        let job = plan.jobs.get_mut(job_index as usize).unwrap();
-        let mut transaction = Transaction::new();
-        transaction.add_op(TransactionOp::QueueJob(job.id.clone()));
-        transaction.execute(&self.redis).await?;
-        self.incr("queue::enqueued::job::count").await?;
-        debug!("enqueued plan job: {} {}", plan.id, job.id);
         Ok(())
     }
 
     async fn dequeue_from_redis(
         &self,
+        transaction: &deadpool_postgres::Transaction<'_>,
         queue: &str,
     ) -> Result<Option<(WorkflowExecutionPlan, i32)>, Error> {
         let pooled_connection = self.redis.get().await?;
@@ -349,7 +336,7 @@ impl JobQueues {
                 id,
                 queue: queue.to_owned(),
             };
-            let Some(plan) = self.get_plan(&id).await? else {
+            let Some(plan) = self.get_plan_and_lock(transaction, &id).await? else {
                 return Err(Error::new("can't dequeue job, missing plan"));
             };
             Ok(Some((plan, -1)))
@@ -364,7 +351,7 @@ impl JobQueues {
                 queue: queue.to_owned(),
                 index,
             };
-            let Some(plan) = self.get_plan_by_job(&id).await? else {
+            let Some(plan) = self.get_plan_and_lock_by_job(transaction, &id).await? else {
                 return Err(Error::new("can't dequeue job, missing plan"));
             };
             Ok(Some((plan, index)))
@@ -373,59 +360,66 @@ impl JobQueues {
         }
     }
 
-    async fn prepare_plan(&self, plan: &mut WorkflowExecutionPlan) -> Result<(), Error> {
+    async fn prepare_plan(&self, transaction: &deadpool_postgres::Transaction<'_>, plan: &mut WorkflowExecutionPlan) -> Result<(), Error> {
         let mut update = false;
-        if let Some(id) = &plan.next {
-            let job_id = WorkflowJobId {
-                id: plan.id.id.clone(),
-                queue: plan.id.queue.clone(),
-                index: id.clone(),
-            };
-            warn!(target: "workflow", "plan already has a next: {:?}", job_id);
-        } else {
+        if plan.next.is_none() {
             if plan.current_execution_group.is_empty() && plan.running.is_empty() {
                 info!("updating plan current job: {}", plan.id);
                 plan.current_execution_group = plan
                     .jobs
                     .iter()
-                    .filter(|job| job.workflow_activity.execution_group == 1)
+                    .filter(|job| !job.complete && job.workflow_activity.execution_group == 1)
                     .map(|job| job.id.index)
                     .collect();
                 update = true;
             }
-            if !plan.current_execution_group.is_empty() {
-                info!(
-                        "removing job from current list and queueing as next: {}",
-                        plan.id
-                    );
-                let next = plan.current_execution_group.remove(0);
-                plan.next = Some(next.clone());
+            while !plan.current_execution_group.is_empty() {
                 update = true;
+                info!(target: "workflow", "removing job from current list and queueing as next: {}", plan.id);
+                let next = plan.current_execution_group.remove(0);
+                if !plan.complete.contains(&next) {
+                    plan.next = Some(next.clone());
+                    break;
+                }
             }
             if plan.next.is_none() {
-                warn!(target: "workflow", "plan is missing next, not returning: {}", plan.id);
+                warn!(target: "workflow", "plan is missing next: {}", plan.id);
+                if plan.complete.len() == plan.jobs.len() {
+                    let mut redis_txn = Transaction::new();
+                    redis_txn.add_op(TransactionOp::RemovePlanRunning(plan.id.clone()));
+                    redis_txn.execute(&self.redis).await?;
+                }
             }
         }
+        if plan.next.is_some() && plan.complete.contains(plan.next.as_ref().unwrap()) {
+            warn!(target: "workflow", "plan is missing next, it was already complete: {}", plan.id);
+            plan.next = None;
+            update = true;
+        }
         if update {
-            let mut connection = self.pool.get().await?;
-            let transaction = connection.transaction().await?;
             self.set_plan(&transaction, &plan).await?;
-            transaction.commit().await?;
+        }
+        if plan.next.is_none() {
+            warn!(target: "workflow", "plan is missing next: {}", plan.id);
+            return Err(Error::new("plan is missing next"));
         }
         Ok(())
     }
 
     pub async fn dequeue(&self, queue: &str) -> Result<Option<WorkflowJob>, Error> {
         loop {
-            let Some((mut plan, mut job_index)) = self.dequeue_from_redis(queue).await? else {
+            let mut connection = self.pool.get().await?;
+            let transaction = connection.transaction().await?;
+            let Some((mut plan, mut job_index)) = self.dequeue_from_redis(&transaction, queue).await? else {
+                transaction.rollback().await?;
                 return Ok(None);
             };
 
             while plan.finished.is_some() || plan.complete.contains(&job_index) {
-                let mut transaction = Transaction::new();
+                let mut redis_txn = Transaction::new();
                 if plan.finished.is_some() {
                     warn!(target: "workflow", "plan is already complete: {}", plan.id);
-                    transaction.add_op(TransactionOp::RemovePlanRunning(plan.id.clone()));
+                    redis_txn.add_op(TransactionOp::RemovePlanRunning(plan.id.clone()));
                 }
                 if job_index != -1 {
                     let id = WorkflowJobId {
@@ -434,10 +428,10 @@ impl JobQueues {
                         index: job_index,
                     };
                     warn!(target: "workflow", "job is already complete: {}", id);
-                    transaction.add_op(TransactionOp::RemoveJobRunning(id));
+                    redis_txn.add_op(TransactionOp::RemoveJobRunning(id));
                 }
-                transaction.execute(&self.redis).await?;
-                let Some((plan2, job_index2)) = self.dequeue_from_redis(queue).await? else {
+                redis_txn.execute(&self.redis).await?;
+                let Some((plan2, job_index2)) = self.dequeue_from_redis(&transaction, queue).await? else {
                     return Ok(None);
                 };
                 plan = plan2;
@@ -445,11 +439,27 @@ impl JobQueues {
             }
 
             if job_index != -1 {
+                transaction.commit().await?;
                 return Ok(Some(plan.jobs.get_mut(job_index as usize).unwrap().clone()))
             } else {
-                self.prepare_plan(&mut plan).await?;
+                if let Err(e) = self.prepare_plan(&transaction, &mut plan).await {
+                    error!(target: "workflow", "failed to prepare plan for dequeue: {:?}", e);
+                    transaction.commit().await?;
+                    return Ok(None);
+                }
                 if let Some(next) = plan.next {
-                    self.enqueue_execution_job(&plan.id, next).await?;
+                    if let Err(e) = self.update_for_dequeue(&transaction, &plan.id, next).await {
+                        error!(target: "workflow", "failed to update plan for dequeue: {:?}", e);
+                        transaction.commit().await?;
+                        return Err(e);
+                    }
+                    transaction.commit().await?;
+                    let job = plan.jobs.get_mut(next as usize).unwrap();
+                    let mut redis_txn = Transaction::new();
+                    redis_txn.add_op(TransactionOp::QueueJob(job.id.clone()));
+                    redis_txn.execute(&self.redis).await?;
+                    self.incr("queue::enqueued::job::count").await?;
+                    debug!("enqueued plan job: {} {}", plan.id, job.id);
                 }
                 continue;
             }
@@ -556,6 +566,7 @@ impl JobQueues {
         let Some(mut plan) = self.get_plan_and_lock_by_job(&transaction, job_id).await? else {
             return Err(Error::new("can't mark execution complete, missing job"));
         };
+
         let mut redis_txn = Transaction::new();
 
         match self
@@ -598,6 +609,10 @@ impl JobQueues {
         plan.failed.remove(&job.id.index);
         plan.running.remove(&job.id.index);
         plan.complete.insert(job.id.index);
+
+        if plan.next.is_some_and(|n| n == job.id.index) {
+            plan.next = None;
+        }
 
         let mut dirty_plan = true;
 

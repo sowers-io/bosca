@@ -268,7 +268,7 @@ workflows:
     metadata.set.public:
       queue: metadata
       activities:
-        collection.set.public:
+        metadata.set.public:
     # collection workflows
     collection.process:
       queue: metadata

@@ -9,11 +9,13 @@ use deadpool_postgres::{GenericClient, Object, Pool};
 use serde_json::Value;
 use std::sync::Arc;
 use uuid::Uuid;
+use crate::util::signed_url::{sign_url, verify_signed_url};
 
 #[derive(Clone)]
 pub struct SecurityDataStore {
     pool: Arc<Pool>,
     jwt: Jwt,
+    url_secret_key: String,
 }
 
 pub const ADMINISTRATORS_GROUP: &str = "administrators";
@@ -22,8 +24,16 @@ pub const MODEL_MANAGERS_GROUP: &str = "model.managers";
 pub const WORKFLOW_MANAGERS_GROUP: &str = "workflow.managers";
 
 impl SecurityDataStore {
-    pub fn new(pool: Arc<Pool>, jwt: Jwt) -> Self {
-        Self { pool, jwt }
+    pub fn new(pool: Arc<Pool>, jwt: Jwt, url_secret_key: String) -> Self {
+        Self { pool, jwt, url_secret_key }
+    }
+
+    pub fn sign_url(&self, url: &str) -> String {
+        sign_url(url, &self.url_secret_key, 3600)
+    }
+
+    pub fn verify_signed_url(&self, url: &str) -> bool {
+        verify_signed_url(url, &self.url_secret_key)
     }
 
     #[allow(dead_code)]
@@ -39,9 +49,7 @@ impl SecurityDataStore {
 
     pub async fn get_groups(&self) -> Result<Vec<Group>, Error> {
         let connection = self.pool.get().await?;
-        let stmt = connection
-            .prepare_cached("select * from groups")
-            .await?;
+        let stmt = connection.prepare_cached("select * from groups").await?;
         let results = connection.query(&stmt, &[]).await?;
         Ok(results.iter().map(Group::from).collect())
     }
