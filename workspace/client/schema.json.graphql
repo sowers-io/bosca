@@ -18,6 +18,7 @@ union CollectionItem = Collection | Metadata
 union WorkflowExecution = WorkflowExecutionPlan | WorkflowJob
 
 type Activities {
+    activity(id: String!): Activity
     all: [Activity!]!
 }
 
@@ -103,8 +104,6 @@ type Content {
     search(query: SearchQuery!): SearchResultObject!
     source(id: String!): Source
     sources: [Source!]!
-    trait(id: String!): Trait
-    traits: [Trait!]!
 }
 
 type ContentMutation {
@@ -267,6 +266,8 @@ type Models {
 
 type ModelsMutation {
     add(model: ModelInput!): Model
+    delete(id: String!): Boolean!
+    edit(id: String!, model: ModelInput!): Model
 }
 
 type Mutation {
@@ -392,9 +393,21 @@ type StorageSystems {
     storageSystem(id: String!): StorageSystem
 }
 
+type StorageSystemsMutation {
+    add(storageSystem: StorageSystemInput!): StorageSystem
+    delete(id: String!): Boolean!
+    edit(id: String!, storageSystem: StorageSystemInput!): StorageSystem
+}
+
 type Subscription {
+    activity: String!
     collection: String!
     metadata: String!
+    model: String!
+    prompt: String!
+    storageSystem: String!
+    trait: String!
+    workflow: String!
 }
 
 type Token {
@@ -407,6 +420,17 @@ type Trait {
     name: String!
     workflowIds: [String!]!
     workflows: [Workflow!]!
+}
+
+type Traits {
+    all: [Trait!]!
+    trait(id: String!): Trait
+}
+
+type TraitsMutation {
+    add(model: TraitInput!): Trait
+    delete(id: String!): Boolean!
+    edit(model: TraitInput!): Trait
 }
 
 type Transition {
@@ -539,8 +563,10 @@ type Workflows {
     prompts: Prompts!
     states: WorkflowStates!
     storageSystems: StorageSystems!
+    traits: Traits!
     transitions: [Transition!]!
     workflow(id: String!): Workflow
+    workflowActivity(id: Int!): WorkflowActivity
 }
 
 type WorkflowsMutation {
@@ -562,6 +588,8 @@ type WorkflowsMutation {
     setExecutionPlanJobComplete(jobId: WorkflowJobIdInput!): Boolean!
     setExecutionPlanJobFailed(error: String!, jobId: WorkflowJobIdInput!): Boolean!
     states: WorkflowStatesMutation!
+    storageSystems: StorageSystemsMutation!
+    traits: TraitsMutation!
 }
 
 enum ActivityParameterType {
@@ -793,6 +821,26 @@ input SearchQuery {
     offset: Int
     query: String!
     storageSystemId: String!
+}
+
+input StorageSystemInput {
+    configuration: JSON!
+    description: String!
+    models: [StorageSystemModelInput!]!
+    name: String!
+    type: StorageSystemType!
+}
+
+input StorageSystemModelInput {
+    configuration: JSON!
+    modelId: String!
+}
+
+input TraitInput {
+    description: String!
+    id: String!
+    name: String!
+    workflowIds: [String!]!
 }
 
 input WorkflowActivityInput {

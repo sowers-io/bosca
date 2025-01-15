@@ -253,7 +253,12 @@ async fn initialize_workflow(ctx: &BoscaContext) {
     let yaml = parse_string(default_workflow_contents).unwrap();
     if configure(&yaml, &ctx.workflow).await {
         let storage_system = ctx.workflow.get_default_search_storage_system().await.unwrap();
-        let index_name = storage_system.configuration.get("indexName").unwrap().as_str().unwrap().to_owned();
+        let configuration = storage_system.configuration;
+        if configuration.is_none() {
+            return;
+        }
+        let configuration = configuration.unwrap();
+        let index_name = configuration.get("indexName").unwrap().as_str().unwrap().to_owned();
         let create_task = ctx.search.create_index(index_name.clone(), Some("_id")).await.unwrap();
         ctx.search.wait_for_task(create_task, None, None).await.unwrap();
         let index = ctx.search.get_index(index_name).await.unwrap();

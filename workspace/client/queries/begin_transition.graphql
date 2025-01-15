@@ -1,0 +1,5 @@
+mutation BeginTransition($request: BeginTransitionInput!) {
+    workflows {
+        beginTransition(request: $request)
+    }
+}

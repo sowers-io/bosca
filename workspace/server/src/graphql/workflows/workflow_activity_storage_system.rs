@@ -16,7 +16,7 @@ impl WorkflowActivityStorageSystemObject {
 
 #[Object(name = "WorkflowActivityStorageSystem")]
 impl WorkflowActivityStorageSystemObject {
-    async fn configuration(&self) -> &Value {
+    async fn configuration(&self) -> &Option<Value> {
         &self.system.configuration
     }
     async fn system(&self, ctx: &Context<'_>) -> Result<StorageSystemObject, Error> {

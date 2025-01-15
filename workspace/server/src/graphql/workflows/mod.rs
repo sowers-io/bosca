@@ -28,3 +28,6 @@ pub mod workflow_job_id;
 #[allow(clippy::module_inception)]
 pub mod workflows;
 pub mod workflows_mutation;
+pub mod traits;
+pub mod traits_mutation;
+pub mod storage_systems_mutation;

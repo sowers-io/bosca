@@ -11,7 +11,7 @@ use crate::client::metadata_download_url::MetadataDownloadUrlContentMetadataCont
 use crate::client::metadata_upload_url::MetadataUploadUrlContentMetadataContentUrlsUpload;
 
 use crate::client::source_by_id::SourceByIdContentSource;
-use crate::client::trait_by_id::TraitByIdContentTrait;
+use crate::client::trait_by_id::TraitByIdWorkflowsTraits;
 
 use crate::client::add_metadata::{AddMetadataContentMetadata, MetadataInput};
 use crate::client::add_metadata_supplementary::{
@@ -37,7 +37,7 @@ pub struct Client {
     client: reqwest::Client,
 }
 
-pub type Trait = TraitByIdContentTrait;
+pub type Trait = TraitByIdWorkflowsTraits;
 pub type Source = SourceByIdContentSource;
 // pub type WorkflowJob = PlanWorkflowsNextWorkflowExecutionOnWorkflowJob;
 pub type EnqueuedChildWorkflowId = EnqueueChildWorkflowsWorkflowsEnqueueChildWorkflows;
@@ -146,6 +146,15 @@ impl Client {
         token.clear();
         token.push_str(&response.security.login.password.token.token);
         Ok(())
+    }
+
+    pub async fn begin_transition(&self, input: begin_transition::BeginTransitionInput) -> Result<bool, Error> {
+        let variables = begin_transition::Variables {
+            request: input
+        };
+        let query = BeginTransition::build_query(variables);
+        let response: begin_transition::ResponseData = self.execute(&query).await?;
+        Ok(response.workflows.begin_transition)
     }
 
     pub async fn set_plan_context(
@@ -315,11 +324,11 @@ impl Client {
         Ok(response.workflows.set_execution_plan_job_failed)
     }
 
-    pub async fn get_trait(&self, id: &str) -> Result<Option<Trait>, Error> {
+    pub async fn get_trait(&self, id: &str) -> Result<Option<trait_by_id::TraitByIdWorkflowsTraitsTrait>, Error> {
         let variables = trait_by_id::Variables { id: id.to_owned() };
         let query = TraitById::build_query(variables);
         let response: trait_by_id::ResponseData = self.execute(&query).await?;
-        Ok(response.content.trait_)
+        Ok(response.workflows.traits.trait_)
     }
 
     pub async fn get_source(&self, id: &str) -> Result<Option<Source>, Error> {
@@ -754,6 +763,14 @@ pub struct SetCollectionWorkflowState;
     response_derives = "Debug, PartialEq, Eq, Clone"
 )]
 pub struct SetWorkflowStateComplete;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "schema.json",
+    query_path = "queries/begin_transition.graphql",
+    response_derives = "Debug, PartialEq, Eq, Clone"
+)]
+pub struct BeginTransition;
 
 #[derive(GraphQLQuery)]
 #[graphql(

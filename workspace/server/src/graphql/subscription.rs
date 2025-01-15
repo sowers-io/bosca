@@ -38,4 +38,37 @@ impl SubscriptionObject {
         }
         ctx.notifier.listen_activity_changes().await
     }
+
+    #[graphql(name = "trait")]
+    async fn trait_(&self, ctx: &Context<'_>) -> Result<impl Stream<Item = String>> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        if ctx.principal.anonymous {
+            return Err(Error::new("Unauthorized"));
+        }
+        ctx.notifier.listen_trait_changes().await
+    }
+
+    async fn storage_system(&self, ctx: &Context<'_>) -> Result<impl Stream<Item = String>> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        if ctx.principal.anonymous {
+            return Err(Error::new("Unauthorized"));
+        }
+        ctx.notifier.listen_storage_system_changes().await
+    }
+
+    async fn model(&self, ctx: &Context<'_>) -> Result<impl Stream<Item = String>> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        if ctx.principal.anonymous {
+            return Err(Error::new("Unauthorized"));
+        }
+        ctx.notifier.listen_model_changes().await
+    }
+
+    async fn prompt(&self, ctx: &Context<'_>) -> Result<impl Stream<Item = String>> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        if ctx.principal.anonymous {
+            return Err(Error::new("Unauthorized"));
+        }
+        ctx.notifier.listen_prompt_changes().await
+    }
 }

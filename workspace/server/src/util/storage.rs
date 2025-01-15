@@ -19,19 +19,20 @@ pub async fn storage_system_metadata_delete(storage: &ObjectStorage, metadata: &
     for storage_system in storage_systems.iter() {
         match storage_system.system_type {
             StorageSystemType::Search => {
-                let index_name = storage_system.configuration.get("indexName").unwrap().as_str().unwrap().to_string();
-                match client.get_index(&index_name).await {
-                    Ok(index) => {
-                        index.delete_document(&metadata.id.to_string()).await?;
-                    },
-                    Err(e) => {
-                        if let meilisearch_sdk::errors::Error::Meilisearch(e) = e {
-                            if e.error_code == IndexNotFound {
+                if let Some(configuration) = &storage_system.configuration {
+                    let index_name = configuration.get("indexName").unwrap().as_str().unwrap().to_string();
+                    match client.get_index(&index_name).await {
+                        Ok(index) => {
+                            index.delete_document(&metadata.id.to_string()).await?;
+                        },
+                        Err(e) => {
+                            if let meilisearch_sdk::errors::Error::Meilisearch(e) = e {
+                                if e.error_code == IndexNotFound {} else {
+                                    return Err(Error::new(e.to_string()))
+                                }
                             } else {
                                 return Err(Error::new(e.to_string()))
                             }
-                        } else {
-                            return Err(Error::new(e.to_string()))
                         }
                     }
                 }
@@ -46,13 +47,15 @@ pub async fn storage_system_metadata_delete(storage: &ObjectStorage, metadata: &
 pub async fn storage_system_collection_delete(collection: &Collection, storage_system: &StorageSystem, client: &Client) -> Result<(), Error> {
     match storage_system.system_type {
         StorageSystemType::Search => {
-            let index_name = storage_system.configuration.get("indexName").unwrap().as_str().unwrap().to_string();
-            match client.get_index(&index_name).await {
-                Ok(index) => {
-                    index.delete_document(&collection.id.to_string()).await?;
-                },
-                Err(e) => {
-                    return Err(Error::new(e.to_string()))
+            if let Some(configuration) = &storage_system.configuration {
+                let index_name = configuration.get("indexName").unwrap().as_str().unwrap().to_string();
+                match client.get_index(&index_name).await {
+                    Ok(index) => {
+                        index.delete_document(&collection.id.to_string()).await?;
+                    },
+                    Err(e) => {
+                        return Err(Error::new(e.to_string()))
+                    }
                 }
             }
         }
@@ -69,9 +72,11 @@ pub async fn index_documents(ctx: &BoscaContext, documents: &[SearchDocumentInpu
             index_documents.push(document);
         }
     }
-    let index_name = storage_system.configuration.get("indexName").unwrap().as_str().unwrap().to_string();
-    let index = ctx.search.index(&index_name);
-    index.add_documents(index_documents.as_slice(), Some("_id")).await?;
+    if let Some(configuration) = &storage_system.configuration {
+        let index_name = configuration.get("indexName").unwrap().as_str().unwrap().to_string();
+        let index = ctx.search.index(&index_name);
+        index.add_documents(index_documents.as_slice(), Some("_id")).await?;
+    }
     Ok(())
 }
 
@@ -82,9 +87,11 @@ pub async fn index_documents_no_checks(ctx: &BoscaContext, documents: &[SearchDo
             index_documents.push(document);
         }
     }
-    let index_name = storage_system.configuration.get("indexName").unwrap().as_str().unwrap().to_string();
-    let index = ctx.search.index(&index_name);
-    index.add_documents(index_documents.as_slice(), Some("_id")).await?;
+    if let Some(configuration) = &storage_system.configuration {
+        let index_name = configuration.get("indexName").unwrap().as_str().unwrap().to_string();
+        let index = ctx.search.index(&index_name);
+        index.add_documents(index_documents.as_slice(), Some("_id")).await?;
+    }
     Ok(())
 }
 

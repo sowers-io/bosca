@@ -29,9 +29,7 @@ pub async fn configure(yaml: &Yaml, datasource: &WorkflowDataStore) -> bool {
         let hash = yaml["storageSystems"].as_hash().unwrap();
         for key in hash.keys() {
             let s = hash.get(key).unwrap();
-            let mi: StorageSystemInput = s.into();
-            let id = datasource.add_storage_system(&mi).await.unwrap();
-            storage_system_ids.insert(key.as_str().unwrap().to_string(), id);
+            let mut mi: StorageSystemInput = s.into();
             if s["models"].is_null() || s["models"].is_badvalue() {
                 continue;
             }
@@ -40,8 +38,10 @@ pub async fn configure(yaml: &Yaml, datasource: &WorkflowDataStore) -> bool {
                 let m = m.get(key).unwrap();
                 let mut sm: StorageSystemModelInput = m.into();
                 sm.model_id = model_ids.get(key.as_str().unwrap()).unwrap().to_string();
-                datasource.add_storage_system_model(&id, &sm).await.unwrap();
+                mi.models.push(sm);
             }
+            let id = datasource.add_storage_system(&mi).await.unwrap();
+            storage_system_ids.insert(key.as_str().unwrap().to_string(), id);
         }
     }
     {

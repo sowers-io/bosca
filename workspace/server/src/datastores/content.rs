@@ -14,7 +14,6 @@ use crate::models::content::source::Source;
 use crate::models::content::supplementary::{MetadataSupplementary, MetadataSupplementaryInput};
 use crate::models::security::permission::{Permission, PermissionAction};
 use crate::models::security::principal::Principal;
-use crate::models::workflow::traits::Trait;
 use crate::security::evaluator::Evaluator;
 use crate::util::storage::index_documents;
 use async_graphql::*;
@@ -78,49 +77,6 @@ impl ContentDataStore {
             .await?;
         let rows = connection.query(&stmt, &[name]).await?;
         Ok(rows.first().map(|r| r.into()))
-    }
-
-    pub async fn get_traits(&self) -> Result<Vec<Trait>, Error> {
-        let connection = self.pool.get().await?;
-        let stmt = connection
-            .prepare_cached("select * from traits order by name asc")
-            .await?;
-        let rows = connection.query(&stmt, &[]).await?;
-        let mut traits = Vec::<Trait>::new();
-        let id_stmt = connection
-            .prepare_cached("select workflow_id from trait_workflows where trait_id = $1")
-            .await?;
-        for row in rows.iter() {
-            let mut t: Trait = row.into();
-            let rows = connection.query(&id_stmt, &[&t.id]).await?;
-            t.workflow_ids = rows
-                .iter()
-                .map(|r| r.get::<&str, String>("workflow_id").to_string())
-                .collect();
-            traits.push(t);
-        }
-        Ok(traits)
-    }
-
-    pub async fn get_trait(&self, id: &String) -> Result<Option<Trait>, Error> {
-        let connection = self.pool.get().await?;
-        let stmt = connection
-            .prepare_cached("select * from traits where id = $1")
-            .await?;
-        let rows = connection.query(&stmt, &[id]).await?;
-        let id_stmt = connection
-            .prepare_cached("select workflow_id from trait_workflows where trait_id = $1")
-            .await?;
-        if let Some(row) = rows.first() {
-            let mut t: Trait = row.into();
-            let rows = connection.query(&id_stmt, &[&t.id]).await?;
-            t.workflow_ids = rows
-                .iter()
-                .map(|r| r.get::<&str, String>("workflow_id").to_string())
-                .collect();
-            return Ok(Some(t));
-        }
-        Ok(None)
     }
 
     pub async fn has_collection_permission(

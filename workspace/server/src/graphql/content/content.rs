@@ -1,5 +1,4 @@
 use crate::graphql::content::collection::CollectionObject;
-use crate::graphql::content::contenttrait::TraitObject;
 use crate::graphql::content::metadata::MetadataObject;
 use crate::graphql::content::source::SourceObject;
 use crate::graphql::content::supplementary::MetadataSupplementaryObject;
@@ -121,30 +120,16 @@ impl ContentObject {
         .map(|s| s.into()))
     }
 
-    async fn traits(&self, ctx: &Context<'_>) -> Result<Vec<TraitObject>, Error> {
-        let ctx = ctx.data::<BoscaContext>()?;
-        Ok(ctx.content
-            .get_traits()
-            .await?
-            .into_iter()
-            .map(TraitObject::new)
-            .collect())
-    }
-
-    #[graphql(name = "trait")]
-    async fn trait_(&self, ctx: &Context<'_>, id: String) -> Result<Option<TraitObject>, Error> {
-        let ctx = ctx.data::<BoscaContext>()?;
-        Ok(ctx.content.get_trait(&id).await?.map(TraitObject::new))
-    }
-
     async fn search(&self, ctx: &Context<'_>, query: SearchQuery) -> Result<SearchResultObject, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::parse_str(query.storage_system_id.as_str())?;
-        let storage_system = ctx.workflow.get_storage_system(&id).await?;
-        if storage_system.is_none() {
-            return Err(Error::new("unknown storage system"));
-        }
-        let index_name = storage_system.unwrap().configuration.get("indexName").unwrap().as_str().unwrap().to_string();
+        let Some(storage_system) = ctx.workflow.get_storage_system(&id).await? else {
+            return Err(Error::new("missing storage system"));
+        };
+        let Some(configuration) = storage_system.configuration else {
+            return Err(Error::new("missing configuration"));
+        };
+        let index_name = configuration.get("indexName").unwrap().as_str().unwrap().to_string();
         let index = ctx.search.index(index_name);
         let limit = query.limit.unwrap_or(25) as usize;
         let mut search_query = index.search();

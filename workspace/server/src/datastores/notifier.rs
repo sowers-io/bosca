@@ -58,6 +58,50 @@ impl Notifier {
             }))
     }
 
+    pub async fn listen_trait_changes(&self) -> Result<impl Stream<Item=String>, Error> {
+        let connection = self.redis.get().await?;
+        let mut pubsub = connection.get_pubsub().await?;
+        pubsub.subscribe("trait_changes").await?;
+        Ok(pubsub
+            .into_on_message()
+            .filter_map(|msg| async move {
+                msg.get_payload().ok()
+            }))
+    }
+
+    pub async fn listen_storage_system_changes(&self) -> Result<impl Stream<Item=String>, Error> {
+        let connection = self.redis.get().await?;
+        let mut pubsub = connection.get_pubsub().await?;
+        pubsub.subscribe("storage_system_changes").await?;
+        Ok(pubsub
+            .into_on_message()
+            .filter_map(|msg| async move {
+                msg.get_payload().ok()
+            }))
+    }
+
+    pub async fn listen_model_changes(&self) -> Result<impl Stream<Item=String>, Error> {
+        let connection = self.redis.get().await?;
+        let mut pubsub = connection.get_pubsub().await?;
+        pubsub.subscribe("model_changes").await?;
+        Ok(pubsub
+            .into_on_message()
+            .filter_map(|msg| async move {
+                msg.get_payload().ok()
+            }))
+    }
+
+    pub async fn listen_prompt_changes(&self) -> Result<impl Stream<Item=String>, Error> {
+        let connection = self.redis.get().await?;
+        let mut pubsub = connection.get_pubsub().await?;
+        pubsub.subscribe("prompt_changes").await?;
+        Ok(pubsub
+            .into_on_message()
+            .filter_map(|msg| async move {
+                msg.get_payload().ok()
+            }))
+    }
+
     pub async fn metadata_changed(&self, id: &Uuid) -> async_graphql::Result<(), Error> {
         let connection = self.redis.get().await?;
         let mut conn = connection.get_connection().await?;
@@ -90,6 +134,42 @@ impl Notifier {
         let mut conn = connection.get_connection().await?;
         let id = id.to_string();
         conn.publish::<&str, String, ()>("activity_changes", id)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn trait_changed(&self, id: &str) -> async_graphql::Result<(), Error> {
+        let connection = self.redis.get().await?;
+        let mut conn = connection.get_connection().await?;
+        let id = id.to_string();
+        conn.publish::<&str, String, ()>("trait_changes", id)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn storage_system_changed(&self, id: &str) -> async_graphql::Result<(), Error> {
+        let connection = self.redis.get().await?;
+        let mut conn = connection.get_connection().await?;
+        let id = id.to_string();
+        conn.publish::<&str, String, ()>("storage_system_changes", id)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn model_changed(&self, id: &str) -> async_graphql::Result<(), Error> {
+        let connection = self.redis.get().await?;
+        let mut conn = connection.get_connection().await?;
+        let id = id.to_string();
+        conn.publish::<&str, String, ()>("model_changes", id)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn prompt_changed(&self, id: &str) -> async_graphql::Result<(), Error> {
+        let connection = self.redis.get().await?;
+        let mut conn = connection.get_connection().await?;
+        let id = id.to_string();
+        conn.publish::<&str, String, ()>("prompt_changes", id)
             .await?;
         Ok(())
     }

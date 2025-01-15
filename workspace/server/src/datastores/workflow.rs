@@ -1,3 +1,4 @@
+use crate::datastores::notifier::Notifier;
 use crate::graphql::content::metadata_mutation::WorkflowConfigurationInput;
 use crate::models::workflow::activities::{
     Activity, ActivityInput, ActivityParameter, WorkflowActivity, WorkflowActivityInput,
@@ -12,7 +13,7 @@ use crate::models::workflow::prompts::{Prompt, PromptInput};
 use crate::models::workflow::states::{WorkflowState, WorkflowStateInput};
 use crate::models::workflow::storage_system_models::{StorageSystemModel, StorageSystemModelInput};
 use crate::models::workflow::storage_systems::{StorageSystem, StorageSystemInput};
-use crate::models::workflow::traits::TraitInput;
+use crate::models::workflow::traits::{Trait, TraitInput};
 use crate::models::workflow::transitions::{Transition, TransitionInput};
 use crate::models::workflow::workflows::{Workflow, WorkflowInput};
 use crate::worklfow::queue::JobQueues;
@@ -24,7 +25,6 @@ use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::Duration;
 use uuid::Uuid;
-use crate::datastores::notifier::Notifier;
 
 #[derive(Clone)]
 pub struct WorkflowDataStore {
@@ -35,7 +35,11 @@ pub struct WorkflowDataStore {
 
 impl WorkflowDataStore {
     pub fn new(pool: Arc<Pool>, queues: JobQueues, notifier: Arc<Notifier>) -> Self {
-        Self { pool, queues, notifier }
+        Self {
+            pool,
+            queues,
+            notifier,
+        }
     }
 
     /* activities */
@@ -249,7 +253,7 @@ impl WorkflowDataStore {
                 &workflow.configuration,
             ],
         )
-            .await?;
+        .await?;
         for activity in &workflow.activities {
             self.add_workflow_activity(&txn, &workflow.id, activity)
                 .await?;
@@ -259,7 +263,12 @@ impl WorkflowDataStore {
         Ok(())
     }
 
-    async fn delete_workflow_txn(&self, txn: &Transaction<'_>, id: &String, include_workflow: bool) -> Result<(), Error> {
+    async fn delete_workflow_txn(
+        &self,
+        txn: &Transaction<'_>,
+        id: &String,
+        include_workflow: bool,
+    ) -> Result<(), Error> {
         txn.execute("delete from workflow_activity_inputs where activity_id in (select id from workflow_activities where workflow_id = $1)", &[id]).await?;
         txn.execute("delete from workflow_activity_outputs where activity_id in (select id from workflow_activities where workflow_id = $1)", &[id]).await?;
         txn.execute("delete from workflow_activity_models where activity_id in (select id from workflow_activities where workflow_id = $1)", &[id]).await?;
@@ -372,13 +381,25 @@ impl WorkflowDataStore {
         Ok(id)
     }
 
+    pub async fn get_workflow_activity(
+        &self,
+        activity_id: &i64,
+    ) -> Result<Option<WorkflowActivity>, Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("select * from workflow_activities where id = $1")
+            .await?;
+        let rows = connection.query(&stmt, &[activity_id]).await?;
+        Ok(rows.first().map(WorkflowActivity::from))
+    }
+
     pub async fn get_workflow_activities(
         &self,
         workflow_id: &String,
     ) -> Result<Vec<WorkflowActivity>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
-            .prepare_cached("select * from workflow_activities where workflow_id = $1")
+            .prepare_cached("select * from workflow_activities where workflow_id = $1 order by execution_group asc")
             .await?;
         let rows = connection.query(&stmt, &[workflow_id]).await?;
         Ok(rows.iter().map(WorkflowActivity::from).collect())
@@ -501,7 +522,41 @@ impl WorkflowDataStore {
         if rows.is_empty() {
             return Ok(Uuid::nil());
         }
-        Ok(rows.first().unwrap().get(0))
+        let id: Uuid = rows.first().unwrap().get(0);
+        let id_str = id.to_string();
+        self.notifier.model_changed(&id_str).await?;
+        Ok(id)
+    }
+
+    pub async fn edit_model(&self, id: &Uuid, model: &ModelInput) -> Result<(), Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection.prepare_cached("update models set type = $1, name = $2, description = $3, configuration = $4 where id = $5").await?;
+        connection
+            .execute(
+                &stmt,
+                &[
+                    &model.model_type,
+                    &model.name,
+                    &model.description,
+                    &model.configuration,
+                    &id,
+                ],
+            )
+            .await?;
+        let id_str = id.to_string();
+        self.notifier.model_changed(&id_str).await?;
+        Ok(())
+    }
+
+    pub async fn delete_model(&self, id: &Uuid) -> Result<(), Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("delete from models where id = $5")
+            .await?;
+        connection.execute(&stmt, &[&id]).await?;
+        let id_str = id.to_string();
+        self.notifier.model_changed(&id_str).await?;
+        Ok(())
     }
 
     /* models */
@@ -586,9 +641,10 @@ impl WorkflowDataStore {
     }
 
     pub async fn add_storage_system(&self, system: &StorageSystemInput) -> Result<Uuid, Error> {
-        let connection = self.pool.get().await?;
-        let stmt = connection.prepare_cached("insert into storage_systems (type, name, description, configuration) values ($1, $2, $3, $4) returning id").await?;
-        let rows = connection
+        let mut connection = self.pool.get().await?;
+        let mut txn = connection.transaction().await?;
+        let stmt = txn.prepare_cached("insert into storage_systems (type, name, description, configuration) values ($1, $2, $3, $4) returning id").await?;
+        let rows = txn
             .query(
                 &stmt,
                 &[
@@ -602,24 +658,65 @@ impl WorkflowDataStore {
         if rows.is_empty() {
             return Ok(Uuid::nil());
         }
+        let id = rows.first().unwrap().get(0);
+        for model in system.models.iter() {
+            self.add_storage_system_model_txn(&mut txn, &id, model)
+                .await?;
+        }
+        txn.commit().await?;
+        let id_str = id.to_string();
+        self.notifier.storage_system_changed(&id_str).await?;
         // TODO: initialize storage system
-        Ok(rows.first().unwrap().get(0))
+        Ok(id)
+    }
+
+    pub async fn edit_storage_system(
+        &self,
+        id: &Uuid,
+        system: &StorageSystemInput,
+    ) -> Result<(), Error> {
+        let mut connection = self.pool.get().await?;
+        let mut txn = connection.transaction().await?;
+        let stmt = txn.prepare_cached("update storage_systems set type = $1, name = $2, description = $3, configuration = $4 where id = $5").await?;
+        txn.execute(
+            &stmt,
+            &[
+                &system.system_type,
+                &system.name,
+                &system.description,
+                &system.configuration,
+                &id,
+            ],
+        )
+        .await?;
+        let stmt = txn
+            .prepare_cached("delete from storage_system_models where system_id = $1")
+            .await?;
+        txn.execute(&stmt, &[&id]).await?;
+        for model in system.models.iter() {
+            self.add_storage_system_model_txn(&mut txn, &id, model)
+                .await?;
+        }
+        txn.commit().await?;
+        // TODO: initialize storage system
+        let id_str = id.to_string();
+        self.notifier.storage_system_changed(&id_str).await?;
+        Ok(())
     }
 
     /* storage systems */
 
     /* storage system models */
 
-    pub async fn add_storage_system_model(
+    async fn add_storage_system_model_txn(
         &self,
+        txn: &mut Transaction<'_>,
         system_id: &Uuid,
         model: &StorageSystemModelInput,
     ) -> Result<(), Error> {
         let model_id = Uuid::parse_str(model.model_id.as_str())?;
-        let connection = self.pool.get().await?;
-        let stmt = connection.prepare_cached("insert into storage_system_models (system_id, model_id, configuration) values ($1, $2, $3)").await?;
-        connection
-            .query(&stmt, &[&system_id, &model_id, &model.configuration])
+        let stmt = txn.prepare_cached("insert into storage_system_models (system_id, model_id, configuration) values ($1, $2, $3)").await?;
+        txn.query(&stmt, &[&system_id, &model_id, &model.configuration])
             .await?;
         Ok(())
     }
@@ -634,6 +731,17 @@ impl WorkflowDataStore {
             .await?;
         let rows = connection.query(&stmt, &[id]).await?;
         Ok(rows.into_iter().map(StorageSystemModel::from).collect())
+    }
+
+    pub async fn delete_storage_system(&self, id: &Uuid) -> Result<bool, Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("delete from storage_system where idf = $1")
+            .await?;
+        connection.query(&stmt, &[id]).await?;
+        let id_str = id.to_string();
+        self.notifier.storage_system_changed(&id_str).await?;
+        Ok(true)
     }
 
     /* storage system models */
@@ -659,7 +767,10 @@ impl WorkflowDataStore {
         if rows.is_empty() {
             return Ok(Uuid::nil());
         }
-        Ok(rows.first().unwrap().get(0))
+        let id: Uuid = rows.first().unwrap().get(0);
+        let id_str = id.to_string();
+        self.notifier.prompt_changed(&id_str).await?;
+        Ok(id)
     }
 
     pub async fn edit_prompt(&self, id: &Uuid, prompt: &PromptInput) -> Result<(), Error> {
@@ -679,6 +790,8 @@ impl WorkflowDataStore {
                 ],
             )
             .await?;
+        let id_str = id.to_string();
+        self.notifier.prompt_changed(&id_str).await?;
         Ok(())
     }
 
@@ -688,6 +801,8 @@ impl WorkflowDataStore {
             .prepare_cached("delete from prompts where id = $1")
             .await?;
         connection.execute(&stmt, &[id]).await?;
+        let id_str = id.to_string();
+        self.notifier.prompt_changed(&id_str).await?;
         Ok(())
     }
 
@@ -714,6 +829,49 @@ impl WorkflowDataStore {
 
     /* traits */
 
+    pub async fn get_traits(&self) -> Result<Vec<Trait>, Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("select * from traits order by name asc")
+            .await?;
+        let rows = connection.query(&stmt, &[]).await?;
+        let mut traits = Vec::<Trait>::new();
+        let id_stmt = connection
+            .prepare_cached("select workflow_id from trait_workflows where trait_id = $1")
+            .await?;
+        for row in rows.iter() {
+            let mut t: Trait = row.into();
+            let rows = connection.query(&id_stmt, &[&t.id]).await?;
+            t.workflow_ids = rows
+                .iter()
+                .map(|r| r.get::<&str, String>("workflow_id").to_string())
+                .collect();
+            traits.push(t);
+        }
+        Ok(traits)
+    }
+
+    pub async fn get_trait(&self, id: &String) -> Result<Option<Trait>, Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("select * from traits where id = $1")
+            .await?;
+        let rows = connection.query(&stmt, &[id]).await?;
+        let id_stmt = connection
+            .prepare_cached("select workflow_id from trait_workflows where trait_id = $1")
+            .await?;
+        if let Some(row) = rows.first() {
+            let mut t: Trait = row.into();
+            let rows = connection.query(&id_stmt, &[&t.id]).await?;
+            t.workflow_ids = rows
+                .iter()
+                .map(|r| r.get::<&str, String>("workflow_id").to_string())
+                .collect();
+            return Ok(Some(t));
+        }
+        Ok(None)
+    }
+
     pub async fn add_trait(&self, t: &TraitInput) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -729,6 +887,40 @@ impl WorkflowDataStore {
         for workflow_id in t.workflow_ids.iter() {
             connection.execute(&stmt, &[&t.id, workflow_id]).await?;
         }
+        self.notifier.trait_changed(&t.id).await?;
+        Ok(())
+    }
+
+    pub async fn edit_trait(&self, t: &TraitInput) -> Result<(), Error> {
+        let mut connection = self.pool.get().await?;
+        let transaction = connection.transaction().await?;
+        let stmt = transaction
+            .prepare_cached("update traits set name = $2, description = $3 where id = $1")
+            .await?;
+        transaction
+            .query(&stmt, &[&t.id, &t.name, &t.description])
+            .await?;
+        drop(stmt);
+        transaction
+            .execute("delete from trait_workflows where trait_id = $1", &[&t.id])
+            .await?;
+        let stmt = transaction
+            .prepare_cached("insert into trait_workflows (trait_id, workflow_id) values ($1, $2)")
+            .await?;
+        for workflow_id in t.workflow_ids.iter() {
+            transaction.execute(&stmt, &[&t.id, workflow_id]).await?;
+        }
+        transaction.commit().await?;
+        self.notifier.trait_changed(&t.id).await?;
+        Ok(())
+    }
+
+    pub async fn delete_trait(&self, id: &String) -> Result<(), Error> {
+        let connection = self.pool.get().await?;
+        connection
+            .execute("delete from traits where id = $1", &[&id])
+            .await?;
+        self.notifier.trait_changed(&id).await?;
         Ok(())
     }
 

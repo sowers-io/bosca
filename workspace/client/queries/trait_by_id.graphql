@@ -1,8 +1,10 @@
 query TraitById($id: String!) {
-    content {
-        trait(id: $id) {
-            id
-            workflowIds
+    workflows {
+        traits {
+            trait(id: $id) {
+                id
+                workflowIds
+            }
         }
     }
 }

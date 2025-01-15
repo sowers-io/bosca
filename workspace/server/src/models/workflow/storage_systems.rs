@@ -6,6 +6,7 @@ use serde_json::Value;
 use tokio_postgres::Row;
 use uuid::Uuid;
 use yaml_rust2::Yaml;
+use crate::models::workflow::storage_system_models::StorageSystemModelInput;
 
 #[derive(Enum, Debug, Copy, Clone, Eq, PartialEq)]
 pub enum StorageSystemType {
@@ -20,7 +21,7 @@ pub struct StorageSystem {
     pub system_type: StorageSystemType,
     pub name: String,
     pub description: String,
-    pub configuration: Value,
+    pub configuration: Option<Value>,
 }
 
 #[derive(InputObject)]
@@ -29,7 +30,8 @@ pub struct StorageSystemInput {
     pub system_type: StorageSystemType,
     pub name: String,
     pub description: String,
-    pub configuration: Value,
+    pub configuration: Option<Value>,
+    pub models: Vec<StorageSystemModelInput>,
 }
 
 impl From<Row> for StorageSystem {
@@ -99,7 +101,7 @@ impl From<&Yaml> for StorageSystem {
             )
             .unwrap(),
             description: yaml["description"].as_str().unwrap().to_string(),
-            configuration: into(&yaml["configuration"]),
+            configuration: Some(into(&yaml["configuration"])),
         }
     }
 }
@@ -117,7 +119,8 @@ impl From<&Yaml> for StorageSystemInput {
                 .as_str()
                 .unwrap_or("")
                 .to_string(),
-            configuration: into(&yaml["configuration"]),
+            configuration: Some(into(&yaml["configuration"])),
+            models: vec![],
         }
     }
 }

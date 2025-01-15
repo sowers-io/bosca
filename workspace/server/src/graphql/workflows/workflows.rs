@@ -13,14 +13,10 @@ use crate::models::workflow::execution_plan::WorkflowExecutionId;
 use crate::security::util::check_has_group;
 use async_graphql::{Context, Error, Object, Union};
 use uuid::Uuid;
+use crate::graphql::workflows::traits::TraitsObject;
+use crate::graphql::workflows::workflow_activity::WorkflowActivityObject;
 
 pub(crate) struct WorkflowsObject {}
-
-const ACTIVITIES: ActivitiesObject = ActivitiesObject {};
-const MODELS: ModelsObject = ModelsObject {};
-const PROMPTS: PromptsObject = PromptsObject {};
-const STATES: WorkflowStatesObject = WorkflowStatesObject {};
-const STORAGE_SYSTEMS: StorageSystemsObject = StorageSystemsObject {};
 
 #[allow(clippy::large_enum_variant)]
 #[derive(Union)]
@@ -45,24 +41,35 @@ impl WorkflowsObject {
         Ok(workflow.map(WorkflowObject::new))
     }
 
-    async fn activities(&self) -> &ActivitiesObject {
-        &ACTIVITIES
+    async fn workflow_activity(&self, ctx: &Context<'_>, id: i64) -> Result<Option<WorkflowActivityObject>, Error> {
+        check_has_group(ctx, WORKFLOW_MANAGERS_GROUP).await?;
+        let ctx = ctx.data::<BoscaContext>()?;
+        let workflow = ctx.workflow.get_workflow_activity(&id).await?;
+        Ok(workflow.map(|a| WorkflowActivityObject::new(None, &a)))
     }
 
-    async fn models(&self) -> &ModelsObject {
-        &MODELS
+    async fn activities(&self) -> ActivitiesObject {
+        ActivitiesObject {}
     }
 
-    async fn prompts(&self) -> &PromptsObject {
-        &PROMPTS
+    async fn models(&self) -> ModelsObject {
+        ModelsObject {}
     }
 
-    async fn states(&self) -> &WorkflowStatesObject {
-        &STATES
+    async fn prompts(&self) -> PromptsObject {
+        PromptsObject {}
     }
 
-    async fn storage_systems(&self) -> &StorageSystemsObject {
-        &STORAGE_SYSTEMS
+    async fn states(&self) -> WorkflowStatesObject {
+        WorkflowStatesObject {}
+    }
+
+    async fn traits(&self) -> TraitsObject {
+        TraitsObject {}
+    }
+
+    async fn storage_systems(&self) -> StorageSystemsObject {
+        StorageSystemsObject {}
     }
 
     async fn transitions(&self, ctx: &Context<'_>) -> Result<Vec<TransitionObject>, Error> {

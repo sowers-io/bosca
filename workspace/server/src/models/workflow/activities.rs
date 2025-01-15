@@ -67,19 +67,19 @@ pub struct WorkflowActivityModel {
 #[derive(Serialize, Deserialize, InputObject)]
 pub struct WorkflowActivityModelInput {
     pub model_id: String,
-    pub configuration: Value,
+    pub configuration: Option<Value>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorkflowActivityStorageSystem {
     pub system_id: Uuid,
-    pub configuration: Value,
+    pub configuration: Option<Value>,
 }
 
 #[derive(Serialize, Deserialize, InputObject)]
 pub struct WorkflowActivityStorageSystemInput {
     pub system_id: String,
-    pub configuration: Value,
+    pub configuration: Option<Value>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -91,7 +91,7 @@ pub struct WorkflowActivityPrompt {
 #[derive(Serialize, Deserialize, InputObject)]
 pub struct WorkflowActivityPromptInput {
     pub prompt_id: String,
-    pub configuration: Value,
+    pub configuration: Option<Value>,
 }
 
 #[derive(Serialize, Deserialize, InputObject)]
@@ -105,7 +105,7 @@ pub struct WorkflowActivityInput {
     pub models: Vec<WorkflowActivityModelInput>,
     pub storage_systems: Vec<WorkflowActivityStorageSystemInput>,
     pub prompts: Vec<WorkflowActivityPromptInput>,
-    pub configuration: Value,
+    pub configuration: Option<Value>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -268,7 +268,7 @@ impl From<&Yaml> for WorkflowActivityInput {
                 let p = item.1;
                 prompts.push(WorkflowActivityPromptInput {
                     prompt_id: item.0.as_str().unwrap().to_string(),
-                    configuration: into(&p["configuration"]),
+                    configuration: Some(into(&p["configuration"])),
                 })
             }
         }
@@ -278,7 +278,7 @@ impl From<&Yaml> for WorkflowActivityInput {
                 let m = item.1;
                 models.push(WorkflowActivityModelInput {
                     model_id: item.0.as_str().unwrap().to_string(),
-                    configuration: into(&m["configuration"]),
+                    configuration: Some(into(&m["configuration"])),
                 })
             }
         }
@@ -288,7 +288,7 @@ impl From<&Yaml> for WorkflowActivityInput {
                 let s = item.1;
                 storage_systems.push(WorkflowActivityStorageSystemInput {
                     system_id: item.0.as_str().unwrap().to_string(),
-                    configuration: into(&s["configuration"]),
+                    configuration: Some(into(&s["configuration"])),
                 })
             }
         }
@@ -330,7 +330,7 @@ impl From<&Yaml> for WorkflowActivityInput {
             storage_systems,
             inputs,
             outputs,
-            configuration: into(&yaml["configuration"]),
+            configuration: Some(into(&yaml["configuration"])),
         }
     }
 }

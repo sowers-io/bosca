@@ -193,7 +193,7 @@ impl MetadataMutationObject {
     ) -> Result<Option<WorkflowExecutionPlanObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::parse_str(metadata_id.as_str())?;
-        let t = ctx.content.get_trait(&trait_id).await?;
+        let t = ctx.workflow.get_trait(&trait_id).await?;
         if t.is_none() {
             return Ok(None);
         }

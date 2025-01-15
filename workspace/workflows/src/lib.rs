@@ -17,10 +17,12 @@ use crate::metadata::command::CommandActivity;
 use media::transcriptions::mapper::TranscriptionMapperActivity;
 use media::transcriptions::transcribe::TranscribeActivity;
 use crate::analytics::query::QueryActivity;
+use crate::collection::begin_transition_to::CollectionBeginTransitionToActivity;
 use crate::collection::delete::CollectionDeleteActivity;
 use crate::collection::set_public::CollectionSetPublicActivity;
 use crate::collection::set_ready::CollectionSetReadyActivity;
 use crate::media::transcriptions::mapper_to_foreach::TranscriptionMapperToForEachActivity;
+use crate::metadata::begin_transition_to::MetadataBeginTransitionToActivity;
 use crate::metadata::delete::MetadataDeleteActivity;
 use crate::metadata::foreach::MetadataForEachActivity;
 use crate::metadata::set_public::MetadataSetPublicActivity;
@@ -43,6 +45,7 @@ pub fn get_default_activities() -> Vec<Box<dyn Activity + Send + Sync>> {
         Box::new(CollectionSetReadyActivity::default()),
         Box::new(CollectionSetPublicActivity::default()),
         Box::new(CollectionDeleteActivity::default()),
+        Box::new(CollectionBeginTransitionToActivity::default()),
         Box::new(MetadataTraitsActivity::default()),
         Box::new(MetadataTransitionToActivity::default()),
         Box::new(MetadataTeraActivity::default()),
@@ -50,6 +53,7 @@ pub fn get_default_activities() -> Vec<Box<dyn Activity + Send + Sync>> {
         Box::new(MetadataSetReadyActivity::default()),
         Box::new(MetadataSetPublicActivity::default()),
         Box::new(MetadataDeleteActivity::default()),
+        Box::new(MetadataBeginTransitionToActivity::default()),
         Box::new(IndexActivity::default()),
         Box::new(MuxUploadActivity::default()),
         Box::new(TranscribeActivity::default()),
@@ -58,6 +62,7 @@ pub fn get_default_activities() -> Vec<Box<dyn Activity + Send + Sync>> {
         Box::new(PromptActivity::default()),
         Box::new(CommandActivity::default()),
         Box::new(QueryActivity::default()),
+
     ]
 }
 

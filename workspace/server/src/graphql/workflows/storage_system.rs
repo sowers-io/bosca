@@ -33,7 +33,7 @@ impl StorageSystemObject {
         &self.system.description
     }
 
-    async fn configuration(&self) -> &Value {
+    async fn configuration(&self) -> &Option<Value> {
         &self.system.configuration
     }
 

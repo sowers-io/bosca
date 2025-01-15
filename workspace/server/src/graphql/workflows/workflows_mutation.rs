@@ -14,6 +14,8 @@ use crate::context::BoscaContext;
 use crate::graphql::content::content::FindAttributeInput;
 use crate::graphql::content::metadata_mutation::WorkflowConfigurationInput;
 use crate::graphql::workflows::activities_mutation::ActivitiesMutationObject;
+use crate::graphql::workflows::storage_systems_mutation::StorageSystemsMutationObject;
+use crate::graphql::workflows::traits_mutation::TraitsMutationObject;
 use crate::models::workflow::transitions::BeginTransitionInput;
 use crate::util::transition::begin_transition;
 
@@ -76,6 +78,10 @@ impl WorkflowsMutationObject {
         WorkflowStatesMutationObject {}
     }
 
+    async fn traits(&self) -> TraitsMutationObject {
+        TraitsMutationObject {}
+    }
+
     async fn activities(&self) -> ActivitiesMutationObject {
         ActivitiesMutationObject {}
     }
@@ -83,6 +89,8 @@ impl WorkflowsMutationObject {
     async fn prompts(&self) -> PromptsMutationObject {
         PromptsMutationObject {}
     }
+
+    async fn storage_systems(&self) -> StorageSystemsMutationObject { StorageSystemsMutationObject {} }
 
     async fn expire_all(&self, ctx: &Context<'_>) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
