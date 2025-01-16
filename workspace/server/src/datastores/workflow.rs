@@ -603,6 +603,7 @@ impl WorkflowDataStore {
                 ],
             )
             .await?;
+        self.notifier.state_changed(&state.id).await?;
         Ok(())
     }
 
@@ -624,6 +625,7 @@ impl WorkflowDataStore {
                 ],
             )
             .await?;
+        self.notifier.state_changed(&state.id).await?;
         Ok(())
     }
 
@@ -631,6 +633,7 @@ impl WorkflowDataStore {
         let connection = self.pool.get().await?;
         let stmt = connection.prepare_cached("delete from workflow_states where id = $1").await?;
         connection.execute(&stmt, &[&id]).await?;
+        self.notifier.state_changed(id).await?;
         Ok(())
     }
 

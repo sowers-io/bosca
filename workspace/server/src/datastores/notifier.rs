@@ -102,6 +102,17 @@ impl Notifier {
             }))
     }
 
+    pub async fn listen_state_changes(&self) -> Result<impl Stream<Item=String>, Error> {
+        let connection = self.redis.get().await?;
+        let mut pubsub = connection.get_pubsub().await?;
+        pubsub.subscribe("state_changes").await?;
+        Ok(pubsub
+            .into_on_message()
+            .filter_map(|msg| async move {
+                msg.get_payload().ok()
+            }))
+    }
+
     pub async fn metadata_changed(&self, id: &Uuid) -> async_graphql::Result<(), Error> {
         let connection = self.redis.get().await?;
         let mut conn = connection.get_connection().await?;
@@ -170,6 +181,15 @@ impl Notifier {
         let mut conn = connection.get_connection().await?;
         let id = id.to_string();
         conn.publish::<&str, String, ()>("prompt_changes", id)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn state_changed(&self, id: &str) -> async_graphql::Result<(), Error> {
+        let connection = self.redis.get().await?;
+        let mut conn = connection.get_connection().await?;
+        let id = id.to_string();
+        conn.publish::<&str, String, ()>("state_changes", id)
             .await?;
         Ok(())
     }
