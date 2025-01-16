@@ -5,16 +5,16 @@ use crate::graphql::workflows::models::ModelsObject;
 use crate::graphql::workflows::prompts::PromptsObject;
 use crate::graphql::workflows::states::WorkflowStatesObject;
 use crate::graphql::workflows::storage_systems::StorageSystemsObject;
-use crate::graphql::workflows::transition::TransitionObject;
+use crate::graphql::workflows::traits::TraitsObject;
+use crate::graphql::workflows::transitions::TransitionsObject;
 use crate::graphql::workflows::workflow::WorkflowObject;
+use crate::graphql::workflows::workflow_activity::WorkflowActivityObject;
 use crate::graphql::workflows::workflow_execution_plan::WorkflowExecutionPlanObject;
 use crate::graphql::workflows::workflow_job::WorkflowJobObject;
 use crate::models::workflow::execution_plan::WorkflowExecutionId;
 use crate::security::util::check_has_group;
 use async_graphql::{Context, Error, Object, Union};
 use uuid::Uuid;
-use crate::graphql::workflows::traits::TraitsObject;
-use crate::graphql::workflows::workflow_activity::WorkflowActivityObject;
 
 pub(crate) struct WorkflowsObject {}
 
@@ -64,19 +64,16 @@ impl WorkflowsObject {
         WorkflowStatesObject {}
     }
 
+    async fn transitions(&self) -> TransitionsObject {
+        TransitionsObject {}
+    }
+
     async fn traits(&self) -> TraitsObject {
         TraitsObject {}
     }
 
     async fn storage_systems(&self) -> StorageSystemsObject {
         StorageSystemsObject {}
-    }
-
-    async fn transitions(&self, ctx: &Context<'_>) -> Result<Vec<TransitionObject>, Error> {
-        check_has_group(ctx, WORKFLOW_MANAGERS_GROUP).await?;
-        let ctx = ctx.data::<BoscaContext>()?;
-        let states = ctx.workflow.get_transitions().await?;
-        Ok(states.into_iter().map(TransitionObject::new).collect())
     }
 
     async fn next_job(

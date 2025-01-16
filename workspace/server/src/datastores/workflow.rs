@@ -606,6 +606,34 @@ impl WorkflowDataStore {
         Ok(())
     }
 
+    pub async fn edit_state(&self, state: &WorkflowStateInput) -> Result<(), Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection.prepare_cached("update workflow_states set type = $2, name = $3, description = $4, configuration = $5, workflow_id = $6, entry_workflow_id = $7, exit_workflow_id = $8 where id = $1").await?;
+        connection
+            .query(
+                &stmt,
+                &[
+                    &state.id,
+                    &state.state_type,
+                    &state.name,
+                    &state.description,
+                    &state.configuration,
+                    &state.workflow_id,
+                    &state.entry_workflow_id,
+                    &state.exit_workflow_id,
+                ],
+            )
+            .await?;
+        Ok(())
+    }
+
+    pub async fn delete_state(&self, id: &String) -> Result<(), Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection.prepare_cached("delete from workflow_states where id = $1").await?;
+        connection.execute(&stmt, &[&id]).await?;
+        Ok(())
+    }
+
     /* states */
 
     /* storage systems */
@@ -933,6 +961,24 @@ impl WorkflowDataStore {
         let stmt = connection.prepare_cached("insert into workflow_state_transitions (from_state_id, to_state_id, description) values ($1, $2, $3)").await?;
         connection
             .query(&stmt, &[&t.from_state_id, &t.to_state_id, &t.description])
+            .await?;
+        Ok(())
+    }
+
+    pub async fn edit_transition(&self, t: &TransitionInput) -> Result<(), Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection.prepare_cached("update workflow_state_transitions set description = $3 where from_state_id = $1 and to_state_id = $2").await?;
+        connection
+            .query(&stmt, &[&t.from_state_id, &t.to_state_id, &t.description])
+            .await?;
+        Ok(())
+    }
+
+    pub async fn delete_transition(&self, from_state_id: &String, to_state_id: &String) -> Result<(), Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection.prepare_cached("delete workflow_state_transitions where from_state_id = $1 and to_state_id = $2").await?;
+        connection
+            .query(&stmt, &[from_state_id, to_state_id])
             .await?;
         Ok(())
     }

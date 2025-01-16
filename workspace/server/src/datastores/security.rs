@@ -77,10 +77,10 @@ impl SecurityDataStore {
         self.get_group_by_name(&group).await
     }
 
-    pub async fn get_workflow_manager_group(&self) -> Result<Group, Error> {
-        let group = WORKFLOW_MANAGERS_GROUP.to_string();
-        self.get_group_by_name(&group).await
-    }
+    // pub async fn get_workflow_manager_group(&self) -> Result<Group, Error> {
+    //     let group = WORKFLOW_MANAGERS_GROUP.to_string();
+    //     self.get_group_by_name(&group).await
+    // }
 
     pub async fn get_service_account_group(&self) -> Result<Group, Error> {
         let group = SERVICE_ACCOUNT_GROUP.to_string();

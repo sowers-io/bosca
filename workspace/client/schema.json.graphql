@@ -374,7 +374,7 @@ type Source {
 }
 
 type StorageSystem {
-    configuration: JSON!
+    configuration: JSON
     description: String!
     id: String!
     models: [StorageSystemModel!]!
@@ -439,6 +439,17 @@ type Transition {
     toStateId: String!
 }
 
+type Transitions {
+    all: [Transition!]!
+    transition(fromStateId: String!, toStateId: String!): Transition
+}
+
+type TransitionsMutation {
+    add(transition: TransitionInput!): Transition
+    delete(fromStateId: String!, toStateId: String!): Boolean!
+    edit(transition: TransitionInput!): Transition
+}
+
 type Workflow {
     activities: [WorkflowActivity!]!
     configuration: JSON!
@@ -477,7 +488,7 @@ type WorkflowActivityPrompt {
 }
 
 type WorkflowActivityStorageSystem {
-    configuration: JSON!
+    configuration: JSON
     system: StorageSystem!
 }
 
@@ -551,6 +562,8 @@ type WorkflowStates {
 
 type WorkflowStatesMutation {
     add(state: WorkflowStateInput!): WorkflowState
+    delete(id: String!): Boolean!
+    edit(state: WorkflowStateInput!): WorkflowState
 }
 
 type Workflows {
@@ -564,7 +577,7 @@ type Workflows {
     states: WorkflowStates!
     storageSystems: StorageSystems!
     traits: Traits!
-    transitions: [Transition!]!
+    transitions: Transitions!
     workflow(id: String!): Workflow
     workflowActivity(id: Int!): WorkflowActivity
 }
@@ -590,6 +603,7 @@ type WorkflowsMutation {
     states: WorkflowStatesMutation!
     storageSystems: StorageSystemsMutation!
     traits: TraitsMutation!
+    transitions: TransitionsMutation!
 }
 
 enum ActivityParameterType {
@@ -824,7 +838,7 @@ input SearchQuery {
 }
 
 input StorageSystemInput {
-    configuration: JSON!
+    configuration: JSON
     description: String!
     models: [StorageSystemModelInput!]!
     name: String!
@@ -843,9 +857,15 @@ input TraitInput {
     workflowIds: [String!]!
 }
 
+input TransitionInput {
+    description: String!
+    fromStateId: String!
+    toStateId: String!
+}
+
 input WorkflowActivityInput {
     activityId: String!
-    configuration: JSON!
+    configuration: JSON
     description: String!
     executionGroup: Int!
     inputs: [WorkflowActivityParameterInput!]!
@@ -857,7 +877,7 @@ input WorkflowActivityInput {
 }
 
 input WorkflowActivityModelInput {
-    configuration: JSON!
+    configuration: JSON
     modelId: String!
 }
 
@@ -867,12 +887,12 @@ input WorkflowActivityParameterInput {
 }
 
 input WorkflowActivityPromptInput {
-    configuration: JSON!
+    configuration: JSON
     promptId: String!
 }
 
 input WorkflowActivityStorageSystemInput {
-    configuration: JSON!
+    configuration: JSON
     systemId: String!
 }
 

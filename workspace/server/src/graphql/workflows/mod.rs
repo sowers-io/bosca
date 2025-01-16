@@ -31,3 +31,5 @@ pub mod workflows_mutation;
 pub mod traits;
 pub mod traits_mutation;
 pub mod storage_systems_mutation;
+pub mod transitions;
+pub mod transitions_mutation;

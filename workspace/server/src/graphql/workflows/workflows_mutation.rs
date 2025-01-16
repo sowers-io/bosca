@@ -16,6 +16,7 @@ use crate::graphql::content::metadata_mutation::WorkflowConfigurationInput;
 use crate::graphql::workflows::activities_mutation::ActivitiesMutationObject;
 use crate::graphql::workflows::storage_systems_mutation::StorageSystemsMutationObject;
 use crate::graphql::workflows::traits_mutation::TraitsMutationObject;
+use crate::graphql::workflows::transitions_mutation::TransitionsMutationObject;
 use crate::models::workflow::transitions::BeginTransitionInput;
 use crate::util::transition::begin_transition;
 
@@ -76,6 +77,10 @@ impl WorkflowsMutationObject {
 
     async fn states(&self) -> WorkflowStatesMutationObject {
         WorkflowStatesMutationObject {}
+    }
+
+    async fn transitions(&self) -> TransitionsMutationObject {
+        TransitionsMutationObject {}
     }
 
     async fn traits(&self) -> TraitsMutationObject {
