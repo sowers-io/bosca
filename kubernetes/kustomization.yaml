@@ -13,6 +13,7 @@ resources:
   - cache.yaml
   - notifier-pubsub.yaml
   - server
+  - workflow-server
   - analytics-backend
   - analytics-frontend
   - analytics-query
