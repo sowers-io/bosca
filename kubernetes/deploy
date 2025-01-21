@@ -16,7 +16,6 @@ if [ "$IMAGE_TAG" != "" ]; then
   echo_image "ghcr.io/sowers-io/bosca/server" $IMAGE_TAG
   echo_image "ghcr.io/sowers-io/bosca/analytics" $IMAGE_TAG
   echo_image "ghcr.io/sowers-io/bosca/runner" $IMAGE_TAG
-  echo_image "ghcr.io/sowers-io/bosca/admin" $IMAGE_TAG
 fi
 
 kubectl kustomize | kubectl --kubeconfig config -n bosca apply -f -
@@ -25,4 +24,3 @@ kubectl --kubeconfig config rollout status -n bosca deployment/analytics-backend
 kubectl --kubeconfig config rollout status -n bosca deployment/analytics-frontend
 kubectl --kubeconfig config rollout status -n bosca deployment/server
 kubectl --kubeconfig config rollout status -n bosca deployment/runner
-kubectl --kubeconfig config rollout status -n bosca deployment/admin
