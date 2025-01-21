@@ -100,15 +100,6 @@ jobs:
           registry: ghcr.io
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
-      - name: Build and push admin
-        uses: docker/build-push-action@v3
-        with:
-          context: workspace/admin
-          file: workspace/admin/Dockerfile
-          push: true
-          tags: |
-            ghcr.io/sowers-io/bosca/admin:latest
-            ghcr.io/sowers-io/bosca/admin:${{ github.sha }}
       - name: Build and push imageproxy
         uses: docker/build-push-action@v3
         with:
