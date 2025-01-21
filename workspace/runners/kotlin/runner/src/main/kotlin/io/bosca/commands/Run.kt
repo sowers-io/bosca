@@ -22,8 +22,6 @@ class Run(
 ) : SuspendingCliktCommand() {
 
     override suspend fun run() = coroutineScope {
-        echo("Running...")
-
         val runners = mutableListOf<JobRunner>()
         var server: HttpServer? = null
 

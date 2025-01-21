@@ -40,12 +40,196 @@
       "unsafeAllocated": true
     },
     {
-      "type": "com.meilisearch.sdk.model.TaskInfo",
+      "type": "com.meilisearch.sdk.Index",
+      "allDeclaredFields": true,
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.meilisearch.sdk.exceptions.APIError",
+      "allDeclaredConstructors": true,
+      "allPublicConstructors": true,
+      "allDeclaredMethods": true,
+      "allPublicMethods": true,
+      "unsafeAllocated": true,
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.meilisearch.sdk.model.EmbedderInputType",
       "allDeclaredConstructors": true,
       "allPublicConstructors": true,
       "allDeclaredMethods": true,
       "allPublicMethods": true,
       "unsafeAllocated": true
+    },
+    {
+      "type": "com.meilisearch.sdk.model.EmbedderSource",
+      "allDeclaredConstructors": true,
+      "allPublicConstructors": true,
+      "allDeclaredMethods": true,
+      "allPublicMethods": true,
+      "unsafeAllocated": true
+    },
+    {
+      "type": "com.meilisearch.sdk.model.Embedders",
+      "allDeclaredConstructors": true,
+      "allPublicConstructors": true,
+      "allDeclaredMethods": true,
+      "allPublicMethods": true,
+      "unsafeAllocated": true
+    },
+    {
+      "type": "com.meilisearch.sdk.model.FacetSortValue",
+      "allDeclaredConstructors": true,
+      "allPublicConstructors": true,
+      "allDeclaredMethods": true,
+      "allPublicMethods": true,
+      "unsafeAllocated": true
+    },
+    {
+      "type": "com.meilisearch.sdk.model.Faceting",
+      "allDeclaredConstructors": true,
+      "allPublicConstructors": true,
+      "allDeclaredMethods": true,
+      "allPublicMethods": true,
+      "unsafeAllocated": true,
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.meilisearch.sdk.model.LocalizedAttribute",
+      "allDeclaredConstructors": true,
+      "allPublicConstructors": true,
+      "allDeclaredMethods": true,
+      "allPublicMethods": true,
+      "unsafeAllocated": true
+    },
+    {
+      "type": "com.meilisearch.sdk.model.Pagination",
+      "allDeclaredConstructors": true,
+      "allPublicConstructors": true,
+      "allDeclaredMethods": true,
+      "allPublicMethods": true,
+      "unsafeAllocated": true,
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.meilisearch.sdk.model.Settings",
+      "allDeclaredConstructors": true,
+      "allPublicConstructors": true,
+      "allDeclaredMethods": true,
+      "allPublicMethods": true,
+      "unsafeAllocated": true,
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.meilisearch.sdk.model.SwapIndexesParams",
+      "allDeclaredConstructors": true,
+      "allPublicConstructors": true,
+      "allDeclaredMethods": true,
+      "allPublicMethods": true,
+      "unsafeAllocated": true
+    },
+    {
+      "type": "com.meilisearch.sdk.model.Task",
+      "allDeclaredConstructors": true,
+      "allPublicConstructors": true,
+      "allDeclaredMethods": true,
+      "allPublicMethods": true,
+      "unsafeAllocated": true,
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.meilisearch.sdk.model.TaskDetails",
+      "allDeclaredConstructors": true,
+      "allPublicConstructors": true,
+      "allDeclaredMethods": true,
+      "allPublicMethods": true,
+      "unsafeAllocated": true,
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.meilisearch.sdk.model.TaskError",
+      "allDeclaredConstructors": true,
+      "allPublicConstructors": true,
+      "allDeclaredMethods": true,
+      "allPublicMethods": true,
+      "unsafeAllocated": true,
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.meilisearch.sdk.model.TaskInfo",
+      "allDeclaredConstructors": true,
+      "allPublicConstructors": true,
+      "allDeclaredMethods": true,
+      "allPublicMethods": true,
+      "unsafeAllocated": true,
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.meilisearch.sdk.model.TaskStatus",
+      "allDeclaredConstructors": true,
+      "allPublicConstructors": true,
+      "allDeclaredMethods": true,
+      "allPublicMethods": true,
+      "unsafeAllocated": true
+    },
+    {
+      "type": "com.meilisearch.sdk.model.TypoTolerance",
+      "allDeclaredConstructors": true,
+      "allPublicConstructors": true,
+      "allDeclaredMethods": true,
+      "allPublicMethods": true,
+      "unsafeAllocated": true,
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
     },
     {
       "type": "apple.security.AppleProvider",
@@ -234,6 +418,131 @@
           "name": "_state$volatile"
         }
       ]
+    },
+    {
+      "type": "com.fasterxml.jackson.databind.ext.Java7SupportImpl",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
+      "type": "com.oracle.truffle.api.debug.impl.DebuggerInstrumentProvider"
+    },
+    {
+      "type": "com.oracle.truffle.api.nodes.RootNode",
+      "fields": [
+        {
+          "name": "lock"
+        }
+      ]
+    },
+    {
+      "type": "com.oracle.truffle.js.lang.JavaScriptLanguageProvider"
+    },
+    {
+      "type": "com.oracle.truffle.js.parser.GraalJSEvaluator"
+    },
+    {
+      "type": "com.oracle.truffle.js.runtime.builtins.JSFunctionData",
+      "fields": [
+        {
+          "name": "callTarget"
+        },
+        {
+          "name": "constructNewTarget"
+        },
+        {
+          "name": "constructTarget"
+        },
+        {
+          "name": "rootNode"
+        }
+      ]
+    },
+    {
+      "type": "com.oracle.truffle.object.CoreLayoutFactory"
+    },
+    {
+      "type": "com.oracle.truffle.object.DynamicObjectLibraryImplGen$DynamicObjectLibraryProvider"
+    },
+    {
+      "type": "com.oracle.truffle.object.ShapeImpl",
+      "fields": [
+        {
+          "name": "leafAssumption"
+        },
+        {
+          "name": "sharedPropertyAssumptions"
+        },
+        {
+          "name": "transitionMap"
+        }
+      ]
+    },
+    {
+      "type": "com.oracle.truffle.object.TrieTransitionMap",
+      "fields": [
+        {
+          "name": "map"
+        }
+      ]
+    },
+    {
+      "type": "com.oracle.truffle.polyglot.PolyglotImpl"
+    },
+    {
+      "type": "com.oracle.truffle.polyglot.PolyglotLanguageInstance",
+      "fields": [
+        {
+          "name": "guestToHostCodeCache"
+        }
+      ]
+    },
+    {
+      "type": "com.oracle.truffle.polyglot.WeakAssumedValue",
+      "fields": [
+        {
+          "name": "profile"
+        }
+      ]
+    },
+    {
+      "type": "com.oracle.truffle.regex.RegexLanguageProvider"
+    },
+    {
+      "type": "com.oracle.truffle.runtime.DefaultLoopNodeFactory"
+    },
+    {
+      "type": "com.oracle.truffle.runtime.LibTruffleAttachResourceProvider"
+    },
+    {
+      "type": "com.oracle.truffle.runtime.OptimizedCallTarget",
+      "fields": [
+        {
+          "name": "argumentsProfile"
+        },
+        {
+          "name": "nodeRewritingAssumption"
+        },
+        {
+          "name": "returnProfile"
+        },
+        {
+          "name": "speculationLog"
+        },
+        {
+          "name": "validRootAssumption"
+        }
+      ]
+    },
+    {
+      "type": "com.oracle.truffle.runtime.hotspot.HotSpotTruffleRuntimeAccess"
+    },
+    {
+      "type": "com.oracle.truffle.runtime.jfr.impl.ProviderImpl"
     },
     {
       "type": "kotlinx.coroutines.CancelledContinuation",
