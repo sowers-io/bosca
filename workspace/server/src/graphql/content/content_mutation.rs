@@ -1,6 +1,7 @@
 use crate::graphql::content::collection_mutation::CollectionMutationObject;
 use crate::graphql::content::metadata_mutation::MetadataMutationObject;
 use async_graphql::{Context, Error, Object};
+use log::error;
 use crate::context::BoscaContext;
 use crate::models::content::search::SearchDocumentInput;
 use crate::util::storage::index_documents;
@@ -39,7 +40,11 @@ impl ContentMutationObject {
                     content: "".to_owned(),
                 });
             }
-            index_documents(ctx, &search_documents, &storage_system).await?;
+            if let Some(storage_system) = &storage_system {
+                index_documents(ctx, &search_documents, storage_system).await?;
+            } else {
+                error!("error, failed to index, no storage system")
+            }
             search_documents.clear();
         }
         offset = 0;
@@ -56,7 +61,11 @@ impl ContentMutationObject {
                     content: "".to_owned(),
                 });
             }
-            index_documents(ctx, &search_documents, &storage_system).await?;
+            if let Some(storage_system) = &storage_system {
+                index_documents(ctx, &search_documents, storage_system).await?;
+            } else {
+                error!("error, failed to index, no storage system")
+            }
             search_documents.clear();
         }
         Ok(true)

@@ -34,8 +34,8 @@ pub struct StorageSystemInput {
     pub models: Vec<StorageSystemModelInput>,
 }
 
-impl From<Row> for StorageSystem {
-    fn from(row: Row) -> Self {
+impl From<&Row> for StorageSystem {
+    fn from(row: &Row) -> Self {
         Self {
             id: row.get("id"),
             name: row.get("name"),

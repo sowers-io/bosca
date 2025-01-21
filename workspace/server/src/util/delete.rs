@@ -26,10 +26,11 @@ pub async fn delete_collection(ctx: &BoscaContext, collection_id: &Uuid, recursi
             }
         }
     }
-    let storage_system = ctx.workflow
+    if let Some(storage_system) = ctx.workflow
         .get_default_search_storage_system()
-        .await?;
-    storage_system_collection_delete(&collection, &storage_system, &ctx.search).await?;
+        .await? {
+        storage_system_collection_delete(&collection, &storage_system, &ctx.search).await?;
+    }
     ctx.content.delete_collection(collection_id).await?;
     Ok(())
 }

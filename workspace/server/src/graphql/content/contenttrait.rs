@@ -27,6 +27,10 @@ impl TraitObject {
         &self.trait_.description
     }
 
+    async fn content_types(&self) -> &Vec<String> {
+        &self.trait_.content_types
+    }
+
     async fn workflow_ids(&self) -> &Vec<String> {
         &self.trait_.workflow_ids
     }

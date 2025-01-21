@@ -1,6 +1,5 @@
 use std::sync::atomic::AtomicI32;
 
-pub mod yaml;
 pub mod storage;
 pub mod delete;
 pub mod transition;

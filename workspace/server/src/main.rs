@@ -19,8 +19,6 @@ use crate::models::security::credentials::PasswordCredential;
 use crate::models::security::permission::{Permission, PermissionAction};
 use crate::security::authorization_extension::{get_anonymous_principal, get_auth_header, get_cookie_header, Authorization};
 use crate::security::jwt::{Jwt, Keys};
-use crate::util::yaml::parse_string;
-use crate::worklfow::configuration::configure;
 use crate::worklfow::queue::JobQueues;
 use async_graphql::{http::GraphiQLSource, Error, Schema};
 use async_graphql_axum::{GraphQLRequest, GraphQLResponse};
@@ -44,7 +42,6 @@ use std::env;
 use std::fs::create_dir_all;
 use std::path::{Path, PathBuf};
 use std::process::exit;
-use std::str::from_utf8;
 use std::sync::Arc;
 use std::sync::atomic::Ordering::Relaxed;
 use std::time::Duration;
@@ -244,30 +241,6 @@ async fn build_redis_client() -> Result<RedisClient, Error> {
     Ok(RedisClient::new(url).await?)
 }
 
-async fn initialize_workflow(ctx: &BoscaContext) {
-    let current = ctx.workflow.get_workflows().await.unwrap();
-    if !current.is_empty() {
-        return;
-    }
-    let default_workflow_contents = from_utf8(include_bytes!("../workflows.yaml")).unwrap();
-    let yaml = parse_string(default_workflow_contents).unwrap();
-    if configure(&yaml, &ctx.workflow).await {
-        let storage_system = ctx.workflow.get_default_search_storage_system().await.unwrap();
-        let configuration = storage_system.configuration;
-        if configuration.is_none() {
-            return;
-        }
-        let configuration = configuration.unwrap();
-        let index_name = configuration.get("indexName").unwrap().as_str().unwrap().to_owned();
-        let create_task = ctx.search.create_index(index_name.clone(), Some("_id")).await.unwrap();
-        ctx.search.wait_for_task(create_task, None, None).await.unwrap();
-        let index = ctx.search.get_index(index_name).await.unwrap();
-        let mut settings = index.get_settings().await.unwrap();
-        settings.filterable_attributes = Some(vec!["_type".to_owned()]);
-        index.set_settings(&settings).await.unwrap();
-    }
-}
-
 async fn initialize_security(datastore: &SecurityDataStore) {
     match datastore.get_principal_by_identifier("admin").await {
         Ok(_) => {}
@@ -297,6 +270,7 @@ async fn initialize_content(ctx: &BoscaContext) {
     {
         Some(_) => {}
         None => {
+            ctx.workflow.initialize_default_search_index().await.unwrap();
             let input = CollectionInput {
                 parent_collection_id: None,
                 name: "Root".to_string(),
@@ -326,8 +300,11 @@ async fn initialize_content(ctx: &BoscaContext) {
                 metadata_id: None,
                 content: "".to_owned()
             }];
-            let storage_system = ctx.workflow.get_default_search_storage_system().await.unwrap();
-            index_documents_no_checks(ctx, &search_docs, &storage_system).await.unwrap();
+            if let Some(storage_system) = ctx.workflow.get_default_search_storage_system().await.unwrap() {
+                index_documents_no_checks(ctx, &search_docs, &storage_system).await.unwrap();
+            } else {
+                error!("failed to index documents, missing storage system");
+            }
         }
     }
 }
@@ -400,6 +377,7 @@ async fn main() {
     let redis_client = build_redis_client().await.unwrap();
     let jobs = JobQueues::new(Arc::clone(&bosca_pool), redis_client.clone());
     let notifier = Arc::new(Notifier::new(redis_client.clone()));
+    let search = build_search_client();
     let ctx = BoscaContext {
         security: SecurityDataStore::new(
             Arc::clone(&bosca_pool),
@@ -410,16 +388,16 @@ async fn main() {
             Arc::clone(&bosca_pool),
             jobs.clone(),
             Arc::clone(&notifier),
+            Arc::clone(&search),
         ),
         queries: PersistedQueriesDataStore::new(Arc::clone(&bosca_pool)).await,
         content: ContentDataStore::new(bosca_pool, Arc::clone(&notifier)),
         notifier,
-        search: build_search_client(),
+        search,
         storage: build_object_storage(),
         principal: get_anonymous_principal(),
     };
 
-    initialize_workflow(&ctx).await;
     initialize_security(&ctx.security).await;
     initialize_content(&ctx).await;
 

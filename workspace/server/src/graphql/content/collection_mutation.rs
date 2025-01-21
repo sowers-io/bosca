@@ -3,6 +3,7 @@ use crate::graphql::content::permission::PermissionObject;
 use crate::models::content::collection::{CollectionChildInput, CollectionInput};
 use crate::models::security::permission::{Permission, PermissionAction, PermissionInput};
 use async_graphql::*;
+use log::error;
 use uuid::Uuid;
 use crate::context::BoscaContext;
 use crate::models::content::collection_workflow_state::{CollectionWorkflowCompleteState, CollectionWorkflowState};
@@ -53,7 +54,11 @@ impl CollectionMutationObject {
                 collection_id: Some(collection_id.to_string()),
                 content: "".to_owned(),
             }];
-            index_documents(ctx, &documents, &storage_system).await?;
+            if let Some(storage_system) = storage_system {
+                index_documents(ctx, &documents, &storage_system).await?;
+            } else {
+                error!("failed to index, default search storage system not configured");
+            }
         }
         match ctx.content.get_collection(&collection_id).await? {
             Some(collection) => Ok(collection.into()),

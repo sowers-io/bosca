@@ -20,6 +20,7 @@ use crate::worklfow::queue::JobQueues;
 use async_graphql::*;
 use chrono::Utc;
 use deadpool_postgres::{GenericClient, Pool, Transaction};
+use meilisearch_sdk::client::Client;
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
@@ -31,14 +32,21 @@ pub struct WorkflowDataStore {
     pool: Arc<Pool>,
     queues: JobQueues,
     notifier: Arc<Notifier>,
+    search: Arc<Client>,
 }
 
 impl WorkflowDataStore {
-    pub fn new(pool: Arc<Pool>, queues: JobQueues, notifier: Arc<Notifier>) -> Self {
+    pub fn new(
+        pool: Arc<Pool>,
+        queues: JobQueues,
+        notifier: Arc<Notifier>,
+        search: Arc<Client>,
+    ) -> Self {
         Self {
             pool,
             queues,
             notifier,
+            search,
         }
     }
 
@@ -324,7 +332,11 @@ impl WorkflowDataStore {
             activity.execution_group
         };
         let workflow_id = workflow_id.to_owned();
-        let mut configuration = activity.configuration.as_ref().unwrap_or(&Value::Null).clone();
+        let mut configuration = activity
+            .configuration
+            .as_ref()
+            .unwrap_or(&Value::Null)
+            .clone();
         if configuration.is_null() {
             configuration = Value::Object(serde_json::Map::new());
         }
@@ -635,7 +647,9 @@ impl WorkflowDataStore {
 
     pub async fn delete_state(&self, id: &String) -> Result<(), Error> {
         let connection = self.pool.get().await?;
-        let stmt = connection.prepare_cached("delete from workflow_states where id = $1").await?;
+        let stmt = connection
+            .prepare_cached("delete from workflow_states where id = $1")
+            .await?;
         connection.execute(&stmt, &[&id]).await?;
         self.notifier.state_changed(id).await?;
         Ok(())
@@ -651,16 +665,16 @@ impl WorkflowDataStore {
             .prepare_cached("select * from storage_systems")
             .await?;
         let rows = connection.query(&stmt, &[]).await?;
-        Ok(rows.into_iter().map(StorageSystem::from).collect())
+        Ok(rows.iter().map(StorageSystem::from).collect())
     }
 
-    pub async fn get_default_search_storage_system(&self) -> Result<StorageSystem, Error> {
+    pub async fn get_default_search_storage_system(&self) -> Result<Option<StorageSystem>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached("select * from storage_systems where name = 'Default Search'")
             .await?;
-        let mut rows = connection.query(&stmt, &[]).await?;
-        Ok(rows.remove(0).into())
+        let rows = connection.query(&stmt, &[]).await?;
+        Ok(rows.first().map(|r| r.into()))
     }
 
     pub async fn get_storage_system(&self, id: &Uuid) -> Result<Option<StorageSystem>, Error> {
@@ -668,11 +682,8 @@ impl WorkflowDataStore {
         let stmt = connection
             .prepare_cached("select * from storage_systems where id = $1")
             .await?;
-        let mut rows = connection.query(&stmt, &[id]).await?;
-        if rows.is_empty() {
-            return Ok(None);
-        }
-        Ok(Some(rows.remove(0).into()))
+        let rows = connection.query(&stmt, &[id]).await?;
+        Ok(rows.first().map(|r| r.into()))
     }
 
     pub async fn add_storage_system(&self, system: &StorageSystemInput) -> Result<Uuid, Error> {
@@ -699,10 +710,37 @@ impl WorkflowDataStore {
                 .await?;
         }
         txn.commit().await?;
+
         let id_str = id.to_string();
         self.notifier.storage_system_changed(&id_str).await?;
         // TODO: initialize storage system
         Ok(id)
+    }
+
+    pub async fn initialize_default_search_index(&self) -> Result<(), Error> {
+        let systems = self.get_storage_systems().await?;
+        let Some(storage_system) = systems.iter().find(|s| s.name == "Default Search") else {
+            return Err(Error::new("Default search storage system not found".to_string()));
+        };
+        let Some(configuration) = &storage_system.configuration else {
+            return Ok(());
+        };
+        let index_name = configuration
+            .get("indexName")
+            .unwrap()
+            .as_str()
+            .unwrap()
+            .to_owned();
+        let create_task = self
+            .search
+            .create_index(index_name.clone(), Some("_id"))
+            .await?;
+        self.search.wait_for_task(create_task, None, None).await?;
+        let index = self.search.get_index(index_name).await?;
+        let mut settings = index.get_settings().await?;
+        settings.filterable_attributes = Some(vec!["_type".to_owned()]);
+        index.set_settings(&settings).await?;
+        Ok(())
     }
 
     pub async fn edit_storage_system(
@@ -871,15 +909,23 @@ impl WorkflowDataStore {
             .await?;
         let rows = connection.query(&stmt, &[]).await?;
         let mut traits = Vec::<Trait>::new();
-        let id_stmt = connection
+        let workflow_stmt = connection
             .prepare_cached("select workflow_id from trait_workflows where trait_id = $1")
+            .await?;
+        let type_stmt = connection
+            .prepare_cached("select content_type from trait_content_types where trait_id = $1")
             .await?;
         for row in rows.iter() {
             let mut t: Trait = row.into();
-            let rows = connection.query(&id_stmt, &[&t.id]).await?;
+            let rows = connection.query(&workflow_stmt, &[&t.id]).await?;
             t.workflow_ids = rows
                 .iter()
                 .map(|r| r.get::<&str, String>("workflow_id").to_string())
+                .collect();
+            let rows = connection.query(&type_stmt, &[&t.id]).await?;
+            t.content_types = rows
+                .iter()
+                .map(|r| r.get::<&str, String>("content_type").to_string())
                 .collect();
             traits.push(t);
         }
@@ -922,6 +968,14 @@ impl WorkflowDataStore {
         for workflow_id in t.workflow_ids.iter() {
             connection.execute(&stmt, &[&t.id, workflow_id]).await?;
         }
+        let stmt = connection
+            .prepare_cached(
+                "insert into trait_content_types (trait_id, content_type) values ($1, $2)",
+            )
+            .await?;
+        for content_type in t.content_types.iter() {
+            connection.execute(&stmt, &[&t.id, content_type]).await?;
+        }
         self.notifier.trait_changed(&t.id).await?;
         Ok(())
     }
@@ -939,11 +993,25 @@ impl WorkflowDataStore {
         transaction
             .execute("delete from trait_workflows where trait_id = $1", &[&t.id])
             .await?;
+        transaction
+            .execute(
+                "delete from trait_content_types where trait_id = $1",
+                &[&t.id],
+            )
+            .await?;
         let stmt = transaction
             .prepare_cached("insert into trait_workflows (trait_id, workflow_id) values ($1, $2)")
             .await?;
         for workflow_id in t.workflow_ids.iter() {
             transaction.execute(&stmt, &[&t.id, workflow_id]).await?;
+        }
+        let stmt = transaction
+            .prepare_cached(
+                "insert into trait_content_types (trait_id, content_type) values ($1, $2)",
+            )
+            .await?;
+        for content_type in t.content_types.iter() {
+            transaction.execute(&stmt, &[&t.id, content_type]).await?;
         }
         transaction.commit().await?;
         self.notifier.trait_changed(&t.id).await?;
@@ -981,9 +1049,17 @@ impl WorkflowDataStore {
         Ok(())
     }
 
-    pub async fn delete_transition(&self, from_state_id: &String, to_state_id: &String) -> Result<(), Error> {
+    pub async fn delete_transition(
+        &self,
+        from_state_id: &String,
+        to_state_id: &String,
+    ) -> Result<(), Error> {
         let connection = self.pool.get().await?;
-        let stmt = connection.prepare_cached("delete workflow_state_transitions where from_state_id = $1 and to_state_id = $2").await?;
+        let stmt = connection
+            .prepare_cached(
+                "delete workflow_state_transitions where from_state_id = $1 and to_state_id = $2",
+            )
+            .await?;
         connection
             .query(&stmt, &[from_state_id, to_state_id])
             .await?;

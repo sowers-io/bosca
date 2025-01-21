@@ -1,4 +1,5 @@
 use crate::context::BoscaContext;
+use crate::datastores::notifier::Notifier;
 use crate::graphql::content::content::FindAttributeInput;
 use crate::graphql::content::metadata_mutation::WorkflowConfigurationInput;
 use crate::models::content::collection::{
@@ -14,6 +15,7 @@ use crate::models::content::source::Source;
 use crate::models::content::supplementary::{MetadataSupplementary, MetadataSupplementaryInput};
 use crate::models::security::permission::{Permission, PermissionAction};
 use crate::models::security::principal::Principal;
+use crate::models::workflow::execution_plan::WorkflowExecutionId;
 use crate::security::evaluator::Evaluator;
 use crate::util::storage::index_documents;
 use async_graphql::*;
@@ -24,8 +26,6 @@ use serde_json::{Map, Value};
 use std::sync::Arc;
 use tokio_postgres::Statement;
 use uuid::Uuid;
-use crate::datastores::notifier::Notifier;
-use crate::models::workflow::execution_plan::WorkflowExecutionId;
 
 #[derive(Clone)]
 pub struct ContentDataStore {
@@ -353,7 +353,9 @@ impl ContentDataStore {
     pub async fn delete_collection(&self, id: &Uuid) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
-            .prepare_cached("select collection_id from collection_items where child_collection_id = $1")
+            .prepare_cached(
+                "select collection_id from collection_items where child_collection_id = $1",
+            )
             .await?;
         let rows = connection.query(&stmt, &[id]).await?;
         let collection_ids: Vec<Uuid> = rows.iter().map(|r| r.get("collection_id")).collect();
@@ -930,7 +932,9 @@ impl ContentDataStore {
             )
             .await?;
         let plan_id = id.id.to_string();
-        connection.execute(&stmt, &[metadata_id, &plan_id, &id.queue]).await?;
+        connection
+            .execute(&stmt, &[metadata_id, &plan_id, &id.queue])
+            .await?;
         self.on_metadata_changed(metadata_id).await?;
         Ok(())
     }
@@ -971,7 +975,9 @@ impl ContentDataStore {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
         let stmt = txn
-            .prepare_cached("select collection_id from collection_items where child_metadata_id = $1")
+            .prepare_cached(
+                "select collection_id from collection_items where child_metadata_id = $1",
+            )
             .await?;
         let rows = txn.query(&stmt, &[metadata_id]).await?;
         let collection_ids: Vec<Uuid> = rows.iter().map(|r| r.get("collection_id")).collect();
@@ -1126,7 +1132,9 @@ impl ContentDataStore {
         let txn = connection.transaction().await?;
 
         let stmt = txn
-            .prepare_cached("select collection_id from collection_items where child_metadata_id = $1")
+            .prepare_cached(
+                "select collection_id from collection_items where child_metadata_id = $1",
+            )
             .await?;
         let rows = txn.query(&stmt, &[id]).await?;
         let collection_ids: Vec<Uuid> = rows.iter().map(|r| r.get("collection_id")).collect();
@@ -1191,8 +1199,9 @@ impl ContentDataStore {
         content_type: &Option<String>,
         len: usize,
     ) -> Result<(), Error> {
-        let connection = self.pool.get().await?;
-        let stmt = connection
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        let stmt = txn
             .prepare_cached("update metadata set uploaded = now(), system_attributes = $1, modified = now(), content_type = $2, content_length = $3 where id = $4")
             .await?;
         let len = len as i64;
@@ -1202,10 +1211,36 @@ impl ContentDataStore {
             Value::String(original_file_name.clone().unwrap_or("--".to_owned())),
         );
         let attrs = Value::Object(attrs);
-        connection
-            .execute(&stmt, &[&attrs, content_type, &len, metadata_id])
+        txn.execute(&stmt, &[&attrs, content_type, &len, metadata_id])
             .await?;
+        if let Some(content_type) = content_type {
+            self.ensure_content_type_traits(metadata_id, content_type, &txn).await?;
+        }
+        txn.commit().await?;
         self.on_metadata_changed(metadata_id).await?;
+        Ok(())
+    }
+
+    async fn ensure_content_type_traits(
+        &self,
+        metadata_id: &Uuid,
+        content_type: &str,
+        txn: &Transaction<'_>,
+    ) -> Result<(), Error> {
+        let current_traits = self.get_metadata_trait_ids(metadata_id).await?;
+        let stmt = txn
+            .prepare_cached("select trait_id from trait_content_types where content_type = $1")
+            .await?;
+        let content_type = content_type.to_owned();
+        let result = txn.query(&stmt, &[&content_type]).await?;
+        for row in result {
+            let content_type = row.get(0);
+            if current_traits.contains(&content_type) {
+                continue;
+            }
+            self.add_metadata_trait_txn(&txn, metadata_id, &content_type)
+                .await?;
+        }
         Ok(())
     }
 
@@ -1264,6 +1299,8 @@ impl ContentDataStore {
             }
         }
 
+        self.ensure_content_type_traits(&id, &metadata.content_type, &txn).await?;
+
         Ok((id, version))
     }
 
@@ -1307,6 +1344,20 @@ impl ContentDataStore {
             ],
         )
         .await?;
+
+        let stmt = txn
+            .prepare_cached("select trait_id from trait_content_types where content_type = $1")
+            .await?;
+        let result = txn.query(&stmt, &[&metadata.content_type]).await?;
+        for row in result {
+            let content_type = row.get(0);
+            if metadata.trait_ids.is_some()
+                && metadata.trait_ids.as_ref().unwrap().contains(&content_type)
+            {
+                continue;
+            }
+            self.add_metadata_trait_txn(txn, id, &content_type).await?;
+        }
 
         Ok(())
     }
@@ -1602,7 +1653,9 @@ impl ContentDataStore {
             )
             .await?;
         let job_id = plan.id.to_string();
-        connection.execute(&stmt, &[id, &job_id, &plan.queue]).await?;
+        connection
+            .execute(&stmt, &[id, &job_id, &plan.queue])
+            .await?;
         self.on_collection_changed(id).await?;
         Ok(())
     }
@@ -1663,14 +1716,7 @@ impl ContentDataStore {
             let mut conn = self.pool.get().await?;
             let txn = conn.transaction().await?;
             let ids = self
-                .add_collections_txn(
-                    ctx,
-                    &txn,
-                    collections,
-                    &mut search_documents,
-                    false,
-                    None,
-                )
+                .add_collections_txn(ctx, &txn, collections, &mut search_documents, false, None)
                 .await?;
             txn.commit().await?;
             ids
@@ -1678,12 +1724,15 @@ impl ContentDataStore {
         let new_ctx = ctx.clone();
         tokio::spawn(async move {
             match new_ctx.workflow.get_default_search_storage_system().await {
-                Ok(storage_system) => {
+                Ok(Some(storage_system)) => {
                     if let Err(err) =
                         index_documents(&new_ctx, &search_documents, &storage_system).await
                     {
                         error!("failed to index documents: {}", err.message);
                     }
+                }
+                Ok(None) => {
+                    error!("failed to index documents, missing storage system");
                 }
                 Err(err) => {
                     error!(
@@ -1796,18 +1845,14 @@ impl ContentDataStore {
         let txn = conn.transaction().await?;
         let mut search_documents = Vec::new();
         let ids = self
-            .add_metadatas_txn(
-                ctx,
-                &txn,
-                metadatas,
-                &mut search_documents,
-                false,
-                None,
-            )
+            .add_metadatas_txn(ctx, &txn, metadatas, &mut search_documents, false, None)
             .await?;
         txn.commit().await?;
-        let storage_system = ctx.workflow.get_default_search_storage_system().await?;
-        index_documents(ctx, &search_documents, &storage_system).await?;
+        if let Some(storage_system) = ctx.workflow.get_default_search_storage_system().await? {
+            index_documents(ctx, &search_documents, &storage_system).await?;
+        } else {
+            error!("failed to index documents, missing storage system");
+        }
         for (id, _) in &ids {
             self.on_metadata_changed(id).await?
         }
@@ -1931,9 +1976,7 @@ impl ContentDataStore {
             )
             .await?;
         datasource.set_metadata_ready(&metadata.id).await?;
-        datasource
-            .add_metadata_plan(&metadata.id, &plan.id)
-            .await?;
+        datasource.add_metadata_plan(&metadata.id, &plan.id).await?;
         self.on_metadata_changed(&metadata.id).await?;
         Ok(())
     }

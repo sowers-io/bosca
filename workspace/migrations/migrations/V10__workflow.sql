@@ -1,6 +1,9 @@
 insert into workflows (id, name, description, queue)
 values ('metadata.process', 'Process Metadata', 'Process Metadata', 'metadata');
 
+insert into workflows (id, name, description, queue)
+values ('collection.process', 'Process Collection', 'Process Collection', 'metadata');
+
 insert into workflow_states (id, name, description, type, configuration, workflow_id, exit_workflow_id,
                              entry_workflow_id)
 values ('pending', 'Pending', 'pending', 'pending'::workflow_state_type, '{}', null, null, null);

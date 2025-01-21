@@ -14,6 +14,7 @@ use crate::models::workflow::execution_plan::WorkflowExecutionPlan;
 use async_graphql::*;
 use bytes::Bytes;
 use futures_util::AsyncReadExt;
+use log::error;
 use object_store::MultipartUpload;
 use uuid::Uuid;
 use crate::context::BoscaContext;
@@ -68,7 +69,11 @@ impl MetadataMutationObject {
                 collection_id: None,
                 content: "".to_owned(),
             }];
-            index_documents(ctx, &search_documents, &storage_system).await?;
+            if let Some(storage_system) = &storage_system {
+                index_documents(ctx, &search_documents, storage_system).await?;
+            } else {
+                error!("error, failed to index, no storage system")
+            }
         }
         match ctx.content.get_metadata(&id).await? {
             Some(metadata) => Ok(metadata.into()),
