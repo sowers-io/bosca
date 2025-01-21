@@ -8,6 +8,7 @@ use serde_json::{json, Map, Value};
 use tokio::fs::File;
 use tokio::io::AsyncReadExt;
 use bosca_client::client::{Client, WorkflowJob};
+use bosca_client::client::add_activity::{ActivityInput, ActivityParameterInput, ActivityParameterType};
 use bosca_client::client::add_metadata_supplementary::MetadataSupplementaryInput;
 use bosca_client::download::download_supplementary_path;
 use bosca_client::upload::upload_multipart_supplementary_bytes;
@@ -35,6 +36,32 @@ impl TranscriptionMapperActivity {
 impl Activity for TranscriptionMapperActivity {
     fn id(&self) -> &String {
         &self.id
+    }
+
+    fn create_activity_input(&self) -> ActivityInput {
+        ActivityInput {
+            id: self.id.to_owned(),
+            name: "Transcription Mapper".to_string(),
+            description: "Given a list of segments, map the transcription timing to the list of segments.  This requires a transcription, and a new line delimited list of segments that need mapped.".to_string(),
+            child_workflow_id: None,
+            configuration: Value::Null,
+            inputs: vec![
+                ActivityParameterInput {
+                    name: "transcription".to_owned(),
+                    type_: ActivityParameterType::SUPPLEMENTARY
+                },
+                ActivityParameterInput {
+                    name: "segments".to_owned(),
+                    type_: ActivityParameterType::SUPPLEMENTARY
+                }
+            ],
+            outputs: vec![
+                ActivityParameterInput {
+                    name: "transcription_mapped".to_owned(),
+                    type_: ActivityParameterType::SUPPLEMENTARY
+                }
+            ],
+        }
     }
 
     async fn execute(&self, client: &Client, context: &mut ActivityContext, job: &WorkflowJob) -> Result<(), Error> {

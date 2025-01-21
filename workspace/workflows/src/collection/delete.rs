@@ -1,7 +1,9 @@
 use crate::activity::{Activity, ActivityContext, Error};
 use async_trait::async_trait;
+use serde_json::Value;
 use bosca_client::client::get_collection_items::GetCollectionItemsContentCollectionItems;
 use bosca_client::client::{Client, WorkflowJob};
+use bosca_client::client::add_activity::ActivityInput;
 
 pub struct CollectionDeleteActivity {
     id: String,
@@ -48,6 +50,21 @@ impl CollectionDeleteActivity {
 impl Activity for CollectionDeleteActivity {
     fn id(&self) -> &String {
         &self.id
+    }
+
+    fn create_activity_input(&self) -> ActivityInput {
+        let mut configuration = serde_json::map::Map::new();
+        configuration.insert("recursive".to_string(), Value::Bool(false));
+        configuration.insert("collection_id".to_string(), Value::Null);
+        ActivityInput {
+            id: self.id.to_owned(),
+            name: "Delete a Collection".to_string(),
+            description: "Delete a Collection (optionally recursively)".to_string(),
+            child_workflow_id: None,
+            configuration: Value::Object(configuration),
+            inputs: vec![],
+            outputs: vec![],
+        }
     }
 
     async fn execute(

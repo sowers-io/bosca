@@ -6,7 +6,7 @@ use futures_util::stream::BoxStream;
 use object_store::aws::AmazonS3;
 use object_store::local::LocalFileSystem;
 use object_store::path::Path;
-use object_store::{Error, MultipartUpload, ObjectStore};
+use object_store::{Error, MultipartUpload, ObjectStore, PutPayload};
 use std::env;
 use std::path::PathBuf;
 use std::str::from_utf8;
@@ -90,6 +90,15 @@ impl ObjectStorage {
             ObjectStorageInterface::FileSystem(fs) => fs.put_multipart(location),
             ObjectStorageInterface::S3(s3) => s3.put_multipart(location),
         }.await
+    }
+
+    pub async fn put(&self, location: &Path, bytes: Bytes) -> Result<(), Error> {
+        let payload = PutPayload::from(bytes);
+        match &self.interface.as_ref() {
+            ObjectStorageInterface::FileSystem(fs) => fs.put(location, payload),
+            ObjectStorageInterface::S3(s3) => s3.put(location, payload),
+        }.await?;
+        Ok(())
     }
 
     pub async fn get_metadata_upload_signed_url(

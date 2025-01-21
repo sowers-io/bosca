@@ -3,6 +3,7 @@ use bosca_bible_processor::process_path;
 use serde_json::{Map, Value};
 use bosca_client::client::add_collection::{CollectionInput, CollectionType};
 use bosca_client::client::{Client, WorkflowJob};
+use bosca_client::client::add_activity::ActivityInput;
 use bosca_client::client::enqueue_child_workflow::WorkflowConfigurationInput;
 use bosca_client::client::find_collection::FindAttributeInput;
 use bosca_client::download::download_path;
@@ -72,6 +73,18 @@ impl ProcessBibleActivity {
 impl Activity for ProcessBibleActivity {
     fn id(&self) -> &String {
         &self.id
+    }
+
+    fn create_activity_input(&self) -> ActivityInput {
+        ActivityInput {
+            id: self.id.to_owned(),
+            name: "Process a DBL USX Zip File".to_string(),
+            description: "Begin processing the DBL USX".to_string(),
+            child_workflow_id: None,
+            configuration: Value::Null,
+            inputs: vec![],
+            outputs: vec![],
+        }
     }
 
     async fn execute(

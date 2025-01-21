@@ -1,0 +1,9 @@
+mutation AddActivity($activity: ActivityInput!) {
+    workflows {
+        activities {
+            add(activity: $activity) {
+                id
+            }
+        }
+    }
+}

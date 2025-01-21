@@ -1,42 +1,43 @@
 use crate::activity::{Activity, ActivityContext, Error};
-use crate::metadata::index::IndexActivity;
-use crate::metadata::traits::MetadataTraitsActivity;
-use crate::metadata::transition_to::MetadataTransitionToActivity;
-use log::{error, info, warn};
-use std::collections::HashMap;
-use std::sync::atomic::Ordering::Relaxed;
-use std::sync::atomic::{AtomicBool, AtomicI32};
-use std::sync::Arc;
-use std::time::Duration;
-use bosca_client::client::{Client, WorkflowJob};
 use crate::ai::prompt::PromptActivity;
-use crate::collection::traits::CollectionTraitsActivity;
-use crate::collection::transition_to::CollectionTransitionToActivity;
-use crate::media::mux::MuxUploadActivity;
-use crate::metadata::command::CommandActivity;
-use media::transcriptions::mapper::TranscriptionMapperActivity;
-use media::transcriptions::transcribe::TranscribeActivity;
 use crate::analytics::query::QueryActivity;
 use crate::collection::begin_transition_to::CollectionBeginTransitionToActivity;
 use crate::collection::delete::CollectionDeleteActivity;
 use crate::collection::set_public::CollectionSetPublicActivity;
 use crate::collection::set_ready::CollectionSetReadyActivity;
-use crate::media::transcriptions::mapper_to_foreach::TranscriptionMapperToForEachActivity;
+use crate::collection::traits::CollectionTraitsActivity;
+use crate::collection::transition_to::CollectionTransitionToActivity;
+use crate::media::mux::MuxUploadActivity;
 use crate::metadata::begin_transition_to::MetadataBeginTransitionToActivity;
+use crate::metadata::command::CommandActivity;
 use crate::metadata::delete::MetadataDeleteActivity;
-use crate::metadata::foreach::MetadataForEachActivity;
+use crate::metadata::index::IndexActivity;
 use crate::metadata::set_public::MetadataSetPublicActivity;
 use crate::metadata::set_ready::MetadataSetReadyActivity;
 use crate::metadata::tera::MetadataTeraActivity;
+use crate::metadata::traits::MetadataTraitsActivity;
+use crate::metadata::transition_to::MetadataTransitionToActivity;
+use bosca_client::client::{Client, WorkflowJob};
+use log::{error, info, warn};
+use media::transcriptions::mapper::TranscriptionMapperActivity;
+use media::transcriptions::transcribe::TranscribeActivity;
+use std::collections::{HashMap, HashSet};
+use std::iter::Map;
+use std::sync::atomic::Ordering::Relaxed;
+use std::sync::atomic::{AtomicBool, AtomicI32};
+use std::sync::Arc;
+use std::time::Duration;
+use serde_json::Value;
+use crate::metadata::script::ScriptActivity;
 
 pub mod activity;
-pub mod metadata;
-pub mod collection;
-pub mod media;
-pub mod util;
-pub mod ml;
 pub mod ai;
 pub mod analytics;
+pub mod collection;
+pub mod media;
+pub mod metadata;
+pub mod ml;
+pub mod util;
 
 pub fn get_default_activities() -> Vec<Box<dyn Activity + Send + Sync>> {
     vec![
@@ -49,7 +50,6 @@ pub fn get_default_activities() -> Vec<Box<dyn Activity + Send + Sync>> {
         Box::new(MetadataTraitsActivity::default()),
         Box::new(MetadataTransitionToActivity::default()),
         Box::new(MetadataTeraActivity::default()),
-        Box::new(MetadataForEachActivity::default()),
         Box::new(MetadataSetReadyActivity::default()),
         Box::new(MetadataSetPublicActivity::default()),
         Box::new(MetadataDeleteActivity::default()),
@@ -58,11 +58,10 @@ pub fn get_default_activities() -> Vec<Box<dyn Activity + Send + Sync>> {
         Box::new(MuxUploadActivity::default()),
         Box::new(TranscribeActivity::default()),
         Box::new(TranscriptionMapperActivity::default()),
-        Box::new(TranscriptionMapperToForEachActivity::default()),
         Box::new(PromptActivity::default()),
         Box::new(CommandActivity::default()),
+        Box::new(ScriptActivity::default()),
         Box::new(QueryActivity::default()),
-
     ]
 }
 
@@ -115,9 +114,31 @@ pub async fn process_queue(
         if running.load(Relaxed) <= 0 {
             warn!("still waiting on activities to finish...");
             tokio::time::sleep(Duration::from_millis(5000)).await;
-            return Ok(())
+            return Ok(());
         }
     }
+}
+
+pub async fn ensure_activities(
+    client: &Client,
+    activities_by_id: Arc<HashMap<String, Arc<Box<dyn Activity + Send + Sync>>>>,
+) -> Result<(), Error> {
+    let ids = client
+        .get_activity_ids()
+        .await?;
+    let ids_hash = ids.iter().collect::<HashSet<_>>();
+    for activity_id in activities_by_id.keys() {
+        if !ids_hash.contains(activity_id) {
+            let activity = activities_by_id.get(activity_id).unwrap();
+            let mut activity_input = activity.create_activity_input();
+            if activity_input.configuration.is_null() {
+                activity_input.configuration = Value::Object(serde_json::Map::new());
+            }
+            client.add_activity(activity_input).await?;
+            info!(target: "workflow", "added activity: {}", activity_id);
+        }
+    }
+    Ok(())
 }
 
 async fn process(
@@ -132,7 +153,8 @@ async fn process(
         let msg = format!("missing activity: {}", job.activity.id);
         if let Err(err) = client
             .set_workflow_job_failed(&job.id.id, job.id.index, &job.id.queue, &msg)
-            .await {
+            .await
+        {
             error!(target: "workflow", "failed to set job failed: {}, {}, {}, {} -- {} -- {}", job.id.id, job.id.index, job.id.queue, job.activity.id, msg, err);
         }
     } else {
@@ -154,7 +176,8 @@ async fn process(
                         keepalive_id.index,
                         &keepalive_id.queue,
                     )
-                    .await {
+                    .await
+                {
                     Ok(_) => {}
                     Err(e) => {
                         error!(target: "workflow", "failed to checkin: {}", e);
@@ -171,7 +194,8 @@ async fn process(
                 info!(target: "workflow", "job processed: {}, {}, {}, {}", job.id.id, job.id.index, job.id.queue, job.activity.id);
                 if let Err(err) = client
                     .set_workflow_job_complete(&job.id.id, job.id.index, &job.id.queue)
-                    .await {
+                    .await
+                {
                     error!(target: "workflow", "failed to set job complete: {}, {}, {}, {} -- {}", job.id.id, job.id.index, job.id.queue, job.activity.id, err);
                 }
                 let _ = context.close().await;
@@ -182,7 +206,8 @@ async fn process(
                 let msg = err.to_string();
                 if let Err(err) = client
                     .set_workflow_job_failed(&job.id.id, job.id.index, &job.id.queue, &msg)
-                    .await {
+                    .await
+                {
                     error!(target: "workflow", "failed to set job failed: {}, {}, {}, {} -- {}", job.id.id, job.id.index, job.id.queue, job.activity.id, err);
                 }
                 let _ = context.close().await;

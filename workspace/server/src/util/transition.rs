@@ -12,7 +12,7 @@ pub async fn verify_transition_exists(ctx: &BoscaContext, state_id: &str, next_s
     if ctx.workflow.get_transition(state_id, next_state_id).await?.is_some() {
         Ok(())
     } else {
-        Err(Error::new("transition doesn't exist"))
+        Err(Error::new(format!("transition doesn't exist: {} -> {}", state_id, next_state_id)))
     }
 }
 

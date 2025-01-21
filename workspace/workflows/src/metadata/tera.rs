@@ -8,6 +8,7 @@ use serde_json::Value;
 use tera::{Context, Tera};
 use tokio::fs::File;
 use tokio::io::AsyncReadExt;
+use bosca_client::client::add_activity::{ActivityInput, ActivityParameterInput, ActivityParameterType};
 
 pub struct MetadataTeraActivity {
     id: String,
@@ -31,6 +32,26 @@ impl MetadataTeraActivity {
 impl Activity for MetadataTeraActivity {
     fn id(&self) -> &String {
         &self.id
+    }
+
+    fn create_activity_input(&self) -> ActivityInput {
+        let mut configuration = serde_json::Map::new();
+        configuration.insert("template".to_owned(), "".to_owned().into());
+        configuration.insert("content_type".to_owned(), "".to_owned().into());
+        ActivityInput {
+            id: self.id.to_owned(),
+            name: "Render Tera Template".to_string(),
+            description: "Render Tera Template".to_string(),
+            child_workflow_id: None,
+            configuration: Value::Object(configuration),
+            inputs: vec![],
+            outputs: vec![
+                ActivityParameterInput {
+                    name: "supplementaryId".to_owned() ,
+                    type_: ActivityParameterType::SUPPLEMENTARY
+                }
+            ],
+        }
     }
 
     async fn execute(

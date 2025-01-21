@@ -9,6 +9,7 @@ use tokio::io::AsyncWriteExt;
 use tokio::task::JoinError;
 use uuid::Uuid;
 use bosca_client::client::{Client, WorkflowJob};
+use bosca_client::client::add_activity::ActivityInput;
 
 pub struct ActivityContext {
     files_to_clean: Vec<String>,
@@ -59,6 +60,8 @@ impl ActivityContext {
 #[async_trait]
 pub trait Activity {
     fn id(&self) -> &String;
+
+    fn create_activity_input(&self) -> ActivityInput;
 
     async fn execute(&self, client: &Client, context: &mut ActivityContext, job: &WorkflowJob) -> Result<(), Error>;
 }

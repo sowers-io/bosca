@@ -85,7 +85,7 @@ pub struct WorkflowActivityStorageSystemInput {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorkflowActivityPrompt {
     pub prompt_id: Uuid,
-    pub configuration: Value,
+    pub configuration: Option<Value>,
 }
 
 #[derive(Serialize, Deserialize, InputObject)]

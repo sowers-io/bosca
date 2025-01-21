@@ -676,6 +676,8 @@ impl ContentDataStore {
             )
             .await?;
         txn.execute(&stmt, &[id, metadata_id, attributes]).await?;
+        self.on_collection_changed(id).await?;
+        self.on_metadata_changed(metadata_id).await?;
         Ok(())
     }
 
@@ -1289,7 +1291,7 @@ impl ContentDataStore {
             }
         }
 
-        let stmt = txn.prepare("update metadata set name = $1, labels = $2, attributes = $3, language_tag = $4, source_id = $5, source_identifier = $6 where id = $7").await?;
+        let stmt = txn.prepare("update metadata set name = $1, labels = $2, attributes = $3, language_tag = $4, source_id = $5, source_identifier = $6, content_type = $7 where id = $8").await?;
         let labels = metadata.labels.clone().unwrap_or_default();
         txn.query(
             &stmt,
@@ -1300,6 +1302,7 @@ impl ContentDataStore {
                 &metadata.language_tag,
                 source_id,
                 source_identifier,
+                &metadata.content_type,
                 &id,
             ],
         )

@@ -324,6 +324,10 @@ impl WorkflowDataStore {
             activity.execution_group
         };
         let workflow_id = workflow_id.to_owned();
+        let mut configuration = activity.configuration.as_ref().unwrap_or(&Value::Null).clone();
+        if configuration.is_null() {
+            configuration = Value::Object(serde_json::Map::new());
+        }
         let id: i64 = {
             let stmt = txn.prepare_cached("insert into workflow_activities (workflow_id, activity_id, execution_group, queue, configuration) values ($1, $2, $3, $4, $5) returning id").await?;
             let rows = txn
@@ -334,7 +338,7 @@ impl WorkflowDataStore {
                         &activity.activity_id,
                         &execution_group,
                         &activity.queue,
-                        &activity.configuration,
+                        &configuration,
                     ],
                 )
                 .await?;

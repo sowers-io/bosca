@@ -153,18 +153,24 @@ impl ContentObject {
             let id = Uuid::parse_str(obj.get("_id").unwrap().as_str().unwrap())?;
             let hit_type = obj.get("_type").unwrap().as_str().unwrap();
             if hit_type == "metadata" {
-                let metadata = ctx.check_metadata_action(&id, PermissionAction::View).await?;
+                let metadata = ctx.check_metadata_action(&id, PermissionAction::View).await;
+                if metadata.is_err() {
+                    continue;
+                }
                 let document = SearchDocument {
-                    metadata: Some(metadata),
+                    metadata: Some(metadata?),
                     collection: None,
                     content: obj.get("_content").unwrap().as_str().unwrap().trim().to_owned(),
                 };
                 documents.push(document);
             } else if hit_type == "collection" {
-                let collection = ctx.check_collection_action(&id, PermissionAction::View).await?;
+                let collection = ctx.check_collection_action(&id, PermissionAction::View).await;
+                if collection.is_err() {
+                    continue;
+                }
                 let document = SearchDocument {
                     metadata: None,
-                    collection: Some(collection),
+                    collection: Some(collection?),
                     content: obj.get("_content").unwrap().as_str().unwrap().trim().to_owned(),
                 };
                 documents.push(document);

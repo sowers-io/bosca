@@ -4,6 +4,7 @@ use async_trait::async_trait;
 use bytes::Bytes;
 use serde_json::{Map, Value};
 use bosca_client::client::{Client, WorkflowJob};
+use bosca_client::client::add_activity::{ActivityInput, ActivityParameterInput, ActivityParameterType};
 use bosca_client::client::add_metadata_supplementary::MetadataSupplementaryInput;
 use bosca_client::upload::upload_multipart_supplementary_bytes;
 use crate::ml::runpod::execute_runpod;
@@ -30,6 +31,23 @@ impl TranscribeActivity {
 impl Activity for TranscribeActivity {
     fn id(&self) -> &String {
         &self.id
+    }
+
+    fn create_activity_input(&self) -> ActivityInput {
+        ActivityInput {
+            id: self.id.to_owned(),
+            name: "Transcribe Media".to_string(),
+            description: "Begin to transition the collection workflow state".to_string(),
+            child_workflow_id: None,
+            configuration: Value::Null,
+            inputs: vec![],
+            outputs: vec![
+                ActivityParameterInput {
+                    name: "transcription".to_owned(),
+                    type_: ActivityParameterType::SUPPLEMENTARY
+                }
+            ],
+        }
     }
 
     async fn execute(&self, client: &Client, _context: &mut ActivityContext, job: &WorkflowJob) -> Result<(), Error> {

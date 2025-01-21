@@ -16,6 +16,7 @@ use std::collections::{HashMap, HashSet};
 use std::env;
 use tokio::fs::File;
 use tokio::io::AsyncReadExt;
+use bosca_client::client::add_activity::{ActivityInput, ActivityParameterInput, ActivityParameterType};
 
 pub struct PromptActivity {
     id: String,
@@ -39,6 +40,23 @@ impl PromptActivity {
 impl Activity for PromptActivity {
     fn id(&self) -> &String {
         &self.id
+    }
+
+    fn create_activity_input(&self) -> ActivityInput {
+        ActivityInput {
+            id: self.id.to_owned(),
+            name: "LLM Prompt".to_string(),
+            description: "Run a Chain using a Prompt.  Inputs are optional.".to_string(),
+            child_workflow_id: None,
+            configuration: Value::Null,
+            inputs: vec![],
+            outputs: vec![
+                ActivityParameterInput {
+                    name: "supplementaryId".to_owned(),
+                    type_: ActivityParameterType::SUPPLEMENTARY
+                }
+            ],
+        }
     }
 
     async fn execute(
@@ -100,7 +118,10 @@ impl Activity for PromptActivity {
                 .llm(model);
             for storage in job.storage_systems.iter() {
                 if storage.system.type_ == StorageSystemType::VECTOR {
-                    let type_ = storage.configuration.get("type").unwrap().as_str().unwrap();
+                    if storage.configuration.is_none() {
+                        continue;
+                    }
+                    let type_ = storage.configuration.as_ref().unwrap().get("type").unwrap().as_str().unwrap();
                     if type_ == "qdrant" {
                         // let qdrant_url = env::var("QDRANT_URL")?;
                         // let client = Qdrant::from_url(&qdrant_url).build().unwrap();

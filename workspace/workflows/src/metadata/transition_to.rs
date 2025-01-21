@@ -1,6 +1,8 @@
 use crate::activity::{Activity, ActivityContext, Error};
 use async_trait::async_trait;
+use serde_json::Value;
 use bosca_client::client::{Client, WorkflowJob};
+use bosca_client::client::add_activity::ActivityInput;
 
 pub struct MetadataTransitionToActivity {
     id: String,
@@ -24,6 +26,21 @@ impl MetadataTransitionToActivity {
 impl Activity for MetadataTransitionToActivity {
     fn id(&self) -> &String {
         &self.id
+    }
+
+    fn create_activity_input(&self) -> ActivityInput {
+        let mut configuration = serde_json::Map::new();
+        configuration.insert("state".to_string(), Value::String("draft".to_string()));
+        configuration.insert("status".to_string(), Value::String("marked draft".to_string()));
+        ActivityInput {
+            id: self.id.to_owned(),
+            name: "Finalize Metadata Transition".to_string(),
+            description: "Finalize a Metadata Transition".to_string(),
+            child_workflow_id: None,
+            configuration: Value::Object(configuration),
+            inputs: vec![],
+            outputs: vec![],
+        }
     }
 
     async fn execute(&self, client: &Client, _: &mut ActivityContext, job: &WorkflowJob) -> Result<(), Error> {

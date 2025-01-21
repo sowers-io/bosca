@@ -3,6 +3,8 @@ use bosca_workflows::activity::{Activity, ActivityContext, Error};
 use bosca_client::client::{Client, WorkflowJob};
 use bosca_client::upload::upload_multipart_bytes;
 use bytes::Bytes;
+use serde_json::Value;
+use bosca_client::client::add_activity::ActivityInput;
 use crate::util::get_bible;
 
 pub struct BookUpload {
@@ -27,6 +29,18 @@ impl BookUpload {
 impl Activity for BookUpload {
     fn id(&self) -> &String {
         &self.id
+    }
+
+    fn create_activity_input(&self) -> ActivityInput {
+        ActivityInput {
+            id: self.id.to_owned(),
+            name: "Upload Book USX".to_string(),
+            description: "Upload the Book USX as Metadata Content".to_string(),
+            child_workflow_id: None,
+            configuration: Value::Null,
+            inputs: vec![],
+            outputs: vec![],
+        }
     }
 
     async fn execute(

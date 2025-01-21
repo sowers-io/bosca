@@ -12,6 +12,7 @@ use crate::models::content::metadata_workflow_state::{
 use crate::models::security::permission::{Permission, PermissionAction, PermissionInput};
 use crate::models::workflow::execution_plan::WorkflowExecutionPlan;
 use async_graphql::*;
+use bytes::Bytes;
 use futures_util::AsyncReadExt;
 use object_store::MultipartUpload;
 use uuid::Uuid;
@@ -471,6 +472,62 @@ impl MetadataMutationObject {
                 break;
             }
         }
+        ctx.content.set_metadata_uploaded(&metadata_id, &None, &content_type, len).await?;
+        Ok(true)
+    }
+
+    async fn set_metadata_text_contents(
+        &self,
+        ctx: &Context<'_>,
+        id: String,
+        content_type: Option<String>,
+        content: String,
+    ) -> Result<bool, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let metadata_id = Uuid::parse_str(id.as_str())?;
+        let metadata = ctx.check_metadata_action(&metadata_id, PermissionAction::Edit).await?;
+        let path = ctx.storage.get_metadata_path(&metadata, None).await?;
+        let bytes: Bytes = content.into();
+        let len = bytes.len();
+        ctx.storage.put(&path, bytes).await?;
+        ctx.content.set_metadata_uploaded(&metadata_id, &None, &content_type, len).await?;
+        Ok(true)
+    }
+
+    async fn set_supplementary_text_contents(
+        &self,
+        ctx: &Context<'_>,
+        id: String,
+        key: String,
+        content_type: String,
+        content: String,
+    ) -> Result<bool, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let metadata_id = Uuid::parse_str(id.as_str())?;
+        let metadata = ctx.check_metadata_action(&metadata_id, PermissionAction::Edit).await?;
+        let path = ctx.storage.get_metadata_path(&metadata, Some(key.clone())).await?;
+        let bytes: Bytes = content.into();
+        let len = bytes.len();
+        ctx.storage.put(&path, bytes).await?;
+        ctx.content.set_metadata_supplementary_uploaded(&metadata_id, &key, &content_type, len).await?;
+        Ok(true)
+    }
+
+    async fn set_metadata_json_contents(
+        &self,
+        ctx: &Context<'_>,
+        id: String,
+        content_type: Option<String>,
+        content: serde_json::Value,
+    ) -> Result<bool, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let metadata_id = Uuid::parse_str(id.as_str())?;
+        let metadata = ctx.check_metadata_action(&metadata_id, PermissionAction::Edit).await?;
+        let path = ctx.storage.get_metadata_path(&metadata, None).await?;
+        let content = content.to_string();
+        let bytes: Bytes = content.into();
+        let len = bytes.len();
+        ctx.storage.put(&path, bytes).await?;
         ctx.content.set_metadata_uploaded(&metadata_id, &None, &content_type, len).await?;
         Ok(true)
     }

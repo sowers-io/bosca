@@ -26,6 +26,7 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio::sync::Mutex;
+use crate::client::add_activity::ActivityInput;
 use crate::client::add_metadata_bulk::AddMetadataBulkContentMetadataAddBulk;
 use crate::client::add_search_documents::SearchDocumentInput;
 use crate::client::next_job::NextJobWorkflowsNextJob;
@@ -639,6 +640,26 @@ impl Client {
         let _: add_search_documents::ResponseData = self.execute(&query).await?;
         Ok(())
     }
+
+    pub async fn get_activity_ids(&self) -> Result<Vec<String>, Error> {
+        let variables = get_activity_ids::Variables {
+        };
+        let query = GetActivityIds::build_query(variables);
+        let response: get_activity_ids::ResponseData = self.execute(&query).await?;
+        Ok(response.workflows.activities.all.iter().map(|a| a.id.to_owned()).collect())
+    }
+
+    pub async fn add_activity(
+        &self,
+        activity: ActivityInput
+    ) -> Result<(), Error> {
+        let variables = add_activity::Variables {
+            activity
+        };
+        let query = AddActivity::build_query(variables);
+        let _: add_activity::ResponseData = self.execute(&query).await?;
+        Ok(())
+    }
 }
 
 #[derive(GraphQLQuery)]
@@ -648,6 +669,22 @@ impl Client {
     response_derives = "Debug, PartialEq, Eq, Clone"
 )]
 pub struct Login;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "schema.json",
+    query_path = "queries/add_activity.graphql",
+    response_derives = "Debug, PartialEq, Eq, Clone"
+)]
+pub struct AddActivity;
+
+#[derive(GraphQLQuery)]
+#[graphql(
+    schema_path = "schema.json",
+    query_path = "queries/get_activity_ids.graphql",
+    response_derives = "Debug, PartialEq, Eq, Clone"
+)]
+pub struct GetActivityIds;
 
 #[allow(clippy::upper_case_acronyms)]
 type JSON = Value;

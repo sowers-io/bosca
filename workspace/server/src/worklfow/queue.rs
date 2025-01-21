@@ -385,9 +385,12 @@ impl JobQueues {
             if plan.next.is_none() {
                 warn!(target: "workflow", "plan is missing next: {}", plan.id);
                 if plan.complete.len() == plan.jobs.len() {
+                    warn!(target: "workflow", "plan is complete: {}", plan.id);
                     let mut redis_txn = Transaction::new();
                     redis_txn.add_op(TransactionOp::RemovePlanRunning(plan.id.clone()));
                     redis_txn.execute(&self.redis).await?;
+                } else if !plan.failed.is_empty() {
+                    warn!(target: "workflow", "plan is missing next, but has failed jobs: {}", plan.id);
                 }
             }
         }
@@ -536,6 +539,7 @@ impl JobQueues {
         let script = Script::new(
             r"
             local running_queue = tostring(KEYS[1])
+            local item          = tostring(KEYS[2])
             local now           = tonumber(ARGV[1]) -- Current timestamp
             local delay         = tonumber(ARGV[2]) -- Expiration delay
             local expire_time   = now + delay
@@ -546,6 +550,7 @@ impl JobQueues {
         );
         let result: i32 = script
             .key(JobQueues::running_queue_key(&job_id.queue))
+            .key(JobQueues::queue_job_key(&job_id.queue, &job_id.id, job_id.index))
             .arg(Utc::now().timestamp())
             .arg(1800)
             .invoke_async(&mut connection)
@@ -601,14 +606,14 @@ impl JobQueues {
         let job = plan.jobs.get_mut(job_index as usize).unwrap();
         job.error = None;
         job.complete = job.children.len() == job.completed_children.len();
-        if job.complete {
-            job.finished = Some(Utc::now());
-        }
         redis_tx.add_op(TransactionOp::RemoveJobRunning(job.id.clone()));
 
-        plan.failed.remove(&job.id.index);
-        plan.running.remove(&job.id.index);
-        plan.complete.insert(job.id.index);
+        if job.complete {
+            job.finished = Some(Utc::now());
+            plan.failed.remove(&job.id.index);
+            plan.running.remove(&job.id.index);
+            plan.complete.insert(job.id.index);
+        }
 
         if plan.next.is_some_and(|n| n == job.id.index) {
             plan.next = None;

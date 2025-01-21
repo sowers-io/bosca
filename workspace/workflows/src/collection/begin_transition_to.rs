@@ -1,7 +1,9 @@
 use crate::activity::{Activity, ActivityContext, Error};
 use async_trait::async_trait;
+use serde_json::Value;
 use bosca_client::client::begin_transition::BeginTransitionInput;
 use bosca_client::client::{Client, WorkflowJob};
+use bosca_client::client::add_activity::ActivityInput;
 
 pub struct CollectionBeginTransitionToActivity {
     id: String,
@@ -25,6 +27,21 @@ impl CollectionBeginTransitionToActivity {
 impl Activity for CollectionBeginTransitionToActivity {
     fn id(&self) -> &String {
         &self.id
+    }
+
+    fn create_activity_input(&self) -> ActivityInput {
+        let mut configuration = serde_json::map::Map::new();
+        configuration.insert("state".to_string(), Value::String("draft".to_string()));
+        configuration.insert("status".to_string(), Value::String("Transitioning to Draft".to_string()));
+        ActivityInput {
+            id: self.id.to_owned(),
+            name: "Begin to Transition Collection".to_string(),
+            description: "Begin to transition the collection workflow state".to_string(),
+            child_workflow_id: None,
+            configuration: Value::Object(configuration),
+            inputs: vec![],
+            outputs: vec![],
+        }
     }
 
     async fn execute(&self, client: &Client, _: &mut ActivityContext, job: &WorkflowJob) -> Result<(), Error> {

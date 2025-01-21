@@ -2,7 +2,7 @@ use bosca_bible_workflows::create_chapter_verse_table::CreateChapterVerseTable;
 use bosca_bible_workflows::process_bible::ProcessBibleActivity;
 use bosca_workflows::activity::{Activity, Error};
 use bosca_client::client::Client;
-use bosca_workflows::{get_default_activities, process_queue};
+use bosca_workflows::{ensure_activities, get_default_activities, process_queue};
 use futures::future::join_all;
 use log::{error, info, warn};
 use std::collections::HashMap;
@@ -107,6 +107,8 @@ async fn main() {
     client.login(&username, &password).await.unwrap();
 
     info!(target: "workflow", "running");
+
+    ensure_activities(&client, Arc::new(activities_by_id.clone())).await.unwrap();
 
     let shutdown = Arc::new(AtomicBool::new(false));
     #[cfg(unix)]

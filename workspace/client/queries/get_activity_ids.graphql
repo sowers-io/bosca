@@ -1,0 +1,9 @@
+query GetActivityIds {
+    workflows {
+        activities {
+            all {
+                id
+            }
+        }
+    }
+}

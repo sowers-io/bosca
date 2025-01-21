@@ -6,7 +6,9 @@ use bosca_workflows::activity::{Activity, ActivityContext, Error};
 use bosca_client::client::{Client, WorkflowJob};
 use bosca_client::upload::{upload_multipart_bytes, upload_multipart_supplementary_bytes};
 use bytes::Bytes;
+use serde_json::Value;
 use bosca_bible_processor::html_context::HtmlContext;
+use bosca_client::client::add_activity::ActivityInput;
 use bosca_client::client::add_metadata_supplementary::MetadataSupplementaryInput;
 use crate::util::get_bible;
 
@@ -32,6 +34,18 @@ impl ChapterUpload {
 impl Activity for ChapterUpload {
     fn id(&self) -> &String {
         &self.id
+    }
+
+    fn create_activity_input(&self) -> ActivityInput {
+        ActivityInput {
+            id: self.id.to_owned(),
+            name: "Upload Chapter USX".to_string(),
+            description: "Upload the Chapter USX as Metadata Content".to_string(),
+            child_workflow_id: None,
+            configuration: Value::Null,
+            inputs: vec![],
+            outputs: vec![],
+        }
     }
 
     async fn execute(

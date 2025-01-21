@@ -1,18 +1,18 @@
-use std::borrow::ToOwned;
+use crate::context::BoscaContext;
+use crate::graphql::content::collection::CollectionObject;
 use crate::graphql::content::metadata_relationship::MetadataRelationshipObject;
 use crate::graphql::content::permission::PermissionObject;
 use crate::graphql::content::signed_url::SignedUrlObject;
 use crate::graphql::content::supplementary::MetadataSupplementaryObject;
 use crate::graphql::workflows::workflow_execution_plan::WorkflowExecutionPlanObject;
+use crate::models::content::attributes_filter::AttributesFilterInput;
 use crate::models::content::metadata::{Metadata, MetadataType};
 use crate::models::security::permission::{Permission, PermissionAction};
 use crate::models::workflow::execution_plan::WorkflowExecutionId;
 use async_graphql::{Context, Error, Object};
 use chrono::{DateTime, Utc};
 use serde_json::Value;
-use crate::context::BoscaContext;
-use crate::graphql::content::collection::CollectionObject;
-use crate::models::content::attributes_filter::AttributesFilterInput;
+use std::borrow::ToOwned;
 
 pub struct MetadataObject {
     metadata: Metadata,
@@ -91,9 +91,12 @@ impl MetadataObject {
 
     async fn system_attributes(&self, ctx: &Context<'_>) -> Result<&Option<Value>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        match ctx.check_metadata_action(&self.metadata.id, PermissionAction::Manage).await {
+        match ctx
+            .check_metadata_action(&self.metadata.id, PermissionAction::Manage)
+            .await
+        {
             Ok(_) => Ok(&self.metadata.system_attributes),
-            Err(_) => Ok(&None)
+            Err(_) => Ok(&None),
         }
     }
 
@@ -139,7 +142,8 @@ impl MetadataObject {
 
     async fn permissions(&self, ctx: &Context<'_>) -> Result<Vec<PermissionObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        Ok(ctx.content
+        Ok(ctx
+            .content
             .get_metadata_permissions(&self.metadata.id)
             .await?
             .into_iter()
@@ -152,7 +156,8 @@ impl MetadataObject {
         ctx: &Context<'_>,
     ) -> Result<Vec<MetadataRelationshipObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        Ok(ctx.content
+        Ok(ctx
+            .content
             .get_metadata_relationships(&self.metadata.id)
             .await?
             .into_iter()
@@ -163,9 +168,21 @@ impl MetadataObject {
     async fn supplementary(
         &self,
         ctx: &Context<'_>,
+        key: Option<String>,
     ) -> Result<Vec<MetadataSupplementaryObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        Ok(ctx.content
+        if key.is_some() {
+            return Ok(ctx
+                .content
+                .get_metadata_supplementaries(&self.metadata.id)
+                .await?
+                .into_iter()
+                .filter(|s| s.key == key.clone().unwrap())
+                .map(|s| MetadataSupplementaryObject::new(self.metadata.clone(), s))
+                .collect());
+        }
+        Ok(ctx
+            .content
             .get_metadata_supplementaries(&self.metadata.id)
             .await?
             .into_iter()
@@ -173,14 +190,23 @@ impl MetadataObject {
             .collect())
     }
 
-    async fn parent_collections(&self, ctx: &Context<'_>, offset: i64, limit: i64) -> Result<Vec<CollectionObject>, Error> {
+    async fn parent_collections(
+        &self,
+        ctx: &Context<'_>,
+        offset: i64,
+        limit: i64,
+    ) -> Result<Vec<CollectionObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        let collections = ctx.content
+        let collections = ctx
+            .content
             .get_metadata_parent_collection_ids(&self.metadata.id, offset, limit)
             .await?;
         let mut listable = Vec::new();
         for id in collections {
-            if let Ok(collection) = ctx.check_collection_action(&id, PermissionAction::List).await {
+            if let Ok(collection) = ctx
+                .check_collection_action(&id, PermissionAction::List)
+                .await
+            {
                 listable.push(collection.into());
             }
         }
@@ -196,7 +222,8 @@ pub struct MetadataContentUrls {
 impl MetadataContentUrls {
     async fn download(&self, ctx: &Context<'_>) -> Result<SignedUrlObject, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        Ok(ctx.storage
+        Ok(ctx
+            .storage
             .get_metadata_download_signed_url(&ctx.security, &ctx.principal, &self.metadata, None)
             .await?
             .into())
@@ -204,7 +231,8 @@ impl MetadataContentUrls {
 
     async fn upload(&self, ctx: &Context<'_>) -> Result<SignedUrlObject, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        Ok(ctx.storage
+        Ok(ctx
+            .storage
             .get_metadata_upload_signed_url(&ctx.security, &ctx.principal, &self.metadata, None)
             .await?
             .into())

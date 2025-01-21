@@ -3,6 +3,7 @@ use async_trait::async_trait;
 use serde_json::{json, Value};
 use std::collections::HashSet;
 use bosca_client::client::{Client, WorkflowJob};
+use bosca_client::client::add_activity::ActivityInput;
 
 pub struct CollectionTraitsActivity {
     id: String,
@@ -26,6 +27,18 @@ impl CollectionTraitsActivity {
 impl Activity for CollectionTraitsActivity {
     fn id(&self) -> &String {
         &self.id
+    }
+
+    fn create_activity_input(&self) -> ActivityInput {
+        ActivityInput {
+            id: self.id.to_owned(),
+            name: "Process Traits".to_string(),
+            description: "Process a Collection's Traits".to_string(),
+            child_workflow_id: None,
+            configuration: Value::Null,
+            inputs: vec![],
+            outputs: vec![],
+        }
     }
 
     async fn execute(&self, client: &Client, _: &mut ActivityContext, job: &WorkflowJob) -> Result<(), Error> {

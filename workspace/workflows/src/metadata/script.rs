@@ -1,5 +1,4 @@
 use std::collections::{HashMap, HashSet};
-use std::env;
 use std::str::from_utf8;
 use crate::activity::{Activity, ActivityContext, Error};
 use async_trait::async_trait;
@@ -14,92 +13,42 @@ use bosca_client::client::add_metadata_supplementary::MetadataSupplementaryInput
 use bosca_client::download::{download_path, download_path_with_extension, download_supplementary_path};
 use bosca_client::upload::{upload_multipart_supplementary_bytes, upload_multipart_supplementary_file};
 
-pub struct CommandActivity {
+pub struct ScriptActivity {
     id: String,
 }
 
-impl Default for CommandActivity {
+impl Default for ScriptActivity {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl CommandActivity {
-    pub fn new() -> CommandActivity {
-        CommandActivity {
-            id: "metadata.command".to_string(),
+impl ScriptActivity {
+    pub fn new() -> ScriptActivity {
+        ScriptActivity {
+            id: "metadata.script".to_string(),
         }
-    }
-
-    pub fn build_command(&self, command: &Value, job_file: &str, metadata_file: Option<String>, output_file: &str, files: &HashMap<String, String>) -> Command {
-        let command_args = command.get("command_args").as_ref().unwrap().as_array().unwrap().iter().map(|arg| {
-            let arg = arg.as_str().unwrap().to_owned();
-            if arg.starts_with("$") {
-                let name = &arg.as_str()[1..];
-                match name {
-                    "BOSCA_JOB" => job_file.to_owned(),
-                    "BOSCA_METADATA" => if let Some(metadata_file) = metadata_file.as_ref() {
-                        metadata_file
-                    } else {
-                        ""
-                    }.to_owned(),
-                    "BOSCA_OUTPUT_FILE" => output_file.to_owned(),
-                    _ => {
-                        if let Some(key) = name.strip_prefix("BOSCA_SUPPLEMENTARY_") {
-                            if files.contains_key(key) {
-                                files.get(key).unwrap()
-                            } else {
-                                ""
-                            }.to_owned()
-                        } else if name.starts_with("BOSCA_JOB_") {
-                            if let Ok(value) = env::var(name) {
-                                value.to_owned()
-                            } else {
-                                arg
-                            }
-                        } else {
-                            arg
-                        }
-                    }
-                }
-            } else {
-                arg
-            }
-        }).collect::<Vec<String>>();
-
-        let mut cmd = Command::new(command.get("command").unwrap().as_str().unwrap());
-        cmd.args(command_args);
-        cmd.env("BOSCA_JOB", job_file);
-        if let Some(metadata_file) = metadata_file {
-            cmd.env("BOSCA_METADATA", &metadata_file);
-        }
-        cmd.env("BOSCA_OUTPUT_FILE", output_file);
-        for (key, file) in files.iter() {
-            cmd.env(format!("BOSCA_SUPPLEMENTARY_{}", key), file);
-        }
-        cmd
     }
 }
 
 #[async_trait]
-impl Activity for CommandActivity {
+impl Activity for ScriptActivity {
     fn id(&self) -> &String {
         &self.id
     }
 
     fn create_activity_input(&self) -> ActivityInput {
         let mut configuration = Map::new();
-        configuration.insert("input_ext".to_owned(), Value::String("".to_owned()));
-        configuration.insert("output_ext".to_owned(), Value::String("".to_owned()));
-        configuration.insert("environment_variables".to_owned(), Value::Object(Map::new()));
+        configuration.insert("script".to_owned(), Value::String("".to_owned()));
         configuration.insert("include_metadata".to_owned(), Value::Bool(true));
+        configuration.insert("metadata_file_extension".to_owned(), Value::String("".to_owned()));
+        configuration.insert("output_file_extension".to_owned(), Value::String("".to_owned()));
         configuration.insert("output_content_type".to_owned(), Value::String("".to_owned()));
         configuration.insert("source".to_owned(), Value::String("".to_owned()));
-        configuration.insert("command".to_owned(), Value::String("".to_owned()));
         ActivityInput {
             id: self.id.to_owned(),
-            name: "Execute Command".to_string(),
-            description: "Execute a command, providing the input/output file extension types, the environment variables (env_commands)".to_string(),
+            name: "Execute Script".to_string(),
+            description: "Execute a Script".to_string(),
             child_workflow_id: None,
             configuration: Value::Object(configuration),
             inputs: vec![],
@@ -114,11 +63,14 @@ impl Activity for CommandActivity {
 
     async fn execute(&self, client: &Client, context: &mut ActivityContext, job: &WorkflowJob) -> Result<(), Error> {
         let metadata_id = job.metadata.as_ref().unwrap().id.to_owned();
-        let input_file_ext = job.workflow_activity.configuration.get("input_ext").unwrap_or(&Value::String("".to_owned())).as_str().unwrap().to_owned();
-        let output_file_ext = job.workflow_activity.configuration.get("output_ext").unwrap_or(&Value::String("".to_owned())).as_str().unwrap().to_owned();
-        let empty_env_commands = Value::Object(Map::new());
-        let environment_variables = job.workflow_activity.configuration.get("environment_variables").unwrap_or(&empty_env_commands).as_object().unwrap();
+        let metadata_file_ext = job.workflow_activity.configuration.get("metadata_file_extension").unwrap_or(&Value::String("".to_owned())).as_str().unwrap().to_owned();
+        let output_file_ext = job.workflow_activity.configuration.get("output_file_extension").unwrap_or(&Value::String("".to_owned())).as_str().unwrap().to_owned();
         let include_metadata = job.workflow_activity.configuration.get("include_metadata").unwrap_or(&Value::Bool(true)).as_bool().unwrap();
+
+
+        let script = job.workflow_activity.configuration.get("script").unwrap_or(&Value::String("".to_owned())).as_str().unwrap().to_owned();
+        let script_url = client.get_metadata_download_url(&script).await?;
+        let script_file = download_path(&script, &script_url).await?;
 
         let inputs: HashSet<String> = job.workflow_activity.inputs.iter().map(|input| {
             input.value.to_owned()
@@ -143,10 +95,10 @@ impl Activity for CommandActivity {
 
         let metadata_file = if include_metadata {
             let download = client.get_metadata_download_url(&metadata_id).await?;
-            let metadata_file = if input_file_ext.is_empty() {
+            let metadata_file = if metadata_file_ext.is_empty() {
                 download_path(&metadata_id, &download).await?
             } else {
-                download_path_with_extension(&metadata_id, &download, Some(input_file_ext)).await?
+                download_path_with_extension(&metadata_id, &download, Some(metadata_file_ext)).await?
             };
             context.add_file_clean(&metadata_file);
             Some(metadata_file)
@@ -154,21 +106,20 @@ impl Activity for CommandActivity {
             None
         };
 
-        for (key, value) in environment_variables.iter() {
-            let mut cmd = self.build_command(value, &job_file, metadata_file.clone(), &output_file_ext, &files);
-            let output = cmd.output().await?;
-            if !output.stderr.is_empty() {
-                let err = from_utf8(&output.stderr).map_err(|e| Error::new(format!("error converting stderr: {}", e)))?;
-                return Err(Error::new(format!("stderr: {}", err)));
-            }
-            let var_value = from_utf8(&output.stdout).map_err(|e| Error::new(format!("error converting stdout: {}", e)))?;
-            env::set_var(format!("BOSCA_JOB_{}", key), var_value);
-        }
-
         let output_file = context.new_file(&output_file_ext).await?;
 
-        let mut cmd = self.build_command(&job.workflow_activity.configuration, &job_file, metadata_file, &output_file, &files);
-        info!("{:?}", cmd);
+        info!("Executing script: {}", script_file);
+
+        let mut cmd = Command::new("sh");
+        cmd.args([script_file]);
+        cmd.env("BOSCA_JOB", job_file);
+        if let Some(metadata_file) = metadata_file {
+            cmd.env("BOSCA_METADATA", &metadata_file);
+        }
+        cmd.env("BOSCA_OUTPUT_FILE", &output_file);
+        for (key, file) in files.iter() {
+            cmd.env(format!("BOSCA_SUPPLEMENTARY_{}", key), file);
+        }
 
         let output = cmd.output().await?;
 
@@ -204,7 +155,7 @@ impl Activity for CommandActivity {
                         metadata_id: metadata_id.to_owned(),
                         key: key.to_owned(),
                         attributes: Some(Value::Object(attributes)),
-                        name: "Command Output".to_owned(),
+                        name: "Script Output".to_owned(),
                         content_type: mime_type.to_owned(),
                         content_length: None,
                         source_id: None,
@@ -234,7 +185,7 @@ impl Activity for CommandActivity {
                         metadata_id: metadata_id.to_owned(),
                         key: key.to_owned(),
                         attributes: Some(Value::Object(attributes)),
-                        name: "Command Output".to_owned(),
+                        name: "Script Output".to_owned(),
                         content_type: mime_type.to_owned(),
                         content_length: None,
                         source_id: None,

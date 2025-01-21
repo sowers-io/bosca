@@ -2,9 +2,11 @@ use crate::activity::{Activity, ActivityContext, Error};
 use async_trait::async_trait;
 use std::collections::{HashMap};
 use std::str::from_utf8;
+use serde_json::Value;
 use tokio::fs::File;
 use tokio::io::AsyncReadExt;
 use bosca_client::client::{Client, WorkflowJob};
+use bosca_client::client::add_activity::{ActivityInput, ActivityParameterInput, ActivityParameterType};
 use bosca_client::client::add_search_documents::SearchDocumentInput;
 use bosca_client::download::{download_path, download_supplementary_path};
 
@@ -30,6 +32,23 @@ impl IndexActivity {
 impl Activity for IndexActivity {
     fn id(&self) -> &String {
         &self.id
+    }
+
+    fn create_activity_input(&self) -> ActivityInput {
+        ActivityInput {
+            id: self.id.to_owned(),
+            name: "Index metadata".to_string(),
+            description: "Delete a metadata and associated resources".to_string(),
+            child_workflow_id: None,
+            configuration: Value::Null,
+            inputs: vec![
+                ActivityParameterInput {
+                    name: "supplementaryId".to_owned(),
+                    type_: ActivityParameterType::SUPPLEMENTARY
+                }
+            ],
+            outputs: vec![],
+        }
     }
 
     async fn execute(&self, client: &Client, context: &mut ActivityContext, job: &WorkflowJob) -> Result<(), Error> {

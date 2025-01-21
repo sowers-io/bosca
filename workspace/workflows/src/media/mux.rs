@@ -17,6 +17,7 @@ use serde_json::{json, Map, Value};
 use tokio::fs::File;
 use tokio::io::AsyncReadExt;
 use bosca_client::client::{Client, WorkflowJob};
+use bosca_client::client::add_activity::ActivityInput;
 use bosca_client::download::download_path;
 use crate::util::add_to;
 
@@ -42,6 +43,18 @@ impl MuxUploadActivity {
 impl Activity for MuxUploadActivity {
     fn id(&self) -> &String {
         &self.id
+    }
+
+    fn create_activity_input(&self) -> ActivityInput {
+        ActivityInput {
+            id: self.id.to_owned(),
+            name: "Mux Upload".to_owned(),
+            description: "Upload a video to Mux".to_owned(),
+            child_workflow_id: None,
+            configuration: Value::Object(Map::new()),
+            inputs: vec![],
+            outputs: vec![],
+        }
     }
 
     async fn execute(&self, client: &Client, context: &mut ActivityContext, job: &WorkflowJob) -> Result<(), Error> {

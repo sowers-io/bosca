@@ -174,20 +174,20 @@ services:
     networks:
       - boscanet
 
-  ollama:
-    image: ollama/ollama:latest
-    ports:
-      - 11434:11434
-    environment:
-      OLLAMA_NUM_PARALLEL: 4
-      OLLAMA_MAX_LOADED_MODELS: 4
-      OLLAMA_DEBUG: 1
-    volumes:
-      - ./ollama/ollama:/root/.ollama
-    tty: true
-    restart: always
-    networks:
-      - boscanet
+#  ollama:
+#    image: ollama/ollama:latest
+#    ports:
+#      - 11434:11434
+#    environment:
+#      OLLAMA_NUM_PARALLEL: 4
+#      OLLAMA_MAX_LOADED_MODELS: 4
+#      OLLAMA_DEBUG: 1
+#    volumes:
+#      - ./ollama/ollama:/root/.ollama
+#    tty: true
+#    restart: always
+#    networks:
+#      - boscanet
   #    deploy:
   #      resources:
   #        reservations:

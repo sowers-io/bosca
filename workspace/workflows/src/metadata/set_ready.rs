@@ -1,6 +1,8 @@
 use crate::activity::{Activity, ActivityContext, Error};
 use async_trait::async_trait;
+use serde_json::Value;
 use bosca_client::client::{Client, WorkflowJob};
+use bosca_client::client::add_activity::ActivityInput;
 
 pub struct MetadataSetReadyActivity {
     id: String,
@@ -24,6 +26,18 @@ impl MetadataSetReadyActivity {
 impl Activity for MetadataSetReadyActivity {
     fn id(&self) -> &String {
         &self.id
+    }
+
+    fn create_activity_input(&self) -> ActivityInput {
+        ActivityInput {
+            id: self.id.to_owned(),
+            name: "Set Ready".to_string(),
+            description: "Set metadata ready".to_string(),
+            child_workflow_id: None,
+            configuration: Value::Null,
+            inputs: vec![],
+            outputs: vec![],
+        }
     }
 
     async fn execute(

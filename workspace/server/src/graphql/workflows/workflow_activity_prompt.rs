@@ -16,7 +16,7 @@ impl WorkflowActivityPromptObject {
 
 #[Object(name = "WorkflowActivityPrompt")]
 impl WorkflowActivityPromptObject {
-    async fn configuration(&self) -> &Value {
+    async fn configuration(&self) -> &Option<Value> {
         &self.prompt.configuration
     }
 

@@ -5,7 +5,9 @@ use bosca_workflows::activity::{Activity, ActivityContext, Error};
 use bosca_client::client::{Client, WorkflowJob};
 use bosca_client::upload::{upload_multipart_bytes, upload_multipart_supplementary_bytes};
 use bytes::Bytes;
+use serde_json::Value;
 use bosca_bible_processor::string_context::StringContext;
+use bosca_client::client::add_activity::ActivityInput;
 use bosca_client::client::add_metadata_supplementary::MetadataSupplementaryInput;
 use crate::util::get_bible;
 
@@ -31,6 +33,18 @@ impl VerseUpload {
 impl Activity for VerseUpload {
     fn id(&self) -> &String {
         &self.id
+    }
+
+    fn create_activity_input(&self) -> ActivityInput {
+        ActivityInput {
+            id: self.id.to_owned(),
+            name: "Upload Verse USX".to_string(),
+            description: "Upload the Verse USX as Metadata Content".to_string(),
+            child_workflow_id: None,
+            configuration: Value::Null,
+            inputs: vec![],
+            outputs: vec![],
+        }
     }
 
     async fn execute(
