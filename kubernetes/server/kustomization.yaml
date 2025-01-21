@@ -15,5 +15,7 @@ configMapGenerator:
       - STORAGE=s3
       - SEARCH_URL=http://meilisearch.bosca.svc.cluster.local:7700
       - BOSCA_URL_PREFIX=https://api.bosca.io
+      - REDIS_JOBS_QUEUE_URL=redis://jobs-queue.bosca.svc.cluster.local:6379
+      - REDIS_NOTIFIER_PUBSUB_URL=redis://notifier-pubsub.bosca.svc.cluster.local:6379
       - OTLP_TRACE_ENDPOINT=http://otel-collector.bosca.svc.cluster.local:4318/v1/traces
       - OTLP_METRICS_ENDPOINT=http://otel-collector.bosca.svc.cluster.local:4318/v1/metrics

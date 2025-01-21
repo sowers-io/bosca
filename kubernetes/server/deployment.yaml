@@ -101,6 +101,11 @@ spec:
                 secretKeyRef:
                   name: jwt-secret
                   key: secret
+            - name: URL_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: url-secret
+                  key: key
             - name: SEARCH_KEY
               valueFrom:
                 secretKeyRef:

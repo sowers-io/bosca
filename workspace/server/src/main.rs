@@ -233,8 +233,8 @@ fn build_search_client() -> Arc<Client> {
     Arc::new(Client::new(url, Some(key)).unwrap())
 }
 
-async fn build_redis_client() -> Result<RedisClient, Error> {
-    let url = match env::var("REDIS_URL") {
+async fn build_redis_client(key: &str) -> Result<RedisClient, Error> {
+    let url = match env::var(key) {
         Ok(url) => url,
         _ => "redis://127.0.0.1:6380".to_string(),
     };
@@ -374,9 +374,10 @@ async fn main() {
         }
     };
 
-    let redis_client = build_redis_client().await.unwrap();
-    let jobs = JobQueues::new(Arc::clone(&bosca_pool), redis_client.clone());
-    let notifier = Arc::new(Notifier::new(redis_client.clone()));
+    let redis_jobs_queue_client = build_redis_client("REDIS_JOBS_QUEUE_URL").await.unwrap();
+    let redis_notifier_client = build_redis_client("REDIS_NOTIFIER_PUBSUB_URL").await.unwrap();
+    let jobs = JobQueues::new(Arc::clone(&bosca_pool), redis_jobs_queue_client.clone());
+    let notifier = Arc::new(Notifier::new(redis_notifier_client.clone()));
     let search = build_search_client();
     let ctx = BoscaContext {
         security: SecurityDataStore::new(

@@ -1,0 +1,18 @@
+apiVersion: dragonflydb.io/v1alpha1
+kind: Dragonfly
+metadata:
+  name: jobs-queue
+  namespace: bosca
+spec:
+  env:
+    - name: DFLY_lock_on_hashtags
+      value: "true"
+    - name: DFLY_default_lua_flags
+      value: allow-undeclared-keys
+    - name: DFLY_cache_mode
+      value: "true"
+  replicas: 2
+  resources:
+    requests:
+      cpu: 500m
+      memory: 500Mi

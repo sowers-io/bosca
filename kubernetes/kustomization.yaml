@@ -7,8 +7,11 @@ resources:
   - secrets/serviceaccount.yaml
   - secrets/postgres-bosca.yaml
   - secrets/postgres-bosca-direct.yaml
+  - secrets/url-secret.yaml
   - services/otel.yaml
   - services/coroot-pg-agent.yaml
+  - cache.yaml
+  - notifier-pubsub.yaml
   - server
   - analytics-backend
   - analytics-frontend
