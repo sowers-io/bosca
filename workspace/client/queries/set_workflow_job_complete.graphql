@@ -1,5 +1,0 @@
-mutation SetWorkflowJobComplete($jobId: WorkflowJobIdInput!) {
-    workflows {
-        setExecutionPlanJobComplete(jobId: $jobId)
-    }
-}

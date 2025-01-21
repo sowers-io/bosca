@@ -63,15 +63,6 @@ jobs:
           tags: |
             ghcr.io/sowers-io/bosca/server:latest
             ghcr.io/sowers-io/bosca/server:${{ github.sha }}
-      - name: Build and push runner
-        uses: docker/build-push-action@v3
-        with:
-          context: .
-          file: Dockerfile-runner
-          push: true
-          tags: |
-            ghcr.io/sowers-io/bosca/runner:latest
-            ghcr.io/sowers-io/bosca/runner:${{ github.sha }}
       - name: Build and push analytics
         uses: docker/build-push-action@v3
         with:

@@ -1,5 +1,0 @@
-mutation SetExecutionPlanJobCheckin($jobId: WorkflowJobIdInput!) {
-    workflows {
-        setExecutionPlanJobCheckin(jobId: $jobId)
-    }
-}

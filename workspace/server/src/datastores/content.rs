@@ -1345,19 +1345,7 @@ impl ContentDataStore {
         )
         .await?;
 
-        let stmt = txn
-            .prepare_cached("select trait_id from trait_content_types where content_type = $1")
-            .await?;
-        let result = txn.query(&stmt, &[&metadata.content_type]).await?;
-        for row in result {
-            let content_type = row.get(0);
-            if metadata.trait_ids.is_some()
-                && metadata.trait_ids.as_ref().unwrap().contains(&content_type)
-            {
-                continue;
-            }
-            self.add_metadata_trait_txn(txn, id, &content_type).await?;
-        }
+        self.ensure_content_type_traits(id, &metadata.content_type, txn).await?;
 
         Ok(())
     }

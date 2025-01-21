@@ -1,9 +1,0 @@
-mutation AddMetadataSupplementary($supplementary: MetadataSupplementaryInput!) {
-    content {
-        metadata {
-            addSupplementary(supplementary: $supplementary) {
-                key
-            }
-        }
-    }
-}

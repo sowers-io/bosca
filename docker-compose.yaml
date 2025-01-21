@@ -17,23 +17,6 @@ services:
       postgres:
         condition: service_healthy
 
-  runner:
-    build:
-      tags:
-        - ghcr.io/sowers-io/bosca/runner:latest
-      dockerfile: Dockerfile-runner
-    environment:
-      BOSCA_USERNAME: admin
-      BOSCA_PASSWORD: password
-      BOSCA_QUEUES: "bible,20;bible-ai,0;bible-book,20;bible-chapter,20;bible-verse,10;media-transcription,1;media-upload,5;metadata,50;search-index,100;traits,100;transition,100"
-      BOSCA_URL: http://server:8000/graphql
-    restart: always
-    networks:
-      - boscanet
-    depends_on:
-      postgres:
-        condition: service_healthy
-
   server:
     build:
       tags:

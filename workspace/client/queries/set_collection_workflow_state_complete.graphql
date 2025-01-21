@@ -1,7 +1,0 @@
-mutation SetCollectionWorkflowStateComplete($state: CollectionWorkflowCompleteState!) {
-    content {
-        collection {
-            setWorkflowStateComplete(state: $state)
-        }
-    }
-}

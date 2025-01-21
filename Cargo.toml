@@ -3,13 +3,8 @@ resolver = "2"
 members = [
     "workspace/migrations",
     "workspace/server",
-    "workspace/workflows",
-    "workspace/runner",
-    "workspace/bible/workflows",
-    "workspace/bible/processor",
-    "workspace/util/telemetry",
+    "workspace/analytics",
     "workspace/front",
-    "workspace/client",
+    "workspace/util/telemetry",
     "workspace/graphql-clients/client-generator",
-    "workspace/analytics"
 ]

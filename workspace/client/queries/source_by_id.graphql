@@ -1,8 +1,0 @@
-query SourceById($id: String!) {
-    content {
-        source(id: $id) {
-            id
-            name
-        }
-    }
-}

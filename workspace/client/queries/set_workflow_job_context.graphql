@@ -1,5 +1,0 @@
-mutation SetWorkflowJobContext($jobId: WorkflowJobIdInput!, $context: JSON!) {
-    workflows {
-        setExecutionJobContext(jobId: $jobId, context: $context)
-    }
-}
