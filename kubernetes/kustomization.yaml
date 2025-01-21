@@ -13,7 +13,6 @@ resources:
   - analytics-backend
   - analytics-frontend
   - analytics-query
-  - admin
   - meilisearch
   - ollama
   - ingress.yaml
