@@ -93,25 +93,6 @@ services:
     networks:
       - boscanet
 
-  postgres-jobs:
-    image: quay.io/tembo/pg16-pgmq:latest
-    restart: always
-    ports:
-      - '5434:5432'
-    volumes:
-      - bosca-postgres-jobs:/var/lib/postgresql/data
-    environment:
-      - POSTGRES_PASSWORD=boscajobs
-      - POSTGRES_USER=boscajobs
-      - POSTGRES_DB=boscajobs
-    healthcheck:
-      test: [ "CMD", "pg_isready", "-U", "boscajobs" ]
-      interval: 10s
-      retries: 5
-      start_period: 10s
-    networks:
-      - boscanet
-
   minio1:
     <<: *minio-common
     hostname: minio1
@@ -216,7 +197,6 @@ networks:
 
 volumes:
   bosca-postgres:
-  bosca-postgres-jobs:
   bosca-postgresjobqueue:
   bosca-minio-data1-1:
   bosca-minio-data1-2:

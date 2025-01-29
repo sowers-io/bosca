@@ -1,8 +1,6 @@
 Bosca
 ===
 
-**Current Project Phase:** Alpha
-
 Bosca is a Content Management System.
 
 ### Getting Started
@@ -10,34 +8,16 @@ Bosca is a Content Management System.
 Run
 
 ```bash
-cargo build --release
-docker compose up
+./scripts/start-services
+./scripts/run-release
 ```
 
-Admin UI: http://127.0.0.1:3000/
 GraphQL: http://127.0.0.1:8000/
 
 Username: `admin` Password: `password`
 
-### Key Features (not an exhaustive list):
+The admin interface and the workflow runner infrastructure will be released soon.
 
-* Content Management
-* Collections
-* Semantic Search
-* Accounts, Authentication, Authorization, etc.
-* Content Workflows
-* Personalization
-    * Profiles
-    * Recommendations
-* Client SDKs (GraphQL)
+# License
 
-Roadmap:
-
-* Build Administration Interfaces
-* Documentation
-* Caching
-* ...
-
-License:
-
-Unless otherwise noted in subsequent READMEs, this project will be licensed as FSL-1.1-ALv2.
+Unless otherwise noted in subsequent READMEs, this project will be licensed as Apache License, Version 2.0.
