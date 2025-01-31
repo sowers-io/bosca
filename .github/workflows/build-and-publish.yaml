@@ -72,15 +72,6 @@ jobs:
           tags: |
             ghcr.io/sowers-io/bosca/analytics:latest
             ghcr.io/sowers-io/bosca/analytics:${{ github.sha }}
-      - name: Build and push front
-        uses: docker/build-push-action@v3
-        with:
-          context: .
-          file: Dockerfile-front
-          push: true
-          tags: |
-            ghcr.io/sowers-io/bosca/front:latest
-            ghcr.io/sowers-io/bosca/front:${{ github.sha }}
 
   build-and-publish-frontend:
     runs-on: ubuntu-22.04
