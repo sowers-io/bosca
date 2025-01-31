@@ -4,7 +4,6 @@ members = [
     "workspace/migrations",
     "workspace/server",
     "workspace/analytics",
-    "workspace/front",
     "workspace/util/telemetry",
     "workspace/graphql-clients/client-generator",
 ]
