@@ -1,43 +1,16 @@
-Bosca
-===
+# Bosca
 
-**Current Project Phase:** Alpha
+Bosca is an AI-powered Content Management, Analytics, and Personalization platform built to help organizations unlock the 
+full potential of their content strategies. With cutting-edge AI/ML workflows, Bosca simplifies content management while 
+delivering actionable insights and personalized user experiences that drive meaningful engagement.
 
-Bosca is a Content Management System.
+## Key Features:
+- **Streamlined Content Management:** Simplify the creation, organization, and delivery of content across platforms.
+- **Advanced Analytics:** Access deep insights to understand performance and optimize strategies.
+- **AI/ML Automation:** Automate workflows and create personalized experiences that captivate your audience.
+- **Personalized Engagement:** Deliver tailored content that resonates with individual users for better outcomes.
 
-### Getting Started
+## Getting Started:
 
-Run
-
-```bash
-cargo build --release
-docker compose up
-```
-
-Admin UI: http://127.0.0.1:3000/
-GraphQL: http://127.0.0.1:8000/
-
-Username: `admin` Password: `password`
-
-### Key Features (not an exhaustive list):
-
-* Content Management
-* Collections
-* Semantic Search
-* Accounts, Authentication, Authorization, etc.
-* Content Workflows
-* Personalization
-    * Profiles
-    * Recommendations
-* Client SDKs (GraphQL)
-
-Roadmap:
-
-* Build Administration Interfaces
-* Documentation
-* Caching
-* ...
-
-License:
-
-Unless otherwise noted in subsequent READMEs, this project will be licensed as FSL-1.1-ALv2.
+Discover how Bosca can elevate your content strategy. Visit the [Quickstart Guide](https://docs.bosca.io/quickstart) to 
+get started today.

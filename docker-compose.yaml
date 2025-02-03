@@ -4,10 +4,8 @@ include:
 
 services:
   database-migration:
-    build:
-      tags:
-        - ghcr.io/sowers-io/bosca/database-migration:latest
-      dockerfile: Dockerfile-migrations
+    image: ghcr.io/sowers-io/bosca/database-migrations:latest
+    platform: linux/amd64
     pull_policy: always
     environment:
       DATABASE_URL: postgresql://bosca:bosca@postgres:5432/bosca
@@ -18,14 +16,13 @@ services:
         condition: service_healthy
 
   server:
-    build:
-      tags:
-        - ghcr.io/sowers-io/bosca/server:latest
-      dockerfile: Dockerfile-server
+    image: ghcr.io/sowers-io/bosca/server:latest
+    platform: linux/amd64
     environment:
       BOSCA_URL_PREFIX: http://server:8000
-      DATABASE_JOBS_URL: postgres://boscajobs:boscajobs@postgres-jobs:5432/boscajobs
       DATABASE_URL: postgres://bosca:bosca@postgres:5432/bosca
+      REDIS_JOBS_QUEUE_URL: redis://dragonfly:6379
+      REDIS_NOTIFIER_PUBSUB_URL: redis://dragonfly:6379
       JWT_AUDIENCE: bosca.io
       JWT_ISSUER: bosca-graphql
       JWT_SECRET: bosca1234*
@@ -46,24 +43,5 @@ services:
     depends_on:
       database-migration:
         condition: service_started
-      postgres-jobs:
-        condition: service_healthy
-      postgres:
-        condition: service_healthy
-
-  admin:
-    build:
-      tags:
-        - ghcr.io/sowers-io/bosca/admin:latest
-      context: workspace/admin
-      dockerfile: Dockerfile
-    pull_policy: always
-    ports:
-      - '3000:3000'
-    environment:
-      BOSCA_SERVER_URL: http://server:8000/graphql
-    networks:
-      - boscanet
-    depends_on:
       postgres:
         condition: service_healthy
