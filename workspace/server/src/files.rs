@@ -63,7 +63,7 @@ pub async fn download(
     let id_str = params.id.as_deref().unwrap_or("");
     let id =
         Uuid::parse_str(id_str).map_err(|_| (StatusCode::BAD_REQUEST, "Bad Request".to_owned()))?;
-    let url = format!("/files{}", request.uri().path_and_query().unwrap().to_string());
+    let url = format!("/files{}", request.uri().path_and_query().unwrap());
     let metadata = if ctx.security.verify_signed_url(&url) {
         let metadata = ctx
             .content

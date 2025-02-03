@@ -767,7 +767,7 @@ impl WorkflowDataStore {
             .await?;
         txn.execute(&stmt, &[&id]).await?;
         for model in system.models.iter() {
-            self.add_storage_system_model_txn(&mut txn, &id, model)
+            self.add_storage_system_model_txn(&mut txn, id, model)
                 .await?;
         }
         txn.commit().await?;
@@ -1023,7 +1023,7 @@ impl WorkflowDataStore {
         connection
             .execute("delete from traits where id = $1", &[&id])
             .await?;
-        self.notifier.trait_changed(&id).await?;
+        self.notifier.trait_changed(id).await?;
         Ok(())
     }
 
@@ -1120,11 +1120,11 @@ impl WorkflowDataStore {
                     &workflow,
                     job.collection_id
                         .as_ref()
-                        .map(|id| Uuid::parse_str(&id).unwrap()),
+                        .map(|id| Uuid::parse_str(id).unwrap()),
                     job.metadata_id
                         .as_ref()
-                        .map(|id| Uuid::parse_str(&id).unwrap()),
-                    job.metadata_version.clone(),
+                        .map(|id| Uuid::parse_str(id).unwrap()),
+                    job.metadata_version,
                     None,
                 )
                 .await?;
@@ -1181,7 +1181,7 @@ impl WorkflowDataStore {
 
     pub async fn dequeue_next_execution(
         &self,
-        queue: &String,
+        queue: &str,
     ) -> Result<Option<WorkflowJob>, Error> {
         self.queues.dequeue(queue).await
     }
@@ -1190,7 +1190,7 @@ impl WorkflowDataStore {
         &self,
         id: &WorkflowExecutionId,
     ) -> Result<Option<WorkflowExecutionPlan>, Error> {
-        Ok(self.queues.get_plan(id).await?)
+        self.queues.get_plan(id).await
     }
 
     pub async fn get_execution_plans(
@@ -1257,12 +1257,12 @@ impl WorkflowDataStore {
                 .await?;
             let id = WorkflowJobId {
                 queue: workflow_activity.queue.clone(),
-                id: plan_id.clone(),
+                id: plan_id,
                 index: jobs.len() as i32,
             };
             let job = WorkflowJob {
                 plan_id: WorkflowExecutionId {
-                    id: plan_id.clone(),
+                    id: plan_id,
                     queue: workflow.queue.to_owned(),
                 },
                 id: id.clone(),

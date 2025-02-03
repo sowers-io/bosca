@@ -550,7 +550,7 @@ impl MetadataMutationObject {
         let metadata_id = Uuid::parse_str(id.as_str())?;
         let metadata = ctx.check_metadata_action(&metadata_id, PermissionAction::Edit).await?;
         ctx.content.set_metadata_uploaded(&metadata_id, &None, &content_type, len).await?;
-        if ready.is_some() && ready.unwrap() && !metadata.ready.is_some() {
+        if ready.is_some() && ready.unwrap() && metadata.ready.is_none() {
             ctx.content.set_metadata_ready_and_enqueue(ctx, &metadata, configurations).await?;
         }
         Ok(true)

@@ -1238,7 +1238,7 @@ impl ContentDataStore {
             if current_traits.contains(&content_type) {
                 continue;
             }
-            self.add_metadata_trait_txn(&txn, metadata_id, &content_type)
+            self.add_metadata_trait_txn(txn, metadata_id, &content_type)
                 .await?;
         }
         Ok(())
@@ -1299,7 +1299,7 @@ impl ContentDataStore {
             }
         }
 
-        self.ensure_content_type_traits(&id, &metadata.content_type, &txn).await?;
+        self.ensure_content_type_traits(&id, &metadata.content_type, txn).await?;
 
         Ok((id, version))
     }

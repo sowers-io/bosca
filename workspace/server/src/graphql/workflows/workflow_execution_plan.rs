@@ -71,7 +71,7 @@ impl WorkflowExecutionPlanObject {
         self.plan.pending.iter().cloned().collect()
     }
     async fn current_execution_group(&self) -> Vec<i32> {
-        self.plan.current_execution_group.iter().cloned().collect()
+        self.plan.current_execution_group.to_vec()
     }
     async fn running(&self) -> Vec<i32> {
         self.plan.running.iter().cloned().collect()

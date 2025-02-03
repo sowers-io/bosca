@@ -15,14 +15,12 @@ impl SecurityObject {
     }
 
     async fn actions(&self) -> Result<Vec<String>, Error> {
-        Ok(vec![
-            PermissionAction::View,
+        Ok([PermissionAction::View,
             PermissionAction::Edit,
             PermissionAction::Delete,
             PermissionAction::Manage,
             PermissionAction::List,
-            PermissionAction::Execute,
-        ]
+            PermissionAction::Execute]
         .iter()
         .map(|id| format!("{:?}", id))
         .collect())

@@ -29,8 +29,6 @@ use axum::{
     routing::get,
     Router,
 };
-use std::str::FromStr;
-use deadpool_postgres::{Config, ManagerConfig, Pool, RecyclingMethod, Runtime};
 use graphql::mutation::MutationObject;
 use graphql::query::QueryObject;
 use http::HeaderMap;
@@ -40,13 +38,12 @@ use object_store::local::LocalFileSystem;
 use serde_json::Value;
 use std::env;
 use std::fs::create_dir_all;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::process::exit;
 use std::sync::Arc;
 use std::sync::atomic::Ordering::Relaxed;
 use std::time::Duration;
 use async_graphql::extensions::apollo_persisted_queries::ApolloPersistedQueries;
-use base64::Engine;
 use chrono::Utc;
 use object_store::aws::AmazonS3Builder;
 use opentelemetry::{global, KeyValue};
@@ -58,15 +55,10 @@ use opentelemetry_otlp::WithExportConfig;
 use opentelemetry_sdk::{runtime, Resource};
 use opentelemetry_sdk::trace::{BatchConfigBuilder, BatchSpanProcessor, TracerProvider};
 use rustls::crypto::ring;
-use rustls::pki_types::CertificateDer;
-use rustls::pki_types::pem::PemObject;
-use rustls::RootCertStore;
 #[cfg(unix)]
 use tokio::signal::unix::{signal, SignalKind};
 #[cfg(windows)]
 use tokio::signal::windows::ctrl_c;
-use tokio_postgres::NoTls;
-use tokio_postgres_rustls::MakeRustlsConnect;
 use tower_http::timeout::TimeoutLayer;
 use crate::context::BoscaContext;
 use crate::datastores::content::ContentDataStore;
@@ -196,7 +188,7 @@ async fn build_redis_client(key: &str) -> Result<RedisClient, Error> {
         Ok(url) => url,
         _ => "redis://127.0.0.1:6380".to_string(),
     };
-    Ok(RedisClient::new(url).await?)
+    RedisClient::new(url).await
 }
 
 async fn initialize_security(datastore: &SecurityDataStore) {

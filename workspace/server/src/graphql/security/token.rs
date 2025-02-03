@@ -12,7 +12,7 @@ impl<'a> TokenObject<'a> {
 }
 
 #[Object(name = "Token")]
-impl<'a> TokenObject<'a> {
+impl TokenObject<'_> {
     async fn token(&self) -> String {
         self.token.token.to_string()
     }

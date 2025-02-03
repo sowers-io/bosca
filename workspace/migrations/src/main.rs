@@ -1,10 +1,7 @@
-use base64::Engine;
 use std::ops::DerefMut;
-use std::str::FromStr;
 
 use bosca_database::build_pool;
 use rustls::crypto::ring;
-use rustls::pki_types::pem::PemObject;
 
 mod embedded {
     use refinery::embed_migrations;

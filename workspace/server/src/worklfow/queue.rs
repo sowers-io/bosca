@@ -44,7 +44,7 @@ impl JobQueues {
     async fn incr(&self, key: &str) -> Result<(), Error> {
         let conn = self.redis.get().await?;
         let mut conn = conn.get_connection().await?;
-        let _: i64 = conn.incr(&key, 1).await?;
+        let _: i64 = conn.incr(key, 1).await?;
         Ok(())
     }
 
@@ -70,7 +70,7 @@ impl JobQueues {
         id: &WorkflowJobId,
     ) -> Result<Option<WorkflowExecutionPlan>, Error> {
         let id = WorkflowExecutionId {
-            id: id.id.clone(),
+            id: id.id,
             queue: id.queue.clone(),
         };
         self.get_plan(&id).await
@@ -101,7 +101,7 @@ impl JobQueues {
         id: &WorkflowJobId,
     ) -> Result<Option<WorkflowExecutionPlan>, Error> {
         let id = WorkflowExecutionId {
-            id: id.id.clone(),
+            id: id.id,
             queue: id.queue.clone(),
         };
         self.get_plan_and_lock(transaction, &id).await
@@ -165,8 +165,8 @@ impl JobQueues {
         for queue_parts in queues {
             let queue = queue_parts.split("::").last().unwrap();
             let result: i32 = script
-                .key(JobQueues::queue_key(&queue))
-                .key(JobQueues::running_queue_key(&queue))
+                .key(JobQueues::queue_key(queue))
+                .key(JobQueues::running_queue_key(queue))
                 .arg(time)
                 .invoke_async(&mut connection)
                 .await?;
@@ -184,7 +184,7 @@ impl JobQueues {
     ) -> Result<WorkflowExecutionId, Error> {
         let mut connection = self.pool.get().await?;
         let transaction = connection.transaction().await?;
-        self.set_plan(&transaction, &plan).await?;
+        self.set_plan(&transaction, plan).await?;
         transaction.commit().await?;
         let mut transaction = Transaction::new();
         transaction.add_op(TransactionOp::QueuePlan(plan.id.clone()));
@@ -227,7 +227,7 @@ impl JobQueues {
         let mut connection = self.pool.get().await?;
         let transaction = connection.transaction().await?;
 
-        let Some(mut plan) = self.get_plan_and_lock_by_job(&transaction, &job_id).await? else {
+        let Some(mut plan) = self.get_plan_and_lock_by_job(&transaction, job_id).await? else {
             return Err(Error::new("can't enqueue child workflows, missing job"));
         };
         let job = plan.jobs.get_mut(job_id.index as usize).unwrap();
@@ -237,13 +237,13 @@ impl JobQueues {
         }
         let mut ids = Vec::new();
         let mut queue_txn = Transaction::new();
-        let mut plans = plans.iter().cloned().collect::<Vec<_>>();
+        let mut plans = plans.to_vec();
         for plan in plans.iter_mut() {
             plan.parent = Some(job.id.clone());
             job.children.insert(plan.id.clone());
             ids.push(plan.id.clone());
             queue_txn.add_op(TransactionOp::QueuePlan(plan.id.clone()));
-            self.set_plan(&transaction, &plan).await?;
+            self.set_plan(&transaction, plan).await?;
             self.incr("queue::enqueued::child::count").await?;
             info!("enqueued plan: {}", plan.id);
         }
@@ -259,7 +259,7 @@ impl JobQueues {
         id: &WorkflowExecutionId,
         job_index: i32,
     ) -> Result<(), Error> {
-        let Some(mut plan) = self.get_plan_and_lock(&transaction, &id).await? else {
+        let Some(mut plan) = self.get_plan_and_lock(transaction, id).await? else {
             return Err(Error::new("can't enqueue job, missing plan"));
         };
 
@@ -276,7 +276,7 @@ impl JobQueues {
         }
 
         if !plan.current_execution_group.contains(&job_index)
-            && (plan.next.is_none() || !plan.next.as_ref().is_some_and(|id| *id == job_index))
+            && (plan.next.is_none() || plan.next.as_ref().is_none_or(|id| *id != job_index))
         {
             error!(target: "workflow", "not enqueuing job, it's not marked as a current execution group or next job: {} {}", id, job_index);
             return Ok(());
@@ -286,7 +286,7 @@ impl JobQueues {
         plan.running.insert(job_index);
         plan.pending.remove(&job_index);
 
-        self.set_plan(&transaction, &plan).await?;
+        self.set_plan(transaction, &plan).await?;
         Ok(())
     }
 
@@ -323,7 +323,7 @@ impl JobQueues {
             .arg(1800)
             .invoke_async(&mut connection)
             .await?;
-        if result.len() == 0 {
+        if result.is_empty() {
             return Ok(None);
         }
         let id = from_utf8(&result)?;
@@ -345,7 +345,7 @@ impl JobQueues {
             let mut id_parts = id_parts.split("::");
             let queue = id_parts.next().unwrap();
             let id = Uuid::parse_str(id_parts.next().unwrap())?;
-            let index = i32::from_str_radix(id_parts.next().unwrap(), 10)?;
+            let index = id_parts.next().unwrap().parse::<i32>()?;
             let id = WorkflowJobId {
                 id,
                 queue: queue.to_owned(),
@@ -378,7 +378,7 @@ impl JobQueues {
                 info!(target: "workflow", "removing job from current list and queueing as next: {}", plan.id);
                 let next = plan.current_execution_group.remove(0);
                 if !plan.complete.contains(&next) {
-                    plan.next = Some(next.clone());
+                    plan.next = Some(next);
                     break;
                 }
             }
@@ -400,7 +400,7 @@ impl JobQueues {
             update = true;
         }
         if update {
-            self.set_plan(&transaction, &plan).await?;
+            self.set_plan(transaction, plan).await?;
         }
         if plan.next.is_none() {
             warn!(target: "workflow", "plan is missing next: {}", plan.id);
@@ -426,7 +426,7 @@ impl JobQueues {
                 }
                 if job_index != -1 {
                     let id = WorkflowJobId {
-                        id: plan.id.id.clone(),
+                        id: plan.id.id,
                         queue: plan.id.queue.clone(),
                         index: job_index,
                     };
@@ -646,7 +646,7 @@ impl JobQueues {
                     let parent_job = parent_plan.jobs.get_mut(parent_id.index as usize).unwrap();
                     parent_job.completed_children.insert(plan.id.clone());
                     if parent_job.children.len() == parent_job.completed_children.len() {
-                        self.set_plan(db_txn, &plan).await?;
+                        self.set_plan(db_txn, plan).await?;
                         dirty_plan = false;
                         self.incr("queue::job::complete::recursive").await?;
                         Box::pin(self.set_execution_job_complete_recursive(
@@ -671,7 +671,7 @@ impl JobQueues {
         }
 
         if dirty_plan {
-            self.set_plan(db_txn, &plan).await?;
+            self.set_plan(db_txn, plan).await?;
         }
 
         Ok(())
