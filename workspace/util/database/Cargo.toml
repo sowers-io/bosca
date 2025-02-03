@@ -1,12 +1,14 @@
 [package]
-name = "bosca-migrations"
+name = "bosca-database"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-bosca-database = { path = "../util/database" }
-
+deadpool-postgres = "0.14.0"
 tokio = { version = "1.38.1", features = ["full", "tracing"] }
+tokio-postgres = { version = "0.7.11", features = ["with-uuid-0_8"] }
+tokio-postgres-rustls = "0.12.0"
 base64 = "0.22.1"
+
 rustls = { version = "0.23.14", features = ["tls12", "ring"] }
-refinery = { version = "0.8.14", features = ["tokio-postgres"] }
+webpki-roots = "0.26.6"

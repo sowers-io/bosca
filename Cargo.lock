@@ -934,30 +934,27 @@ dependencies = [
 ]
 
 [[package]]
-name = "bosca-migrations"
+name = "bosca-database"
 version = "0.1.0"
 dependencies = [
- "argon2",
- "async-stream",
- "async-trait",
  "base64 0.22.1",
- "bytes",
- "chrono",
  "deadpool-postgres",
- "futures-util",
- "log",
- "postgres-types",
- "refinery",
  "rustls",
- "serde",
- "serde_json",
  "tokio",
  "tokio-postgres",
  "tokio-postgres-rustls",
- "tokio-stream",
- "tower 0.5.1",
- "uuid 0.8.2",
  "webpki-roots",
+]
+
+[[package]]
+name = "bosca-migrations"
+version = "0.1.0"
+dependencies = [
+ "base64 0.22.1",
+ "bosca-database",
+ "refinery",
+ "rustls",
+ "tokio",
 ]
 
 [[package]]
@@ -981,6 +978,7 @@ dependencies = [
  "axum",
  "axum-extra",
  "base64 0.22.1",
+ "bosca-database",
  "bosca-telemetry",
  "bytes",
  "chrono",
