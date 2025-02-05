@@ -223,7 +223,7 @@ impl JobQueues {
             self.notifier.collection_changed(id).await?;
         }
         if let Some(id) = &plan.metadata_id {
-            self.notifier.metadata_changed(&id).await?;
+            self.notifier.metadata_changed(id).await?;
         }
         Ok(plan.id.clone())
     }
@@ -280,10 +280,10 @@ impl JobQueues {
             ids.push(plan.id.clone());
             queue_txn.add_op(TransactionOp::QueuePlan(plan.id.clone()));
             if let Some(id) = &plan.collection_id {
-                collection_ids.insert(id.clone());
+                collection_ids.insert(*id);
             }
             if let Some(id) = &plan.metadata_id {
-                metadata_ids.insert(id.clone());
+                metadata_ids.insert(*id);
             }
             self.set_plan(&transaction, plan, true).await?;
             self.incr("queue::enqueued::child::count").await?;

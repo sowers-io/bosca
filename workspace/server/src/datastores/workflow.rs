@@ -1306,7 +1306,7 @@ impl WorkflowDataStore {
             running: HashSet::new(),
             complete: HashSet::new(),
             failed: HashSet::new(),
-            metadata_id: metadata_id.map(|id| id.clone()),
+            metadata_id,
             workflow: workflow.clone(),
             jobs,
             context: Value::Null,
@@ -1314,7 +1314,7 @@ impl WorkflowDataStore {
             next: None,
             supplementary_id: None,
             metadata_version,
-            collection_id: collection_id.map(|id| id.clone()),
+            collection_id,
             finished: None,
         })
     }

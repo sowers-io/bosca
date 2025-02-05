@@ -50,7 +50,7 @@ impl WorkflowExecutionPlanObject {
         }
         let ctx = ctx.data::<BoscaContext>()?;
         let metadata_id = self.plan.metadata_id.as_ref().unwrap();
-        let metadata = ctx.check_metadata_action(&metadata_id, PermissionAction::View).await?;
+        let metadata = ctx.check_metadata_action(metadata_id, PermissionAction::View).await?;
         Ok(Some(MetadataObject::from(metadata)))
     }
     async fn metadata_version(&self) -> Option<i32> {

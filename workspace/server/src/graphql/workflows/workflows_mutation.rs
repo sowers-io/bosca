@@ -184,16 +184,16 @@ impl WorkflowsMutationObject {
             if version.is_none() {
                 return Err(Error::new("a version is required"));
             }
-            let plan = ctx.workflow
+            
+            ctx.workflow
                 .enqueue_metadata_workflow(&workflow_id, &id, version.as_ref().unwrap(), configurations.as_ref(), None)
-                .await?;
-            plan
+                .await?
         } else if let Some(collection_id) = collection_id {
             let id = Uuid::parse_str(collection_id.as_str())?;
-            let plan = ctx.workflow
+            
+            ctx.workflow
                 .enqueue_collection_workflow(&workflow_id, &id, configurations.as_ref(), None)
-                .await?;
-            plan
+                .await?
         } else {
             return Err(Error::new("you must provide either a collection_id or a metadata_id"));
         };
