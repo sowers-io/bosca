@@ -7,10 +7,11 @@ use crate::security::authorization_extension::{
 };
 use async_graphql::Error;
 use axum::body::Body;
-use axum::extract::{Request, State};
 use axum::extract::{Multipart, Query};
+use axum::extract::{Request, State};
 use bytes::{Buf, BufMut, BytesMut};
 use http::{HeaderMap, HeaderValue, StatusCode};
+use log::error;
 use object_store::MultipartUpload;
 use serde::Deserialize;
 use std::io::Write;
@@ -97,11 +98,10 @@ pub async fn download(
                 "Internal Server Error".to_owned(),
             )
         })?;
-    let buf = ctx
-        .storage
-        .get_buffer(&path)
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))?;
+    let buf = ctx.storage.get_buffer(&path).await.map_err(|e| {
+        error!("Error getting buffer: {}", e);
+        (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
+    })?;
     let body = Body::from_stream(buf);
     let mut headers = HeaderMap::new();
     headers.insert(
@@ -164,20 +164,27 @@ pub async fn upload(
         while let Some(chunk) = field
             .chunk()
             .await
-            .map_err(|err| (StatusCode::BAD_REQUEST, err.to_string()))?
+            .map_err(|err| {
+                error!("Error getting chunk: {}", err);
+                (StatusCode::BAD_REQUEST, err.to_string())
+            })?
         {
             let chunk_len = chunk.len();
             len += chunk_len;
             let write_len = writer.write(chunk.as_ref()).unwrap();
-            assert_eq!(write_len, chunk_len);
+            if write_len != chunk_len {
+                error!("Error validating write {}, {}", write_len, chunk_len);
+                return Err((StatusCode::INTERNAL_SERVER_ERROR, "Invalid length".to_string()));
+            }
+            // assert_eq!(write_len, chunk_len);
             let buf_len = writer.get_ref().len();
             if buf_len >= 5242880 {
                 let copy = writer.get_mut().copy_to_bytes(buf_len);
                 writer.get_mut().clear();
-                upload
-                    .put_part(copy.into())
-                    .await
-                    .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?;
+                upload.put_part(copy.into()).await.map_err(|err| {
+                    error!("Error putting part {}", err);
+                    (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
+                })?;
             }
         }
         let buf_len = writer.get_ref().len();

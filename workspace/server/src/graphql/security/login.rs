@@ -4,16 +4,23 @@ use crate::models::security::principal::Principal;
 use crate::security::token::Token;
 use async_graphql::*;
 use crate::context::BoscaContext;
+use crate::graphql::profile::profiles::ProfileObject;
+use crate::models::profile::profile::Profile;
 
 pub struct LoginObject {}
 
 pub struct LoginResponse {
-    principal: Principal,
-    token: Token,
+    pub profile: Option<Profile>,
+    pub principal: Principal,
+    pub token: Token,
 }
 
 #[Object]
 impl LoginResponse {
+    async fn profile(&self) -> Option<ProfileObject> {
+        self.profile.clone().map(ProfileObject::new)
+    }
+
     async fn principal(&self) -> PrincipalObject {
         PrincipalObject::new(self.principal.clone())
     }
@@ -38,7 +45,10 @@ impl LoginObject {
         if !principal.verified {
             return Err(Error::new("not verified"));
         }
+        let profile = ctx.profile
+            .get_profile_by_principal(&principal.id)
+            .await?;
         let token = ctx.security.new_token(&principal)?;
-        Ok(LoginResponse { principal, token })
+        Ok(LoginResponse { profile, principal, token })
     }
 }

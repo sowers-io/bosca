@@ -2,12 +2,17 @@ use crate::graphql::security::principals::PrincipalObject;
 use async_graphql::*;
 use uuid::Uuid;
 use crate::context::BoscaContext;
+use crate::graphql::security::login_mutation::LoginMutationObject;
 use crate::models::security::credentials::PasswordCredential;
 
 pub struct SecurityMutationObject {}
 
 #[Object(name = "SecurityMutation")]
 impl SecurityMutationObject {
+
+    async fn login(&self) -> LoginMutationObject {
+        LoginMutationObject {}
+    }
 
     async fn signup(
         &self,

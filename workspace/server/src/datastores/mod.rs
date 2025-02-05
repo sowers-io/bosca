@@ -3,3 +3,4 @@ pub mod security;
 pub mod workflow;
 pub mod persisted_queries;
 pub mod notifier;
+pub mod profile;

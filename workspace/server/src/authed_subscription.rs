@@ -51,7 +51,7 @@ where
     fn call(&mut self, req: Request<B>) -> Self::Future {
         let executor = self.executor.clone();
         let mut new_ctx = self.context.clone();
-        
+
         Box::pin(async move {
             let mut data = Data::default();
 

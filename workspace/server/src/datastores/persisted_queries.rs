@@ -12,6 +12,7 @@ pub struct PersistedQueriesDataStore {
 
 #[derive(SimpleObject, Clone)]
 pub struct PersistedQuery {
+    pub application: String,
     pub sha256: String,
     pub query: String,
 }
@@ -51,6 +52,7 @@ impl PersistedQueriesDataStore {
         Ok(rows
             .iter()
             .map(|r| PersistedQuery {
+                application: r.get("application"),
                 sha256: r.get("sha256"),
                 query: r.get("query"),
             })
@@ -67,35 +69,38 @@ impl PersistedQueriesDataStore {
         Ok(rows
             .first()
             .map(|r| PersistedQuery {
+                application: r.get("application"),
                 sha256: r.get("sha256"),
                 query: r.get("query"),
             }))
     }
 
-    pub async fn add_queries(&self, queries: &Vec<PersistedQueryInput>) -> Result<(), Error> {
+    pub async fn add_queries(&self, application: &str, queries: &Vec<PersistedQueryInput>) -> Result<(), Error> {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
         let stmt = txn
-            .prepare_cached("insert into gql_persisted_queries (sha256, query) values ($1, $2) on conflict (sha256) do update set query = $2")
+            .prepare_cached("insert into gql_persisted_queries (application, sha256, query) values ($1, $2, $3) on conflict (application, sha256) do update set query = $3")
             .await?;
+        let application = application.to_string();
         for query in queries {
             let sha256 = query.sha256.to_owned();
             let query = query.query.to_owned();
-            txn.execute(&stmt, &[&sha256, &query]).await?;
+            txn.execute(&stmt, &[&application, &sha256, &query]).await?;
         }
         txn.commit().await?;
         self.update_cache().await?;
         Ok(())
     }
 
-    pub async fn add_query(&self, sha256: &str, query: &str) -> Result<(), Error> {
+    pub async fn add_query(&self, sha256: &str, application: &str, query: &str) -> Result<(), Error> {
         let sha256 = sha256.to_owned();
         let query = query.to_owned();
         let connection = self.pool.get().await?;
         let stmt = connection
-            .prepare_cached("insert into gql_persisted_queries (sha256, query) values ($1, $2) on conflict (sha256) do update set query = $2")
+            .prepare_cached("insert into gql_persisted_queries (application, sha256, query) values ($1, $2, $3) on conflict (application, sha256) do update set query = $2")
             .await?;
-        connection.execute(&stmt, &[&sha256, &query]).await?;
+        let application = application.to_string();
+        connection.execute(&stmt, &[&application, &sha256, &query]).await?;
         self.update_cache().await?;
         Ok(())
     }
@@ -110,13 +115,14 @@ impl PersistedQueriesDataStore {
         Ok(())
     }
     
-    pub async fn delete_query(&self, sha256: &str) -> Result<(), Error> {
+    pub async fn delete_query(&self, application: &str, sha256: &str) -> Result<(), Error> {
         let sha256 = sha256.to_owned();
         let connection = self.pool.get().await?;
         let stmt = connection
-            .prepare_cached("delete from gql_persisted_queries where sha256 = $1")
+            .prepare_cached("delete from gql_persisted_queries where application = $1, sha256 = $2")
             .await?;
-        connection.execute(&stmt, &[&sha256]).await?;
+        let application = application.to_string();
+        connection.execute(&stmt, &[&application, &sha256]).await?;
         self.update_cache().await?;
         Ok(())
     }

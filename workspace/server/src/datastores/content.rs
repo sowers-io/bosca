@@ -436,9 +436,15 @@ impl ContentDataStore {
             }
             _ => String::new(),
         };
-        let mut query = "select child_collection_id, child_metadata_id, attributes from collection_items where collection_id = $1 ".to_owned();
+        let mut query = "select child_collection_id, child_metadata_id, collection_items.attributes from collection_items ".to_owned();
         if !ordering.is_empty() {
+            query.push_str(" where collection_id = $1");
             query.push_str(ordering.as_str());
+        } else {
+            query.push_str(" left join collections on (child_collection_id = collections.id) ");
+            query.push_str(" left join metadata on (child_metadata_id = metadata.id) ");
+            query.push_str(" where collection_id = $1");
+            query.push_str(" order by lower(collections.name) asc, lower(metadata.name) asc");
         }
         query.push_str(
             format!(" offset ${} limit ${}", values.len() + 1, values.len() + 2).as_str(),

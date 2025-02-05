@@ -14,10 +14,12 @@ use crate::models::security::permission::PermissionAction;
 use crate::models::security::principal::Principal;
 
 use crate::datastores::notifier::Notifier;
+use crate::datastores::profile::ProfileDataStore;
 
 #[derive(Clone)]
 pub struct BoscaContext {
     pub content: ContentDataStore,
+    pub profile: ProfileDataStore,
     pub security: SecurityDataStore,
     pub storage: ObjectStorage,
     pub workflow: WorkflowDataStore,

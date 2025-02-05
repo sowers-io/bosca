@@ -77,6 +77,7 @@ use tokio::time::sleep;
 use bosca_database::build_pool;
 use crate::authed_subscription::AuthGraphQLSubscription;
 use crate::datastores::notifier::Notifier;
+use crate::datastores::profile::ProfileDataStore;
 use crate::graphql::subscription::SubscriptionObject;
 use crate::logger::Logger;
 use crate::redis::RedisClient;
@@ -341,6 +342,7 @@ async fn main() {
             Arc::clone(&notifier),
             Arc::clone(&search),
         ),
+        profile: ProfileDataStore::new(Arc::clone(&bosca_pool)),
         queries: PersistedQueriesDataStore::new(Arc::clone(&bosca_pool)).await,
         content: ContentDataStore::new(bosca_pool, Arc::clone(&notifier)),
         notifier,
@@ -410,7 +412,7 @@ async fn main() {
 
     let upload_limit: usize = match env::var("UPLOAD_LIMIT") {
         Ok(limit) => limit.parse().unwrap(),
-        _ => 1073741824,
+        _ => 2147483648,
     };
 
     let files = Router::new()
