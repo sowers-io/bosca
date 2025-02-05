@@ -15,7 +15,6 @@ use crate::models::content::source::Source;
 use crate::models::content::supplementary::{MetadataSupplementary, MetadataSupplementaryInput};
 use crate::models::security::permission::{Permission, PermissionAction};
 use crate::models::security::principal::Principal;
-use crate::models::workflow::execution_plan::WorkflowExecutionId;
 use crate::security::evaluator::Evaluator;
 use crate::util::storage::index_documents;
 use async_graphql::*;
@@ -926,26 +925,7 @@ impl ContentDataStore {
         Ok(())
     }
 
-    pub async fn add_metadata_plan(
-        &self,
-        metadata_id: &Uuid,
-        id: &WorkflowExecutionId,
-    ) -> Result<(), Error> {
-        let connection = self.pool.get().await?;
-        let stmt = connection
-            .prepare_cached(
-                "insert into metadata_workflow_plans (id, plan_id, queue) values ($1, $2, $3)",
-            )
-            .await?;
-        let plan_id = id.id.to_string();
-        connection
-            .execute(&stmt, &[metadata_id, &plan_id, &id.queue])
-            .await?;
-        self.on_metadata_changed(metadata_id).await?;
-        Ok(())
-    }
-
-    pub async fn get_metadata_plans(&self, id: &Uuid) -> Result<Vec<(String, String)>, Error> {
+    pub async fn get_metadata_plans(&self, id: &Uuid) -> Result<Vec<(Uuid, String)>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached("select plan_id, queue from metadata_workflow_plans where id = $1")
@@ -954,14 +934,14 @@ impl ContentDataStore {
         Ok(results
             .iter()
             .map(|r| {
-                let plan_id: String = r.get("plan_id");
+                let plan_id: Uuid = r.get("plan_id");
                 let queue: String = r.get("queue");
                 (plan_id, queue)
             })
             .collect())
     }
 
-    pub async fn get_collection_plans(&self, id: &Uuid) -> Result<Vec<(String, String)>, Error> {
+    pub async fn get_collection_plans(&self, id: &Uuid) -> Result<Vec<(Uuid, String)>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached("select plan_id, queue from collection_workflow_plans where id = $1")
@@ -970,7 +950,7 @@ impl ContentDataStore {
         Ok(results
             .iter()
             .map(|r| {
-                let plan_id: String = r.get("plan_id");
+                let plan_id: Uuid = r.get("plan_id");
                 let queue: String = r.get("queue");
                 (plan_id, queue)
             })
@@ -1635,25 +1615,6 @@ impl ContentDataStore {
         Ok(())
     }
 
-    pub async fn add_collection_plan(
-        &self,
-        id: &Uuid,
-        plan: &WorkflowExecutionId,
-    ) -> Result<(), Error> {
-        let connection = self.pool.get().await?;
-        let stmt = connection
-            .prepare_cached(
-                "insert into collection_workflow_plans (id, plan_id, queue) values ($1, $2, $3)",
-            )
-            .await?;
-        let job_id = plan.id.to_string();
-        connection
-            .execute(&stmt, &[id, &job_id, &plan.queue])
-            .await?;
-        self.on_collection_changed(id).await?;
-        Ok(())
-    }
-
     pub async fn set_collection_workflow_state(
         &self,
         principal: &Principal,
@@ -1928,13 +1889,10 @@ impl ContentDataStore {
             false,
         )
         .await?;
-        let plan = workflow
+        workflow
             .enqueue_collection_workflow(&process_id, &collection.id, configurations.as_ref(), None)
             .await?;
         datasource.set_collection_ready(&collection.id).await?;
-        datasource
-            .add_collection_plan(&collection.id, &plan.id)
-            .await?;
         self.on_collection_changed(&collection.id).await?;
         Ok(())
     }
@@ -1960,7 +1918,8 @@ impl ContentDataStore {
             false,
         )
         .await?;
-        let plan = workflow
+        datasource.set_metadata_ready(&metadata.id).await?;
+        workflow
             .enqueue_metadata_workflow(
                 &process_id,
                 &metadata.id,
@@ -1969,8 +1928,6 @@ impl ContentDataStore {
                 None,
             )
             .await?;
-        datasource.set_metadata_ready(&metadata.id).await?;
-        datasource.add_metadata_plan(&metadata.id, &plan.id).await?;
         self.on_metadata_changed(&metadata.id).await?;
         Ok(())
     }

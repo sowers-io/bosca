@@ -80,6 +80,7 @@ use crate::datastores::notifier::Notifier;
 use crate::datastores::profile::ProfileDataStore;
 use crate::graphql::subscription::SubscriptionObject;
 use crate::logger::Logger;
+use crate::models::profile::profile::ProfileVisibility;
 use crate::redis::RedisClient;
 use crate::schema::BoscaSchema;
 
@@ -192,14 +193,14 @@ async fn build_redis_client(key: &str) -> Result<RedisClient, Error> {
     RedisClient::new(url).await
 }
 
-async fn initialize_security(datastore: &SecurityDataStore) {
+async fn initialize_security(datastore: &SecurityDataStore, profiles: &ProfileDataStore) {
     match datastore.get_principal_by_identifier("admin").await {
         Ok(_) => {}
         Err(_) => {
             let password = PasswordCredential::new("admin".to_string(), "password".to_string());
             let group = datastore.get_administrators_group().await.unwrap();
             let groups = vec![&group].into_iter().map(|g| &g.id).collect();
-            datastore
+            let id = datastore
                 .add_principal(true, Value::Null, &password, &groups)
                 .await
                 .unwrap();
@@ -208,6 +209,8 @@ async fn initialize_security(datastore: &SecurityDataStore) {
                 .add_anonymous_principal(Value::Null, &groups)
                 .await
                 .unwrap();
+            let visibility = ProfileVisibility::Public;
+            profiles.add_profile(&id, "Administrator", &visibility).await.unwrap();
         }
     }
 }
@@ -327,8 +330,8 @@ async fn main() {
 
     let redis_jobs_queue_client = build_redis_client("REDIS_JOBS_QUEUE_URL").await.unwrap();
     let redis_notifier_client = build_redis_client("REDIS_NOTIFIER_PUBSUB_URL").await.unwrap();
-    let jobs = JobQueues::new(Arc::clone(&bosca_pool), redis_jobs_queue_client.clone());
     let notifier = Arc::new(Notifier::new(redis_notifier_client.clone()));
+    let jobs = JobQueues::new(Arc::clone(&bosca_pool), redis_jobs_queue_client.clone(), Arc::clone(&notifier));
     let search = build_search_client();
     let ctx = BoscaContext {
         security: SecurityDataStore::new(
@@ -351,7 +354,7 @@ async fn main() {
         principal: get_anonymous_principal(),
     };
 
-    initialize_security(&ctx.security).await;
+    initialize_security(&ctx.security, &ctx.profile).await;
     initialize_content(&ctx).await;
 
     let jobs_expiration = jobs.clone();

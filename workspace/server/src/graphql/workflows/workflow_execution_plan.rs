@@ -7,7 +7,6 @@ use crate::models::security::permission::PermissionAction;
 use crate::models::workflow::execution_plan::WorkflowExecutionPlan;
 use async_graphql::{Context, Error, Object};
 use serde_json::Value;
-use uuid::Uuid;
 use crate::context::BoscaContext;
 
 pub struct WorkflowExecutionPlanObject {
@@ -42,8 +41,8 @@ impl WorkflowExecutionPlanObject {
     async fn jobs(&self) -> Vec<WorkflowJobObject> {
         self.plan.jobs.iter().map(|j| j.clone().into()).collect()
     }
-    async fn metadata_id(&self) -> &Option<String> {
-        &self.plan.metadata_id
+    async fn metadata_id(&self) -> Option<String> {
+        self.plan.metadata_id.as_ref().map(|id| id.to_string())
     }
     async fn metadata(&self, ctx: &Context<'_>) -> Result<Option<MetadataObject>, Error> {
         if self.plan.metadata_id.is_none() {
@@ -51,15 +50,14 @@ impl WorkflowExecutionPlanObject {
         }
         let ctx = ctx.data::<BoscaContext>()?;
         let metadata_id = self.plan.metadata_id.as_ref().unwrap();
-        let id = Uuid::parse_str(metadata_id.as_str())?;
-        let metadata = ctx.check_metadata_action(&id, PermissionAction::View).await?;
+        let metadata = ctx.check_metadata_action(&metadata_id, PermissionAction::View).await?;
         Ok(Some(MetadataObject::from(metadata)))
     }
     async fn metadata_version(&self) -> Option<i32> {
         self.plan.metadata_version
     }
-    async fn collection_id(&self) -> &Option<String> {
-        &self.plan.collection_id
+    async fn collection_id(&self) -> Option<String> {
+        self.plan.collection_id.as_ref().map(|id| id.to_string())
     }
     async fn supplementary_id(&self) -> &Option<String> {
         &self.plan.supplementary_id

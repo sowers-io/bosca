@@ -202,7 +202,7 @@ impl CollectionWorkflowObject<'_> {
         let mut plans = Vec::<WorkflowExecutionPlanObject>::new();
         for (plan_id, queue) in plans_ids {
             let id = WorkflowExecutionId {
-                id: plan_id.parse()?,
+                id: plan_id,
                 queue,
             };
             let plan = ctx.workflow.get_execution_plan(&id).await?;

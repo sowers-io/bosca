@@ -182,9 +182,6 @@ impl MetadataMutationObject {
             let plans = ctx.workflow
                 .enqueue_metadata_trait_workflow(&metadata.id, &metadata.version, &trait_id)
                 .await?;
-            for plan in plans.iter() {
-                ctx.content.add_metadata_plan(&id, &plan.id).await?;
-            }
             Ok(plans.into_iter().map(WorkflowExecutionPlan::into).collect())
         } else {
             Ok(vec![])

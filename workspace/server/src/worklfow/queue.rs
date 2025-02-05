@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use crate::models::workflow::execution_plan::{WorkflowExecutionId, WorkflowExecutionPlan, WorkflowJob, WorkflowJobId};
 use crate::redis::RedisClient;
 use crate::worklfow::transaction::{Transaction, TransactionOp};
@@ -10,19 +11,21 @@ use serde_json::{from_value, json, Value};
 use std::str::from_utf8;
 use std::sync::Arc;
 use uuid::Uuid;
+use crate::datastores::notifier::Notifier;
 
 #[derive(Clone)]
 pub struct JobQueues {
     pool: Arc<Pool>,
     redis: RedisClient,
+    notifier: Arc<Notifier>,
 }
 
 const QUEUE_PLAN_PREFIX: &str = "queue::plan";
 const QUEUE_JOB_PREFIX: &str = "queue::job";
 
 impl JobQueues {
-    pub fn new(pool: Arc<Pool>, redis: RedisClient) -> Self {
-        Self { pool, redis }
+    pub fn new(pool: Arc<Pool>, redis: RedisClient, notifier: Arc<Notifier>) -> Self {
+        Self { pool, redis, notifier }
     }
 
     pub fn queue_plan_key(queue: &str, id: &Uuid) -> String {
@@ -111,6 +114,7 @@ impl JobQueues {
         &self,
         transaction: &deadpool_postgres::Transaction<'_>,
         plan: &WorkflowExecutionPlan,
+        register: bool,
     ) -> Result<(), Error> {
         let stmt = transaction
             .prepare(
@@ -121,6 +125,30 @@ impl JobQueues {
         transaction
             .execute(&stmt, &[&plan.id.id, &value])
             .await?;
+        if register {
+            if let Some(metadata_id) = &plan.metadata_id {
+                let stmt = transaction
+                    .prepare_cached(
+                        "insert into metadata_workflow_plans (id, plan_id, queue) values ($1, $2, $3) on conflict do nothing",
+                    )
+                    .await?;
+                let plan_id = &plan.id;
+                transaction
+                    .execute(&stmt, &[metadata_id, &plan_id.id, &plan_id.queue])
+                    .await?;
+            }
+            if let Some(collection_id) = &plan.collection_id {
+                let stmt = transaction
+                    .prepare_cached(
+                        "insert into collection_workflow_plans (id, plan_id, queue) values ($1, $2, $3) on conflict do nothing",
+                    )
+                    .await?;
+                let plan_id = &plan.id;
+                transaction
+                    .execute(&stmt, &[collection_id, &plan_id.id, &plan_id.queue])
+                    .await?;
+            }
+        }
         Ok(())
     }
 
@@ -184,13 +212,19 @@ impl JobQueues {
     ) -> Result<WorkflowExecutionId, Error> {
         let mut connection = self.pool.get().await?;
         let transaction = connection.transaction().await?;
-        self.set_plan(&transaction, plan).await?;
+        self.set_plan(&transaction, plan, true).await?;
         transaction.commit().await?;
         let mut transaction = Transaction::new();
         transaction.add_op(TransactionOp::QueuePlan(plan.id.clone()));
         transaction.execute(&self.redis).await?;
         self.incr("queue::enqueued::count").await?;
         info!("enqueued plan: {}", plan.id);
+        if let Some(id) = &plan.collection_id {
+            self.notifier.collection_changed(id).await?;
+        }
+        if let Some(id) = &plan.metadata_id {
+            self.notifier.metadata_changed(&id).await?;
+        }
         Ok(plan.id.clone())
     }
 
@@ -238,18 +272,32 @@ impl JobQueues {
         let mut ids = Vec::new();
         let mut queue_txn = Transaction::new();
         let mut plans = plans.to_vec();
+        let mut collection_ids = HashSet::new();
+        let mut metadata_ids = HashSet::new();
         for plan in plans.iter_mut() {
             plan.parent = Some(job.id.clone());
             job.children.insert(plan.id.clone());
             ids.push(plan.id.clone());
             queue_txn.add_op(TransactionOp::QueuePlan(plan.id.clone()));
-            self.set_plan(&transaction, plan).await?;
+            if let Some(id) = &plan.collection_id {
+                collection_ids.insert(id.clone());
+            }
+            if let Some(id) = &plan.metadata_id {
+                metadata_ids.insert(id.clone());
+            }
+            self.set_plan(&transaction, plan, true).await?;
             self.incr("queue::enqueued::child::count").await?;
             info!("enqueued plan: {}", plan.id);
         }
-        self.set_plan(&transaction, &plan).await?;
+        self.set_plan(&transaction, &plan, false).await?;
         transaction.commit().await?;
         queue_txn.execute(&self.redis).await?;
+        for id in collection_ids {
+            self.notifier.collection_changed(&id).await?;
+        }
+        for id in metadata_ids {
+            self.notifier.metadata_changed(&id).await?;
+        }
         Ok(ids)
     }
 
@@ -286,7 +334,7 @@ impl JobQueues {
         plan.running.insert(job_index);
         plan.pending.remove(&job_index);
 
-        self.set_plan(transaction, &plan).await?;
+        self.set_plan(transaction, &plan, false).await?;
         Ok(())
     }
 
@@ -400,7 +448,7 @@ impl JobQueues {
             update = true;
         }
         if update {
-            self.set_plan(transaction, plan).await?;
+            self.set_plan(transaction, plan, false).await?;
         }
         if plan.next.is_none() {
             warn!(target: "workflow", "plan is missing next: {}", plan.id);
@@ -480,7 +528,7 @@ impl JobQueues {
             return Err(Error::new("can't set plan context, missing plan"));
         };
         plan.context = context.clone();
-        self.set_plan(&transaction, &plan).await?;
+        self.set_plan(&transaction, &plan, false).await?;
         transaction.commit().await?;
         self.incr("queue::context::set::count").await?;
         Ok(())
@@ -501,7 +549,7 @@ impl JobQueues {
         if let Some(plan_job) = plan.jobs.get_mut(job_id.index as usize) {
             plan_job.context = context.clone();
         }
-        self.set_plan(&transaction, &plan).await?;
+        self.set_plan(&transaction, &plan, false).await?;
         transaction.commit().await?;
         self.incr("queue::context::job::set::count").await?;
         Ok(())
@@ -524,7 +572,7 @@ impl JobQueues {
         }
         let job = plan.jobs.get_mut(job_id.index as usize).unwrap();
         job.error = Some(error.to_owned());
-        self.set_plan(&transaction, &plan).await?;
+        self.set_plan(&transaction, &plan, false).await?;
         transaction.commit().await?;
         self.incr("queue::job::failed").await?;
         Ok(())
@@ -646,7 +694,7 @@ impl JobQueues {
                     let parent_job = parent_plan.jobs.get_mut(parent_id.index as usize).unwrap();
                     parent_job.completed_children.insert(plan.id.clone());
                     if parent_job.children.len() == parent_job.completed_children.len() {
-                        self.set_plan(db_txn, plan).await?;
+                        self.set_plan(db_txn, plan, false).await?;
                         dirty_plan = false;
                         self.incr("queue::job::complete::recursive").await?;
                         Box::pin(self.set_execution_job_complete_recursive(
@@ -657,7 +705,7 @@ impl JobQueues {
                         ))
                         .await?;
                     } else {
-                        self.set_plan(db_txn, &parent_plan).await?;
+                        self.set_plan(db_txn, &parent_plan, false).await?;
                     }
                 }
                 redis_tx.add_op(TransactionOp::RemovePlanRunning(plan.id.clone()));
@@ -671,7 +719,7 @@ impl JobQueues {
         }
 
         if dirty_plan {
-            self.set_plan(db_txn, plan).await?;
+            self.set_plan(db_txn, plan, false).await?;
         }
 
         Ok(())

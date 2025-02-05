@@ -209,12 +209,8 @@ pub async fn upload(
             if params.ready.is_some() && params.ready.unwrap() {
                 let process_id = "metadata.process".to_string();
                 let workflow = ctx.workflow;
-                let plan = workflow
+                workflow
                     .enqueue_metadata_workflow(&process_id, &id, &metadata.version, None, None)
-                    .await
-                    .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Server Error".to_owned()))?;
-                ctx.content
-                    .add_metadata_plan(&id, &plan.id)
                     .await
                     .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Server Error".to_owned()))?;
             }
