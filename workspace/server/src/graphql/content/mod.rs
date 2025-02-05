@@ -12,3 +12,7 @@ pub mod signed_url;
 pub mod source;
 pub mod storage;
 pub mod supplementary;
+pub mod metadata_workflow;
+pub mod metadata_content;
+pub mod metadata_content_urls;
+pub mod metadata_source;

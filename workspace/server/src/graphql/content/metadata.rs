@@ -2,31 +2,19 @@ use crate::context::BoscaContext;
 use crate::graphql::content::collection::CollectionObject;
 use crate::graphql::content::metadata_relationship::MetadataRelationshipObject;
 use crate::graphql::content::permission::PermissionObject;
-use crate::graphql::content::signed_url::SignedUrlObject;
 use crate::graphql::content::supplementary::MetadataSupplementaryObject;
-use crate::graphql::workflows::workflow_execution_plan::WorkflowExecutionPlanObject;
 use crate::models::content::attributes_filter::AttributesFilterInput;
 use crate::models::content::metadata::{Metadata, MetadataType};
 use crate::models::security::permission::{Permission, PermissionAction};
-use crate::models::workflow::execution_plan::WorkflowExecutionId;
 use async_graphql::{Context, Error, Object};
 use chrono::{DateTime, Utc};
 use serde_json::Value;
 use std::borrow::ToOwned;
+use crate::graphql::content::metadata_content::MetadataContentObject;
+use crate::graphql::content::metadata_source::MetadataSourceObject;
+use crate::graphql::content::metadata_workflow::MetadataWorkflowObject;
 
 pub struct MetadataObject {
-    metadata: Metadata,
-}
-
-pub struct MetadataWorkflowObject {
-    metadata: Metadata,
-}
-
-pub struct MetadataContentObject {
-    metadata: Metadata,
-}
-
-pub struct MetadataSourceObject {
     metadata: Metadata,
 }
 
@@ -211,106 +199,6 @@ impl MetadataObject {
             }
         }
         Ok(listable)
-    }
-}
-
-pub struct MetadataContentUrls {
-    metadata: Metadata,
-}
-
-#[Object(name = "MetadataContentUrls")]
-impl MetadataContentUrls {
-    async fn download(&self, ctx: &Context<'_>) -> Result<SignedUrlObject, Error> {
-        let ctx = ctx.data::<BoscaContext>()?;
-        Ok(ctx
-            .storage
-            .get_metadata_download_signed_url(&ctx.security, &ctx.principal, &self.metadata, None)
-            .await?
-            .into())
-    }
-
-    async fn upload(&self, ctx: &Context<'_>) -> Result<SignedUrlObject, Error> {
-        let ctx = ctx.data::<BoscaContext>()?;
-        Ok(ctx
-            .storage
-            .get_metadata_upload_signed_url(&ctx.security, &ctx.principal, &self.metadata, None)
-            .await?
-            .into())
-    }
-}
-
-#[Object(name = "MetadataContent")]
-impl MetadataContentObject {
-    #[graphql(name = "type")]
-    async fn content_type(&self) -> &String {
-        &self.metadata.content_type
-    }
-
-    async fn length(&self) -> Option<i64> {
-        self.metadata.content_length
-    }
-
-    async fn urls(&self) -> MetadataContentUrls {
-        MetadataContentUrls {
-            metadata: self.metadata.clone(),
-        }
-    }
-
-    async fn text(&self, ctx: &Context<'_>) -> Result<String, Error> {
-        let ctx = ctx.data::<BoscaContext>()?;
-        let path = ctx.storage.get_metadata_path(&self.metadata, None).await?;
-        Ok(ctx.storage.get(&path).await?)
-    }
-
-    async fn json(&self, ctx: &Context<'_>) -> Result<Value, Error> {
-        let ctx = ctx.data::<BoscaContext>()?;
-        let path = ctx.storage.get_metadata_path(&self.metadata, None).await?;
-        let text = ctx.storage.get(&path).await?;
-        Ok(serde_json::from_str(text.as_str())?)
-    }
-}
-
-#[Object(name = "MetadataWorkflow")]
-impl MetadataWorkflowObject {
-    async fn state(&self) -> &String {
-        &self.metadata.workflow_state_id
-    }
-
-    async fn pending(&self) -> &Option<String> {
-        &self.metadata.workflow_state_pending_id
-    }
-
-    async fn delete_workflow(&self) -> &Option<String> {
-        &self.metadata.delete_workflow_id
-    }
-
-    async fn plans(&self, ctx: &Context<'_>) -> Result<Vec<WorkflowExecutionPlanObject>, Error> {
-        let ctx = ctx.data::<BoscaContext>()?;
-        let plans_ids = ctx.content.get_metadata_plans(&self.metadata.id).await?;
-        let mut plans = Vec::<WorkflowExecutionPlanObject>::new();
-        for (plan_id, queue) in plans_ids {
-            let id = WorkflowExecutionId {
-                id: plan_id,
-                queue,
-            };
-            let plan = ctx.workflow.get_execution_plan(&id).await?;
-            if plan.is_none() {
-                continue;
-            }
-            plans.push(plan.unwrap().into());
-        }
-        Ok(plans)
-    }
-}
-
-#[Object(name = "MetadataSource")]
-impl MetadataSourceObject {
-    async fn id(&self) -> Option<String> {
-        self.metadata.source_id.map(|s| s.to_string())
-    }
-
-    async fn identifier(&self) -> &Option<String> {
-        &self.metadata.source_identifier
     }
 }
 
