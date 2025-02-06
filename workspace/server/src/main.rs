@@ -79,12 +79,12 @@ use crate::datastores::notifier::Notifier;
 use crate::datastores::profile::ProfileDataStore;
 use crate::graphql::subscription::SubscriptionObject;
 use crate::logger::Logger;
-use crate::models::profile::profile::ProfileInput;
+use crate::models::profiles::profile::ProfileInput;
 use crate::redis::RedisClient;
 use crate::schema::BoscaSchema;
 use bosca_database::build_pool;
 use tokio::time::sleep;
-use crate::models::profile::profile_visibility::ProfileVisibility;
+use crate::models::profiles::profile_visibility::ProfileVisibility;
 use crate::util::profile::add_password_principal;
 
 #[global_allocator]

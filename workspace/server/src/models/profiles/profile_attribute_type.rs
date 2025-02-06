@@ -1,4 +1,4 @@
-use crate::models::profile::profile_visibility::ProfileVisibility;
+use crate::models::profiles::profile_visibility::ProfileVisibility;
 use tokio_postgres::Row;
 
 #[derive(Debug, Clone, PartialEq, Eq)]

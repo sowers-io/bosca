@@ -5,7 +5,7 @@ use crate::security::token::Token;
 use async_graphql::*;
 use crate::context::BoscaContext;
 use crate::graphql::profiles::profile::ProfileObject;
-use crate::models::profile::profile::Profile;
+use crate::models::profiles::profile::Profile;
 
 pub struct LoginObject {}
 

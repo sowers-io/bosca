@@ -2,7 +2,7 @@ use crate::datastores::content::ContentDataStore;
 use crate::datastores::profile::ProfileDataStore;
 use crate::datastores::security::SecurityDataStore;
 use crate::models::content::collection::{CollectionInput, CollectionType};
-use crate::models::profile::profile::ProfileInput;
+use crate::models::profiles::profile::ProfileInput;
 use crate::models::security::credentials::PasswordCredential;
 use crate::models::security::permission::{Permission, PermissionAction};
 use crate::models::security::principal::Principal;

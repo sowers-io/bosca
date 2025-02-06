@@ -1,6 +1,6 @@
 use crate::context::BoscaContext;
 use crate::graphql::security::principals::PrincipalObject;
-use crate::models::profile::profile::ProfileInput;
+use crate::models::profiles::profile::ProfileInput;
 use crate::util::profile::add_password_principal;
 use async_graphql::*;
 

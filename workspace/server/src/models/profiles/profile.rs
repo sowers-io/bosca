@@ -1,5 +1,5 @@
-use crate::models::profile::profile_attribute::ProfileAttributeInput;
-use crate::models::profile::profile_visibility::ProfileVisibility;
+use crate::models::profiles::profile_attribute::ProfileAttributeInput;
+use crate::models::profiles::profile_visibility::ProfileVisibility;
 use async_graphql::InputObject;
 use tokio_postgres::Row;
 use uuid::Uuid;

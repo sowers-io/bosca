@@ -1,4 +1,4 @@
-use crate::models::profile::profile_visibility::ProfileVisibility;
+use crate::models::profiles::profile_visibility::ProfileVisibility;
 use async_graphql::InputObject;
 use chrono::{DateTime, Utc};
 use serde_json::Value;

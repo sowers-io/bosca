@@ -1,6 +1,6 @@
 use crate::context::BoscaContext;
 use crate::graphql::profiles::profile_attribute_type::ProfileAttributeTypeObject;
-use crate::models::profile::profile_visibility::ProfileVisibility;
+use crate::models::profiles::profile_visibility::ProfileVisibility;
 use async_graphql::*;
 
 pub struct ProfileAttributeTypesObject {}

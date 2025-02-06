@@ -1,6 +1,6 @@
-use crate::models::profile::profile_attribute_type::ProfileAttributeType;
+use crate::models::profiles::profile_attribute_type::ProfileAttributeType;
 use async_graphql::Object;
-use crate::models::profile::profile_visibility::ProfileVisibility;
+use crate::models::profiles::profile_visibility::ProfileVisibility;
 
 pub struct ProfileAttributeTypeObject {
     attribute_type: ProfileAttributeType,

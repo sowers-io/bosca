@@ -1,5 +1,5 @@
-use crate::models::profile::profile_visibility::ProfileVisibility;
-use crate::models::profile::profile_attribute::ProfileAttribute;
+use crate::models::profiles::profile_visibility::ProfileVisibility;
+use crate::models::profiles::profile_attribute::ProfileAttribute;
 use async_graphql::Object;
 use chrono::{DateTime, Utc};
 

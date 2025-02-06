@@ -1,5 +1,5 @@
-use crate::models::profile::profile::Profile;
-use crate::models::profile::profile_visibility::ProfileVisibility;
+use crate::models::profiles::profile::Profile;
+use crate::models::profiles::profile_visibility::ProfileVisibility;
 use async_graphql::{Context, Error, Object};
 use crate::context::BoscaContext;
 use crate::graphql::profiles::profile_attribute::ProfileAttributeObject;

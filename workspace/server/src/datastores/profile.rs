@@ -1,10 +1,10 @@
-use crate::models::profile::profile::{Profile, ProfileInput};
-use crate::models::profile::profile_attribute::ProfileAttribute;
+use crate::models::profiles::profile::{Profile, ProfileInput};
+use crate::models::profiles::profile_attribute::ProfileAttribute;
 use async_graphql::Error;
 use deadpool_postgres::{GenericClient, Pool};
 use std::sync::Arc;
 use uuid::Uuid;
-use crate::models::profile::profile_attribute_type::ProfileAttributeType;
+use crate::models::profiles::profile_attribute_type::ProfileAttributeType;
 
 #[derive(Clone)]
 pub struct ProfileDataStore {
