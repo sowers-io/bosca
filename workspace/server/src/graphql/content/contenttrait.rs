@@ -23,6 +23,10 @@ impl TraitObject {
         &self.trait_.name
     }
 
+    async fn delete_workflow_id(&self) -> &Option<String> {
+        &self.trait_.delete_workflow_id
+    }
+
     async fn description(&self) -> &String {
         &self.trait_.description
     }

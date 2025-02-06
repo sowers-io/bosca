@@ -24,10 +24,12 @@ impl ContentObject {
         &self,
         ctx: &Context<'_>,
         attributes: Vec<FindAttributeInput>,
+        limit: i64,
+        offset: i64,
     ) -> Result<Vec<CollectionObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         Ok(ctx.content
-            .find_collections(&attributes)
+            .find_collections(&attributes, limit, offset)
             .await?
             .into_iter()
             .map(CollectionObject::new)
@@ -55,10 +57,13 @@ impl ContentObject {
         &self,
         ctx: &Context<'_>,
         attributes: Vec<FindAttributeInput>,
+        content_types: Option<Vec<String>>,
+        limit: i64,
+        offset: i64,
     ) -> Result<Vec<MetadataObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         Ok(ctx.content
-            .find_metadata(&attributes)
+            .find_metadata(&attributes, &content_types, limit, offset)
             .await?
             .into_iter()
             .map(MetadataObject::new)

@@ -130,6 +130,9 @@ impl ContentDataStore {
         &self,
         query: &str,
         attributes: &'a [FindAttributeInput],
+        content_types: &'a Option<Vec<String>>,
+        offset: &'a i64,
+        limit: &'a i64,
     ) -> (String, Vec<&'a (dyn ToSql + Sync)>) {
         let mut q = query.to_string();
         let mut values = Vec::new();
@@ -146,15 +149,47 @@ impl ContentDataStore {
             values.push(&attr.key as &(dyn ToSql + Sync));
             values.push(&attr.value as &(dyn ToSql + Sync));
         }
+        if let Some(content_types) = content_types {
+            if !content_types.is_empty() {
+                if values.len() > 0 {
+                    q.push_str(" and ");
+                }
+                q.push_str("content_type in (");
+                for (ix, content_type) in content_types.iter().enumerate() {
+                    if ix > 0 {
+                        q.push_str(", ");
+                    }
+                    q.push_str(format!("${}", pos).as_str());
+                    pos += 1;
+                    values.push(content_type as &(dyn ToSql + Sync));
+                }
+                q.push_str(") ")
+            }
+        }
+        q.push_str(" order by lower(name) asc "); // TODO: when adding MetadataIndex & CollectionIndex, make this configurable so it is based on an index
+        q.push_str(format!(" offset ${}", pos).as_str());
+        pos += 1;
+        values.push(offset as &(dyn ToSql + Sync));
+        q.push_str(format!(" limit ${}", pos).as_str());
+        values.push(limit as &(dyn ToSql + Sync));
         (q.to_string(), values)
     }
 
     pub async fn find_collections(
         &self,
         attributes: &[FindAttributeInput],
+        limit: i64,
+        offset: i64,
     ) -> Result<Vec<Collection>, Error> {
         let connection = self.pool.get().await?;
-        let (query, values) = self.build_find_args("select * from collections where ", attributes);
+        let content_types = None::<Vec<String>>;
+        let (query, values) = self.build_find_args(
+            "select * from collections where ",
+            attributes,
+            &content_types,
+            &limit,
+            &offset,
+        );
         let stmt = connection.prepare_cached(query.as_str()).await?;
         let rows = connection.query(&stmt, values.as_slice()).await?;
         Ok(rows.iter().map(|r| r.into()).collect())
@@ -737,9 +772,18 @@ impl ContentDataStore {
     pub async fn find_metadata(
         &self,
         attributes: &[FindAttributeInput],
+        content_types: &Option<Vec<String>>,
+        limit: i64,
+        offset: i64,
     ) -> Result<Vec<Metadata>, Error> {
         let connection = self.pool.get().await?;
-        let (query, values) = self.build_find_args("select * from metadata where ", attributes);
+        let (query, values) = self.build_find_args(
+            "select * from metadata where ",
+            attributes,
+            content_types,
+            &offset,
+            &limit,
+        );
         let stmt = connection.prepare_cached(query.as_str()).await?;
         let rows = connection.query(&stmt, values.as_slice()).await?;
         Ok(rows.iter().map(|r| r.into()).collect())
@@ -1200,7 +1244,8 @@ impl ContentDataStore {
         txn.execute(&stmt, &[&attrs, content_type, &len, metadata_id])
             .await?;
         if let Some(content_type) = content_type {
-            self.ensure_content_type_traits(metadata_id, content_type, &txn).await?;
+            self.ensure_content_type_traits(metadata_id, content_type, &txn)
+                .await?;
         }
         txn.commit().await?;
         self.on_metadata_changed(metadata_id).await?;
@@ -1285,7 +1330,8 @@ impl ContentDataStore {
             }
         }
 
-        self.ensure_content_type_traits(&id, &metadata.content_type, txn).await?;
+        self.ensure_content_type_traits(&id, &metadata.content_type, txn)
+            .await?;
 
         Ok((id, version))
     }
@@ -1331,7 +1377,8 @@ impl ContentDataStore {
         )
         .await?;
 
-        self.ensure_content_type_traits(id, &metadata.content_type, txn).await?;
+        self.ensure_content_type_traits(id, &metadata.content_type, txn)
+            .await?;
 
         Ok(())
     }

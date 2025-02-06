@@ -941,12 +941,20 @@ impl WorkflowDataStore {
         let id_stmt = connection
             .prepare_cached("select workflow_id from trait_workflows where trait_id = $1")
             .await?;
+        let ct_stmt = connection
+            .prepare_cached("select content_type from trait_content_types where trait_id = $1")
+            .await?;
         if let Some(row) = rows.first() {
             let mut t: Trait = row.into();
             let rows = connection.query(&id_stmt, &[&t.id]).await?;
             t.workflow_ids = rows
                 .iter()
                 .map(|r| r.get::<&str, String>("workflow_id").to_string())
+                .collect();
+            let rows = connection.query(&ct_stmt, &[&t.id]).await?;
+            t.content_types = rows
+                .iter()
+                .map(|r| r.get::<&str, String>("content_type").to_string())
                 .collect();
             return Ok(Some(t));
         }
@@ -956,10 +964,10 @@ impl WorkflowDataStore {
     pub async fn add_trait(&self, t: &TraitInput) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
-            .prepare_cached("insert into traits (id, name, description) values ($1, $2, $3)")
+            .prepare_cached("insert into traits (id, name, description, delete_workflow_id) values ($1, $2, $3, $4)")
             .await?;
         connection
-            .query(&stmt, &[&t.id, &t.name, &t.description])
+            .query(&stmt, &[&t.id, &t.name, &t.description, &t.delete_workflow_id])
             .await?;
         drop(stmt);
         let stmt = connection
@@ -984,10 +992,10 @@ impl WorkflowDataStore {
         let mut connection = self.pool.get().await?;
         let transaction = connection.transaction().await?;
         let stmt = transaction
-            .prepare_cached("update traits set name = $2, description = $3 where id = $1")
+            .prepare_cached("update traits set name = $2, description = $3, delete_workflow_id = $4 where id = $1")
             .await?;
         transaction
-            .query(&stmt, &[&t.id, &t.name, &t.description])
+            .query(&stmt, &[&t.id, &t.name, &t.description, &t.delete_workflow_id])
             .await?;
         drop(stmt);
         transaction

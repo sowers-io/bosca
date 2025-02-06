@@ -478,6 +478,38 @@ impl MetadataMutationObject {
         Ok(true)
     }
 
+    async fn set_supplementary_contents(
+        &self,
+        ctx: &Context<'_>,
+        id: String,
+        key: String,
+        content_type: String,
+        file: Upload,
+    ) -> Result<bool, Error> {
+        let octx = ctx;
+        let ctx = ctx.data::<BoscaContext>()?;
+        let metadata_id = Uuid::parse_str(id.as_str())?;
+        let metadata = ctx.check_metadata_action(&metadata_id, PermissionAction::Manage).await?;
+        let path = ctx.storage.get_metadata_path(&metadata, Some(key.to_owned())).await?;
+        let mut multipart = ctx.storage.put_multipart(&path).await?;
+        let mut content = file.value(octx)?.into_async_read();
+        let mut buf = vec![0_u8; 524288];
+        let mut len = 0;
+        loop {
+            let read = content.read(&mut buf).await?;
+            if read > 0 {
+                len += read;
+                let buf_slice = buf[..read].to_vec();
+                multipart.put_part(buf_slice.into()).await?;
+            } else {
+                multipart.complete().await?;
+                break;
+            }
+        }
+        ctx.content.set_metadata_supplementary_uploaded(&metadata_id, &key, &content_type, len).await?;
+        Ok(true)
+    }
+
     async fn set_metadata_text_contents(
         &self,
         ctx: &Context<'_>,

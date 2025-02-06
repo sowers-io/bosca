@@ -148,18 +148,20 @@ impl WorkflowsMutationObject {
         ctx: &Context<'_>,
         workflow_id: String,
         attributes: Vec<FindAttributeInput>,
+        content_types: Option<Vec<String>>,
         configurations: Option<Vec<WorkflowConfigurationInput>>,
     ) -> Result<Vec<WorkflowExecutionIdObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         ctx.check_has_service_account().await?;
         let mut ids = Vec::new();
-        for metadata in ctx.content.find_metadata(&attributes).await? {
+        // TODO: page through items
+        for metadata in ctx.content.find_metadata(&attributes, &content_types, 0, 1000).await? {
             let id = ctx.workflow
                 .enqueue_metadata_workflow(&workflow_id, &metadata.id, &metadata.version, configurations.as_ref(), None)
                 .await?;
             ids.push(id);
         }
-        for collection in ctx.content.find_collections(&attributes).await? {
+        for collection in ctx.content.find_collections(&attributes, 0, 1000).await? {
             let id = ctx.workflow
                 .enqueue_collection_workflow(&workflow_id, &collection.id, configurations.as_ref(), None)
                 .await?;
