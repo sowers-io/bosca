@@ -151,7 +151,7 @@ impl ContentDataStore {
         }
         if let Some(content_types) = content_types {
             if !content_types.is_empty() {
-                if values.len() > 0 {
+                if !values.is_empty() {
                     q.push_str(" and ");
                 }
                 q.push_str("content_type in (");

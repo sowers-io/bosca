@@ -38,9 +38,9 @@ alter table principals
 create index principals_verification_token on principals (verification_token) where verification_token is not null;
 
 insert into profile_attribute_types (id, name, description, visibility)
-values ('bosca.profile.name', 'Name', 'Name', 'user'::profile_visibility);
+values ('bosca.profiles.name', 'Name', 'Name', 'user'::profile_visibility);
 
 insert into profile_attribute_types (id, name, description, visibility)
-values ('bosca.profile.email', 'Email', 'Email Address', 'user'::profile_visibility);
+values ('bosca.profiles.email', 'Email', 'Email Address', 'user'::profile_visibility);
 
 alter type collection_type add value 'system' after 'root';

@@ -3,7 +3,7 @@ use crate::graphql::queries::PersistedQueriesObject;
 use crate::graphql::security::security::SecurityObject;
 use crate::graphql::workflows::workflows::WorkflowsObject;
 use async_graphql::*;
-use crate::graphql::profile::profiles::ProfilesObject;
+use crate::graphql::profiles::profiles::ProfilesObject;
 
 pub struct QueryObject;
 

@@ -1,7 +1,7 @@
 use crate::context::BoscaContext;
-use crate::graphql::profile::profile::ProfileObject;
+use crate::graphql::profiles::profile::ProfileObject;
 use async_graphql::*;
-use crate::graphql::profile::profile_attribute_types::ProfileAttributeTypesObject;
+use crate::graphql::profiles::profile_attribute_types::ProfileAttributeTypesObject;
 
 pub struct ProfilesObject {}
 

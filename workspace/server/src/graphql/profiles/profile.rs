@@ -2,7 +2,7 @@ use crate::models::profile::profile::Profile;
 use crate::models::profile::profile_visibility::ProfileVisibility;
 use async_graphql::{Context, Error, Object};
 use crate::context::BoscaContext;
-use crate::graphql::profile::profile_attribute::ProfileAttributeObject;
+use crate::graphql::profiles::profile_attribute::ProfileAttributeObject;
 
 pub struct ProfileObject {
     profile: Profile,
@@ -31,7 +31,7 @@ impl ProfileObject {
     async fn attributes(&self, ctx: &Context<'_>) -> async_graphql::Result<Vec<ProfileAttributeObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let attributes = ctx.profile.get_profile_attributes(&self.profile.id).await?;
-        // TODO: Filter things out based on who is looking at the profile
+        // TODO: Filter things out based on who is looking at the profiles
         Ok(attributes.into_iter().filter(|a| a.visibility != ProfileVisibility::System ).map(ProfileAttributeObject::new).collect())
     }
 }

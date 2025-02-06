@@ -1,6 +1,6 @@
 use crate::context::BoscaContext;
 use async_graphql::*;
-use crate::graphql::profile::profile::ProfileObject;
+use crate::graphql::profiles::profile::ProfileObject;
 use crate::models::profile::profile::ProfileInput;
 
 pub struct ProfilesMutationObject {}

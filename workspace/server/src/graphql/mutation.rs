@@ -2,7 +2,7 @@ use crate::graphql::content::content_mutation::ContentMutationObject;
 use crate::graphql::security::security_mutation::SecurityMutationObject;
 use crate::graphql::workflows::workflows_mutation::WorkflowsMutationObject;
 use async_graphql::Object;
-use crate::graphql::profile::profiles_mutation::ProfilesMutationObject;
+use crate::graphql::profiles::profiles_mutation::ProfilesMutationObject;
 use crate::graphql::queries_mutation::PersistedQueriesMutationObject;
 
 pub(crate) struct MutationObject;
