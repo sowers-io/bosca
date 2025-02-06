@@ -1,14 +1,15 @@
+use crate::context::BoscaContext;
 use crate::graphql::content::collection::CollectionObject;
 use crate::graphql::content::metadata::MetadataObject;
 use crate::graphql::content::source::SourceObject;
 use crate::graphql::content::supplementary::MetadataSupplementaryObject;
+use crate::models::content::search::{SearchDocument, SearchQuery, SearchResultObject};
 use crate::models::security::permission::PermissionAction;
 use async_graphql::*;
+use log::error;
+use serde_json::Value;
 use std::str::FromStr;
 use uuid::Uuid;
-use serde_json::Value;
-use crate::context::BoscaContext;
-use crate::models::content::search::{SearchDocument, SearchQuery, SearchResultObject};
 
 pub struct ContentObject {}
 
@@ -28,7 +29,8 @@ impl ContentObject {
         offset: i64,
     ) -> Result<Vec<CollectionObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        Ok(ctx.content
+        Ok(ctx
+            .content
             .find_collections(&attributes, limit, offset)
             .await?
             .into_iter()
@@ -62,7 +64,8 @@ impl ContentObject {
         offset: i64,
     ) -> Result<Vec<MetadataObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        Ok(ctx.content
+        Ok(ctx
+            .content
             .find_metadata(&attributes, &content_types, limit, offset)
             .await?
             .into_iter()
@@ -92,8 +95,11 @@ impl ContentObject {
     ) -> Result<Option<MetadataSupplementaryObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::from_str(id.as_str())?;
-        let metadata = ctx.check_metadata_action(&id, PermissionAction::View).await?;
-        let supplementary = ctx.content
+        let metadata = ctx
+            .check_metadata_action(&id, PermissionAction::View)
+            .await?;
+        let supplementary = ctx
+            .content
             .get_metadata_supplementary(&metadata.id, &key)
             .await?;
         if let Some(supplementary) = supplementary {
@@ -108,7 +114,8 @@ impl ContentObject {
 
     async fn sources(&self, ctx: &Context<'_>) -> Result<Vec<SourceObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        Ok(ctx.content
+        Ok(ctx
+            .content
             .get_sources()
             .await?
             .into_iter()
@@ -125,16 +132,30 @@ impl ContentObject {
         .map(|s| s.into()))
     }
 
-    async fn search(&self, ctx: &Context<'_>, query: SearchQuery) -> Result<SearchResultObject, Error> {
+    async fn search(
+        &self,
+        ctx: &Context<'_>,
+        query: SearchQuery,
+    ) -> Result<SearchResultObject, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        let id = Uuid::parse_str(query.storage_system_id.as_str())?;
+        let Ok(id) = Uuid::parse_str(query.storage_system_id.as_str()) else {
+            return Ok(SearchResultObject {
+                documents: vec![],
+                estimated_hits: 0
+            })
+        };
         let Some(storage_system) = ctx.workflow.get_storage_system(&id).await? else {
             return Err(Error::new("missing storage system"));
         };
         let Some(configuration) = storage_system.configuration else {
             return Err(Error::new("missing configuration"));
         };
-        let index_name = configuration.get("indexName").unwrap().as_str().unwrap().to_string();
+        let index_name = configuration
+            .get("indexName")
+            .unwrap()
+            .as_str()
+            .unwrap()
+            .to_string();
         let index = ctx.search.index(index_name);
         let limit = query.limit.unwrap_or(25) as usize;
         let mut search_query = index.search();
@@ -149,13 +170,20 @@ impl ContentObject {
         for hit in results.hits {
             let obj = match hit.result {
                 Value::Object(o) => Some(o),
-                _ => None
+                _ => None,
             };
             if obj.is_none() {
-                continue
+                continue;
             }
             let obj = obj.unwrap();
-            let id = Uuid::parse_str(obj.get("_id").unwrap().as_str().unwrap())?;
+            let Some(id) = obj.get("_id") else {
+                return Err(Error::new("missing id"));
+            };
+            let id = id.as_str().unwrap();
+            let Ok(id) = Uuid::parse_str(id) else {
+                error!("failed to parse id: {}", id);
+                continue;
+            };
             let hit_type = obj.get("_type").unwrap().as_str().unwrap();
             if hit_type == "metadata" {
                 let metadata = ctx.check_metadata_action(&id, PermissionAction::View).await;
@@ -165,25 +193,42 @@ impl ContentObject {
                 let document = SearchDocument {
                     metadata: Some(metadata?),
                     collection: None,
-                    content: obj.get("_content").unwrap().as_str().unwrap().trim().to_owned(),
+                    content: obj
+                        .get("_content")
+                        .unwrap()
+                        .as_str()
+                        .unwrap()
+                        .trim()
+                        .to_owned(),
                 };
                 documents.push(document);
             } else if hit_type == "collection" {
-                let collection = ctx.check_collection_action(&id, PermissionAction::View).await;
+                let collection = ctx
+                    .check_collection_action(&id, PermissionAction::View)
+                    .await;
                 if collection.is_err() {
                     continue;
                 }
                 let document = SearchDocument {
                     metadata: None,
                     collection: Some(collection?),
-                    content: obj.get("_content").unwrap().as_str().unwrap().trim().to_owned(),
+                    content: obj
+                        .get("_content")
+                        .unwrap()
+                        .as_str()
+                        .unwrap()
+                        .trim()
+                        .to_owned(),
                 };
                 documents.push(document);
             }
         }
         Ok(SearchResultObject {
             documents,
-            estimated_hits: results.total_hits.unwrap_or(results.estimated_total_hits.unwrap_or(0)) as i64
+            estimated_hits: results
+                .total_hits
+                .unwrap_or(results.estimated_total_hits.unwrap_or(0))
+                as i64,
         })
     }
 }

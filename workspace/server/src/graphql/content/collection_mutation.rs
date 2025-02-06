@@ -1,6 +1,6 @@
 use crate::graphql::content::collection::CollectionObject;
 use crate::graphql::content::permission::PermissionObject;
-use crate::models::content::collection::{CollectionChildInput, CollectionInput};
+use crate::models::content::collection::{CollectionChildInput, CollectionInput, CollectionType};
 use crate::models::security::permission::{Permission, PermissionAction, PermissionInput};
 use async_graphql::*;
 use log::error;
@@ -16,6 +16,14 @@ pub struct CollectionMutationObject {}
 #[Object(name = "CollectionMutation")]
 impl CollectionMutationObject {
     async fn add(&self, ctx: &Context<'_>, collection: CollectionInput, collection_item_attributes: Option<serde_json::Value>) -> Result<CollectionObject, Error> {
+        if collection.name.to_lowercase().starts_with(".system") {
+            return Err(Error::new("invalid collection name"))
+        }
+        if let Some(collection_type) = collection.collection_type {
+            if collection_type == CollectionType::System || collection_type == CollectionType::Root {
+                return Err(Error::new("invalid collection type"))
+            }
+        }
         let ctx = ctx.data::<BoscaContext>()?;
         let mut collections = vec![CollectionChildInput { collection, attributes: collection_item_attributes }];
         let collection_ids = ctx.content.add_collections(ctx, &mut collections).await?;
@@ -24,6 +32,16 @@ impl CollectionMutationObject {
     }
 
     async fn add_bulk(&self, ctx: &Context<'_>, collections: Vec<CollectionChildInput>) -> Result<Vec<CollectionObject>, Error> {
+        for collection in collections.iter() {
+            if collection.collection.name.to_lowercase().starts_with(".system") {
+                return Err(Error::new("invalid collection name"))
+            }
+            if let Some(collection_type) = collection.collection.collection_type {
+                if collection_type == CollectionType::System || collection_type == CollectionType::Root {
+                    return Err(Error::new("invalid collection type"))
+                }
+            }
+        }
         let ctx = ctx.data::<BoscaContext>()?;
         let mut collections = collections;
         let collection_ids = ctx.content.add_collections(ctx, &mut collections).await?;
@@ -41,6 +59,14 @@ impl CollectionMutationObject {
         id: String,
         collection: CollectionInput,
     ) -> Result<CollectionObject, Error> {
+        if collection.name.to_lowercase().starts_with(".system") {
+            return Err(Error::new("invalid collection name"))
+        }
+        if let Some(collection_type) = collection.collection_type {
+            if collection_type == CollectionType::System || collection_type == CollectionType::Root {
+                return Err(Error::new("invalid collection type"))
+            }
+        }
         let ctx = ctx.data::<BoscaContext>()?;
         let collection_id = Uuid::parse_str(id.as_str())?;
         ctx.check_collection_action(&collection_id, PermissionAction::Edit).await?;
@@ -72,9 +98,6 @@ impl CollectionMutationObject {
         id: String,
         recursive: Option<bool>,
     ) -> Result<bool, Error> {
-        if id == "00000000-0000-0000-0000-000000000000" {
-            return Err(Error::new("cannot delete root collection"));
-        }
         let ctx = ctx.data::<BoscaContext>()?;
         let collection_id = Uuid::parse_str(id.as_str())?;
         delete_collection(ctx, &collection_id, recursive).await?;

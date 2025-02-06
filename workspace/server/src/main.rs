@@ -15,7 +15,6 @@ mod worklfow;
 use crate::files::{download, upload};
 use crate::graphql::content::storage::{ObjectStorage, ObjectStorageInterface};
 use crate::models::content::collection::{CollectionInput, CollectionType};
-use crate::models::security::credentials::PasswordCredential;
 use crate::models::security::permission::{Permission, PermissionAction};
 use crate::security::authorization_extension::{
     get_anonymous_principal, get_auth_header, get_cookie_header, Authorization,
@@ -80,11 +79,13 @@ use crate::datastores::notifier::Notifier;
 use crate::datastores::profile::ProfileDataStore;
 use crate::graphql::subscription::SubscriptionObject;
 use crate::logger::Logger;
-use crate::models::profile::profile::{ProfileInput, ProfileVisibility};
+use crate::models::profile::profile::ProfileInput;
 use crate::redis::RedisClient;
 use crate::schema::BoscaSchema;
 use bosca_database::build_pool;
 use tokio::time::sleep;
+use crate::models::profile::profile_visibility::ProfileVisibility;
+use crate::util::profile::add_password_principal;
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
@@ -195,28 +196,35 @@ async fn build_redis_client(key: &str) -> Result<RedisClient, Error> {
     RedisClient::new(url).await
 }
 
-async fn initialize_security(datastore: &SecurityDataStore, profiles: &ProfileDataStore) {
-    match datastore.get_principal_by_identifier("admin").await {
+async fn initialize_security(security: &SecurityDataStore, content: &ContentDataStore, profiles: &ProfileDataStore) {
+    match security.get_principal_by_identifier("admin").await {
         Ok(_) => {}
         Err(_) => {
-            let password = PasswordCredential::new("admin".to_string(), "password".to_string());
-            let group = datastore.get_administrators_group().await.unwrap();
-            let groups = vec![&group].into_iter().map(|g| &g.id).collect();
-            let id = datastore
-                .add_principal(true, Value::Null, &password, &groups)
-                .await
-                .unwrap();
             let groups = vec![];
-            datastore
+            security
                 .add_anonymous_principal(Value::Null, &groups)
                 .await
                 .unwrap();
+
+            let identifier = "admin".to_string();
+            let password = "password".to_string();
             let profile = ProfileInput {
-                visibility: ProfileVisibility::Public,
                 name: "Administrator".to_string(),
-                attributes: vec![]
+                visibility: ProfileVisibility::Public,
+                attributes: vec![],
             };
-            profiles.add_profile(&id, &profile).await.unwrap();
+            let principal = add_password_principal(
+                security,
+                content,
+                profiles,
+                &identifier,
+                &password,
+                &profile,
+                true
+            ).await.unwrap();
+
+            let group = security.get_administrators_group().await.unwrap();
+            security.add_principal_group(&principal.id, &group.id).await.unwrap();
         }
     }
 }
@@ -239,6 +247,20 @@ async fn initialize_content(ctx: &BoscaContext) {
                 parent_collection_id: None,
                 name: "Root".to_string(),
                 collection_type: Some(CollectionType::Root),
+                attributes: None,
+                labels: None,
+                state: None,
+                description: None,
+                index: None,
+                ordering: None,
+                metadata: None,
+                collections: None,
+            };
+            ctx.content.add_collection(&input).await.unwrap();
+            let input = CollectionInput {
+                parent_collection_id: None,
+                name: ".system.profiles".to_string(),
+                collection_type: Some(CollectionType::System),
                 attributes: None,
                 labels: None,
                 state: None,
@@ -375,7 +397,7 @@ async fn main() {
         principal: get_anonymous_principal(),
     };
 
-    initialize_security(&ctx.security, &ctx.profile).await;
+    initialize_security(&ctx.security, &ctx.content, &ctx.profile).await;
     initialize_content(&ctx).await;
 
     let jobs_expiration = jobs.clone();

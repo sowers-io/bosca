@@ -1,11 +1,15 @@
 use async_graphql::Error;
 use uuid::Uuid;
 use crate::context::BoscaContext;
+use crate::models::content::collection::CollectionType;
 use crate::models::security::permission::PermissionAction;
 use crate::util::storage::{storage_system_collection_delete, storage_system_metadata_delete};
 
 pub async fn delete_collection(ctx: &BoscaContext, collection_id: &Uuid, recursive: Option<bool>) -> Result<(), Error> {
     let collection = ctx.check_collection_action(collection_id, PermissionAction::Delete).await?;
+    if collection.collection_type == CollectionType::Root || collection.collection_type == CollectionType::System {
+        return Err(Error::new("cannot delete root or system collection"));
+    }
     if recursive.unwrap_or(false) {
         loop {
             let metadatas = ctx.content.get_collection_child_metadata(&collection, 0, 100).await?;

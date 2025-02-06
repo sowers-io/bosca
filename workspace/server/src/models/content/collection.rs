@@ -13,6 +13,7 @@ use crate::models::content::metadata::MetadataInput;
 #[derive(Enum, Debug, Copy, Clone, Eq, PartialEq)]
 pub enum CollectionType {
     Root,
+    System,
     Standard,
     Folder,
     Queue,
@@ -68,25 +69,25 @@ pub struct CollectionChild {
     pub attributes: Option<Value>,
 }
 
-#[derive(InputObject)]
+#[derive(InputObject, Default, Clone)]
 pub struct CollectionWorkflowInput {
     pub state: String,
     pub delete_workflow_id: Option<String>,
 }
 
-#[derive(InputObject)]
+#[derive(InputObject, Default)]
 pub struct CollectionChildInput {
     pub collection: CollectionInput,
     pub attributes: Option<Value>,
 }
 
-#[derive(InputObject)]
+#[derive(InputObject, Default)]
 pub struct MetadataChildInput {
     pub metadata: MetadataInput,
     pub attributes: Option<Value>,
 }
 
-#[derive(InputObject)]
+#[derive(InputObject, Default)]
 pub struct CollectionInput {
     pub parent_collection_id: Option<String>,
     pub collection_type: Option<CollectionType>,
@@ -140,6 +141,7 @@ impl<'a> FromSql<'a> for CollectionType {
         let e: String = String::from_utf8_lossy(raw).parse().unwrap();
         Ok(match e.as_str() {
             "root" => CollectionType::Root,
+            "system" => CollectionType::System,
             "standard" => CollectionType::Standard,
             "folder" => CollectionType::Folder,
             "queue" => CollectionType::Queue,
@@ -156,6 +158,7 @@ impl ToSql for CollectionType {
     fn to_sql(&self, _: &Type, w: &mut BytesMut) -> Result<IsNull, Box<dyn Error + Sync + Send>> {
         match *self {
             CollectionType::Root => w.put_slice("root".as_ref()),
+            CollectionType::System => w.put_slice("system".as_ref()),
             CollectionType::Standard => w.put_slice("standard".as_ref()),
             CollectionType::Folder => w.put_slice("folder".as_ref()),
             CollectionType::Queue => w.put_slice("queue".as_ref()),

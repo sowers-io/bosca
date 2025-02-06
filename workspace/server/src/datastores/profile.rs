@@ -1,8 +1,10 @@
 use crate::models::profile::profile::{Profile, ProfileInput};
+use crate::models::profile::profile_attribute::ProfileAttribute;
 use async_graphql::Error;
 use deadpool_postgres::{GenericClient, Pool};
 use std::sync::Arc;
 use uuid::Uuid;
+use crate::models::profile::profile_attribute_type::ProfileAttributeType;
 
 #[derive(Clone)]
 pub struct ProfileDataStore {
@@ -26,16 +28,28 @@ impl ProfileDataStore {
         Ok(rows.first().map(|r| r.into()))
     }
 
+    pub async fn get_profile_attribute_types(
+        &self,
+    ) -> async_graphql::Result<Vec<ProfileAttributeType>, Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("select * from profile_attribute_types")
+            .await?;
+        let rows = connection.query(&stmt, &[]).await?;
+        Ok(rows.iter().map(|r| r.into()).collect())
+    }
+
     pub async fn add_profile(
         &self,
         principal: &Uuid,
         profile: &ProfileInput,
+        collection_id: &Uuid,
     ) -> async_graphql::Result<Uuid, Error> {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
-        let stmt = txn.prepare_cached("insert into profiles (principal, name, visibility) values ($1, $2, $3) returning id").await?;
+        let stmt = txn.prepare_cached("insert into profiles (principal, name, visibility, collection_id) values ($1, $2, $3, $4) returning id").await?;
         let results = txn
-            .query(&stmt, &[&principal, &profile.name, &profile.visibility])
+            .query(&stmt, &[&principal, &profile.name, &profile.visibility, &collection_id])
             .await?;
         if results.is_empty() {
             return Err(Error::new("failed to create principal"));
@@ -43,12 +57,11 @@ impl ProfileDataStore {
         let id = results[0].get("id");
         let stmt = txn.prepare_cached("insert into profile_attributes (profile, type_id, visibility, confidence, priority, source, attributes) values ($1, $2, $3, $4, $5, $6, $7)").await?;
         for attribute in profile.attributes.iter() {
-            let type_id = Uuid::parse_str(&attribute.type_id)?;
             txn.execute(
                 &stmt,
                 &[
                     &id,
-                    &type_id,
+                    &attribute.type_id,
                     &attribute.visibility,
                     &attribute.confidence,
                     &attribute.priority,
@@ -60,6 +73,18 @@ impl ProfileDataStore {
         }
         txn.commit().await?;
         Ok(id)
+    }
+
+    pub async fn get_profile_attributes(
+        &self,
+        profile_id: &Uuid,
+    ) -> async_graphql::Result<Vec<ProfileAttribute>, Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("select * from profile_attributes where profile = $1")
+            .await?;
+        let rows = connection.query(&stmt, &[profile_id]).await?;
+        Ok(rows.iter().map(|r| r.into()).collect())
     }
 
     pub async fn edit_profile(
@@ -99,12 +124,11 @@ impl ProfileDataStore {
                 )
                 .await?;
             } else {
-                let type_id = Uuid::parse_str(&attribute.type_id)?;
                 txn.execute(
                     &insert_stmt,
                     &[
                         &id,
-                        &type_id,
+                        &attribute.type_id,
                         &attribute.visibility,
                         &attribute.confidence,
                         &attribute.priority,

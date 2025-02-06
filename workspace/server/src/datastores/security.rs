@@ -259,14 +259,18 @@ impl SecurityDataStore {
         self.get_principal_by_id_internal(&connection, &id).await
     }
 
-    pub async fn set_principal_verified(&self, verification_token: &str) -> Result<(), Error> {
+    pub async fn set_principal_verified(&self, verification_token: &str) -> Result<Uuid, Error> {
         let connection = self.pool.get().await?;
         let token = verification_token.to_string();
         let stmt = connection
-            .prepare_cached("update principals set verification_token = null, verified = true where verification_token = $1")
+            .prepare_cached("update principals set verification_token = null, verified = true where verification_token = $1 returning id")
             .await?;
-        connection.execute(&stmt, &[&token]).await?;
-        Ok(())
+        let results = connection.query(&stmt, &[&token]).await?;
+        if results.is_empty() {
+            return Err(Error::new("invalid token"));
+        }
+        let id: Uuid = results.first().unwrap().get("id");
+        Ok(id)
     }
 
     pub async fn get_principal_by_token(&self, token: &str) -> Result<Principal, Error> {

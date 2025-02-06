@@ -77,7 +77,7 @@ pub struct MetadataSourceInput {
     pub identifier: String,
 }
 
-#[derive(InputObject)]
+#[derive(InputObject, Default)]
 pub struct MetadataInput {
     pub parent_collection_id: Option<String>,
     pub parent_id: Option<String>,
