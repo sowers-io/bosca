@@ -2,6 +2,7 @@ create table metadata_workflow_schedules
 (
     metadata_id    uuid                     not null,
     workflow_id    varchar                  not null,
+    attributes     jsonb,
     configuration  jsonb                    not null,
     rrule          varchar                  not null,
     starts         timestamp with time zone not null,
@@ -19,6 +20,7 @@ create table collection_workflow_schedules
 (
     collection_id  uuid                     not null,
     workflow_id    varchar                  not null,
+    attributes     jsonb,
     configuration  jsonb                    not null,
     rrule          varchar                  not null,
     starts         timestamp with time zone not null,

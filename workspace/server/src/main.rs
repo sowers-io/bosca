@@ -1,25 +1,28 @@
+mod authed_subscription;
+mod context;
 mod datastores;
 mod files;
 mod graphql;
+mod logger;
 mod models;
+mod queries;
+mod redis;
+mod schema;
 mod security;
 mod util;
 mod worklfow;
-mod context;
-mod queries;
-mod logger;
-mod authed_subscription;
-mod schema;
-mod redis;
 
 use crate::files::{download, upload};
 use crate::graphql::content::storage::{ObjectStorage, ObjectStorageInterface};
 use crate::models::content::collection::{CollectionInput, CollectionType};
 use crate::models::security::credentials::PasswordCredential;
 use crate::models::security::permission::{Permission, PermissionAction};
-use crate::security::authorization_extension::{get_anonymous_principal, get_auth_header, get_cookie_header, Authorization};
+use crate::security::authorization_extension::{
+    get_anonymous_principal, get_auth_header, get_cookie_header, Authorization,
+};
 use crate::security::jwt::{Jwt, Keys};
 use crate::worklfow::queue::JobQueues;
+use async_graphql::extensions::apollo_persisted_queries::ApolloPersistedQueries;
 use async_graphql::{http::GraphiQLSource, Error, Schema};
 use async_graphql_axum::{GraphQLRequest, GraphQLResponse};
 use axum::extract::{DefaultBodyLimit, State};
@@ -29,60 +32,59 @@ use axum::{
     routing::get,
     Router,
 };
+use chrono::Utc;
 use graphql::mutation::MutationObject;
 use graphql::query::QueryObject;
 use http::HeaderMap;
 use log::{error, info, warn};
 use meilisearch_sdk::client::Client;
+use object_store::aws::AmazonS3Builder;
 use object_store::local::LocalFileSystem;
+use opentelemetry::{global, KeyValue};
 use serde_json::Value;
 use std::env;
 use std::fs::create_dir_all;
 use std::path::Path;
 use std::process::exit;
-use std::sync::Arc;
 use std::sync::atomic::Ordering::Relaxed;
+use std::sync::Arc;
 use std::time::Duration;
-use async_graphql::extensions::apollo_persisted_queries::ApolloPersistedQueries;
-use chrono::Utc;
-use object_store::aws::AmazonS3Builder;
-use opentelemetry::{global, KeyValue};
 use tokio::net::TcpListener;
 use uuid::Uuid;
 
+use crate::context::BoscaContext;
+use crate::datastores::content::ContentDataStore;
+use crate::datastores::security::SecurityDataStore;
+use crate::datastores::workflow::WorkflowDataStore;
+use crate::models::content::search::SearchDocumentInput;
+use crate::util::storage::index_documents_no_checks;
+use crate::util::RUNNING_BACKGROUND;
 use opentelemetry::trace::TracerProvider as _;
 use opentelemetry_otlp::WithExportConfig;
-use opentelemetry_sdk::{runtime, Resource};
 use opentelemetry_sdk::trace::{BatchConfigBuilder, BatchSpanProcessor, TracerProvider};
+use opentelemetry_sdk::{runtime, Resource};
 use rustls::crypto::ring;
 #[cfg(unix)]
 use tokio::signal::unix::{signal, SignalKind};
 #[cfg(windows)]
 use tokio::signal::windows::ctrl_c;
 use tower_http::timeout::TimeoutLayer;
-use crate::context::BoscaContext;
-use crate::datastores::content::ContentDataStore;
-use crate::datastores::security::SecurityDataStore;
-use crate::datastores::workflow::WorkflowDataStore;
-use crate::models::content::search::SearchDocumentInput;
-use crate::util::RUNNING_BACKGROUND;
-use crate::util::storage::index_documents_no_checks;
 
+use crate::datastores::persisted_queries::PersistedQueriesDataStore;
+use bosca_telemetry::graphql_opentelemetry::OpenTelemetry;
 use mimalloc::MiMalloc;
 use tower_http::cors::CorsLayer;
-use bosca_telemetry::graphql_opentelemetry::OpenTelemetry;
-use crate::datastores::persisted_queries::PersistedQueriesDataStore;
 
-use tokio::time::sleep;
-use bosca_database::build_pool;
 use crate::authed_subscription::AuthGraphQLSubscription;
 use crate::datastores::notifier::Notifier;
 use crate::datastores::profile::ProfileDataStore;
 use crate::graphql::subscription::SubscriptionObject;
 use crate::logger::Logger;
-use crate::models::profile::profile::ProfileVisibility;
+use crate::models::profile::profile::{ProfileInput, ProfileVisibility};
 use crate::redis::RedisClient;
 use crate::schema::BoscaSchema;
+use bosca_database::build_pool;
+use tokio::time::sleep;
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
@@ -135,8 +137,6 @@ fn build_jwt() -> Jwt {
     Jwt::new(keys, &audience, &issuer)
 }
 
-
-
 fn build_filesystem_object_storage() -> ObjectStorage {
     let current_dir = match env::var("STORAGE") {
         Ok(dir) => Path::new(dir.as_str()).to_path_buf(),
@@ -154,14 +154,16 @@ fn build_filesystem_object_storage() -> ObjectStorage {
 
 fn build_s3_object_storage() -> ObjectStorage {
     info!("Using s3 object storage");
-    ObjectStorage::new(ObjectStorageInterface::S3(Arc::new(AmazonS3Builder::from_env().build().unwrap())))
+    ObjectStorage::new(ObjectStorageInterface::S3(Arc::new(
+        AmazonS3Builder::from_env().build().unwrap(),
+    )))
 }
 
 fn build_object_storage() -> ObjectStorage {
     match env::var("STORAGE") {
         Ok(name) => match name.as_str() {
             "s3" => build_s3_object_storage(),
-            _ => build_filesystem_object_storage()
+            _ => build_filesystem_object_storage(),
         },
         _ => build_filesystem_object_storage(),
     }
@@ -209,22 +211,30 @@ async fn initialize_security(datastore: &SecurityDataStore, profiles: &ProfileDa
                 .add_anonymous_principal(Value::Null, &groups)
                 .await
                 .unwrap();
-            let visibility = ProfileVisibility::Public;
-            profiles.add_profile(&id, "Administrator", &visibility).await.unwrap();
+            let profile = ProfileInput {
+                visibility: ProfileVisibility::Public,
+                name: "Administrator".to_string(),
+                attributes: vec![]
+            };
+            profiles.add_profile(&id, &profile).await.unwrap();
         }
     }
 }
 
 async fn initialize_content(ctx: &BoscaContext) {
     let root_collection_id = Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap();
-    match ctx.content
+    match ctx
+        .content
         .get_collection(&root_collection_id)
         .await
         .unwrap()
     {
         Some(_) => {}
         None => {
-            ctx.workflow.initialize_default_search_index().await.unwrap();
+            ctx.workflow
+                .initialize_default_search_index()
+                .await
+                .unwrap();
             let input = CollectionInput {
                 parent_collection_id: None,
                 name: "Root".to_string(),
@@ -252,10 +262,17 @@ async fn initialize_content(ctx: &BoscaContext) {
             let search_docs = vec![SearchDocumentInput {
                 collection_id: Some(root_collection_id.to_string()),
                 metadata_id: None,
-                content: "".to_owned()
+                content: "".to_owned(),
             }];
-            if let Some(storage_system) = ctx.workflow.get_default_search_storage_system().await.unwrap() {
-                index_documents_no_checks(ctx, &search_docs, &storage_system).await.unwrap();
+            if let Some(storage_system) = ctx
+                .workflow
+                .get_default_search_storage_system()
+                .await
+                .unwrap()
+            {
+                index_documents_no_checks(ctx, &search_docs, &storage_system)
+                    .await
+                    .unwrap();
             } else {
                 error!("failed to index documents, missing storage system");
             }
@@ -323,22 +340,26 @@ async fn main() {
     let url_secret_key = match env::var("URL_SECRET_KEY") {
         Ok(url_secret_key) => url_secret_key,
         _ => {
-            println!("Environment variable URL_SECRET_KEY could not be read, generating a random value");
+            println!(
+                "Environment variable URL_SECRET_KEY could not be read, generating a random value"
+            );
             Uuid::new_v4().to_string()
         }
     };
 
     let redis_jobs_queue_client = build_redis_client("REDIS_JOBS_QUEUE_URL").await.unwrap();
-    let redis_notifier_client = build_redis_client("REDIS_NOTIFIER_PUBSUB_URL").await.unwrap();
+    let redis_notifier_client = build_redis_client("REDIS_NOTIFIER_PUBSUB_URL")
+        .await
+        .unwrap();
     let notifier = Arc::new(Notifier::new(redis_notifier_client.clone()));
-    let jobs = JobQueues::new(Arc::clone(&bosca_pool), redis_jobs_queue_client.clone(), Arc::clone(&notifier));
+    let jobs = JobQueues::new(
+        Arc::clone(&bosca_pool),
+        redis_jobs_queue_client.clone(),
+        Arc::clone(&notifier),
+    );
     let search = build_search_client();
     let ctx = BoscaContext {
-        security: SecurityDataStore::new(
-            Arc::clone(&bosca_pool),
-            build_jwt(),
-            url_secret_key,
-        ),
+        security: SecurityDataStore::new(Arc::clone(&bosca_pool), build_jwt(), url_secret_key),
         workflow: WorkflowDataStore::new(
             Arc::clone(&bosca_pool),
             jobs.clone(),
@@ -371,10 +392,12 @@ async fn main() {
     });
 
     let mut provider_builder = TracerProvider::builder().with_config(
-        opentelemetry_sdk::trace::Config::default().with_resource(Resource::new(vec![KeyValue::new(
-            opentelemetry_semantic_conventions::resource::SERVICE_NAME,
-            "bosca-server",
-        )])),
+        opentelemetry_sdk::trace::Config::default().with_resource(Resource::new(vec![
+            KeyValue::new(
+                opentelemetry_semantic_conventions::resource::SERVICE_NAME,
+                "bosca-server",
+            ),
+        ])),
     );
 
     if let Ok(endpoint) = env::var("OTLP_TRACE_ENDPOINT") {
@@ -389,7 +412,7 @@ async fn main() {
             .with_batch_config(
                 BatchConfigBuilder::default()
                     .with_max_queue_size(4096)
-                    .build()
+                    .build(),
             )
             .build();
         provider_builder = provider_builder.with_span_processor(batch);

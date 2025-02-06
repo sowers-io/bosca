@@ -98,10 +98,14 @@ impl SecurityDataStore {
         credential: &impl Credential,
         groups: &Vec<&Uuid>,
     ) -> Result<Uuid, Error> {
+        let verification_token = if verified { None } else {
+            let token = self.jwt.new_verification_token()?;
+            Some(token.token.to_string())
+        };
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
-        let stmt = txn.prepare_cached("insert into principals (verified, anonymous, attributes) values ($1, false, $2) returning id").await?;
-        let results = txn.query(&stmt, &[&verified, &attributes]).await?;
+        let stmt = txn.prepare_cached("insert into principals (verified, verification_token, anonymous, attributes) values ($1, $2, false, $3) returning id").await?;
+        let results = txn.query(&stmt, &[&verified, &verification_token, &attributes]).await?;
         if results.is_empty() {
             return Err(Error::new("failed to create principal"));
         }
@@ -253,6 +257,16 @@ impl SecurityDataStore {
             return Err(Error::new("invalid credential"));
         }
         self.get_principal_by_id_internal(&connection, &id).await
+    }
+
+    pub async fn set_principal_verified(&self, verification_token: &str) -> Result<(), Error> {
+        let connection = self.pool.get().await?;
+        let token = verification_token.to_string();
+        let stmt = connection
+            .prepare_cached("update principals set verification_token = null, verified = true where verification_token = $1")
+            .await?;
+        connection.execute(&stmt, &[&token]).await?;
+        Ok(())
     }
 
     pub async fn get_principal_by_token(&self, token: &str) -> Result<Principal, Error> {

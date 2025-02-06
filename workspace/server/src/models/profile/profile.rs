@@ -1,7 +1,9 @@
-use async_graphql::Enum;
+use async_graphql::{Enum, InputObject};
 use std::error::Error;
 use bytes::{BufMut, BytesMut};
+use chrono::{DateTime, Utc};
 use postgres_types::{to_sql_checked, FromSql, IsNull, ToSql, Type};
+use serde_json::Value;
 use tokio_postgres::Row;
 use uuid::Uuid;
 
@@ -20,6 +22,25 @@ pub struct Profile {
     pub principal: Uuid,
     pub name: String,
     pub visibility: ProfileVisibility
+}
+
+#[derive(InputObject, Debug, Clone, PartialEq, Eq)]
+pub struct ProfileInput {
+    pub name: String,
+    pub visibility: ProfileVisibility,
+    pub attributes: Vec<ProfileAttributeInput>,
+}
+
+#[derive(InputObject, Debug, Clone, PartialEq, Eq)]
+pub struct ProfileAttributeInput {
+    pub id: Option<String>,
+    pub type_id: String,
+    pub visibility: ProfileVisibility,
+    pub confidence: i32,
+    pub priority: i32,
+    pub source: String,
+    pub attributes: Value,
+    pub expiration: Option<DateTime<Utc>>
 }
 
 impl From<&Row> for Profile {

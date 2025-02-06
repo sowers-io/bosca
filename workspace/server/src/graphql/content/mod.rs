@@ -3,7 +3,7 @@ pub mod collection_mutation;
 #[allow(clippy::module_inception)]
 pub mod content;
 pub mod content_mutation;
-pub mod contenttrait;
+pub mod content_trait;
 pub mod metadata;
 pub mod metadata_mutation;
 pub mod metadata_relationship;

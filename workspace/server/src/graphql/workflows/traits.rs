@@ -1,6 +1,6 @@
 use async_graphql::{Context, Error, Object};
 use crate::context::BoscaContext;
-use crate::graphql::content::contenttrait::TraitObject;
+use crate::graphql::content::content_trait::TraitObject;
 
 pub struct TraitsObject {
 }

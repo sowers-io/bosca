@@ -7,3 +7,4 @@ pub mod security_mutation;
 pub mod login_mutation;
 pub mod token;
 pub mod groups;
+pub mod signup_mutation;

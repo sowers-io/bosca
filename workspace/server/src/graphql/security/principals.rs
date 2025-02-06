@@ -18,6 +18,10 @@ impl PrincipalObject {
         self.principal.id.to_string()
     }
 
+    async fn verified(&self) -> bool {
+        self.principal.verified
+    }
+
     async fn groups(&self) -> Vec<GroupObject> {
         match &self.principal.get_groups() {
             Some(groups) => groups.iter().map(|g| GroupObject::new(g.clone())).collect(),

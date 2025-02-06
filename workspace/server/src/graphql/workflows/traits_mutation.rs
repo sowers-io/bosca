@@ -2,7 +2,7 @@ use crate::datastores::security::WORKFLOW_MANAGERS_GROUP;
 use crate::security::util::check_has_group;
 use async_graphql::{Context, Error, Object};
 use crate::context::BoscaContext;
-use crate::graphql::content::contenttrait::TraitObject;
+use crate::graphql::content::content_trait::TraitObject;
 use crate::models::workflow::traits::TraitInput;
 
 pub struct TraitsMutationObject {}

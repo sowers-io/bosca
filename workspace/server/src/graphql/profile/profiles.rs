@@ -1,28 +1,14 @@
-use async_graphql::Object;
-use crate::models::profile::profile::{Profile, ProfileVisibility};
+use crate::context::BoscaContext;
+use crate::graphql::profile::profile::ProfileObject;
+use async_graphql::*;
 
-pub struct ProfileObject {
-    profile: Profile,
-}
+pub struct ProfilesObject {}
 
-impl ProfileObject {
-    pub fn new(profile: Profile) -> Self {
-        Self { profile }
+#[Object(name = "Profiles")]
+impl ProfilesObject {
+    async fn profile(&self, ctx: &Context<'_>) -> Result<Option<ProfileObject>, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let principal_id = ctx.principal.id;
+        Ok(ctx.profile.get_profile_by_principal(&principal_id).await?.map(ProfileObject::new))
     }
 }
-
-#[Object(name = "Profile")]
-impl ProfileObject {
-    async fn id(&self) -> String {
-        self.profile.id.to_string()
-    }
-
-    async fn name(&self) -> &String {
-        &self.profile.name
-    }
-
-    async fn visibility(&self) -> &ProfileVisibility {
-        &self.profile.visibility
-    }
-}
-
