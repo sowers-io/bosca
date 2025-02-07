@@ -37,6 +37,8 @@ alter table principals
 
 create unique index principals_verification_token on principals (verification_token) where verification_token is not null;
 
+insert into traits (id, name, description, delete_workflow_id) values ('profile', 'Profile', 'User Profiles', null);
+
 insert into profile_attribute_types (id, name, description, visibility)
 values ('bosca.profiles.name', 'Name', 'Name', 'user'::profile_visibility);
 

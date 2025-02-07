@@ -43,6 +43,11 @@ impl MetadataObject {
         ctx.content.get_metadata_trait_ids(&self.metadata.id).await
     }
 
+    async fn slug(&self, ctx: &Context<'_>) -> Result<String, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        ctx.content.get_metadata_slug(&self.metadata.id).await
+    }
+
     #[graphql(name = "type")]
     async fn metadata_type(&self) -> &MetadataType {
         &self.metadata.metadata_type

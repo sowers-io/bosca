@@ -4,6 +4,7 @@ use crate::graphql::content::metadata::MetadataObject;
 use crate::graphql::content::source::SourceObject;
 use crate::graphql::content::supplementary::MetadataSupplementaryObject;
 use crate::models::content::search::{SearchDocument, SearchQuery, SearchResultObject};
+use crate::models::content::slug::SlugType;
 use crate::models::security::permission::PermissionAction;
 use async_graphql::*;
 use log::error;
@@ -19,8 +20,34 @@ pub struct FindAttributeInput {
     pub value: String,
 }
 
+#[derive(Union)]
+enum ContentItem {
+    Metadata(MetadataObject),
+    Collection(CollectionObject),
+}
+
 #[Object(name = "Content")]
 impl ContentObject {
+    async fn slug(&self, ctx: &Context<'_>, slug: String) -> Result<Option<ContentItem>, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        if let Some(slug) = ctx.content.get_slug(&slug).await? {
+            match slug.slug_type {
+                SlugType::Metadata => Ok(Some(ContentItem::Metadata(
+                    ctx.check_metadata_action(&slug.id, PermissionAction::View)
+                        .await?
+                        .into(),
+                ))),
+                SlugType::Collection => Ok(Some(ContentItem::Collection(
+                    ctx.check_collection_action(&slug.id, PermissionAction::View)
+                        .await?
+                        .into(),
+                ))),
+            }
+        } else {
+            Ok(None)
+        }
+    }
+
     async fn find_collection(
         &self,
         ctx: &Context<'_>,
@@ -141,8 +168,8 @@ impl ContentObject {
         let Ok(id) = Uuid::parse_str(query.storage_system_id.as_str()) else {
             return Ok(SearchResultObject {
                 documents: vec![],
-                estimated_hits: 0
-            })
+                estimated_hits: 0,
+            });
         };
         let Some(storage_system) = ctx.workflow.get_storage_system(&id).await? else {
             return Err(Error::new("missing storage system"));

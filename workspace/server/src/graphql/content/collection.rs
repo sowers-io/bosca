@@ -36,6 +36,11 @@ impl CollectionObject {
         self.collection.id.to_string()
     }
 
+    async fn slug(&self, ctx: &Context<'_>) -> Result<String, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        ctx.content.get_collection_slug(&self.collection.id).await
+    }
+
     #[graphql(name = "type")]
     async fn collection_type(&self) -> &CollectionType {
         &self.collection.collection_type

@@ -196,7 +196,7 @@ async fn build_redis_client(key: &str) -> Result<RedisClient, Error> {
     RedisClient::new(url).await
 }
 
-async fn initialize_security(security: &SecurityDataStore, content: &ContentDataStore, profiles: &ProfileDataStore) {
+async fn initialize_security(security: &SecurityDataStore, workflow: &WorkflowDataStore, content: &ContentDataStore, profiles: &ProfileDataStore) {
     match security.get_principal_by_identifier("admin").await {
         Ok(_) => {}
         Err(_) => {
@@ -215,6 +215,7 @@ async fn initialize_security(security: &SecurityDataStore, content: &ContentData
             };
             let principal = add_password_principal(
                 security,
+                workflow,
                 content,
                 profiles,
                 &identifier,
@@ -255,20 +256,7 @@ async fn initialize_content(ctx: &BoscaContext) {
                 ordering: None,
                 metadata: None,
                 collections: None,
-            };
-            ctx.content.add_collection(&input).await.unwrap();
-            let input = CollectionInput {
-                parent_collection_id: None,
-                name: ".system.profiles".to_string(),
-                collection_type: Some(CollectionType::System),
-                attributes: None,
-                labels: None,
-                state: None,
-                description: None,
-                index: None,
-                ordering: None,
-                metadata: None,
-                collections: None,
+                trait_ids: None,
             };
             ctx.content.add_collection(&input).await.unwrap();
             let group = ctx.security.get_administrators_group().await.unwrap();
@@ -397,7 +385,7 @@ async fn main() {
         principal: get_anonymous_principal(),
     };
 
-    initialize_security(&ctx.security, &ctx.content, &ctx.profile).await;
+    initialize_security(&ctx.security, &ctx.workflow, &ctx.content, &ctx.profile).await;
     initialize_content(&ctx).await;
 
     let jobs_expiration = jobs.clone();

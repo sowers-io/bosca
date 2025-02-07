@@ -7,9 +7,11 @@ use crate::models::security::credentials::PasswordCredential;
 use crate::models::security::permission::{Permission, PermissionAction};
 use crate::models::security::principal::Principal;
 use async_graphql::Error;
+use crate::datastores::workflow::WorkflowDataStore;
 
 pub async fn add_password_principal(
     security: &SecurityDataStore,
+    workflow: &WorkflowDataStore,
     content: &ContentDataStore,
     profiles: &ProfileDataStore,
     identifier: &str,
@@ -37,6 +39,7 @@ pub async fn add_password_principal(
             ..Default::default()
         })
         .await?;
+    let collection = content.get_collection(&collection_id).await?.unwrap();
 
     let group_name = format!("principal.{}", principal_id);
     let description = format!("Group for {}", identifier);
@@ -55,6 +58,7 @@ pub async fn add_password_principal(
         action: PermissionAction::View,
     };
     content.add_collection_permission(&permission).await?;
+    content.set_collection_ready_and_enqueue(workflow, &principal, &collection, None).await?;
 
     Ok(principal)
 }

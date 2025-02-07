@@ -18,6 +18,7 @@ impl SignupMutationObject {
         let ctx = ctx.data::<BoscaContext>()?;
         let principal = add_password_principal(
             &ctx.security,
+            &ctx.workflow,
             &ctx.content,
             &ctx.profile,
             &identifier,

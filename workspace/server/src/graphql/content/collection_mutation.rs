@@ -309,7 +309,7 @@ impl CollectionMutationObject {
         if collection.ready.is_some() {
             return Err(Error::new("collection already ready"));
         }
-        ctx.content.set_collection_ready_and_enqueue(ctx, &collection, None).await?;
+        ctx.content.set_collection_ready_and_enqueue(&ctx.workflow, &ctx.principal, &collection, None).await?;
         Ok(true)
     }
 }

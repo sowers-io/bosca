@@ -1,5 +1,6 @@
 use crate::context::BoscaContext;
 use crate::datastores::notifier::Notifier;
+use crate::datastores::workflow::WorkflowDataStore;
 use crate::graphql::content::content::FindAttributeInput;
 use crate::graphql::content::metadata_mutation::WorkflowConfigurationInput;
 use crate::models::content::collection::{
@@ -11,6 +12,7 @@ use crate::models::content::metadata_relationship::{
     MetadataRelationship, MetadataRelationshipInput,
 };
 use crate::models::content::search::SearchDocumentInput;
+use crate::models::content::slug::{Slug, SlugType};
 use crate::models::content::source::Source;
 use crate::models::content::supplementary::{MetadataSupplementary, MetadataSupplementaryInput};
 use crate::models::security::permission::{Permission, PermissionAction};
@@ -76,6 +78,57 @@ impl ContentDataStore {
             .await?;
         let rows = connection.query(&stmt, &[name]).await?;
         Ok(rows.first().map(|r| r.into()))
+    }
+
+    pub async fn get_slug(&self, slug: &str) -> Result<Option<Slug>, Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("select metadata_id, collection_id from slugs where slug = $1")
+            .await?;
+        let slug = slug.to_string();
+        let rows = connection.query(&stmt, &[&slug]).await?;
+        if rows.is_empty() {
+            return Ok(None);
+        }
+        let row = rows.first().unwrap();
+        let metadata_id: Option<Uuid> = row.get("metadata_id");
+        let collection_id: Option<Uuid> = row.get("collection_id");
+        Ok(Some(Slug {
+            id: if metadata_id.is_some() {
+                metadata_id.unwrap()
+            } else {
+                collection_id.unwrap()
+            },
+            slug_type: if metadata_id.is_some() {
+                SlugType::Metadata
+            } else {
+                SlugType::Collection
+            },
+        }))
+    }
+
+    pub async fn get_metadata_slug(&self, id: &Uuid) -> Result<String, Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("select slug from slugs where metadata_id = $1")
+            .await?;
+        let rows = connection.query(&stmt, &[id]).await?;
+        if rows.is_empty() {
+            return Err(Error::new("metadata not found"));
+        }
+        Ok(rows.first().unwrap().get("slug"))
+    }
+
+    pub async fn get_collection_slug(&self, id: &Uuid) -> Result<String, Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("select slug from slugs where collection_id = $1")
+            .await?;
+        let rows = connection.query(&stmt, &[id]).await?;
+        if rows.is_empty() {
+            return Err(Error::new("metadata not found"));
+        }
+        Ok(rows.first().unwrap().get("slug"))
     }
 
     pub async fn has_collection_permission(
@@ -1960,18 +2013,17 @@ impl ContentDataStore {
 
     pub async fn set_collection_ready_and_enqueue(
         &self,
-        ctx: &BoscaContext,
+        workflow: &WorkflowDataStore,
+        principal: &Principal,
         collection: &Collection,
         configurations: Option<Vec<WorkflowConfigurationInput>>,
     ) -> Result<(), Error> {
         if collection.ready.is_some() {
             return Err(Error::new("collection already ready"));
         }
-        let datasource = &ctx.content;
-        let workflow = &ctx.workflow;
         let process_id = "collection.process".to_owned();
         self.set_collection_workflow_state(
-            &ctx.principal,
+            principal,
             collection,
             "draft",
             "move to draft during set to ready",
@@ -1982,7 +2034,7 @@ impl ContentDataStore {
         workflow
             .enqueue_collection_workflow(&process_id, &collection.id, configurations.as_ref(), None)
             .await?;
-        datasource.set_collection_ready(&collection.id).await?;
+        self.set_collection_ready(&collection.id).await?;
         self.on_collection_changed(&collection.id).await?;
         Ok(())
     }
