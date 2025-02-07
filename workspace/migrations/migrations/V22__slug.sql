@@ -78,6 +78,9 @@ declare
     new_slug text := '';
     found    int;
 begin
+    if new.type == 'root' || new.type == 'system' || new.type == 'queue' then
+        return new;
+    end if;
     new_slug := slugify(new.name);
     found := (select count(*) from slugs as s where s.slug = new_slug);
     if found > 0 then
