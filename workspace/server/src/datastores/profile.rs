@@ -55,7 +55,7 @@ impl ProfileDataStore {
             return Err(Error::new("failed to create principal"));
         }
         let id = results[0].get("id");
-        let stmt = txn.prepare_cached("insert into profile_attributes (profiles, type_id, visibility, confidence, priority, source, attributes) values ($1, $2, $3, $4, $5, $6, $7)").await?;
+        let stmt = txn.prepare_cached("insert into profile_attributes (profile, type_id, visibility, confidence, priority, source, attributes) values ($1, $2, $3, $4, $5, $6, $7)").await?;
         for attribute in profile.attributes.iter() {
             txn.execute(
                 &stmt,
@@ -107,7 +107,7 @@ impl ProfileDataStore {
         }
         let id: i64 = results[0].get("id");
         let update_stmt = txn.prepare_cached("update profile_attributes set visibility = $1, confidence = $2, priority = $3, source = $4, attributes = $5 where id = $6").await?;
-        let insert_stmt = txn.prepare_cached("insert into profile_attributes (profiles, type_id, visibility, confidence, priority, source, attributes) values ($1, $2, $3, $4, $5, $6, $7)").await?;
+        let insert_stmt = txn.prepare_cached("insert into profile_attributes (profile, type_id, visibility, confidence, priority, source, attributes) values ($1, $2, $3, $4, $5, $6, $7)").await?;
         for attribute in profile.attributes.iter() {
             if let Some(id) = attribute.id.as_ref() {
                 let id = Uuid::parse_str(id)?;

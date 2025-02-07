@@ -35,7 +35,7 @@ alter table profiles
 alter table principals
     add column verification_token varchar;
 
-create index principals_verification_token on principals (verification_token) where verification_token is not null;
+create unique index principals_verification_token on principals (verification_token) where verification_token is not null;
 
 insert into profile_attribute_types (id, name, description, visibility)
 values ('bosca.profiles.name', 'Name', 'Name', 'user'::profile_visibility);

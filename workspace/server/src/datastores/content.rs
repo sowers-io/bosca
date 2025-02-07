@@ -626,7 +626,42 @@ impl ContentDataStore {
                 ],
             )
             .await?;
-        Ok(rows.first().unwrap().get(0))
+
+        let id = rows.first().unwrap().get(0);
+
+        if let Some(trait_ids) = &collection.trait_ids {
+            for trait_id in trait_ids {
+                self.add_collection_trait_txn(txn, &id, trait_id).await?
+            }
+        }
+
+        Ok(id)
+    }
+
+    #[allow(dead_code)]
+    async fn delete_collection_trait_txn<'a>(
+        &'a self,
+        txn: &'a Transaction<'a>,
+        id: &Uuid,
+    ) -> Result<(), Error> {
+        let stmt = txn
+            .prepare("delete from collection_traits where collection_id = $1")
+            .await?;
+        txn.execute(&stmt, &[id]).await?;
+        Ok(())
+    }
+
+    async fn add_collection_trait_txn<'a>(
+        &'a self,
+        txn: &'a Transaction<'a>,
+        id: &Uuid,
+        trait_id: &String,
+    ) -> Result<(), Error> {
+        let stmt = txn
+            .prepare("insert into collection_traits (collection_id, trait_id) values ($1, $2)")
+            .await?;
+        txn.execute(&stmt, &[id, trait_id]).await?;
+        Ok(())
     }
 
     async fn edit_collection_txn<'a>(
@@ -650,6 +685,14 @@ impl ContentDataStore {
             ],
         )
         .await?;
+
+        self.delete_collection_trait_txn(txn, id).await?;
+        if let Some(trait_ids) = &collection.trait_ids {
+            for trait_id in trait_ids {
+                self.add_collection_trait_txn(txn, &id, trait_id).await?
+            }
+        }
+
         Ok(())
     }
 

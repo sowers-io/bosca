@@ -98,10 +98,7 @@ impl SecurityDataStore {
         credential: &impl Credential,
         groups: &Vec<&Uuid>,
     ) -> Result<Uuid, Error> {
-        let verification_token = if verified { None } else {
-            let token = self.jwt.new_verification_token()?;
-            Some(token.token.to_string())
-        };
+        let verification_token = if verified { None } else { Some(hex::encode(Uuid::new_v4().as_bytes())) };
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
         let stmt = txn.prepare_cached("insert into principals (verified, verification_token, anonymous, attributes) values ($1, $2, false, $3) returning id").await?;

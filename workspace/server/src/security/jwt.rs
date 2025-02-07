@@ -4,7 +4,6 @@ use chrono::Utc;
 use jsonwebtoken::errors::Error;
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
-use uuid::Uuid;
 
 #[derive(Clone)]
 pub struct Keys {
@@ -50,11 +49,6 @@ impl Jwt {
         Token::new(&claims, &self.keys)
     }
 
-    pub fn new_verification_token(&self) -> Result<Token, Error> {
-        let claims = Claims::new_verification(&self.aud, &self.iss);
-        Token::new(&claims, &self.keys)
-    }
-
     pub fn validate_token(&self, token: &str) -> Result<Claims, Error> {
         let token = decode::<Claims>(token, &self.keys.decoding, &self.validation)?;
         Ok(token.claims)
@@ -75,18 +69,6 @@ impl Claims {
         let now = Utc::now().naive_utc();
         Self {
             sub: principal.id.to_string(),
-            exp: (now + chrono::naive::Days::new(1)).and_utc().timestamp() as usize,
-            iat: now.and_utc().timestamp() as usize,
-            iss: issuer.to_owned(),
-            aud: audience.to_owned(),
-        }
-    }
-
-    pub fn new_verification(audience: &str, issuer: &str) -> Self {
-        let now = Utc::now().naive_utc();
-        let uuid = Uuid::new_v4().to_string();
-        Self {
-            sub: format!("verification:{}", uuid),
             exp: (now + chrono::naive::Days::new(1)).and_utc().timestamp() as usize,
             iat: now.and_utc().timestamp() as usize,
             iss: issuer.to_owned(),

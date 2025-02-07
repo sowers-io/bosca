@@ -33,6 +33,7 @@ pub async fn add_password_principal(
         .add_collection(&CollectionInput {
             name: collection_name,
             collection_type: Some(CollectionType::System),
+            trait_ids: Some(vec!["profile".to_string()]),
             ..Default::default()
         })
         .await?;

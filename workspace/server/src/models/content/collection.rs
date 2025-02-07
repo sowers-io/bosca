@@ -98,6 +98,7 @@ pub struct CollectionInput {
     pub ordering: Option<Value>,
     pub state: Option<CollectionWorkflowInput>,
     pub index: Option<bool>,
+    pub trait_ids: Option<Vec<String>>,
     pub collections: Option<Vec<CollectionChildInput>>,
     pub metadata: Option<Vec<MetadataChildInput>>,
 }
