@@ -240,8 +240,8 @@ impl ContentDataStore {
             "select * from collections where ",
             attributes,
             &content_types,
-            &limit,
             &offset,
+            &limit,
         );
         let stmt = connection.prepare_cached(query.as_str()).await?;
         let rows = connection.query(&stmt, values.as_slice()).await?;

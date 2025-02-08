@@ -5,16 +5,16 @@ use crate::models::workflow::execution_plan::{WorkflowExecutionId, WorkflowJobId
 use crate::redis::RedisClient;
 use crate::worklfow::queue::JobQueues;
 
-pub struct Transaction {
-    ops: Vec<TransactionOp>,
+pub struct RedisTransaction {
+    ops: Vec<RedisTransactionOp>,
 }
 
-impl Transaction {
+impl RedisTransaction {
     pub fn new() -> Self {
         Self { ops: Vec::new() }
     }
 
-    pub fn add_op(&mut self, op: TransactionOp) {
+    pub fn add_op(&mut self, op: RedisTransactionOp) {
         self.ops.push(op);
     }
 
@@ -23,12 +23,12 @@ impl Transaction {
         let mut key_ix = 0;
         for op in &self.ops {
             match op {
-                TransactionOp::QueuePlan(_) | TransactionOp::QueueJob(_) => {
+                RedisTransactionOp::QueuePlan(_) | RedisTransactionOp::QueueJob(_) => {
                     let rpush = format!("redis.call('RPUSH', tostring(KEYS[{}]), tostring(KEYS[{}]))\n", key_ix + 1, key_ix + 2);
                     key_ix += 2;
                     script.push_str(&rpush);
                 }
-                TransactionOp::RemovePlanRunning(_) | TransactionOp::RemoveJobRunning(_) => {
+                RedisTransactionOp::RemovePlanRunning(_) | RedisTransactionOp::RemoveJobRunning(_) => {
                     let zrem = format!("redis.call('ZREM', tostring(KEYS[{}]), tostring(KEYS[{}]))\n", key_ix + 1, key_ix + 2);
                     key_ix += 2;
                     script.push_str(&zrem);
@@ -40,23 +40,23 @@ impl Transaction {
         let mut invocation = script.prepare_invoke();
         for op in &self.ops {
             match op {
-                TransactionOp::QueuePlan(op) => {
-                    let queue_key = JobQueues::queue_key(&op.queue);
+                RedisTransactionOp::QueuePlan(op) => {
+                    let queue_key = JobQueues::pending_plan_queue_key(&op.queue);
                     let key = JobQueues::queue_plan_key(&op.queue, &op.id);
                     invocation.key(&queue_key).key(&key);
                 }
-                TransactionOp::QueueJob(op) => {
-                    let queue_key = JobQueues::queue_key(&op.queue);
+                RedisTransactionOp::QueueJob(op) => {
+                    let queue_key = JobQueues::pending_job_queue_key(&op.queue);
                     let key = JobQueues::queue_job_key(&op.queue, &op.id, op.index);
                     invocation.key(&queue_key).key(&key);
                 }
-                TransactionOp::RemovePlanRunning(op) => {
-                    let queue_key = JobQueues::running_queue_key(&op.queue);
+                RedisTransactionOp::RemovePlanRunning(op) => {
+                    let queue_key = JobQueues::running_plan_queue_key(&op.queue);
                     let key = JobQueues::queue_plan_key(&op.queue, &op.id);
                     invocation.key(&queue_key).key(&key);
                 }
-                TransactionOp::RemoveJobRunning(op) => {
-                    let queue_key = JobQueues::running_queue_key(&op.queue);
+                RedisTransactionOp::RemoveJobRunning(op) => {
+                    let queue_key = JobQueues::running_job_queue_key(&op.queue);
                     let key = JobQueues::queue_job_key(&op.queue, &op.id, op.index);
                     invocation.key(&queue_key).key(&key);
                 }
@@ -80,7 +80,7 @@ impl Transaction {
     }
 }
 
-pub enum TransactionOp {
+pub enum RedisTransactionOp {
     QueuePlan(WorkflowExecutionId),
     QueueJob(WorkflowJobId),
     RemovePlanRunning(WorkflowExecutionId),

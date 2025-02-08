@@ -1,17 +1,20 @@
-use std::collections::HashSet;
-use crate::models::workflow::execution_plan::{WorkflowExecutionId, WorkflowExecutionPlan, WorkflowJob, WorkflowJobId};
+use crate::datastores::notifier::Notifier;
+use crate::models::workflow::execution_plan::{
+    WorkflowExecutePlanState, WorkflowExecutionId, WorkflowExecutionPlan, WorkflowJob,
+    WorkflowJobId,
+};
 use crate::redis::RedisClient;
-use crate::worklfow::transaction::{Transaction, TransactionOp};
+use crate::worklfow::transaction::RedisTransaction;
 use async_graphql::Error;
 use chrono::Utc;
-use deadpool_postgres::{GenericClient, Pool};
-use log::{debug, error, info, warn};
+use deadpool_postgres::{GenericClient, Pool, Transaction};
+use log::{error, info};
 use redis::{AsyncCommands, Script};
 use serde_json::{from_value, json, Value};
+use std::collections::HashSet;
 use std::str::from_utf8;
 use std::sync::Arc;
 use uuid::Uuid;
-use crate::datastores::notifier::Notifier;
 
 #[derive(Clone)]
 pub struct JobQueues {
@@ -25,7 +28,11 @@ const QUEUE_JOB_PREFIX: &str = "queue::job";
 
 impl JobQueues {
     pub fn new(pool: Arc<Pool>, redis: RedisClient, notifier: Arc<Notifier>) -> Self {
-        Self { pool, redis, notifier }
+        Self {
+            pool,
+            redis,
+            notifier,
+        }
     }
 
     pub fn queue_plan_key(queue: &str, id: &Uuid) -> String {
@@ -36,12 +43,20 @@ impl JobQueues {
         format!("{}::{}::{}::{}", QUEUE_JOB_PREFIX, queue, id, index)
     }
 
-    pub fn queue_key(queue: &str) -> String {
-        format!("queue::pending::{}", queue)
+    pub fn pending_plan_queue_key(queue: &str) -> String {
+        format!("queue::plan::pending::{}", queue)
     }
 
-    pub fn running_queue_key(queue: &str) -> String {
-        format!("queue::running::{}", queue)
+    pub fn pending_job_queue_key(queue: &str) -> String {
+        format!("queue::job::pending::{}", queue)
+    }
+
+    pub fn running_plan_queue_key(queue: &str) -> String {
+        format!("queue::plan::running::{}", queue)
+    }
+
+    pub fn running_job_queue_key(queue: &str) -> String {
+        format!("queue::job::running::{}", queue)
     }
 
     async fn incr(&self, key: &str) -> Result<(), Error> {
@@ -85,9 +100,7 @@ impl JobQueues {
         id: &WorkflowExecutionId,
     ) -> Result<Option<WorkflowExecutionPlan>, Error> {
         let stmt = transaction
-            .prepare(
-                "select configuration from workflow_plans where id = $1 for update",
-            )
+            .prepare("select configuration from workflow_plans where id = $1 for update")
             .await?;
         let result = transaction.query(&stmt, &[&id.id]).await?;
         let result = result.first();
@@ -100,7 +113,7 @@ impl JobQueues {
 
     async fn get_plan_and_lock_by_job(
         &self,
-        transaction: &deadpool_postgres::Transaction<'_>,
+        transaction: &Transaction<'_>,
         id: &WorkflowJobId,
     ) -> Result<Option<WorkflowExecutionPlan>, Error> {
         let id = WorkflowExecutionId {
@@ -112,7 +125,7 @@ impl JobQueues {
 
     async fn set_plan(
         &self,
-        transaction: &deadpool_postgres::Transaction<'_>,
+        transaction: &Transaction<'_>,
         plan: &WorkflowExecutionPlan,
         register: bool,
     ) -> Result<(), Error> {
@@ -122,9 +135,7 @@ impl JobQueues {
             )
             .await?;
         let value = json!(plan);
-        transaction
-            .execute(&stmt, &[&plan.id.id, &value])
-            .await?;
+        transaction.execute(&stmt, &[&plan.id.id, &value]).await?;
         if register {
             if let Some(metadata_id) = &plan.metadata_id {
                 let stmt = transaction
@@ -193,8 +204,8 @@ impl JobQueues {
         for queue_parts in queues {
             let queue = queue_parts.split("::").last().unwrap();
             let result: i32 = script
-                .key(JobQueues::queue_key(queue))
-                .key(JobQueues::running_queue_key(queue))
+                .key(JobQueues::pending_job_queue_key(queue))
+                .key(JobQueues::running_job_queue_key(queue))
                 .arg(time)
                 .invoke_async(&mut connection)
                 .await?;
@@ -206,17 +217,26 @@ impl JobQueues {
         Ok(())
     }
 
-    pub async fn enqueue(
+    pub async fn enqueue_plan(
         &self,
-        plan: &WorkflowExecutionPlan,
+        plan: &mut WorkflowExecutionPlan,
     ) -> Result<WorkflowExecutionId, Error> {
+        info!(target: "workflow", "enqueuing plan: {}", plan.id);
         let mut connection = self.pool.get().await?;
-        let transaction = connection.transaction().await?;
-        self.set_plan(&transaction, plan, true).await?;
-        transaction.commit().await?;
-        let mut transaction = Transaction::new();
-        transaction.add_op(TransactionOp::QueuePlan(plan.id.clone()));
-        transaction.execute(&self.redis).await?;
+        let db_txn = connection.transaction().await?;
+        let mut redis_txn = RedisTransaction::new();
+        let resolver = WorkflowExecutionPlanResolver {
+            queue: self.clone(),
+        };
+        let state = plan.update(&db_txn, &mut redis_txn, &resolver, 1).await?;
+        if state == WorkflowExecutePlanState::Complete {
+            return Err(Error::new("can't enqueue plan, it's already complete"));
+        }
+        if state == WorkflowExecutePlanState::Error {
+            return Err(Error::new("can't enqueue plan, it has a state error"));
+        }
+        db_txn.commit().await?;
+        redis_txn.execute(&self.redis).await?;
         self.incr("queue::enqueued::count").await?;
         info!("enqueued plan: {}", plan.id);
         if let Some(id) = &plan.collection_id {
@@ -228,30 +248,6 @@ impl JobQueues {
         Ok(plan.id.clone())
     }
 
-    // pub async fn plan_exists(&self, id: &WorkflowExecutionId) -> Result<bool, Error> {
-    //     let connection = self.pool.get().await?;
-    //     let stmt = connection
-    //         .prepare("select count(*) from workflow_plans where queue = $1 and id = $2")
-    //         .await?;
-    //     let result = connection.query_one(&stmt, &[&id.queue, &id.id]).await?;
-    //     let count: i64 = result.get("count");
-    //     Ok(count > 0)
-    // }
-
-    // pub async fn job_exists(&self, id: &WorkflowJobId) -> Result<bool, Error> {
-    //     let connection = self.pool.get().await?;
-    //     let stmt = connection
-    //         .prepare(
-    //             "select count(*) from workflow_jobs where queue = $1 and id = $2 and index = $3",
-    //         )
-    //         .await?;
-    //     let result = connection
-    //         .query_one(&stmt, &[&id.queue, &id.id, &id.index])
-    //         .await?;
-    //     let count: i64 = result.get("count");
-    //     Ok(count > 0)
-    // }
-
     pub async fn enqueue_job_child_workflows(
         &self,
         job_id: &WorkflowJobId,
@@ -259,39 +255,48 @@ impl JobQueues {
     ) -> Result<Vec<WorkflowExecutionId>, Error> {
         info!(target: "workflow", "enqueuing job children: {}", job_id);
         let mut connection = self.pool.get().await?;
-        let transaction = connection.transaction().await?;
+        let db_txn = connection.transaction().await?;
 
-        let Some(mut plan) = self.get_plan_and_lock_by_job(&transaction, job_id).await? else {
+        let Some(mut plan) = self.get_plan_and_lock_by_job(&db_txn, job_id).await? else {
             return Err(Error::new("can't enqueue child workflows, missing job"));
         };
         let job = plan.jobs.get_mut(job_id.index as usize).unwrap();
         if job.complete {
-            transaction.rollback().await?;
+            db_txn.rollback().await?;
             return Err(Error::new("job is already complete"));
         }
+        let resolver = WorkflowExecutionPlanResolver {
+            queue: self.clone(),
+        };
         let mut ids = Vec::new();
-        let mut queue_txn = Transaction::new();
+        let mut redis_txn = RedisTransaction::new();
         let mut plans = plans.to_vec();
         let mut collection_ids = HashSet::new();
         let mut metadata_ids = HashSet::new();
         for plan in plans.iter_mut() {
             plan.parent = Some(job.id.clone());
+            let state = plan.update(&db_txn, &mut redis_txn, &resolver, 1).await?;
+            if state == WorkflowExecutePlanState::Complete {
+                db_txn.rollback().await?;
+                return Err(Error::new("can't enqueue plan, it's already complete"));
+            }
+            if state == WorkflowExecutePlanState::Error {
+                db_txn.rollback().await?;
+                return Err(Error::new("can't enqueue plan, it has a state error"));
+            }
             job.children.insert(plan.id.clone());
             ids.push(plan.id.clone());
-            queue_txn.add_op(TransactionOp::QueuePlan(plan.id.clone()));
             if let Some(id) = &plan.collection_id {
                 collection_ids.insert(*id);
             }
             if let Some(id) = &plan.metadata_id {
                 metadata_ids.insert(*id);
             }
-            self.set_plan(&transaction, plan, true).await?;
             self.incr("queue::enqueued::child::count").await?;
             info!("enqueued plan: {}", plan.id);
         }
-        self.set_plan(&transaction, &plan, false).await?;
-        transaction.commit().await?;
-        queue_txn.execute(&self.redis).await?;
+        db_txn.commit().await?;
+        redis_txn.execute(&self.redis).await?;
         for id in collection_ids {
             self.notifier.collection_changed(&id).await?;
         }
@@ -301,51 +306,8 @@ impl JobQueues {
         Ok(ids)
     }
 
-    async fn update_for_dequeue(
-        &self,
-        transaction: &deadpool_postgres::Transaction<'_>,
-        id: &WorkflowExecutionId,
-        job_index: i32,
-    ) -> Result<(), Error> {
-        let Some(mut plan) = self.get_plan_and_lock(transaction, id).await? else {
-            return Err(Error::new("can't enqueue job, missing plan"));
-        };
-
-        if plan.finished.is_some() {
-            return Err(Error::new("plan is already complete"));
-        }
-
-        if plan.complete.contains(&job_index) {
-            return Err(Error::new("job is already complete"));
-        }
-
-        if plan.running.contains(&job_index) {
-            return Err(Error::new("job is already running"));
-        }
-
-        if !plan.current_execution_group.contains(&job_index)
-            && (plan.next.is_none() || plan.next.as_ref().is_none_or(|id| *id != job_index))
-        {
-            error!(target: "workflow", "not enqueuing job, it's not marked as a current execution group or next job: {} {}", id, job_index);
-            return Ok(());
-        }
-
-        plan.next = None;
-        plan.running.insert(job_index);
-        plan.pending.remove(&job_index);
-
-        self.set_plan(transaction, &plan, false).await?;
-        Ok(())
-    }
-
-    async fn dequeue_from_redis(
-        &self,
-        transaction: &deadpool_postgres::Transaction<'_>,
-        queue: &str,
-    ) -> Result<Option<(WorkflowExecutionPlan, i32)>, Error> {
-        let pooled_connection = self.redis.get().await?;
-        let mut connection = pooled_connection.get_connection().await?;
-        let script = Script::new(
+    fn new_dequeue_script(&self) -> Script {
+        Script::new(
             r"
                 local job_queue     = tostring(KEYS[1])
                 local running_queue = tostring(KEYS[2])
@@ -363,19 +325,39 @@ impl JobQueues {
                     return nil -- Nothing to pop
                 end
             ",
-        );
+        )
+    }
+
+    async fn dequeue_from_redis(
+        &self,
+        pending_key: &str,
+        running_key: &str,
+    ) -> Result<Option<String>, Error> {
+        let pooled_connection = self.redis.get().await?;
+        let mut connection = pooled_connection.get_connection().await?;
+        let script = self.new_dequeue_script();
         let result: Vec<u8> = script
-            .key(JobQueues::queue_key(queue))
-            .key(JobQueues::running_queue_key(queue))
+            .key(pending_key)
+            .key(running_key)
             .arg(Utc::now().timestamp())
             .arg(1800)
             .invoke_async(&mut connection)
             .await?;
         if result.is_empty() {
-            return Ok(None);
+            Ok(None)
+        } else {
+            Ok(Some(from_utf8(&result)?.to_owned()))
         }
-        let id = from_utf8(&result)?;
-        if id.starts_with(QUEUE_PLAN_PREFIX) {
+    }
+
+    async fn dequeue_plan_from_redis(
+        &self,
+        transaction: &Transaction<'_>,
+        queue: &str,
+    ) -> Result<Option<(WorkflowExecutionPlan, i32)>, Error> {
+        let pending_key = JobQueues::pending_plan_queue_key(queue);
+        let running_key = JobQueues::running_plan_queue_key(queue);
+        if let Some(id) = self.dequeue_from_redis(&pending_key, &running_key).await? {
             let id_parts = id.get(QUEUE_PLAN_PREFIX.len() + 2..).unwrap();
             let mut id_parts = id_parts.split("::");
             let queue = id_parts.next().unwrap();
@@ -388,7 +370,19 @@ impl JobQueues {
                 return Err(Error::new("can't dequeue job, missing plan"));
             };
             Ok(Some((plan, -1)))
-        } else if id.starts_with(QUEUE_JOB_PREFIX) {
+        } else {
+            Ok(None)
+        }
+    }
+
+    async fn dequeue_job_from_redis(
+        &self,
+        transaction: &Transaction<'_>,
+        queue: &str,
+    ) -> Result<Option<(WorkflowExecutionPlan, i32)>, Error> {
+        let pending_key = JobQueues::pending_job_queue_key(queue);
+        let running_key = JobQueues::running_job_queue_key(queue);
+        if let Some(id) = self.dequeue_from_redis(&pending_key, &running_key).await? {
             let id_parts = id.get(QUEUE_JOB_PREFIX.len() + 2..).unwrap();
             let mut id_parts = id_parts.split("::");
             let queue = id_parts.next().unwrap();
@@ -404,116 +398,24 @@ impl JobQueues {
             };
             Ok(Some((plan, index)))
         } else {
-            return Err(Error::new("unknown prefix"));
+            Ok(None)
         }
-    }
-
-    async fn prepare_plan(&self, transaction: &deadpool_postgres::Transaction<'_>, plan: &mut WorkflowExecutionPlan) -> Result<(), Error> {
-        let mut update = false;
-        if plan.next.is_none() {
-            if plan.current_execution_group.is_empty() && plan.running.is_empty() {
-                info!("updating plan current job: {}", plan.id);
-                plan.current_execution_group = plan
-                    .jobs
-                    .iter()
-                    .filter(|job| !job.complete && job.workflow_activity.execution_group == 1)
-                    .map(|job| job.id.index)
-                    .collect();
-                update = true;
-            }
-            while !plan.current_execution_group.is_empty() {
-                update = true;
-                info!(target: "workflow", "removing job from current list and queueing as next: {}", plan.id);
-                let next = plan.current_execution_group.remove(0);
-                if !plan.complete.contains(&next) {
-                    plan.next = Some(next);
-                    break;
-                }
-            }
-            if plan.next.is_none() {
-                warn!(target: "workflow", "plan is missing next: {}", plan.id);
-                if plan.complete.len() == plan.jobs.len() {
-                    warn!(target: "workflow", "plan is complete: {}", plan.id);
-                    let mut redis_txn = Transaction::new();
-                    redis_txn.add_op(TransactionOp::RemovePlanRunning(plan.id.clone()));
-                    redis_txn.execute(&self.redis).await?;
-                } else if !plan.failed.is_empty() {
-                    warn!(target: "workflow", "plan is missing next, but has failed jobs: {}", plan.id);
-                }
-            }
-        }
-        if plan.next.is_some() && plan.complete.contains(plan.next.as_ref().unwrap()) {
-            warn!(target: "workflow", "plan is missing next, it was already complete: {}", plan.id);
-            plan.next = None;
-            update = true;
-        }
-        if update {
-            self.set_plan(transaction, plan, false).await?;
-        }
-        if plan.next.is_none() {
-            warn!(target: "workflow", "plan is missing next: {}", plan.id);
-            return Err(Error::new("plan is missing next"));
-        }
-        Ok(())
     }
 
     pub async fn dequeue(&self, queue: &str) -> Result<Option<WorkflowJob>, Error> {
+        let mut connection = self.pool.get().await?;
         loop {
-            let mut connection = self.pool.get().await?;
             let transaction = connection.transaction().await?;
-            let Some((mut plan, mut job_index)) = self.dequeue_from_redis(&transaction, queue).await? else {
+            let Some((plan, job_index)) = self.dequeue_job_from_redis(&transaction, queue).await?
+            else {
                 transaction.rollback().await?;
                 return Ok(None);
             };
-
-            while plan.finished.is_some() || plan.complete.contains(&job_index) {
-                let mut redis_txn = Transaction::new();
-                if plan.finished.is_some() {
-                    warn!(target: "workflow", "plan is already complete: {}", plan.id);
-                    redis_txn.add_op(TransactionOp::RemovePlanRunning(plan.id.clone()));
-                }
-                if job_index != -1 {
-                    let id = WorkflowJobId {
-                        id: plan.id.id,
-                        queue: plan.id.queue.clone(),
-                        index: job_index,
-                    };
-                    warn!(target: "workflow", "job is already complete: {}", id);
-                    redis_txn.add_op(TransactionOp::RemoveJobRunning(id));
-                }
-                redis_txn.execute(&self.redis).await?;
-                let Some((plan2, job_index2)) = self.dequeue_from_redis(&transaction, queue).await? else {
-                    return Ok(None);
-                };
-                plan = plan2;
-                job_index = job_index2;
-            }
-
             if job_index != -1 {
                 transaction.commit().await?;
-                return Ok(Some(plan.jobs.get_mut(job_index as usize).unwrap().clone()))
-            } else {
-                if let Err(e) = self.prepare_plan(&transaction, &mut plan).await {
-                    error!(target: "workflow", "failed to prepare plan for dequeue: {:?}", e);
-                    transaction.commit().await?;
-                    return Ok(None);
-                }
-                if let Some(next) = plan.next {
-                    if let Err(e) = self.update_for_dequeue(&transaction, &plan.id, next).await {
-                        error!(target: "workflow", "failed to update plan for dequeue: {:?}", e);
-                        transaction.commit().await?;
-                        return Err(e);
-                    }
-                    transaction.commit().await?;
-                    let job = plan.jobs.get_mut(next as usize).unwrap();
-                    let mut redis_txn = Transaction::new();
-                    redis_txn.add_op(TransactionOp::QueueJob(job.id.clone()));
-                    redis_txn.execute(&self.redis).await?;
-                    self.incr("queue::enqueued::job::count").await?;
-                    debug!("enqueued plan job: {} {}", plan.id, job.id);
-                }
-                continue;
+                return Ok(Some(plan.jobs.get(job_index as usize).unwrap().clone()));
             }
+            transaction.commit().await?;
         }
     }
 
@@ -561,19 +463,17 @@ impl JobQueues {
         error: &str,
     ) -> Result<(), Error> {
         let mut connection = self.pool.get().await?;
-        let transaction = connection.transaction().await?;
-        let Some(mut plan) = self.get_plan_and_lock_by_job(&transaction, job_id).await? else {
+        let db_txn = connection.transaction().await?;
+        let Some(mut plan) = self.get_plan_and_lock_by_job(&db_txn, job_id).await? else {
             return Err(Error::new("can't set job context, missing plan"));
         };
-        plan.failed.insert(job_id.index);
-        plan.running.remove(&job_id.index);
-        if !plan.current_execution_group.contains(&job_id.index) {
-            plan.current_execution_group.push(job_id.index);
-        }
-        let job = plan.jobs.get_mut(job_id.index as usize).unwrap();
-        job.error = Some(error.to_owned());
-        self.set_plan(&transaction, &plan, false).await?;
-        transaction.commit().await?;
+        let mut redis_txn = RedisTransaction::new();
+        let resolver = WorkflowExecutionPlanResolver {
+            queue: self.clone(),
+        };
+        plan.set_job_failed(job_id, &db_txn, &mut redis_txn, &resolver, error).await?;
+        db_txn.commit().await?;
+        redis_txn.execute(&self.redis).await?;
         self.incr("queue::job::failed").await?;
         Ok(())
     }
@@ -597,8 +497,12 @@ impl JobQueues {
         ",
         );
         let result: i32 = script
-            .key(JobQueues::running_queue_key(&job_id.queue))
-            .key(JobQueues::queue_job_key(&job_id.queue, &job_id.id, job_id.index))
+            .key(JobQueues::running_job_queue_key(&job_id.queue))
+            .key(JobQueues::queue_job_key(
+                &job_id.queue,
+                &job_id.id,
+                job_id.index,
+            ))
             .arg(Utc::now().timestamp())
             .arg(1800)
             .invoke_async(&mut connection)
@@ -615,26 +519,21 @@ impl JobQueues {
     ) -> Result<(), Error> {
         let mut connection = self.pool.get().await?;
         let transaction = connection.transaction().await?;
-
         let Some(mut plan) = self.get_plan_and_lock_by_job(&transaction, job_id).await? else {
             return Err(Error::new("can't mark execution complete, missing job"));
         };
-
-        let mut redis_txn = Transaction::new();
-
-        match self
-            .set_execution_job_complete_recursive(
-                &transaction,
-                &mut redis_txn,
-                &mut plan,
-                job_id.index,
-            )
-            .await
-        {
-            Ok(_) => {
+        let mut redis_txn = RedisTransaction::new();
+        let resolver = WorkflowExecutionPlanResolver {
+            queue: self.clone(),
+        };
+        match plan.try_set_job_complete(&transaction, &mut redis_txn, &resolver, job_id).await {
+            Ok(result) => {
                 transaction.commit().await?;
                 redis_txn.execute(&self.redis).await?;
                 self.incr("queue::job::complete").await?;
+                if result == WorkflowExecutePlanState::Error {
+                    return Err(Error::new("plan is in an error state"));
+                }
                 Ok(())
             }
             Err(e) => {
@@ -643,85 +542,27 @@ impl JobQueues {
             }
         }
     }
+}
 
-    async fn set_execution_job_complete_recursive(
+pub struct WorkflowExecutionPlanResolver {
+    queue: JobQueues,
+}
+
+impl WorkflowExecutionPlanResolver {
+    pub async fn get_plan(
         &self,
-        db_txn: &deadpool_postgres::Transaction<'_>,
-        redis_tx: &mut Transaction,
-        plan: &mut WorkflowExecutionPlan,
-        job_index: i32,
+        txn: &Transaction<'_>,
+        job_id: &WorkflowJobId,
+    ) -> Result<Option<WorkflowExecutionPlan>, Error> {
+        self.queue.get_plan_and_lock_by_job(txn, job_id).await
+    }
+
+    pub async fn set_plan(
+        &self,
+        txn: &Transaction<'_>,
+        plan: &WorkflowExecutionPlan,
+        register: bool,
     ) -> Result<(), Error> {
-        let job = plan.jobs.get_mut(job_index as usize).unwrap();
-        job.error = None;
-        job.complete = job.children.len() == job.completed_children.len();
-        redis_tx.add_op(TransactionOp::RemoveJobRunning(job.id.clone()));
-
-        if job.complete {
-            job.finished = Some(Utc::now());
-            plan.failed.remove(&job.id.index);
-            plan.running.remove(&job.id.index);
-            plan.complete.insert(job.id.index);
-        }
-
-        if plan.next.is_some_and(|n| n == job.id.index) {
-            plan.next = None;
-        }
-
-        let mut dirty_plan = true;
-
-        if plan.running.is_empty() && plan.current_execution_group.is_empty() {
-            let next_execution_group = job.workflow_activity.execution_group + 1;
-            info!(target: "workflow", "no running jobs, checking for next group: {} - execution group: {}", plan.id, next_execution_group);
-            let new_current: Vec<i32> = plan
-                .jobs
-                .iter()
-                .filter(|job| {
-                    !job.complete && job.workflow_activity.execution_group == next_execution_group
-                })
-                .map(|job| job.id.index)
-                .collect();
-            if new_current.is_empty() {
-                info!(target: "workflow", "plan doesn't have any current jobs, finishing: {}", plan.id);
-                plan.finished = Some(Utc::now());
-                if let Some(parent_id) = &plan.parent {
-                    let Some(mut parent_plan) =
-                        self.get_plan_and_lock_by_job(db_txn, parent_id).await?
-                    else {
-                        return Err(Error::new(
-                            "can't mark execution complete, missing parent job",
-                        ));
-                    };
-                    let parent_job = parent_plan.jobs.get_mut(parent_id.index as usize).unwrap();
-                    parent_job.completed_children.insert(plan.id.clone());
-                    if parent_job.children.len() == parent_job.completed_children.len() {
-                        self.set_plan(db_txn, plan, false).await?;
-                        dirty_plan = false;
-                        self.incr("queue::job::complete::recursive").await?;
-                        Box::pin(self.set_execution_job_complete_recursive(
-                            db_txn,
-                            redis_tx,
-                            &mut parent_plan,
-                            parent_id.index,
-                        ))
-                        .await?;
-                    } else {
-                        self.set_plan(db_txn, &parent_plan, false).await?;
-                    }
-                }
-                redis_tx.add_op(TransactionOp::RemovePlanRunning(plan.id.clone()));
-            } else {
-                info!(target: "workflow", "marking plan as ready for processing on the next execution group: {}", plan.id);
-                plan.current_execution_group = new_current;
-                redis_tx.add_op(TransactionOp::QueuePlan(plan.id.clone()));
-            }
-        } else {
-            redis_tx.add_op(TransactionOp::QueuePlan(plan.id.clone()));
-        }
-
-        if dirty_plan {
-            self.set_plan(db_txn, plan, false).await?;
-        }
-
-        Ok(())
+        self.queue.set_plan(txn, plan, register).await
     }
 }

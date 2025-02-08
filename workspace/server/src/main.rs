@@ -55,8 +55,6 @@ use crate::context::BoscaContext;
 use crate::datastores::content::ContentDataStore;
 use crate::datastores::security::SecurityDataStore;
 use crate::datastores::workflow::WorkflowDataStore;
-use crate::models::content::search::SearchDocumentInput;
-use crate::util::storage::index_documents_no_checks;
 use crate::util::RUNNING_BACKGROUND;
 use opentelemetry::trace::TracerProvider as _;
 use opentelemetry_otlp::WithExportConfig;
@@ -80,12 +78,12 @@ use crate::datastores::profile::ProfileDataStore;
 use crate::graphql::subscription::SubscriptionObject;
 use crate::logger::Logger;
 use crate::models::profiles::profile::ProfileInput;
+use crate::models::profiles::profile_visibility::ProfileVisibility;
 use crate::redis::RedisClient;
 use crate::schema::BoscaSchema;
+use crate::util::profile::add_password_principal;
 use bosca_database::build_pool;
 use tokio::time::sleep;
-use crate::models::profiles::profile_visibility::ProfileVisibility;
-use crate::util::profile::add_password_principal;
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
@@ -196,7 +194,12 @@ async fn build_redis_client(key: &str) -> Result<RedisClient, Error> {
     RedisClient::new(url).await
 }
 
-async fn initialize_security(security: &SecurityDataStore, workflow: &WorkflowDataStore, content: &ContentDataStore, profiles: &ProfileDataStore) {
+async fn initialize_security(
+    security: &SecurityDataStore,
+    workflow: &WorkflowDataStore,
+    content: &ContentDataStore,
+    profiles: &ProfileDataStore,
+) {
     match security.get_principal_by_identifier("admin").await {
         Ok(_) => {}
         Err(_) => {
@@ -221,11 +224,16 @@ async fn initialize_security(security: &SecurityDataStore, workflow: &WorkflowDa
                 &identifier,
                 &password,
                 &profile,
-                true
-            ).await.unwrap();
+                true,
+            )
+            .await
+            .unwrap();
 
             let group = security.get_administrators_group().await.unwrap();
-            security.add_principal_group(&principal.id, &group.id).await.unwrap();
+            security
+                .add_principal_group(&principal.id, &group.id)
+                .await
+                .unwrap();
         }
     }
 }
@@ -244,50 +252,79 @@ async fn initialize_content(ctx: &BoscaContext) {
                 .initialize_default_search_index()
                 .await
                 .unwrap();
-            let input = CollectionInput {
-                parent_collection_id: None,
-                name: "Root".to_string(),
-                collection_type: Some(CollectionType::Root),
-                attributes: None,
-                labels: None,
-                state: None,
-                description: None,
-                index: None,
-                ordering: None,
-                metadata: None,
-                collections: None,
-                trait_ids: None,
-            };
-            ctx.content.add_collection(&input).await.unwrap();
-            let group = ctx.security.get_administrators_group().await.unwrap();
-            let permission = Permission {
-                entity_id: root_collection_id,
-                group_id: group.id,
-                action: PermissionAction::Manage,
-            };
-            ctx.content
-                .add_collection_permission(&permission)
-                .await
-                .unwrap();
-            let search_docs = vec![SearchDocumentInput {
-                collection_id: Some(root_collection_id.to_string()),
-                metadata_id: None,
-                content: "".to_owned(),
-            }];
-            if let Some(storage_system) = ctx
-                .workflow
-                .get_default_search_storage_system()
-                .await
-                .unwrap()
-            {
-                index_documents_no_checks(ctx, &search_docs, &storage_system)
-                    .await
-                    .unwrap();
-            } else {
-                error!("failed to index documents, missing storage system");
-            }
+            initialize_collection(ctx, "Root", CollectionType::Root, Value::Null).await;
+            initialize_collection(
+                ctx,
+                "Raw Bibles",
+                CollectionType::System,
+                serde_json::json!({"collection": "raw-bibles"}),
+            )
+            .await;
+            initialize_collection(
+                ctx,
+                "Bibles",
+                CollectionType::System,
+                serde_json::json!({"collection": "bibles"}),
+            )
+            .await;
         }
     }
+}
+
+async fn initialize_collection(
+    ctx: &BoscaContext,
+    name: &str,
+    collection_type: CollectionType,
+    attributes: Value,
+) {
+    let input = CollectionInput {
+        parent_collection_id: None,
+        name: name.to_string(),
+        collection_type: Some(collection_type),
+        attributes: if attributes.is_null() {
+            None
+        } else {
+            Some(attributes)
+        },
+        ..Default::default()
+    };
+    let collection_id = ctx.content.add_collection(&input).await.unwrap();
+    let group = ctx.security.get_administrators_group().await.unwrap();
+    let permission = Permission {
+        entity_id: collection_id,
+        group_id: group.id,
+        action: PermissionAction::Manage,
+    };
+    ctx.content
+        .add_collection_permission(&permission)
+        .await
+        .unwrap();
+    let principal = ctx
+        .security
+        .get_principal_by_identifier("admin")
+        .await
+        .unwrap();
+    let collection = ctx
+        .content
+        .get_collection(&collection_id)
+        .await
+        .unwrap()
+        .unwrap();
+    ctx.content
+        .set_collection_ready(&collection_id)
+        .await
+        .unwrap();
+    ctx.content
+        .set_collection_workflow_state(
+            &principal,
+            &collection,
+            "published",
+            "initializing collections",
+            true,
+            true,
+        )
+        .await
+        .unwrap()
 }
 
 #[cfg(unix)]
