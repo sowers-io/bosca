@@ -225,6 +225,7 @@ async fn initialize_security(
                 &password,
                 &profile,
                 true,
+                false,
             )
             .await
             .unwrap();

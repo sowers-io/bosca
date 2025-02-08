@@ -35,9 +35,6 @@ impl WorkflowExecutionPlanObject {
     async fn workflow(&self) -> WorkflowObject {
         self.plan.workflow.clone().into()
     }
-    async fn next(&self) -> Option<i32> {
-        self.plan.next
-    }
     async fn jobs(&self) -> Vec<WorkflowJobObject> {
         self.plan.jobs.iter().map(|j| j.clone().into()).collect()
     }
@@ -64,12 +61,6 @@ impl WorkflowExecutionPlanObject {
     }
     async fn context(&self) -> &Value {
         &self.plan.context
-    }
-    async fn pending(&self) -> Vec<i32> {
-        self.plan.pending.iter().cloned().collect()
-    }
-    async fn current_execution_group(&self) -> Vec<i32> {
-        self.plan.current_execution_group.to_vec()
     }
     async fn running(&self) -> Vec<i32> {
         self.plan.running.iter().cloned().collect()

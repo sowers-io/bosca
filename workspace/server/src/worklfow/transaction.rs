@@ -1,9 +1,10 @@
-use async_graphql::Error;
-use log::error;
-use redis::Script;
 use crate::models::workflow::execution_plan::{WorkflowExecutionId, WorkflowJobId};
 use crate::redis::RedisClient;
 use crate::worklfow::queue::JobQueues;
+use async_graphql::Error;
+use chrono::Utc;
+use log::error;
+use redis::Script;
 
 pub struct RedisTransaction {
     ops: Vec<RedisTransactionOp>,
@@ -21,17 +22,33 @@ impl RedisTransaction {
     pub async fn execute(&self, redis: &RedisClient) -> Result<(), Error> {
         let mut script = "".to_string();
         let mut key_ix = 0;
+        let mut arg_ix = 0;
         for op in &self.ops {
             match op {
-                RedisTransactionOp::QueuePlan(_) | RedisTransactionOp::QueueJob(_) => {
-                    let rpush = format!("redis.call('RPUSH', tostring(KEYS[{}]), tostring(KEYS[{}]))\n", key_ix + 1, key_ix + 2);
+                RedisTransactionOp::QueueJob(_) => {
+                    let rpush = format!(
+                        "redis.call('RPUSH', tostring(KEYS[{}]), tostring(KEYS[{}]))\n",
+                        key_ix + 1,
+                        key_ix + 2
+                    );
                     key_ix += 2;
                     script.push_str(&rpush);
                 }
-                RedisTransactionOp::RemovePlanRunning(_) | RedisTransactionOp::RemoveJobRunning(_) => {
-                    let zrem = format!("redis.call('ZREM', tostring(KEYS[{}]), tostring(KEYS[{}]))\n", key_ix + 1, key_ix + 2);
+                RedisTransactionOp::RemovePlanRunning(_)
+                | RedisTransactionOp::RemoveJobRunning(_) => {
+                    let zrem = format!(
+                        "redis.call('ZREM', tostring(KEYS[{}]), tostring(KEYS[{}]))\n",
+                        key_ix + 1,
+                        key_ix + 2
+                    );
                     key_ix += 2;
                     script.push_str(&zrem);
+                }
+                RedisTransactionOp::PlanCheckin(_) | RedisTransactionOp::JobCheckin(_) => {
+                    let zadd_incr = format!("redis.call('ZADD', tostring(KEYS[{}]), tonumber(ARGV[{}]) + tonumber(ARGV[{}]), tostring(KEYS[{}]))\nredis.call('INCR', 'queue::job::checkin::count')\n", key_ix + 1, arg_ix + 1, arg_ix + 2, key_ix + 1);
+                    key_ix += 2;
+                    arg_ix += 2;
+                    script.push_str(&zadd_incr);
                 }
             }
         }
@@ -40,11 +57,6 @@ impl RedisTransaction {
         let mut invocation = script.prepare_invoke();
         for op in &self.ops {
             match op {
-                RedisTransactionOp::QueuePlan(op) => {
-                    let queue_key = JobQueues::pending_plan_queue_key(&op.queue);
-                    let key = JobQueues::queue_plan_key(&op.queue, &op.id);
-                    invocation.key(&queue_key).key(&key);
-                }
                 RedisTransactionOp::QueueJob(op) => {
                     let queue_key = JobQueues::pending_job_queue_key(&op.queue);
                     let key = JobQueues::queue_job_key(&op.queue, &op.id, op.index);
@@ -59,6 +71,20 @@ impl RedisTransaction {
                     let queue_key = JobQueues::running_job_queue_key(&op.queue);
                     let key = JobQueues::queue_job_key(&op.queue, &op.id, op.index);
                     invocation.key(&queue_key).key(&key);
+                }
+                RedisTransactionOp::PlanCheckin(op) => {
+                    invocation
+                        .key(JobQueues::running_plan_queue_key(&op.queue))
+                        .key(JobQueues::queue_plan_key(&op.queue, &op.id))
+                        .arg(Utc::now().timestamp())
+                        .arg(1800);
+                }
+                RedisTransactionOp::JobCheckin(op) => {
+                    invocation
+                        .key(JobQueues::running_job_queue_key(&op.queue))
+                        .key(JobQueues::queue_job_key(&op.queue, &op.id, op.index))
+                        .arg(Utc::now().timestamp())
+                        .arg(1800);
                 }
             }
         }
@@ -81,7 +107,8 @@ impl RedisTransaction {
 }
 
 pub enum RedisTransactionOp {
-    QueuePlan(WorkflowExecutionId),
+    PlanCheckin(WorkflowExecutionId),
+    JobCheckin(WorkflowJobId),
     QueueJob(WorkflowJobId),
     RemovePlanRunning(WorkflowExecutionId),
     RemoveJobRunning(WorkflowJobId),
