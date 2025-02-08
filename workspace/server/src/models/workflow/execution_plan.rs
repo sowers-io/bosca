@@ -89,7 +89,7 @@ pub struct WorkflowExecutionPlan {
     pub collection_id: Option<Uuid>,
     pub supplementary_id: Option<String>,
     pub context: Value,
-    pub running: HashSet<i32>,
+    pub active: HashSet<i32>,
     pub complete: HashSet<i32>,
     pub failed: HashSet<i32>,
     pub error: Option<String>,
@@ -144,7 +144,7 @@ impl WorkflowExecutionPlan {
         queues: &JobQueues,
         next_execution_group: i32,
     ) -> Result<WorkflowExecutePlanState, Error> {
-        let current_execution_group = if self.failed.is_empty() && self.running.is_empty() {
+        let current_execution_group = if self.failed.is_empty() && self.active.is_empty() {
             let current_execution_group = self.get_next_execution_group(next_execution_group);
             if current_execution_group.is_empty() {
                 info!(target: "workflow", "plan doesn't have any current jobs, finishing: {}", self.id);
@@ -169,7 +169,7 @@ impl WorkflowExecutionPlan {
             info!(target: "workflow", "removing job from current list and queueing as next: {}", self.id);
             if !self.complete.contains(&job_index) {
                 let job = self.jobs.get(job_index as usize).unwrap();
-                self.running.insert(job_index);
+                self.active.insert(job_index);
                 redis_txn.add_op(RedisTransactionOp::QueueJob(job.id.clone()));
             }
         }
@@ -226,7 +226,7 @@ impl WorkflowExecutionPlan {
         if job.complete {
             job.finished = Some(Utc::now());
             self.failed.remove(&job.id.index);
-            self.running.remove(&job.id.index);
+            self.active.remove(&job.id.index);
             self.complete.insert(job.id.index);
         }
         let next_execution_group = job.workflow_activity.execution_group + 1;
@@ -246,7 +246,7 @@ impl WorkflowExecutionPlan {
         error: &str,
     ) -> Result<(), Error> {
         self.failed.insert(job_id.index);
-        self.running.remove(&job_id.index);
+        self.active.remove(&job_id.index);
         let job = self.jobs.get_mut(job_id.index as usize).unwrap();
         job.error = Some(error.to_owned());
         queues.set_plan(db_txn, self, false).await?;

@@ -45,7 +45,7 @@ impl RedisTransaction {
                     script.push_str(&zrem);
                 }
                 RedisTransactionOp::PlanCheckin(_) | RedisTransactionOp::JobCheckin(_) => {
-                    let zadd_incr = format!("redis.call('ZADD', tostring(KEYS[{}]), tonumber(ARGV[{}]) + tonumber(ARGV[{}]), tostring(KEYS[{}]))\nredis.call('INCR', 'queue::job::checkin::count')\n", key_ix + 1, arg_ix + 1, arg_ix + 2, key_ix + 1);
+                    let zadd_incr = format!("redis.call('ZADD', tostring(KEYS[{}]), tonumber(ARGV[{}]) + tonumber(ARGV[{}]), tostring(KEYS[{}]))\nredis.call('INCR', 'queue::job::checkin::count')\n", key_ix + 1, arg_ix + 1, arg_ix + 2, key_ix + 2);
                     key_ix += 2;
                     arg_ix += 2;
                     script.push_str(&zadd_incr);
@@ -73,18 +73,14 @@ impl RedisTransaction {
                     invocation.key(&queue_key).key(&key);
                 }
                 RedisTransactionOp::PlanCheckin(op) => {
-                    invocation
-                        .key(JobQueues::running_plan_queue_key(&op.queue))
-                        .key(JobQueues::queue_plan_key(&op.queue, &op.id))
-                        .arg(Utc::now().timestamp())
-                        .arg(1800);
+                    let queue_key = JobQueues::running_plan_queue_key(&op.queue);
+                    let key = JobQueues::queue_plan_key(&op.queue, &op.id);
+                    invocation.key(queue_key).key(key).arg(Utc::now().timestamp()).arg(1800);
                 }
                 RedisTransactionOp::JobCheckin(op) => {
-                    invocation
-                        .key(JobQueues::running_job_queue_key(&op.queue))
-                        .key(JobQueues::queue_job_key(&op.queue, &op.id, op.index))
-                        .arg(Utc::now().timestamp())
-                        .arg(1800);
+                    let queue_key = JobQueues::running_job_queue_key(&op.queue);
+                    let key = JobQueues::queue_job_key(&op.queue, &op.id, op.index);
+                    invocation.key(queue_key).key(key).arg(Utc::now().timestamp()).arg(1800);
                 }
             }
         }

@@ -1309,7 +1309,7 @@ impl WorkflowDataStore {
             },
             enqueued: Utc::now(),
             error: None,
-            running: HashSet::new(),
+            active: HashSet::new(),
             complete: HashSet::new(),
             failed: HashSet::new(),
             metadata_id,

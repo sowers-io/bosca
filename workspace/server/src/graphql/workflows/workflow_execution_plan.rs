@@ -62,8 +62,8 @@ impl WorkflowExecutionPlanObject {
     async fn context(&self) -> &Value {
         &self.plan.context
     }
-    async fn running(&self) -> Vec<i32> {
-        self.plan.running.iter().cloned().collect()
+    async fn active(&self) -> Vec<i32> {
+        self.plan.active.iter().cloned().collect()
     }
     async fn complete(&self) -> Vec<i32> {
         self.plan.complete.iter().cloned().collect()
