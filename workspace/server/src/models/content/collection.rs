@@ -9,6 +9,7 @@ use tokio_postgres::Row;
 use uuid::Uuid;
 use crate::models::content::item::ContentItem;
 use crate::models::content::metadata::MetadataInput;
+use crate::models::content::ordering::{Ordering, OrderingInput};
 
 #[derive(Enum, Debug, Copy, Clone, Eq, PartialEq)]
 pub enum CollectionType {
@@ -37,7 +38,7 @@ pub struct Collection {
     pub public: bool,
     pub public_list: bool,
     pub ready: Option<DateTime<Utc>>,
-    pub ordering: Option<Value>,
+    pub ordering: Option<Vec<Ordering>>,
 }
 
 impl ContentItem for Collection {
@@ -95,7 +96,7 @@ pub struct CollectionInput {
     pub description: Option<String>,
     pub labels: Option<Vec<String>>,
     pub attributes: Option<Value>,
-    pub ordering: Option<Value>,
+    pub ordering: Option<Vec<OrderingInput>>,
     pub state: Option<CollectionWorkflowInput>,
     pub index: Option<bool>,
     pub trait_ids: Option<Vec<String>>,
@@ -105,6 +106,16 @@ pub struct CollectionInput {
 
 impl From<&Row> for Collection {
     fn from(row: &Row) -> Self {
+        let ordering_value: Option<Value> = row.get("ordering");
+        let ordering: Option<Vec<Ordering>> = if let Some(ordering) = ordering_value {
+            if ordering.is_null() {
+                None
+            } else {
+                serde_json::from_value(ordering).unwrap()
+            }
+        } else {
+            None
+        };
         Self {
             id: row.get("id"),
             collection_type: row.get("type"),
@@ -122,7 +133,7 @@ impl From<&Row> for Collection {
             ready: row.get("ready"),
             public: row.get("public"),
             public_list: row.get("public_list"),
-            ordering: row.get("ordering"),
+            ordering,
         }
     }
 }

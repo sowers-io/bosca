@@ -11,6 +11,8 @@ use crate::models::content::metadata::{Metadata, MetadataInput};
 use crate::models::content::metadata_relationship::{
     MetadataRelationship, MetadataRelationshipInput,
 };
+use crate::models::content::ordering::Order::Ascending;
+use crate::models::content::ordering::Ordering;
 use crate::models::content::search::SearchDocumentInput;
 use crate::models::content::slug::{Slug, SlugType};
 use crate::models::content::source::Source;
@@ -457,12 +459,10 @@ impl ContentDataStore {
         Ok(())
     }
 
-    fn build_ordering_names(&self, ordering: &[Value], names: &mut Vec<String>) {
+    fn build_ordering_names(&self, ordering: &[Ordering], names: &mut Vec<String>) {
         for attr in ordering {
-            let a = attr.as_object().unwrap();
-            let path = a.get("path").unwrap().as_array().unwrap();
-            for p in path {
-                names.push(p.as_str().unwrap().to_owned());
+            for p in attr.path.iter() {
+                names.push(p.clone());
             }
         }
     }
@@ -471,35 +471,31 @@ impl ContentDataStore {
         &self,
         attributes_column: &str,
         start_index: i32,
-        ordering: &[Value],
+        ordering: &[Ordering],
         values: &mut Vec<&'a (dyn ToSql + Sync)>,
         names: &'a [String],
     ) -> String {
         let mut index = start_index;
         let mut buf = "order by ".to_owned();
         let mut n = 0;
-        for (i, attr) in ordering.iter().enumerate() {
+        for (i, ordering) in ordering.iter().enumerate() {
             if i > 0 {
                 buf.push_str(", ");
             }
-            let a = attr.as_object().unwrap();
-            let path = a.get("path").unwrap().as_array().unwrap();
             buf.push_str(attributes_column);
-            for _ in path {
+            for _ in ordering.path.iter() {
                 let name = names.get(n).unwrap();
                 n += 1;
                 values.push(name as &(dyn ToSql + Sync));
                 buf.push_str(format!("->${}", index).as_str());
                 index += 1;
             }
-            if a.contains_key("order") {
-                buf.push(' ');
-                buf.push_str(if a.get("order").unwrap().as_str().unwrap() == "asc" {
-                    "asc"
-                } else {
-                    "desc"
-                });
-            }
+            buf.push(' ');
+            buf.push_str(if ordering.order == Ascending {
+                "asc"
+            } else {
+                "desc"
+            });
         }
         if buf == "order by " {
             return "".to_owned();
@@ -516,16 +512,15 @@ impl ContentDataStore {
         let mut values = Vec::new();
         let mut names = Vec::new();
         values.push(&collection.id as &(dyn ToSql + Sync));
-        let ordering = match &collection.ordering {
-            Some(Value::Array(ordering)) => {
-                self.build_ordering_names(ordering, &mut names);
-                self.build_ordering("attributes", 2, ordering, &mut values, &names)
-            }
-            _ => String::new(),
+        let ordering = if let Some(ordering) = &collection.ordering {
+            self.build_ordering_names(ordering, &mut names);
+            self.build_ordering("attributes", 2, ordering, &mut values, &names)
+        } else {
+            String::new()
         };
         let mut query = "select child_collection_id, child_metadata_id, collection_items.attributes from collection_items ".to_owned();
         if !ordering.is_empty() {
-            query.push_str(" where collection_id = $1");
+            query.push_str(" where collection_id = $1 ");
             query.push_str(ordering.as_str());
         } else {
             query.push_str(" left join collections on (child_collection_id = collections.id) ");
@@ -553,12 +548,11 @@ impl ContentDataStore {
         let mut values = Vec::new();
         let mut names = Vec::new();
         values.push(&collection.id as &(dyn ToSql + Sync));
-        let ordering = match &collection.ordering {
-            Some(Value::Array(ordering)) => {
-                self.build_ordering_names(ordering, &mut names);
-                self.build_ordering("ci.attributes", 2, ordering, &mut values, &names)
-            }
-            _ => String::new(),
+        let ordering = if let Some(ordering) = &collection.ordering {
+            self.build_ordering_names(ordering, &mut names);
+            self.build_ordering("ci.attributes", 2, ordering, &mut values, &names)
+        } else {
+            String::new()
         };
         let mut query = "select c.*, ci.attributes as item_attributes from collections c inner join collection_items ci on (ci.child_collection_id = c.id and ci.collection_id = $1) ".to_owned();
         if ordering.is_empty() {
@@ -586,12 +580,11 @@ impl ContentDataStore {
         let mut values = Vec::new();
         let mut names = Vec::new();
         values.push(&collection.id as &(dyn ToSql + Sync));
-        let ordering = match &collection.ordering {
-            Some(Value::Array(ordering)) => {
-                self.build_ordering_names(ordering, &mut names);
-                self.build_ordering("ci.attributes", 2, ordering, &mut values, &names)
-            }
-            _ => String::new(),
+        let ordering = if let Some(ordering) = &collection.ordering {
+            self.build_ordering_names(ordering, &mut names);
+            self.build_ordering("ci.attributes", 2, ordering, &mut values, &names)
+        } else {
+            String::new()
         };
         let mut query = "select m.*, ci.attributes as item_attributes from metadata m inner join collection_items ci on (ci.child_metadata_id = m.id and ci.collection_id = $1) ".to_owned();
         if ordering.is_empty() {
@@ -666,6 +659,7 @@ impl ContentDataStore {
             txn.prepare("insert into collections (name, description, type, labels, attributes, ordering) values ($1, $2, $3, $4, $5, $6) returning id").await?
         };
         let labels = collection.labels.clone().unwrap_or_default();
+        let ordering = collection.ordering.as_ref().map(|ordering| serde_json::to_value(ordering).unwrap());
         let rows = txn
             .query(
                 &stmt,
@@ -675,7 +669,7 @@ impl ContentDataStore {
                     &collection.collection_type.unwrap_or(CollectionType::Folder),
                     &labels,
                     &collection.attributes.as_ref().or(Some(&Value::Null)),
-                    &collection.ordering.as_ref().or(Some(&Value::Null)),
+                    &ordering,
                 ],
             )
             .await?;
@@ -725,6 +719,7 @@ impl ContentDataStore {
     ) -> Result<(), Error> {
         let stmt = txn.prepare("update collections set name = $1, description = $2, type = $3, labels = $4, attributes = $5, ordering = $6 where id = $7").await?;
         let labels = collection.labels.clone().unwrap_or_default();
+        let ordering = collection.ordering.as_ref().map(|ordering| serde_json::to_value(ordering).unwrap());
         txn.execute(
             &stmt,
             &[
@@ -733,7 +728,7 @@ impl ContentDataStore {
                 &collection.collection_type.unwrap_or(CollectionType::Folder),
                 &labels,
                 &collection.attributes.as_ref().or(Some(&Value::Null)),
-                &collection.ordering.as_ref().or(Some(&Value::Null)),
+                &ordering,
                 id,
             ],
         )

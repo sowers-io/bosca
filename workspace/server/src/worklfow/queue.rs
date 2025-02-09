@@ -4,8 +4,8 @@ use crate::models::workflow::execution_plan::{
     WorkflowJobId,
 };
 use crate::redis::RedisClient;
-use crate::worklfow::transaction::{RedisTransaction, RedisTransactionOp};
 use crate::worklfow::transaction::RedisTransactionOp::JobCheckin;
+use crate::worklfow::transaction::{RedisTransaction, RedisTransactionOp};
 use async_graphql::Error;
 use chrono::Utc;
 use deadpool_postgres::{GenericClient, Pool, Transaction};
@@ -343,11 +343,7 @@ impl JobQueues {
         }
     }
 
-    async fn dequeue_job_from_redis(
-        &self,
-        transaction: &Transaction<'_>,
-        queue: &str,
-    ) -> Result<Option<(WorkflowExecutionPlan, i32)>, Error> {
+    async fn dequeue_job(&self, queue: &str) -> Result<Option<WorkflowJobId>, Error> {
         let pending_key = JobQueues::pending_job_queue_key(queue);
         let running_key = JobQueues::running_job_queue_key(queue);
         if let Some(id) = self.dequeue_from_redis(&pending_key, &running_key).await? {
@@ -361,30 +357,20 @@ impl JobQueues {
                 queue: queue.to_owned(),
                 index,
             };
-            let Some(plan) = self.get_plan_and_lock_by_job(transaction, &id).await? else {
-                return Err(Error::new("can't dequeue job, missing plan"));
-            };
-            Ok(Some((plan, index)))
+            Ok(Some(id))
         } else {
             Ok(None)
         }
     }
 
     pub async fn dequeue(&self, queue: &str) -> Result<Option<WorkflowJob>, Error> {
-        let mut connection = self.pool.get().await?;
-        loop {
-            let transaction = connection.transaction().await?;
-            let Some((plan, job_index)) = self.dequeue_job_from_redis(&transaction, queue).await?
-            else {
-                transaction.rollback().await?;
-                return Ok(None);
-            };
-            if job_index != -1 {
-                transaction.commit().await?;
-                return Ok(Some(plan.jobs.get(job_index as usize).unwrap().clone()));
-            }
-            transaction.commit().await?;
+        let Some(job_id) = self.dequeue_job(queue).await? else {
+            return Ok(None);
+        };
+        if let Some(plan) = self.get_plan_by_job(&job_id).await? {
+            return Ok(Some(plan.jobs.get(job_id.index as usize).unwrap().clone()));
         }
+        Ok(None)
     }
 
     pub async fn set_execution_plan_context(
@@ -469,7 +455,9 @@ impl JobQueues {
             .await
         {
             Ok(result) => {
-                if result == WorkflowExecutePlanState::Complete || result == WorkflowExecutePlanState::Error {
+                if result == WorkflowExecutePlanState::Complete
+                    || result == WorkflowExecutePlanState::Error
+                {
                     redis_txn.add_op(RedisTransactionOp::RemovePlanRunning(plan.id))
                 }
                 transaction.commit().await?;
