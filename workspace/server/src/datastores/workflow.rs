@@ -1309,9 +1309,7 @@ impl WorkflowDataStore {
             },
             enqueued: Utc::now(),
             error: None,
-            pending,
-            current_execution_group,
-            running: HashSet::new(),
+            active: HashSet::new(),
             complete: HashSet::new(),
             failed: HashSet::new(),
             metadata_id,
@@ -1319,7 +1317,6 @@ impl WorkflowDataStore {
             jobs,
             context: Value::Null,
             parent: None,
-            next: None,
             supplementary_id: None,
             metadata_version,
             collection_id,
@@ -1336,7 +1333,7 @@ impl WorkflowDataStore {
         wait_for_completion: Option<bool>,
     ) -> Result<WorkflowExecutionPlan, Error> {
         if let Some(workflow) = self.get_workflow(workflow_id).await? {
-            let plan = self
+            let mut plan = self
                 .get_new_execution_plan(
                     &workflow,
                     None,
@@ -1345,7 +1342,7 @@ impl WorkflowDataStore {
                     configurations,
                 )
                 .await?;
-            let id = self.queues.enqueue(&plan).await?;
+            let id = self.queues.enqueue_plan(&mut plan).await?;
             if wait_for_completion.is_some() && wait_for_completion.unwrap() {
                 // TODO: use subscription
                 loop {
@@ -1371,10 +1368,10 @@ impl WorkflowDataStore {
     ) -> Result<Vec<WorkflowExecutionPlan>, Error> {
         let mut plans = Vec::<WorkflowExecutionPlan>::new();
         for workflow in self.get_workflows_by_trait(trait_id).await? {
-            let plan = self
+            let mut plan = self
                 .get_new_execution_plan(&workflow, None, Some(*metadata_id), Some(*version), None)
                 .await?;
-            self.queues.enqueue(&plan).await?;
+            self.queues.enqueue_plan(&mut plan).await?;
             plans.push(plan);
         }
         Ok(plans)
@@ -1388,10 +1385,10 @@ impl WorkflowDataStore {
         wait_for_completion: Option<bool>,
     ) -> Result<WorkflowExecutionPlan, Error> {
         if let Some(workflow) = self.get_workflow(&workflow_id.to_string()).await? {
-            let plan = self
+            let mut plan = self
                 .get_new_execution_plan(&workflow, Some(*collection_id), None, None, configurations)
                 .await?;
-            let id = self.queues.enqueue(&plan).await?;
+            let id = self.queues.enqueue_plan(&mut plan).await?;
             if wait_for_completion.is_some() && wait_for_completion.unwrap() {
                 // TODO: use subscription
                 loop {

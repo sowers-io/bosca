@@ -18,6 +18,7 @@ pub async fn add_password_principal(
     password: &str,
     profile: &ProfileInput,
     auto_verify: bool,
+    set_ready: bool
 ) -> Result<Principal, Error> {
     let password_credential = PasswordCredential::new(identifier.to_string(), password.to_string());
     let groups = vec![];
@@ -58,7 +59,9 @@ pub async fn add_password_principal(
         action: PermissionAction::View,
     };
     content.add_collection_permission(&permission).await?;
-    content.set_collection_ready_and_enqueue(workflow, &principal, &collection, None).await?;
+    if set_ready {
+        content.set_collection_ready_and_enqueue(workflow, &principal, &collection, None).await?;
+    }
 
     Ok(principal)
 }

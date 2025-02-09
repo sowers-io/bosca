@@ -80,20 +80,20 @@ pub async fn index_documents(ctx: &BoscaContext, documents: &[SearchDocumentInpu
     Ok(())
 }
 
-pub async fn index_documents_no_checks(ctx: &BoscaContext, documents: &[SearchDocumentInput], storage_system: &StorageSystem) -> Result<(), Error> {
-    let mut index_documents = Vec::new();
-    for document in documents {
-        if let Some(document) = create_search_document_no_checks(ctx, document).await? {
-            index_documents.push(document);
-        }
-    }
-    if let Some(configuration) = &storage_system.configuration {
-        let index_name = configuration.get("indexName").unwrap().as_str().unwrap().to_string();
-        let index = ctx.search.index(&index_name);
-        index.add_documents(index_documents.as_slice(), Some("_id")).await?;
-    }
-    Ok(())
-}
+// pub async fn index_documents_no_checks(ctx: &BoscaContext, documents: &[SearchDocumentInput], storage_system: &StorageSystem) -> Result<(), Error> {
+//     let mut index_documents = Vec::new();
+//     for document in documents {
+//         if let Some(document) = create_search_document_no_checks(ctx, document).await? {
+//             index_documents.push(document);
+//         }
+//     }
+//     if let Some(configuration) = &storage_system.configuration {
+//         let index_name = configuration.get("indexName").unwrap().as_str().unwrap().to_string();
+//         let index = ctx.search.index(&index_name);
+//         index.add_documents(index_documents.as_slice(), Some("_id")).await?;
+//     }
+//     Ok(())
+// }
 
 pub async fn create_search_document(ctx: &BoscaContext, document: &SearchDocumentInput) -> Result<Option<Map<String, Value>>, Error> {
     Ok(if let Some(metadata_id) = &document.metadata_id {
@@ -129,36 +129,36 @@ pub async fn create_search_document(ctx: &BoscaContext, document: &SearchDocumen
     })
 }
 
-pub async fn create_search_document_no_checks(ctx: &BoscaContext, document: &SearchDocumentInput) -> Result<Option<Map<String, Value>>, Error> {
-    Ok(if let Some(metadata_id) = &document.metadata_id {
-        let metadata_id_uuid = Uuid::parse_str(metadata_id.as_str())?;
-        let metadata = ctx.content.get_metadata(&metadata_id_uuid).await?.unwrap();
-        let mut m = serde_json::Map::<String, Value>::new();
-        m.insert("_id".to_owned(), Value::String(metadata_id.to_owned()));
-        m.insert("_name".to_owned(), Value::String(metadata.name.to_owned()));
-        m.insert("_content".to_owned(), Value::String(document.content.to_owned()));
-        m.insert("_type".to_owned(), Value::String("metadata".to_owned()));
-        if let Value::Object(attributes) = metadata.attributes {
-            for attr in attributes.iter() {
-                m.insert(attr.0.to_string().replace(".", "_"), attr.1.clone());
-            }
-        }
-        Some(m)
-    } else if let Some(collection_id) = &document.collection_id {
-        let collection_id_uuid = Uuid::parse_str(collection_id.as_str())?;
-        let collection = ctx.content.get_collection(&collection_id_uuid).await?.unwrap();
-        let mut m = serde_json::Map::<String, Value>::new();
-        m.insert("_id".to_owned(), Value::String(collection_id.to_owned()));
-        m.insert("_name".to_owned(), Value::String(collection.name.to_owned()));
-        m.insert("_content".to_owned(), Value::String(document.content.to_owned()));
-        m.insert("_type".to_owned(), Value::String("collection".to_owned()));
-        if let Value::Object(attributes) = collection.attributes {
-            for attr in attributes.iter() {
-                m.insert(attr.0.to_string().replace(".", "_"), attr.1.clone());
-            }
-        }
-        Some(m)
-    } else {
-        None
-    })
-}
+// pub async fn create_search_document_no_checks(ctx: &BoscaContext, document: &SearchDocumentInput) -> Result<Option<Map<String, Value>>, Error> {
+//     Ok(if let Some(metadata_id) = &document.metadata_id {
+//         let metadata_id_uuid = Uuid::parse_str(metadata_id.as_str())?;
+//         let metadata = ctx.content.get_metadata(&metadata_id_uuid).await?.unwrap();
+//         let mut m = serde_json::Map::<String, Value>::new();
+//         m.insert("_id".to_owned(), Value::String(metadata_id.to_owned()));
+//         m.insert("_name".to_owned(), Value::String(metadata.name.to_owned()));
+//         m.insert("_content".to_owned(), Value::String(document.content.to_owned()));
+//         m.insert("_type".to_owned(), Value::String("metadata".to_owned()));
+//         if let Value::Object(attributes) = metadata.attributes {
+//             for attr in attributes.iter() {
+//                 m.insert(attr.0.to_string().replace(".", "_"), attr.1.clone());
+//             }
+//         }
+//         Some(m)
+//     } else if let Some(collection_id) = &document.collection_id {
+//         let collection_id_uuid = Uuid::parse_str(collection_id.as_str())?;
+//         let collection = ctx.content.get_collection(&collection_id_uuid).await?.unwrap();
+//         let mut m = serde_json::Map::<String, Value>::new();
+//         m.insert("_id".to_owned(), Value::String(collection_id.to_owned()));
+//         m.insert("_name".to_owned(), Value::String(collection.name.to_owned()));
+//         m.insert("_content".to_owned(), Value::String(document.content.to_owned()));
+//         m.insert("_type".to_owned(), Value::String("collection".to_owned()));
+//         if let Value::Object(attributes) = collection.attributes {
+//             for attr in attributes.iter() {
+//                 m.insert(attr.0.to_string().replace(".", "_"), attr.1.clone());
+//             }
+//         }
+//         Some(m)
+//     } else {
+//         None
+//     })
+// }

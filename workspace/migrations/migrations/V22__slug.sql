@@ -78,7 +78,7 @@ declare
     new_slug text := '';
     found    int;
 begin
-    if new.type == 'root' || new.type == 'system' || new.type == 'queue' then
+    if new.type in ('root', 'system', 'queue') then
         return new;
     end if;
     new_slug := slugify(new.name);

@@ -10,3 +10,4 @@ pub mod collection_workflow_state;
 pub mod attributes_filter;
 pub mod item;
 pub mod slug;
+pub mod ordering;

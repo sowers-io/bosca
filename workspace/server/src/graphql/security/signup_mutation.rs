@@ -24,7 +24,8 @@ impl SignupMutationObject {
             &identifier,
             &password,
             &profile,
-            false
+            false,
+            true
         )
         .await?;
 

@@ -7,6 +7,7 @@ use serde_json::Value;
 use crate::context::BoscaContext;
 use crate::graphql::workflows::workflow_execution_plan::WorkflowExecutionPlanObject;
 use crate::models::content::attributes_filter::AttributesFilterInput;
+use crate::models::content::ordering::Ordering;
 use crate::models::security::permission::PermissionAction;
 use crate::models::workflow::execution_plan::WorkflowExecutionId;
 
@@ -78,7 +79,7 @@ impl CollectionObject {
         &self.collection.system_attributes
     }
 
-    async fn ordering(&self) -> &Option<Value> {
+    async fn ordering(&self) -> &Option<Vec<Ordering>> {
         &self.collection.ordering
     }
 
