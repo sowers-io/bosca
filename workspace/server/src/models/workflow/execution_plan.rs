@@ -7,7 +7,7 @@ use crate::worklfow::transaction::{RedisTransaction, RedisTransactionOp};
 use async_graphql::{Error, InputObject};
 use chrono::{DateTime, Utc};
 use deadpool_postgres::Transaction;
-use log::{error, info};
+use log::{debug, error};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashSet;
@@ -147,7 +147,7 @@ impl WorkflowExecutionPlan {
         let current_execution_group = if self.failed.is_empty() && self.active.is_empty() {
             let current_execution_group = self.get_next_execution_group(next_execution_group);
             if current_execution_group.is_empty() {
-                info!(target: "workflow", "plan doesn't have any current jobs, finishing: {}", self.id);
+                debug!(target: "workflow", "plan doesn't have any current jobs, finishing: {}", self.id);
                 self.finished = Some(Utc::now());
                 if self.complete.len() != self.jobs.len() {
                     error!(target: "workflow", "plan finished job state is invalid: {}", self.id);
@@ -166,7 +166,7 @@ impl WorkflowExecutionPlan {
             return Ok(WorkflowExecutePlanState::Running);
         };
         for job_index in current_execution_group {
-            info!(target: "workflow", "removing job from current list and queueing as next: {}", self.id);
+            debug!(target: "workflow", "removing job from current list and queueing as next: {}", self.id);
             if !self.complete.contains(&job_index) {
                 let job = self.jobs.get(job_index as usize).unwrap();
                 self.active.insert(job_index);

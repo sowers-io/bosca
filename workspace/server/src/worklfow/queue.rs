@@ -9,7 +9,7 @@ use crate::worklfow::transaction::{RedisTransaction, RedisTransactionOp};
 use async_graphql::Error;
 use chrono::Utc;
 use deadpool_postgres::{GenericClient, Pool, Transaction};
-use log::{error, info};
+use log::{debug, error};
 use redis::{AsyncCommands, Script};
 use serde_json::{from_value, json, Value};
 use std::collections::HashSet;
@@ -218,7 +218,7 @@ impl JobQueues {
         &self,
         plan: &mut WorkflowExecutionPlan,
     ) -> Result<WorkflowExecutionId, Error> {
-        info!(target: "workflow", "enqueuing plan: {}", plan.id);
+        debug!(target: "workflow", "enqueuing plan: {}", plan.id);
         let mut connection = self.pool.get().await?;
         let db_txn = connection.transaction().await?;
         let mut redis_txn = RedisTransaction::new();
@@ -233,7 +233,7 @@ impl JobQueues {
         db_txn.commit().await?;
         redis_txn.execute(&self.redis).await?;
         self.incr("queue::enqueued::count").await?;
-        info!("enqueued plan: {}", plan.id);
+        debug!("enqueued plan: {}", plan.id);
         if let Some(id) = &plan.collection_id {
             self.notifier.collection_changed(id).await?;
         }
@@ -248,7 +248,7 @@ impl JobQueues {
         job_id: &WorkflowJobId,
         plans: &[WorkflowExecutionPlan],
     ) -> Result<Vec<WorkflowExecutionId>, Error> {
-        info!(target: "workflow", "enqueuing job children: {}", job_id);
+        debug!(target: "workflow", "enqueuing job children: {}", job_id);
         let mut connection = self.pool.get().await?;
         let db_txn = connection.transaction().await?;
 
@@ -285,7 +285,7 @@ impl JobQueues {
                 metadata_ids.insert(*id);
             }
             self.incr("queue::enqueued::child::count").await?;
-            info!("enqueued plan: {}", plan.id);
+            debug!("enqueued plan: {}", plan.id);
         }
         self.set_plan(&db_txn, &parent_plan, false).await?;
         db_txn.commit().await?;
