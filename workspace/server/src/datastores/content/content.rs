@@ -1,17 +1,17 @@
-use std::sync::Arc;
-use async_graphql::Error;
-use deadpool_postgres::Pool;
-use uuid::Uuid;
 use crate::datastores::content::collection_permissions::CollectionPermissionsDataStore;
 use crate::datastores::content::collection_workflows::CollectionWorkflowsDataStore;
 use crate::datastores::content::collections::CollectionsDataStore;
+use crate::datastores::content::documents::DocumentsDataStore;
 use crate::datastores::content::metadata::MetadataDataStore;
-use crate::datastores::content::metadata_documents::MetadataDocumentsDataStore;
 use crate::datastores::content::metadata_permissions::MetadataPermissionsDataStore;
 use crate::datastores::content::metadata_workflows::MetadataWorkflowsDataStore;
 use crate::datastores::notifier::Notifier;
 use crate::models::content::slug::{Slug, SlugType};
 use crate::models::content::source::Source;
+use async_graphql::Error;
+use deadpool_postgres::Pool;
+use std::sync::Arc;
+use uuid::Uuid;
 
 #[derive(Clone)]
 pub struct ContentDataStore {
@@ -21,21 +21,33 @@ pub struct ContentDataStore {
     pub collection_permissions: CollectionPermissionsDataStore,
     pub collection_workflows: CollectionWorkflowsDataStore,
     pub metadata: MetadataDataStore,
-    pub metadata_documents: MetadataDocumentsDataStore,
     pub metadata_permissions: MetadataPermissionsDataStore,
     pub metadata_workflows: MetadataWorkflowsDataStore,
+    pub documents: DocumentsDataStore,
 }
 
 impl ContentDataStore {
     pub fn new(pool: Arc<Pool>, notifier: Arc<Notifier>) -> Self {
         Self {
             collections: CollectionsDataStore::new(Arc::clone(&pool), Arc::clone(&notifier)),
-            collection_permissions: CollectionPermissionsDataStore::new(Arc::clone(&pool), Arc::clone(&notifier)),
-            collection_workflows: CollectionWorkflowsDataStore::new(Arc::clone(&pool), Arc::clone(&notifier)),
+            collection_permissions: CollectionPermissionsDataStore::new(
+                Arc::clone(&pool),
+                Arc::clone(&notifier),
+            ),
+            collection_workflows: CollectionWorkflowsDataStore::new(
+                Arc::clone(&pool),
+                Arc::clone(&notifier),
+            ),
             metadata: MetadataDataStore::new(Arc::clone(&pool), Arc::clone(&notifier)),
-            metadata_documents: MetadataDocumentsDataStore::new(Arc::clone(&pool), Arc::clone(&notifier)),
-            metadata_permissions: MetadataPermissionsDataStore::new(Arc::clone(&pool), Arc::clone(&notifier)),
-            metadata_workflows: MetadataWorkflowsDataStore::new(Arc::clone(&pool), Arc::clone(&notifier)),
+            metadata_permissions: MetadataPermissionsDataStore::new(
+                Arc::clone(&pool),
+                Arc::clone(&notifier),
+            ),
+            metadata_workflows: MetadataWorkflowsDataStore::new(
+                Arc::clone(&pool),
+                Arc::clone(&notifier),
+            ),
+            documents: DocumentsDataStore::new(Arc::clone(&pool), Arc::clone(&notifier)),
             pool,
         }
     }
@@ -49,7 +61,10 @@ impl ContentDataStore {
         Ok(rows.iter().map(|r| r.into()).collect())
     }
 
-    pub async fn get_source_by_id(&self, id: &Uuid) -> async_graphql::Result<Option<Source>, Error> {
+    pub async fn get_source_by_id(
+        &self,
+        id: &Uuid,
+    ) -> async_graphql::Result<Option<Source>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached("select * from sources where id = $1")
@@ -58,7 +73,10 @@ impl ContentDataStore {
         Ok(rows.first().map(|r| r.into()))
     }
 
-    pub async fn get_source_by_name(&self, name: &String) -> async_graphql::Result<Option<Source>, Error> {
+    pub async fn get_source_by_name(
+        &self,
+        name: &String,
+    ) -> async_graphql::Result<Option<Source>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached("select * from sources where name = $1")
@@ -70,7 +88,9 @@ impl ContentDataStore {
     pub async fn get_slug(&self, slug: &str) -> async_graphql::Result<Option<Slug>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
-            .prepare_cached("select metadata_id, collection_id from slugs where slug = $1")
+            .prepare_cached(
+                "select metadata_id, collection_id, profile_id from slugs where slug = $1",
+            )
             .await?;
         let slug = slug.to_string();
         let rows = connection.query(&stmt, &[&slug]).await?;
@@ -80,16 +100,21 @@ impl ContentDataStore {
         let row = rows.first().unwrap();
         let metadata_id: Option<Uuid> = row.get("metadata_id");
         let collection_id: Option<Uuid> = row.get("collection_id");
+        let profile_id: Option<Uuid> = row.get("profile_id");
         Ok(Some(Slug {
             id: if let Some(metadata_id) = metadata_id {
                 metadata_id
+            } else if let Some(collection_id) = collection_id {
+                collection_id
             } else {
-                collection_id.unwrap()
+                profile_id.unwrap()
             },
             slug_type: if metadata_id.is_some() {
                 SlugType::Metadata
-            } else {
+            } else if collection_id.is_some() {
                 SlugType::Collection
+            } else {
+                SlugType::Profile
             },
         }))
     }

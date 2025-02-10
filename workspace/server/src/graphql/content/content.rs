@@ -11,6 +11,7 @@ use log::error;
 use serde_json::Value;
 use std::str::FromStr;
 use uuid::Uuid;
+use crate::graphql::profiles::profile::ProfileObject;
 
 pub struct ContentObject {}
 
@@ -24,6 +25,7 @@ pub struct FindAttributeInput {
 enum ContentItem {
     Metadata(MetadataObject),
     Collection(CollectionObject),
+    Profile(ProfileObject),
 }
 
 #[Object(name = "Content")]
@@ -42,6 +44,9 @@ impl ContentObject {
                         .await?
                         .into(),
                 ))),
+                SlugType::Profile => Ok(Some(ContentItem::Profile(
+                    ctx.check_profile_action(&slug.id, PermissionAction::View).await?.into()
+                )))
             }
         } else {
             Ok(None)
@@ -223,6 +228,7 @@ impl ContentObject {
                 let document = SearchDocument {
                     metadata: Some(metadata?),
                     collection: None,
+                    profile: None,
                     content: obj
                         .get("_content")
                         .unwrap()
@@ -242,6 +248,25 @@ impl ContentObject {
                 let document = SearchDocument {
                     metadata: None,
                     collection: Some(collection?),
+                    profile: None,
+                    content: obj
+                        .get("_content")
+                        .unwrap()
+                        .as_str()
+                        .unwrap()
+                        .trim()
+                        .to_owned(),
+                };
+                documents.push(document);
+            } else if hit_type == "profile" {
+                let profile = ctx.check_profile_action(&id, PermissionAction::View).await;
+                if profile.is_err() {
+                    continue;
+                }
+                let document = SearchDocument {
+                    metadata: None,
+                    collection: None,
+                    profile: None,
                     content: obj
                         .get("_content")
                         .unwrap()

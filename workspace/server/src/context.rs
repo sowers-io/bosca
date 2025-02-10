@@ -15,6 +15,8 @@ use crate::models::security::principal::Principal;
 
 use crate::datastores::notifier::Notifier;
 use crate::datastores::profile::ProfileDataStore;
+use crate::models::profiles::profile::Profile;
+use crate::models::profiles::profile_visibility::ProfileVisibility;
 
 #[derive(Clone)]
 pub struct BoscaContext {
@@ -134,6 +136,27 @@ impl BoscaContext {
             }
             None => Err(Error::new(format!(
                 "collection not found: {}",
+                id
+            ))),
+        }
+    }
+
+    pub async fn check_profile_action(&self, id: &Uuid, action: PermissionAction) -> Result<Profile, Error> {
+        match self.profile.get_by_id(id).await? {
+            Some(profile) => {
+                if profile.principal == self.principal.id {
+                    return Ok(profile)
+                }
+                if action == PermissionAction::View && profile.visibility != ProfileVisibility::Public {
+                    let admin = self.security.get_administrators_group().await?;
+                    if !self.principal.has_group(&admin.id) {
+                        return Err(Error::new("invalid permissions"));
+                    }
+                }
+                Ok(profile)
+            }
+            None => Err(Error::new(format!(
+                "profile not found: {}",
                 id
             ))),
         }

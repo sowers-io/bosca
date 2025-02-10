@@ -11,7 +11,7 @@ impl ProfileAttributeTypesObject {
         let ctx = ctx.data::<BoscaContext>()?;
         Ok(ctx
             .profile
-            .get_profile_attribute_types()
+            .get_attribute_types()
             .await?
             .into_iter()
             .filter(|a| a.visibility != ProfileVisibility::System)

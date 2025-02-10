@@ -7,4 +7,4 @@ pub mod metadata;
 pub mod content;
 pub mod metadata_permissions;
 pub mod metadata_workflows;
-mod metadata_documents;
+mod documents;

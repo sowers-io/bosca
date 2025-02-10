@@ -20,7 +20,7 @@ impl LoginMutationObject {
             return Err(Error::new("not verified"));
         }
         let profile = ctx.profile
-            .get_profile_by_principal(&principal.id)
+            .get_by_principal(&principal.id)
             .await?;
         let token = ctx.security.new_token(&principal)?;
         Ok(LoginResponse { profile, principal, token })

@@ -1,3 +1,7 @@
+use crate::models::content::document::DocumentInput;
+use crate::models::content::document_template::DocumentTemplateInput;
+use crate::models::content::item::ContentItem;
+use crate::models::content::metadata_profile::MetadataProfileInput;
 use async_graphql::*;
 use bytes::{BufMut, BytesMut};
 use chrono::prelude::*;
@@ -7,7 +11,6 @@ use std::error::Error;
 use std::fmt::Debug;
 use tokio_postgres::Row;
 use uuid::Uuid;
-use crate::models::content::item::ContentItem;
 
 #[derive(Enum, Debug, Copy, Clone, Eq, PartialEq)]
 pub enum MetadataType {
@@ -40,7 +43,7 @@ pub struct Metadata {
     pub ready: Option<DateTime<Utc>>,
     pub public: bool,
     pub public_content: bool,
-    pub public_supplementary: bool
+    pub public_supplementary: bool,
 }
 
 impl ContentItem for Metadata {
@@ -65,19 +68,19 @@ impl ContentItem for Metadata {
     }
 }
 
-#[derive(InputObject)]
+#[derive(InputObject, Clone)]
 pub struct MetadataWorkflowInput {
     pub state: String,
     pub delete_workflow_id: Option<String>,
 }
 
-#[derive(InputObject)]
+#[derive(InputObject, Clone)]
 pub struct MetadataSourceInput {
     pub id: String,
     pub identifier: String,
 }
 
-#[derive(InputObject, Default)]
+#[derive(InputObject, Default, Clone)]
 pub struct MetadataInput {
     pub parent_collection_id: Option<String>,
     pub parent_id: Option<String>,
@@ -91,8 +94,11 @@ pub struct MetadataInput {
     pub trait_ids: Option<Vec<String>>,
     pub category_ids: Option<Vec<String>>,
     pub attributes: Option<Value>,
+    pub document: Option<DocumentInput>,
+    pub document_template: Option<DocumentTemplateInput>,
     pub state: Option<MetadataWorkflowInput>,
     pub source: Option<MetadataSourceInput>,
+    pub profiles: Option<Vec<MetadataProfileInput>>,
     pub index: Option<bool>,
 }
 

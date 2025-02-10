@@ -1,4 +1,5 @@
 use crate::context::BoscaContext;
+use crate::datastores::content::find::build_find_args;
 use crate::datastores::notifier::Notifier;
 use crate::graphql::content::content::FindAttributeInput;
 use crate::models::content::collection::MetadataChildInput;
@@ -16,7 +17,7 @@ use log::error;
 use serde_json::{Map, Value};
 use std::sync::Arc;
 use uuid::Uuid;
-use crate::datastores::content::find::build_find_args;
+use crate::models::content::metadata_profile::MetadataProfile;
 
 #[derive(Clone)]
 pub struct MetadataDataStore {
@@ -96,11 +97,7 @@ impl MetadataDataStore {
         Ok(rows.iter().map(|r| r.into()).collect())
     }
 
-    pub async fn get_by_version(
-        &self,
-        id: &Uuid,
-        version: i32,
-    ) -> Result<Option<Metadata>, Error> {
+    pub async fn get_by_version(&self, id: &Uuid, version: i32) -> Result<Option<Metadata>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached("select * from metadata where id = $1 and version = $2")
@@ -139,6 +136,15 @@ impl MetadataDataStore {
                 id
             })
             .collect())
+    }
+
+    pub async fn get_profiles(&self, id: &Uuid) -> Result<Vec<MetadataProfile>, Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("select * from metadata_profiles where metadata_id = $1 order by sort asc")
+            .await?;
+        let rows = connection.query(&stmt, &[id]).await?;
+        Ok(rows.iter().map(|r| r.into()).collect())
     }
 
     pub async fn get_supplementary(
@@ -287,11 +293,7 @@ impl MetadataDataStore {
         Ok(())
     }
 
-    pub async fn set_supplementary_public(
-        &self,
-        id: &Uuid,
-        public: bool,
-    ) -> Result<(), Error> {
+    pub async fn set_supplementary_public(&self, id: &Uuid, public: bool) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached(
@@ -358,11 +360,7 @@ impl MetadataDataStore {
         }
     }
 
-    pub async fn set_attributes(
-        &self,
-        metadata_id: &Uuid,
-        attributes: Value,
-    ) -> Result<(), Error> {
+    pub async fn set_attributes(&self, metadata_id: &Uuid, attributes: Value) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached("update metadata set attributes = $1, modified = now() where id = $2")
@@ -439,8 +437,7 @@ impl MetadataDataStore {
             if current_traits.contains(&content_type) {
                 continue;
             }
-            self.add_trait_txn(txn, metadata_id, &content_type)
-                .await?;
+            self.add_trait_txn(txn, metadata_id, &content_type).await?;
         }
         Ok(())
     }
@@ -500,6 +497,14 @@ impl MetadataDataStore {
             }
         }
 
+        if let Some(profiles) = &metadata.profiles {
+            for (index, profile) in profiles.iter().enumerate() {
+                let pid = Uuid::parse_str(&profile.profile_id)?;
+                self.add_profile_txn(txn, &id, &pid, &profile.relationship, index as i32)
+                    .await?
+            }
+        }
+
         self.ensure_content_type_traits(&id, &metadata.content_type, txn)
             .await?;
 
@@ -514,22 +519,6 @@ impl MetadataDataStore {
         source_id: &Option<Uuid>,
         source_identifier: &Option<String>,
     ) -> Result<(), Error> {
-        if let Some(trait_ids) = &metadata.trait_ids {
-            if !trait_ids.is_empty() {
-                return Err(Error::new(
-                    "cannot bulk set trait ids after metadata is created",
-                ));
-            }
-        }
-
-        if let Some(category_ids) = &metadata.category_ids {
-            if !category_ids.is_empty() {
-                return Err(Error::new(
-                    "cannot bulk set category ids after metadata is created",
-                ));
-            }
-        }
-
         let stmt = txn.prepare("update metadata set name = $1, labels = $2, attributes = $3, language_tag = $4, source_id = $5, source_identifier = $6, content_type = $7 where id = $8").await?;
         let labels = metadata.labels.clone().unwrap_or_default();
         txn.query(
@@ -545,11 +534,63 @@ impl MetadataDataStore {
                 &id,
             ],
         )
-            .await?;
+        .await?;
+
+        if let Some(trait_ids) = &metadata.trait_ids {
+            self.delete_traits_txn(txn, id).await?;
+            for trait_id in trait_ids {
+                self.add_trait_txn(txn, id, trait_id).await?
+            }
+        }
+
+        if let Some(category_ids) = &metadata.category_ids {
+            self.delete_categories_txn(txn, id).await?;
+            for category_id in category_ids {
+                let cid = Uuid::parse_str(category_id)?;
+                self.add_category_txn(txn, id, &cid).await?
+            }
+        }
+
+        if let Some(profiles) = &metadata.profiles {
+            self.delete_profiles_txn(txn, id).await?;
+            for (index, profile) in profiles.iter().enumerate() {
+                let pid = Uuid::parse_str(&profile.profile_id)?;
+                self.add_profile_txn(txn, id, &pid, &profile.relationship, index as i32)
+                    .await?
+            }
+        }
 
         self.ensure_content_type_traits(id, &metadata.content_type, txn)
             .await?;
 
+        Ok(())
+    }
+
+    async fn add_profile_txn<'a>(
+        &'a self,
+        txn: &'a Transaction<'a>,
+        id: &Uuid,
+        profile_id: &Uuid,
+        relationship: &String,
+        sort: i32,
+    ) -> Result<(), Error> {
+        let stmt = txn
+            .prepare("insert into metadata_profiles (metadata_id, profile_id, relationship, sort) values ($1, $2, $3, $4)")
+            .await?;
+        txn.execute(&stmt, &[id, profile_id, relationship, &sort])
+            .await?;
+        Ok(())
+    }
+
+    async fn delete_profiles_txn<'a>(
+        &'a self,
+        txn: &'a Transaction<'a>,
+        id: &Uuid,
+    ) -> Result<(), Error> {
+        let stmt = txn
+            .prepare("delete from metadata_profiles where metadata_id = $1")
+            .await?;
+        txn.execute(&stmt, &[id]).await?;
         Ok(())
     }
 
@@ -563,8 +604,7 @@ impl MetadataDataStore {
         Ok(())
     }
 
-    #[allow(dead_code)]
-    async fn delete_trait_txn<'a>(
+    async fn delete_traits_txn<'a>(
         &'a self,
         txn: &'a Transaction<'a>,
         id: &Uuid,
@@ -612,6 +652,18 @@ impl MetadataDataStore {
         Ok(())
     }
 
+    async fn delete_categories_txn<'a>(
+        &'a self,
+        txn: &'a Transaction<'a>,
+        id: &Uuid,
+    ) -> Result<(), Error> {
+        let stmt = txn
+            .prepare("delete from metadata_categories where metadata_id = $1")
+            .await?;
+        txn.execute(&stmt, &[id]).await?;
+        Ok(())
+    }
+
     pub async fn add_category(&self, id: &Uuid, category_id: &Uuid) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -624,11 +676,7 @@ impl MetadataDataStore {
         Ok(())
     }
 
-    pub async fn delete_category(
-        &self,
-        id: &Uuid,
-        category_id: &Uuid,
-    ) -> Result<(), Error> {
+    pub async fn delete_category(&self, id: &Uuid, category_id: &Uuid) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached(
@@ -664,10 +712,7 @@ impl MetadataDataStore {
         Ok(())
     }
 
-    pub async fn get_relationships(
-        &self,
-        id: &Uuid,
-    ) -> Result<Vec<MetadataRelationship>, Error> {
+    pub async fn get_relationships(&self, id: &Uuid) -> Result<Vec<MetadataRelationship>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare("select * from metadata_relationships where metadata1_id = $1")
@@ -778,7 +823,9 @@ impl MetadataDataStore {
             let permissions = if let Some(permissions) = &permissions {
                 permissions.clone()
             } else {
-                ctx.content.collection_permissions.get_txn(txn, &collection_id)
+                ctx.content
+                    .collection_permissions
+                    .get_txn(txn, &collection_id)
                     .await?
             };
             for permission in permissions.iter() {
@@ -787,17 +834,22 @@ impl MetadataDataStore {
                     group_id: permission.group_id,
                     action: permission.action,
                 };
-                ctx.content.metadata_permissions.add_metadata_permission_txn(txn, &metadata_permission)
+                ctx.content
+                    .metadata_permissions
+                    .add_metadata_permission_txn(txn, &metadata_permission)
                     .await?
             }
             if has_collection_id {
-                ctx.content.collections.add_child_metadata_txn(txn, &collection_id, &id, &metadata_child.attributes)
+                ctx.content
+                    .collections
+                    .add_child_metadata_txn(txn, &collection_id, &id, &metadata_child.attributes)
                     .await?;
             }
             if metadata.index.unwrap_or(true) {
                 search_documents.push(SearchDocumentInput {
                     metadata_id: Some(id.to_string()),
                     collection_id: None,
+                    profile_id: None,
                     content: "".to_owned(),
                 });
             }

@@ -42,9 +42,11 @@ create table slugs
     slug          varchar not null,
     metadata_id   uuid,
     collection_id uuid,
+    profile_id    uuid,
     primary key (slug),
     foreign key (metadata_id) references metadata (id) on delete cascade,
-    foreign key (collection_id) references collections (id) on delete cascade
+    foreign key (collection_id) references collections (id) on delete cascade,
+    foreign key (profile_id) references profiles (id) on delete cascade
 );
 
 create sequence duplicate_slug_seq;

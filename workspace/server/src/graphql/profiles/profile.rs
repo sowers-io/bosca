@@ -1,8 +1,8 @@
+use crate::context::BoscaContext;
+use crate::graphql::profiles::profile_attribute::ProfileAttributeObject;
 use crate::models::profiles::profile::Profile;
 use crate::models::profiles::profile_visibility::ProfileVisibility;
 use async_graphql::{Context, Error, Object};
-use crate::context::BoscaContext;
-use crate::graphql::profiles::profile_attribute::ProfileAttributeObject;
 
 pub struct ProfileObject {
     profile: Profile,
@@ -16,22 +16,59 @@ impl ProfileObject {
 
 #[Object(name = "Profile")]
 impl ProfileObject {
-    async fn id(&self) -> String {
-        self.profile.id.to_string()
+    async fn slug(&self, ctx: &Context<'_>) -> Result<Option<String>, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        Ok(
+            if self.profile.principal == ctx.principal.id
+                || self.profile.visibility == ProfileVisibility::Public
+            {
+                ctx.profile.get_slug(&self.profile.id).await?
+            } else {
+                None
+            },
+        )
     }
 
-    async fn name(&self) -> &String {
-        &self.profile.name
+    async fn name(&self, ctx: &Context<'_>) -> Result<Option<String>, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        // TODO: Filter things out based on who is looking at the profiles
+        Ok(
+            if self.profile.principal == ctx.principal.id
+                || self.profile.visibility == ProfileVisibility::Public
+            {
+                Some(self.profile.name.clone())
+            } else {
+                None
+            },
+        )
     }
 
     async fn visibility(&self) -> &ProfileVisibility {
         &self.profile.visibility
     }
 
-    async fn attributes(&self, ctx: &Context<'_>) -> async_graphql::Result<Vec<ProfileAttributeObject>, Error> {
+    async fn attributes(&self, ctx: &Context<'_>) -> Result<Vec<ProfileAttributeObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        let attributes = ctx.profile.get_profile_attributes(&self.profile.id).await?;
-        // TODO: Filter things out based on who is looking at the profiles
-        Ok(attributes.into_iter().filter(|a| a.visibility != ProfileVisibility::System ).map(ProfileAttributeObject::new).collect())
+        let attributes = ctx.profile.get_attributes(&self.profile.id).await?;
+        if self.profile.principal == ctx.principal.id {
+            Ok(attributes
+                .into_iter()
+                .filter(|a| a.visibility != ProfileVisibility::System)
+                .map(ProfileAttributeObject::new)
+                .collect())
+        } else {
+            // TODO: Filter things out based on who is looking at the profiles
+            Ok(attributes
+                .into_iter()
+                .filter(|a| a.visibility == ProfileVisibility::Public)
+                .map(ProfileAttributeObject::new)
+                .collect())
+        }
+    }
+}
+
+impl From<Profile> for ProfileObject {
+    fn from(profile: Profile) -> Self {
+        Self::new(profile)
     }
 }

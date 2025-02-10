@@ -10,72 +10,75 @@ drop type document_block_type;
 drop type document_metadata_attribute_type;
 
 create type document_block_type as enum ('text', 'richtext', 'video', 'audio', 'image', 'supplementary');
-create type document_metadata_attribute_type as enum ('string', 'int', 'float', 'date', 'datetime');
+create type document_attribute_type as enum ('string', 'int', 'float', 'date', 'datetime');
 
 create table document_templates
 (
-    id                        bigserial not null,
-    name                      varchar   not null,
-    description               varchar   not null,
-    allow_user_defined_blocks boolean   not null       default true,
-    created                   timestamp with time zone default now(),
-    modified                  timestamp with time zone default now(),
-    primary key (id)
+    metadata_id               uuid    not null,
+    version                   int     not null,
+    allow_user_defined_blocks boolean not null default true,
+    primary key (metadata_id, version),
+    foreign key (metadata_id) references metadata (id) on delete cascade
 );
 
 create table document_template_categories
 (
-    template_id bigint not null,
-    category_id uuid   not null,
-    primary key (template_id, category_id),
-    foreign key (template_id) references document_templates (id) on delete cascade,
+    metadata_id uuid not null,
+    version     int  not null,
+    category_id uuid not null,
+    primary key (metadata_id, version, category_id),
+    foreign key (metadata_id, version) references document_templates (metadata_id, version) on delete cascade,
     foreign key (category_id) references categories (id) on delete cascade
 );
 
-create table document_template_metadata_attributes
+create table document_template_attributes
 (
-    template_id bigint                           not null,
-    key         varchar                          not null,
-    name        varchar                          not null,
-    description varchar                          not null,
-    type        document_metadata_attribute_type not null,
-    primary key (template_id, key),
-    foreign key (template_id) references document_templates (id) on delete cascade
+    metadata_id uuid                    not null,
+    version     int                     not null,
+    key         varchar                 not null,
+    name        varchar                 not null,
+    description varchar                 not null,
+    type        document_attribute_type not null,
+    primary key (metadata_id, version, key),
+    foreign key (metadata_id, version) references document_templates (metadata_id, version) on delete cascade
 );
 
-create table document_template_metadata_attribute_workflow_ids
+create table document_template_attribute_workflow_ids
 (
-    template_id bigint  not null,
+    metadata_id uuid    not null,
+    version     int     not null,
     key         varchar not null,
     workflow_id varchar not null,
     auto_run    bool    not null default false,
-    primary key (template_id, key, workflow_id),
-    foreign key (template_id, key) references document_template_metadata_attributes (template_id, key) on delete cascade,
+    primary key (metadata_id, version, key, workflow_id),
+    foreign key (metadata_id, version, key) references document_template_attributes (metadata_id, version, key) on delete cascade,
     foreign key (workflow_id) references workflows (id)
 );
 
 create table document_template_blocks
 (
+    metadata_id uuid                not null,
+    version     int                 not null,
     id          bigserial           not null,
-    template_id bigint              not null,
     sort        int                 not null,
     name        varchar             not null,
     description varchar             not null,
     type        document_block_type not null,
-    primary key (template_id, id),
-    foreign key (template_id) references document_templates (id) on delete cascade
+    primary key (metadata_id, version, id),
+    foreign key (metadata_id, version) references document_templates (metadata_id, version) on delete cascade
 );
 
 create table documents
 (
     metadata_id               uuid    not null,
     version                   int     not null,
-    template_id               bigint,
+    template_metadata_id      uuid,
+    template_metadata_version int,
     title                     varchar not null,
     allow_user_defined_blocks boolean not null default true,
     primary key (metadata_id, version),
     foreign key (metadata_id) references metadata (id) on delete cascade,
-    foreign key (template_id) references document_templates (id)
+    foreign key (template_metadata_id, template_metadata_version) references document_templates (metadata_id, version)
 );
 
 create table document_blocks
@@ -84,13 +87,13 @@ create table document_blocks
     version     int                 not null,
     id          bigserial           not null,
     type        document_block_type not null,
-    sort        int,
-    content     jsonb,
+    sort        int                 not null,
+    content     jsonb               not null,
     primary key (metadata_id, version, id),
     foreign key (metadata_id, version) references documents (metadata_id, version) on delete cascade
 );
 
-create table document_block_metadata_references
+create table document_block_metadata
 (
     metadata_id           uuid   not null,
     version               int    not null,

@@ -1,8 +1,10 @@
 use async_graphql::*;
 use crate::graphql::content::collection::CollectionObject;
 use crate::graphql::content::metadata::MetadataObject;
+use crate::graphql::profiles::profile::ProfileObject;
 use crate::models::content::collection::Collection;
 use crate::models::content::metadata::Metadata;
+use crate::models::profiles::profile::Profile;
 
 #[derive(SimpleObject)]
 pub struct SearchResultObject {
@@ -13,6 +15,7 @@ pub struct SearchResultObject {
 pub struct SearchDocument {
     pub metadata: Option<Metadata>,
     pub collection: Option<Collection>,
+    pub profile: Option<Profile>,
     pub content: String
 }
 
@@ -29,6 +32,7 @@ pub struct SearchQuery {
 pub struct SearchDocumentInput {
     pub metadata_id: Option<String>,
     pub collection_id: Option<String>,
+    pub profile_id: Option<String>,
     pub content: String,
 }
 
@@ -43,6 +47,11 @@ impl SearchDocument {
     async fn collection(&self) -> Option<CollectionObject> {
         let collection = self.collection.as_ref()?;
         Some(CollectionObject::new(collection.clone()))
+    }
+
+    async fn profile(&self) -> Option<ProfileObject> {
+        let profile = self.profile.as_ref()?;
+        Some(ProfileObject::new(profile.clone()))
     }
 
     async fn content(&self) -> &String {

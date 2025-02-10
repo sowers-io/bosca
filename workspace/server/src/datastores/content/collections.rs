@@ -722,6 +722,7 @@ impl CollectionsDataStore {
                 search_documents.push(SearchDocumentInput {
                     collection_id: Some(id.to_string()),
                     metadata_id: None,
+                    profile_id: None,
                     content: "".to_owned(),
                 });
             }

@@ -16,7 +16,19 @@ impl ProfileDataStore {
         Self { pool }
     }
 
-    pub async fn get_profile_by_principal(
+    pub async fn get_by_id(
+        &self,
+        id: &Uuid,
+    ) -> async_graphql::Result<Option<Profile>, Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("select * from profiles where id = $1")
+            .await?;
+        let rows = connection.query(&stmt, &[id]).await?;
+        Ok(rows.first().map(|r| r.into()))
+    }
+
+    pub async fn get_by_principal(
         &self,
         id: &Uuid,
     ) -> async_graphql::Result<Option<Profile>, Error> {
@@ -28,7 +40,19 @@ impl ProfileDataStore {
         Ok(rows.first().map(|r| r.into()))
     }
 
-    pub async fn get_profile_attribute_types(
+    pub async fn get_slug(&self, id: &Uuid) -> Result<Option<String>, Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("select slug from slugs where profile_id = $1")
+            .await?;
+        let rows = connection.query(&stmt, &[id]).await?;
+        if rows.is_empty() {
+            return Ok(None)
+        }
+        Ok(Some(rows.first().unwrap().get("slug")))
+    }
+
+    pub async fn get_attribute_types(
         &self,
     ) -> async_graphql::Result<Vec<ProfileAttributeType>, Error> {
         let connection = self.pool.get().await?;
@@ -39,7 +63,7 @@ impl ProfileDataStore {
         Ok(rows.iter().map(|r| r.into()).collect())
     }
 
-    pub async fn add_profile(
+    pub async fn add(
         &self,
         principal: &Uuid,
         profile: &ProfileInput,
@@ -75,19 +99,19 @@ impl ProfileDataStore {
         Ok(id)
     }
 
-    pub async fn get_profile_attributes(
+    pub async fn get_attributes(
         &self,
         profile_id: &Uuid,
     ) -> async_graphql::Result<Vec<ProfileAttribute>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
-            .prepare_cached("select * from profile_attributes where profiles = $1")
+            .prepare_cached("select * from profile_attributes where profiles = $1 and (expired is null or expired > now()) order by priority asc, confidence desc")
             .await?;
         let rows = connection.query(&stmt, &[profile_id]).await?;
         Ok(rows.iter().map(|r| r.into()).collect())
     }
 
-    pub async fn edit_profile(
+    pub async fn edit(
         &self,
         principal: &Uuid,
         profile: &ProfileInput,

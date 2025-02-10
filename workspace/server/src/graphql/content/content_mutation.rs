@@ -37,6 +37,7 @@ impl ContentMutationObject {
                 search_documents.push(SearchDocumentInput {
                     collection_id: Some(item.id.to_string()),
                     metadata_id: None,
+                    profile_id: None,
                     content: "".to_owned(),
                 });
             }
@@ -58,6 +59,7 @@ impl ContentMutationObject {
                 search_documents.push(SearchDocumentInput {
                     collection_id: None,
                     metadata_id: Some(item.id.to_string()),
+                    profile_id: None,
                     content: "".to_owned(),
                 });
             }

@@ -17,7 +17,7 @@ impl ProfilesMutationObject {
             return Err(Error::new("not authorized"));
         }
         let principal_id = ctx.principal.id;
-        ctx.profile.edit_profile(&principal_id, &profile).await?;
-        Ok(ctx.profile.get_profile_by_principal(&principal_id).await?.map(ProfileObject::new))
+        ctx.profile.edit(&principal_id, &profile).await?;
+        Ok(ctx.profile.get_by_principal(&principal_id).await?.map(ProfileObject::new))
     }
 }

@@ -3,6 +3,7 @@ create table metadata_profiles
     metadata_id  uuid    not null,
     profile_id   uuid    not null,
     relationship varchar not null,
+    sort         int     not null,
     primary key (metadata_id, profile_id, relationship),
     foreign key (metadata_id) references metadata (id) on delete cascade,
     foreign key (profile_id) references profiles (id) on delete cascade
@@ -14,6 +15,7 @@ create table metadata_version_profiles
     version      int     not null,
     profile_id   uuid    not null,
     relationship varchar not null,
+    sort         int     not null,
     primary key (metadata_id, version, profile_id, relationship),
     foreign key (metadata_id, version) references metadata_versions (id, version) on delete cascade,
     foreign key (profile_id) references profiles (id)
@@ -45,8 +47,8 @@ begin
     from metadata_traits
     where metadata_id = new.id;
 
-    insert into metadata_version_profiles (metadata_id, version, profile_id, relationship)
-    select metadata_id, new.version, profile_id, relationship
+    insert into metadata_version_profiles (metadata_id, version, profile_id, relationship, sort)
+    select metadata_id, new.version, profile_id, relationship, sort
     from metadata_profiles
     where metadata_id = new.id;
 

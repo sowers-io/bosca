@@ -1,6 +1,12 @@
 use crate::context::BoscaContext;
 use crate::graphql::content::collection::CollectionObject;
+use crate::graphql::content::document::DocumentObject;
+use crate::graphql::content::document_template::DocumentTemplateObject;
+use crate::graphql::content::metadata_content::MetadataContentObject;
+use crate::graphql::content::metadata_profile::MetadataProfileObject;
 use crate::graphql::content::metadata_relationship::MetadataRelationshipObject;
+use crate::graphql::content::metadata_source::MetadataSourceObject;
+use crate::graphql::content::metadata_workflow::MetadataWorkflowObject;
 use crate::graphql::content::permission::PermissionObject;
 use crate::graphql::content::supplementary::MetadataSupplementaryObject;
 use crate::models::content::attributes_filter::AttributesFilterInput;
@@ -10,9 +16,6 @@ use async_graphql::{Context, Error, Object};
 use chrono::{DateTime, Utc};
 use serde_json::Value;
 use std::borrow::ToOwned;
-use crate::graphql::content::metadata_content::MetadataContentObject;
-use crate::graphql::content::metadata_source::MetadataSourceObject;
-use crate::graphql::content::metadata_workflow::MetadataWorkflowObject;
 
 pub struct MetadataObject {
     metadata: Metadata,
@@ -142,6 +145,44 @@ impl MetadataObject {
             .await?
             .into_iter()
             .map(Permission::into)
+            .collect())
+    }
+
+    async fn document(&self, ctx: &Context<'_>) -> Result<Option<DocumentObject>, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let document = ctx
+            .content
+            .documents
+            .get_document(&self.metadata.id, self.metadata.version)
+            .await?;
+        Ok(document
+            .map(|d| DocumentObject::new(self.metadata.id, self.metadata.version, d)))
+    }
+
+    async fn document_template(
+        &self,
+        ctx: &Context<'_>,
+    ) -> Result<Option<DocumentTemplateObject>, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let document = ctx
+            .content
+            .documents
+            .get_template(&self.metadata.id, self.metadata.version)
+            .await?;
+        Ok(document.map(|t| {
+            DocumentTemplateObject::new(self.metadata.id, self.metadata.version, t)
+        }))
+    }
+
+    async fn profiles(&self, ctx: &Context<'_>) -> Result<Vec<MetadataProfileObject>, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        Ok(ctx
+            .content
+            .metadata
+            .get_profiles(&self.metadata.id)
+            .await?
+            .into_iter()
+            .map(MetadataProfileObject::new)
             .collect())
     }
 

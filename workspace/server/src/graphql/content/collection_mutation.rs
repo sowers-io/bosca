@@ -78,6 +78,7 @@ impl CollectionMutationObject {
             let documents = vec![SearchDocumentInput {
                 metadata_id: None,
                 collection_id: Some(collection_id.to_string()),
+                profile_id: None,
                 content: "".to_owned(),
             }];
             if let Some(storage_system) = storage_system {
