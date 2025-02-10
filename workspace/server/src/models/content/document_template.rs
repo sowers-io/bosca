@@ -1,7 +1,8 @@
+use crate::models::content::document_template_block::DocumentTemplateBlockInput;
+use crate::models::content::document_template_metadata_attributes::DocumentTemplateMetadataAttributeInput;
 use async_graphql::InputObject;
 use chrono::{DateTime, Utc};
 use tokio_postgres::Row;
-use crate::models::content::document_template_block::DocumentTemplateBlockInput;
 
 #[derive(Clone)]
 pub struct DocumentTemplate {
@@ -19,6 +20,7 @@ pub struct DocumentTemplateInput {
     pub description: String,
     pub category_ids: Vec<String>,
     pub allow_user_defined_blocks: bool,
+    pub attributes: Vec<DocumentTemplateMetadataAttributeInput>,
     pub blocks: Vec<DocumentTemplateBlockInput>,
     pub created: DateTime<Utc>,
     pub modified: DateTime<Utc>,
