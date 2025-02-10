@@ -1,6 +1,7 @@
 use async_graphql::InputObject;
 use chrono::{DateTime, Utc};
 use tokio_postgres::Row;
+use crate::models::content::document_template_block::DocumentTemplateBlockInput;
 
 #[derive(Clone)]
 pub struct DocumentTemplate {
@@ -16,7 +17,9 @@ pub struct DocumentTemplate {
 pub struct DocumentTemplateInput {
     pub name: String,
     pub description: String,
+    pub category_ids: Vec<String>,
     pub allow_user_defined_blocks: bool,
+    pub blocks: Vec<DocumentTemplateBlockInput>,
     pub created: DateTime<Utc>,
     pub modified: DateTime<Utc>,
 }
@@ -26,7 +29,7 @@ impl From<&Row> for DocumentTemplate {
         Self {
             id: row.get("id"),
             name: row.get("name"),
-            description: row.get("system_attributes"),
+            description: row.get("description"),
             allow_user_defined_blocks: row.get("allow_user_defined_blocks"),
             created: row.get("created"),
             modified: row.get("modified"),
