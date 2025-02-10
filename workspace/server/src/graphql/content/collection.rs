@@ -39,7 +39,7 @@ impl CollectionObject {
 
     async fn slug(&self, ctx: &Context<'_>) -> Result<String, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        ctx.content.get_collection_slug(&self.collection.id).await
+        ctx.content.collections.get_slug(&self.collection.id).await
     }
 
     #[graphql(name = "type")]
@@ -57,7 +57,7 @@ impl CollectionObject {
 
     async fn trait_ids(&self, ctx: &Context<'_>) -> Result<Vec<String>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        ctx.content.get_collection_trait_ids(&self.collection.id).await
+        ctx.content.collections.get_trait_ids(&self.collection.id).await
     }
 
     async fn labels(&self) -> &Vec<String> {
@@ -95,7 +95,8 @@ impl CollectionObject {
         let ctx = ctx.data::<BoscaContext>()?;
         ctx.check_collection_action(&self.collection.id, PermissionAction::List).await?;
         Ok(ctx.content
-            .get_collection_parent_collections(&self.collection.id, offset, limit)
+            .collections
+            .get_parents(&self.collection.id, offset, limit)
             .await?
             .into_iter()
             .map(|c| c.into())
@@ -110,7 +111,7 @@ impl CollectionObject {
     ) -> Result<Vec<CollectionItem>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         ctx.check_collection_action(&self.collection.id, PermissionAction::List).await?;
-        let items = ctx.content.get_collection_children(&self.collection, offset, limit).await?;
+        let items = ctx.content.collections.get_children(&self.collection, offset, limit).await?;
         let mut content = Vec::new();
         for item in items {
             if let Some(id) = &item.collection_id {
@@ -137,7 +138,8 @@ impl CollectionObject {
         let ctx = ctx.data::<BoscaContext>()?;
         ctx.check_collection_action(&self.collection.id, PermissionAction::List).await?;
         Ok(ctx.content
-            .get_collection_child_collections(&self.collection, offset, limit)
+            .collections
+            .get_child_collections(&self.collection, offset, limit)
             .await?
             .into_iter()
             .map(CollectionObject::new)
@@ -153,7 +155,8 @@ impl CollectionObject {
         let ctx = ctx.data::<BoscaContext>()?;
         ctx.check_collection_action(&self.collection.id, PermissionAction::List).await?;
         Ok(ctx.content
-            .get_collection_child_metadata(&self.collection, offset, limit)
+            .collections
+            .get_child_metadata(&self.collection, offset, limit)
             .await?
             .into_iter()
             .map(MetadataObject::new)
@@ -180,7 +183,8 @@ impl CollectionObject {
     async fn permissions(&self, ctx: &Context<'_>) -> Result<Vec<PermissionObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         Ok(ctx.content
-            .get_collection_permissions(&self.collection.id)
+            .collection_permissions
+            .get(&self.collection.id)
             .await?
             .into_iter()
             .map(|p| p.into())
@@ -204,7 +208,7 @@ impl CollectionWorkflowObject<'_> {
 
     async fn plans(&self, ctx: &Context<'_>) -> Result<Vec<WorkflowExecutionPlanObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        let plans_ids = ctx.content.get_collection_plans(&self.collection.id).await?;
+        let plans_ids = ctx.content.collection_workflows.get_plans(&self.collection.id).await?;
         let mut plans = Vec::<WorkflowExecutionPlanObject>::new();
         for (plan_id, queue) in plans_ids {
             let id = WorkflowExecutionId {

@@ -34,9 +34,9 @@ pub async fn begin_transition(ctx: &BoscaContext, request: &BeginTransitionInput
             verify_transition_exists(ctx, &metadata.workflow_state_id, &request.state_id).await?;
             transition(ctx, TransitionType::Exit, &metadata, &request.state_id, None, Some(false)).await?;
             transition(ctx, TransitionType::Enter, &metadata, &request.state_id, None, Some(false)).await?;
-            ctx.content.set_metadata_workflow_state(&ctx.principal, &metadata, &request.state_id, "User Request", true, false).await?;
+            ctx.content.metadata_workflows.set_metadata_workflow_state(&ctx.principal, &metadata, &request.state_id, "User Request", true, false).await?;
             if transition(ctx, TransitionType::Default, &metadata, &request.state_id, None, request.wait_for_completion).await?.is_none() {
-                ctx.content.set_metadata_workflow_state(&ctx.principal, &metadata, &request.state_id, "User Request", true, true).await?;
+                ctx.content.metadata_workflows.set_metadata_workflow_state(&ctx.principal, &metadata, &request.state_id, "User Request", true, true).await?;
             }
         } else {
             return Err(Error::new("a version is required"));
@@ -50,9 +50,9 @@ pub async fn begin_transition(ctx: &BoscaContext, request: &BeginTransitionInput
         verify_transition_exists(ctx, &collection.workflow_state_id, &request.state_id).await?;
         transition(ctx, TransitionType::Exit, &collection, &request.state_id, configurations, Some(false)).await?;
         transition(ctx, TransitionType::Enter, &collection, &request.state_id, configurations, Some(false)).await?;
-        ctx.content.set_collection_workflow_state(&ctx.principal, &collection, &request.state_id, "User Request", true, false).await?;
+        ctx.content.collection_workflows.set_state(&ctx.principal, &collection, &request.state_id, "User Request", true, false).await?;
         if transition(ctx, TransitionType::Default, &collection, &request.state_id, configurations, request.wait_for_completion).await?.is_none() {
-            ctx.content.set_collection_workflow_state(&ctx.principal, &collection, &request.state_id, "User Request", true, true).await?;
+            ctx.content.collection_workflows.set_state(&ctx.principal, &collection, &request.state_id, "User Request", true, true).await?;
         }
     } else {
         return Err(Error::new("you must provide either a collection_id or a metadata_id"));

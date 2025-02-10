@@ -12,18 +12,18 @@ pub async fn delete_collection(ctx: &BoscaContext, collection_id: &Uuid, recursi
     }
     if recursive.unwrap_or(false) {
         loop {
-            let metadatas = ctx.content.get_collection_child_metadata(&collection, 0, 100).await?;
+            let metadatas = ctx.content.collections.get_child_metadata(&collection, 0, 100).await?;
             if metadatas.is_empty() { break }
             for item in metadatas {
-                ctx.content.remove_child_metadata(collection_id, &item.id).await?;
-                let collection_ids = ctx.content.get_metadata_parent_collection_ids(&item.id, 0, 1).await?;
+                ctx.content.collections.remove_child_metadata(collection_id, &item.id).await?;
+                let collection_ids = ctx.content.metadata.get_parent_ids(&item.id, 0, 1).await?;
                 if collection_ids.is_empty() {
                     delete_metadata(ctx, &item.id).await?;
                 }
             }
         }
         loop {
-            let collections = ctx.content.get_collection_child_collections(&collection, 0, 100).await?;
+            let collections = ctx.content.collections.get_child_collections(&collection, 0, 100).await?;
             if collections.is_empty() { break }
             for item in collections {
                 Box::pin(delete_collection(ctx, &item.id, recursive)).await?;
@@ -35,7 +35,7 @@ pub async fn delete_collection(ctx: &BoscaContext, collection_id: &Uuid, recursi
         .await? {
         storage_system_collection_delete(&collection, &storage_system, &ctx.search).await?;
     }
-    ctx.content.delete_collection(collection_id).await?;
+    ctx.content.collections.delete(collection_id).await?;
     Ok(())
 }
 
@@ -48,7 +48,7 @@ pub async fn delete_metadata(ctx: &BoscaContext, id: &Uuid) -> Result<(), Error>
         &storage_systems,
         &ctx.search
     ).await?;
-    let supplementaries = ctx.content.get_metadata_supplementaries(id).await?;
+    let supplementaries = ctx.content.metadata.get_supplementaries(id).await?;
     for supplementary in supplementaries {
         let path = ctx.storage
             .get_metadata_path(&metadata, Some(supplementary.key.clone()))
@@ -57,6 +57,6 @@ pub async fn delete_metadata(ctx: &BoscaContext, id: &Uuid) -> Result<(), Error>
     }
     // TODO: delete versions
     // TODO: delete search documents
-    ctx.content.delete_metadata(id).await?;
+    ctx.content.metadata.delete(id).await?;
     Ok(())
 }

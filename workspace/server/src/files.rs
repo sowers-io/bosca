@@ -47,7 +47,8 @@ async fn get_supplementary(
         None
     } else {
         ctx.content
-            .get_metadata_supplementary(metadata_id, params.supplementary_id.as_ref().unwrap())
+            .metadata
+            .get_supplementary(metadata_id, params.supplementary_id.as_ref().unwrap())
             .await?
     })
 }
@@ -68,7 +69,8 @@ pub async fn download(
     let metadata = if ctx.security.verify_signed_url(&url) {
         let metadata = ctx
             .content
-            .get_metadata(&id)
+            .metadata
+            .get(&id)
             .await
             .map_err(|_| (StatusCode::FORBIDDEN, "Forbidden".to_owned()))?;
         if metadata.is_none() {
@@ -203,7 +205,8 @@ pub async fn upload(
             let content_type = field.content_type().map(|s| s.to_owned());
             let file_name = field.file_name().map(|s| s.to_owned());
             ctx.content
-                .set_metadata_uploaded(&id, &file_name, &content_type, len)
+                .metadata
+                .set_uploaded(&id, &file_name, &content_type, len)
                 .await
                 .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Server Error".to_owned()))?;
             if params.ready.is_some() && params.ready.unwrap() {
@@ -218,7 +221,8 @@ pub async fn upload(
             let key = supplementary.unwrap();
             let content_type = field.content_type().unwrap_or("");
             ctx.content
-                .set_metadata_supplementary_uploaded(&id, &key.key, content_type, len)
+                .metadata
+                .set_supplementary_uploaded(&id, &key.key, content_type, len)
                 .await
                 .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Server Error".to_owned()))?;
         }

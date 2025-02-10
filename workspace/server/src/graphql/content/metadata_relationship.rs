@@ -21,7 +21,7 @@ impl MetadataRelationshipObject {
     }
     async fn metadata(&self, ctx: &Context<'_>) -> Result<MetadataObject, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        let metadata = ctx.content.get_metadata(&self.relationship.id2).await?;
+        let metadata = ctx.content.metadata.get(&self.relationship.id2).await?;
         if metadata.is_none() {
             return Err(Error::new("missing metadata"));
         }

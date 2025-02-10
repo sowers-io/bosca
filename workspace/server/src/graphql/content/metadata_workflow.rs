@@ -24,7 +24,7 @@ impl MetadataWorkflowObject {
 
     async fn plans(&self, ctx: &Context<'_>) -> Result<Vec<WorkflowExecutionPlanObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        let plans_ids = ctx.content.get_metadata_plans(&self.metadata.id).await?;
+        let plans_ids = ctx.content.metadata_workflows.get_metadata_plans(&self.metadata.id).await?;
         let mut plans = Vec::<WorkflowExecutionPlanObject>::new();
         for (plan_id, queue) in plans_ids {
             let id = WorkflowExecutionId {

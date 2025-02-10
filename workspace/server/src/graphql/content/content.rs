@@ -58,7 +58,8 @@ impl ContentObject {
         let ctx = ctx.data::<BoscaContext>()?;
         Ok(ctx
             .content
-            .find_collections(&attributes, limit, offset)
+            .collections
+            .find(&attributes, limit, offset)
             .await?
             .into_iter()
             .map(CollectionObject::new)
@@ -93,7 +94,8 @@ impl ContentObject {
         let ctx = ctx.data::<BoscaContext>()?;
         Ok(ctx
             .content
-            .find_metadata(&attributes, &content_types, limit, offset)
+            .metadata
+            .find(&attributes, &content_types, limit, offset)
             .await?
             .into_iter()
             .map(MetadataObject::new)
@@ -127,7 +129,8 @@ impl ContentObject {
             .await?;
         let supplementary = ctx
             .content
-            .get_metadata_supplementary(&metadata.id, &key)
+            .metadata
+            .get_supplementary(&metadata.id, &key)
             .await?;
         if let Some(supplementary) = supplementary {
             Ok(Some(MetadataSupplementaryObject::new(

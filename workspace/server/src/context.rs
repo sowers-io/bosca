@@ -3,7 +3,7 @@ use async_graphql::Error;
 use deadpool_postgres::Transaction;
 use meilisearch_sdk::client::Client;
 use uuid::Uuid;
-use crate::datastores::content::ContentDataStore;
+use crate::datastores::content::content::ContentDataStore;
 use crate::datastores::persisted_queries::PersistedQueriesDataStore;
 use crate::datastores::security::SecurityDataStore;
 use crate::datastores::workflow::WorkflowDataStore;
@@ -31,9 +31,10 @@ pub struct BoscaContext {
 
 impl BoscaContext {
     pub async fn check_metadata_action_principal(&self, principal: &Principal, id: &Uuid, action: PermissionAction) -> Result<Metadata, Error> {
-        match self.content.get_metadata(id).await? {
+        match self.content.metadata.get(id).await? {
             Some(metadata) => {
                 if !self.content
+                    .metadata_permissions
                     .has_metadata_permission(&metadata, principal, action)
                     .await?
                 {
@@ -52,9 +53,10 @@ impl BoscaContext {
     }
 
     pub async fn check_metadata_action(&self, id: &Uuid, action: PermissionAction) -> Result<Metadata, Error> {
-        match self.content.get_metadata(id).await? {
+        match self.content.metadata.get(id).await? {
             Some(metadata) => {
                 if !self.content
+                    .metadata_permissions
                     .has_metadata_permission(&metadata, &self.principal, action)
                     .await?
                 {
@@ -73,9 +75,10 @@ impl BoscaContext {
     }
 
     pub async fn check_metadata_version_action(&self, id: &Uuid, version: i32, action: PermissionAction) -> Result<Metadata, Error> {
-        match self.content.get_metadata_by_version(id, version).await? {
+        match self.content.metadata.get_by_version(id, version).await? {
             Some(metadata) => {
                 if !self.content
+                    .metadata_permissions
                     .has_metadata_permission(&metadata, &self.principal, action)
                     .await?
                 {
@@ -94,10 +97,11 @@ impl BoscaContext {
     }
 
     pub async fn check_collection_action_txn(&self, txn: &Transaction<'_>, id: &Uuid, action: PermissionAction) -> Result<Collection, Error> {
-        match self.content.get_collection(id).await? {
+        match self.content.collections.get(id).await? {
             Some(collection) => {
                 if !self.content
-                    .has_collection_permission_txn(txn, &collection, &self.principal, action)
+                    .collection_permissions
+                    .has_txn(txn, &collection, &self.principal, action)
                     .await?
                 {
                     let admin = self.security.get_administrators_group().await?;
@@ -115,10 +119,10 @@ impl BoscaContext {
     }
 
     pub async fn check_collection_action(&self, id: &Uuid, action: PermissionAction) -> Result<Collection, Error> {
-        match self.content.get_collection(id).await? {
+        match self.content.collections.get(id).await? {
             Some(collection) => {
-                if !self.content
-                    .has_collection_permission(&collection, &self.principal, action)
+                if !self.content.collection_permissions
+                    .has(&collection, &self.principal, action)
                     .await?
                 {
                     let admin = self.security.get_administrators_group().await?;

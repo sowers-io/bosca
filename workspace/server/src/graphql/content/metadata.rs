@@ -40,12 +40,12 @@ impl MetadataObject {
 
     async fn trait_ids(&self, ctx: &Context<'_>) -> Result<Vec<String>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        ctx.content.get_metadata_trait_ids(&self.metadata.id).await
+        ctx.content.metadata.get_trait_ids(&self.metadata.id).await
     }
 
     async fn slug(&self, ctx: &Context<'_>) -> Result<String, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        ctx.content.get_metadata_slug(&self.metadata.id).await
+        ctx.content.metadata.get_slug(&self.metadata.id).await
     }
 
     #[graphql(name = "type")]
@@ -137,6 +137,7 @@ impl MetadataObject {
         let ctx = ctx.data::<BoscaContext>()?;
         Ok(ctx
             .content
+            .metadata_permissions
             .get_metadata_permissions(&self.metadata.id)
             .await?
             .into_iter()
@@ -151,7 +152,8 @@ impl MetadataObject {
         let ctx = ctx.data::<BoscaContext>()?;
         Ok(ctx
             .content
-            .get_metadata_relationships(&self.metadata.id)
+            .metadata
+            .get_relationships(&self.metadata.id)
             .await?
             .into_iter()
             .map(|s| s.into())
@@ -167,7 +169,8 @@ impl MetadataObject {
         if key.is_some() {
             return Ok(ctx
                 .content
-                .get_metadata_supplementaries(&self.metadata.id)
+                .metadata
+                .get_supplementaries(&self.metadata.id)
                 .await?
                 .into_iter()
                 .filter(|s| s.key == key.clone().unwrap())
@@ -176,7 +179,8 @@ impl MetadataObject {
         }
         Ok(ctx
             .content
-            .get_metadata_supplementaries(&self.metadata.id)
+            .metadata
+            .get_supplementaries(&self.metadata.id)
             .await?
             .into_iter()
             .map(|s| MetadataSupplementaryObject::new(self.metadata.clone(), s))
@@ -192,7 +196,8 @@ impl MetadataObject {
         let ctx = ctx.data::<BoscaContext>()?;
         let collections = ctx
             .content
-            .get_metadata_parent_collection_ids(&self.metadata.id, offset, limit)
+            .metadata
+            .get_parent_ids(&self.metadata.id, offset, limit)
             .await?;
         let mut listable = Vec::new();
         for id in collections {

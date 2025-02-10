@@ -1,4 +1,3 @@
-use crate::datastores::content::ContentDataStore;
 use crate::datastores::profile::ProfileDataStore;
 use crate::datastores::security::SecurityDataStore;
 use crate::models::content::collection::{CollectionInput, CollectionType};
@@ -8,7 +7,9 @@ use crate::models::security::permission::{Permission, PermissionAction};
 use crate::models::security::principal::Principal;
 use async_graphql::Error;
 use crate::datastores::workflow::WorkflowDataStore;
+use crate::datastores::content::content::ContentDataStore;
 
+#[allow(clippy::too_many_arguments)]
 pub async fn add_password_principal(
     security: &SecurityDataStore,
     workflow: &WorkflowDataStore,
@@ -33,14 +34,15 @@ pub async fn add_password_principal(
 
     let collection_name = format!("Collection for {}", identifier);
     let collection_id = content
-        .add_collection(&CollectionInput {
+        .collections
+        .add(&CollectionInput {
             name: collection_name,
             collection_type: Some(CollectionType::System),
             trait_ids: Some(vec!["profile".to_string()]),
             ..Default::default()
         })
         .await?;
-    let collection = content.get_collection(&collection_id).await?.unwrap();
+    let collection = content.collections.get(&collection_id).await?.unwrap();
 
     let group_name = format!("principal.{}", principal_id);
     let description = format!("Group for {}", identifier);
@@ -58,9 +60,9 @@ pub async fn add_password_principal(
         group_id: group.id,
         action: PermissionAction::View,
     };
-    content.add_collection_permission(&permission).await?;
+    content.collection_permissions.add(&permission).await?;
     if set_ready {
-        content.set_collection_ready_and_enqueue(workflow, &principal, &collection, None).await?;
+        content.collection_workflows.set_ready_and_enqueue(workflow, &principal, &collection, None).await?;
     }
 
     Ok(principal)

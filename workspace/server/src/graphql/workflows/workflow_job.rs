@@ -55,7 +55,8 @@ impl WorkflowJobObject {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::parse_str(self.job.collection_id.clone().unwrap().as_str())?;
         Ok(ctx.content
-            .get_collection(&id)
+            .collections
+            .get(&id)
             .await?
             .map(CollectionObject::from))
     }
@@ -67,7 +68,8 @@ impl WorkflowJobObject {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::parse_str(self.job.metadata_id.clone().unwrap().as_str())?;
         Ok(ctx.content
-            .get_metadata(&id)
+            .metadata
+            .get(&id)
             .await?
             .map(MetadataObject::from))
     }

@@ -28,7 +28,7 @@ impl ContentMutationObject {
         let storage_system = ctx.workflow.get_default_search_storage_system().await?;
         let mut search_documents = Vec::new();
         loop {
-            let items = ctx.content.get_collections(offset, LIMIT).await?;
+            let items = ctx.content.collections.get_all(offset, LIMIT).await?;
             if items.is_empty() {
                 break;
             }
@@ -49,7 +49,7 @@ impl ContentMutationObject {
         }
         offset = 0;
         loop {
-            let items = ctx.content.get_metadatas(offset, LIMIT).await?;
+            let items = ctx.content.metadata.get_all(offset, LIMIT).await?;
             if items.is_empty() {
                 break;
             }

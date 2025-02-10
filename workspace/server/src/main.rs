@@ -52,7 +52,6 @@ use tokio::net::TcpListener;
 use uuid::Uuid;
 
 use crate::context::BoscaContext;
-use crate::datastores::content::ContentDataStore;
 use crate::datastores::security::SecurityDataStore;
 use crate::datastores::workflow::WorkflowDataStore;
 use crate::util::RUNNING_BACKGROUND;
@@ -84,6 +83,7 @@ use crate::schema::BoscaSchema;
 use crate::util::profile::add_password_principal;
 use bosca_database::build_pool;
 use tokio::time::sleep;
+use crate::datastores::content::content::ContentDataStore;
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
@@ -243,7 +243,8 @@ async fn initialize_content(ctx: &BoscaContext) {
     let root_collection_id = Uuid::parse_str("00000000-0000-0000-0000-000000000000").unwrap();
     match ctx
         .content
-        .get_collection(&root_collection_id)
+        .collections
+        .get(&root_collection_id)
         .await
         .unwrap()
     {
@@ -289,7 +290,7 @@ async fn initialize_collection(
         },
         ..Default::default()
     };
-    let collection_id = ctx.content.add_collection(&input).await.unwrap();
+    let collection_id = ctx.content.collections.add(&input).await.unwrap();
     let group = ctx.security.get_administrators_group().await.unwrap();
     let permission = Permission {
         entity_id: collection_id,
@@ -297,7 +298,8 @@ async fn initialize_collection(
         action: PermissionAction::Manage,
     };
     ctx.content
-        .add_collection_permission(&permission)
+        .collection_permissions
+        .add(&permission)
         .await
         .unwrap();
     let principal = ctx
@@ -307,16 +309,19 @@ async fn initialize_collection(
         .unwrap();
     let collection = ctx
         .content
-        .get_collection(&collection_id)
+        .collections
+        .get(&collection_id)
         .await
         .unwrap()
         .unwrap();
     ctx.content
-        .set_collection_ready(&collection_id)
+        .collection_workflows
+        .set_ready(&collection_id)
         .await
         .unwrap();
     ctx.content
-        .set_collection_workflow_state(
+        .collection_workflows
+        .set_state(
             &principal,
             &collection,
             "published",

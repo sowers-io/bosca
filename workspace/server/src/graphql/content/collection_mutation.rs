@@ -26,8 +26,8 @@ impl CollectionMutationObject {
         }
         let ctx = ctx.data::<BoscaContext>()?;
         let mut collections = vec![CollectionChildInput { collection, attributes: collection_item_attributes }];
-        let collection_ids = ctx.content.add_collections(ctx, &mut collections).await?;
-        let collection = ctx.content.get_collection(collection_ids.first().unwrap()).await?;
+        let collection_ids = ctx.content.collections.add_all(ctx, &mut collections).await?;
+        let collection = ctx.content.collections.get(collection_ids.first().unwrap()).await?;
         Ok(collection.unwrap().into())
     }
 
@@ -44,10 +44,10 @@ impl CollectionMutationObject {
         }
         let ctx = ctx.data::<BoscaContext>()?;
         let mut collections = collections;
-        let collection_ids = ctx.content.add_collections(ctx, &mut collections).await?;
+        let collection_ids = ctx.content.collections.add_all(ctx, &mut collections).await?;
         let mut collections = Vec::new();
         for id in collection_ids {
-            let collection = ctx.content.get_collection(&id).await?.unwrap();
+            let collection = ctx.content.collections.get(&id).await?.unwrap();
             collections.push(collection.into());
         }
         Ok(collections)
@@ -70,7 +70,7 @@ impl CollectionMutationObject {
         let ctx = ctx.data::<BoscaContext>()?;
         let collection_id = Uuid::parse_str(id.as_str())?;
         ctx.check_collection_action(&collection_id, PermissionAction::Edit).await?;
-        ctx.content.edit_collection(&collection_id, &collection).await?;
+        ctx.content.collections.edit(&collection_id, &collection).await?;
         if collection.index.unwrap_or(true) {
             let storage_system = ctx.workflow
                 .get_default_search_storage_system()
@@ -86,7 +86,7 @@ impl CollectionMutationObject {
                 error!("failed to index, default search storage system not configured");
             }
         }
-        match ctx.content.get_collection(&collection_id).await? {
+        match ctx.content.collections.get(&collection_id).await? {
             Some(collection) => Ok(collection.into()),
             None => Err(Error::new("Error creating collection")),
         }
@@ -113,7 +113,7 @@ impl CollectionMutationObject {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::parse_str(id.as_str())?;
         let mut collection = ctx.check_collection_action(&id, PermissionAction::Manage).await?;
-        ctx.content.set_collection_public(&id, public).await?;
+        ctx.content.collections.set_public(&id, public).await?;
         collection.public = public;
         Ok(collection.into())
     }
@@ -127,7 +127,7 @@ impl CollectionMutationObject {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::parse_str(id.as_str())?;
         let mut collection = ctx.check_collection_action(&id, PermissionAction::Manage).await?;
-        ctx.content.set_collection_public_list(&id, public).await?;
+        ctx.content.collections.set_public_list(&id, public).await?;
         collection.public_list = public;
         Ok(collection.into())
     }
@@ -140,7 +140,7 @@ impl CollectionMutationObject {
         let ctx = ctx.data::<BoscaContext>()?;
         let permission: Permission = permission.into();
         ctx.check_collection_action(&permission.entity_id, PermissionAction::Manage).await?;
-        ctx.content.add_collection_permission(&permission).await?;
+        ctx.content.collection_permissions.add(&permission).await?;
         Ok(permission.into())
     }
 
@@ -152,7 +152,7 @@ impl CollectionMutationObject {
         let ctx = ctx.data::<BoscaContext>()?;
         let permission: Permission = permission.into();
         ctx.check_collection_action(&permission.entity_id, PermissionAction::Manage).await?;
-        ctx.content.delete_collection_permission(&permission).await?;
+        ctx.content.collection_permissions.delete(&permission).await?;
         Ok(permission.into())
     }
 
@@ -169,7 +169,7 @@ impl CollectionMutationObject {
         let collection = ctx.check_collection_action(&id, PermissionAction::Manage).await?;
         let child_collection_id = child_collection_id.map(|c| Uuid::parse_str(c.as_str()).unwrap());
         let child_metadata_id = child_metadata_id.map(|c| Uuid::parse_str(c.as_str()).unwrap());
-        ctx.content.set_child_item_attributes(&id, child_collection_id, child_metadata_id, attributes).await?;
+        ctx.content.collections.set_child_item_attributes(&id, child_collection_id, child_metadata_id, attributes).await?;
         Ok(collection.into())
     }
 
@@ -184,7 +184,7 @@ impl CollectionMutationObject {
         let id = Uuid::parse_str(id.as_str())?;
         let collection_id = Uuid::parse_str(collection_id.as_str())?;
         let collection = ctx.check_collection_action(&collection_id, PermissionAction::Edit).await?;
-        ctx.content.add_child_collection(&id, &collection_id, &attributes).await?;
+        ctx.content.collections.add_child_collection(&id, &collection_id, &attributes).await?;
         Ok(collection.into())
     }
 
@@ -198,7 +198,7 @@ impl CollectionMutationObject {
         let id = Uuid::parse_str(id.as_str())?;
         let collection_id = Uuid::parse_str(collection_id.as_str())?;
         let collection = ctx.check_collection_action(&collection_id, PermissionAction::Edit).await?;
-        ctx.content.remove_child_collection(&id, &collection_id).await?;
+        ctx.content.collections.remove_child_collection(&id, &collection_id).await?;
         Ok(collection.into())
     }
 
@@ -213,7 +213,7 @@ impl CollectionMutationObject {
         let id = Uuid::parse_str(id.as_str())?;
         let metadata_id = Uuid::parse_str(metadata_id.as_str())?;
         let collection = ctx.check_collection_action(&id, PermissionAction::Edit).await?;
-        ctx.content.add_child_metadata(&id, &metadata_id, &attributes).await?;
+        ctx.content.collections.add_child_metadata(&id, &metadata_id, &attributes).await?;
         Ok(collection.into())
     }
 
@@ -227,7 +227,7 @@ impl CollectionMutationObject {
         let id = Uuid::parse_str(id.as_str())?;
         let metadata_id = Uuid::parse_str(metadata_id.as_str())?;
         let collection = ctx.check_collection_action(&id, PermissionAction::Edit).await?;
-        ctx.content.remove_child_metadata(&id, &metadata_id).await?;
+        ctx.content.collections.remove_child_metadata(&id, &metadata_id).await?;
         Ok(collection.into())
     }
 
@@ -239,8 +239,8 @@ impl CollectionMutationObject {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::parse_str(state.collection_id.as_str())?;
         ctx.check_has_service_account().await?;
-        if let Some(collection) = ctx.content.get_collection(&id).await? {
-            ctx.content.set_collection_workflow_state(
+        if let Some(collection) = ctx.content.collections.get(&id).await? {
+            ctx.content.collection_workflows.set_state(
                 &ctx.principal,
                 &collection,
                 &state.state_id,
@@ -262,13 +262,14 @@ impl CollectionMutationObject {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::parse_str(state.collection_id.as_str())?;
         ctx.check_has_service_account().await?;
-        if let Some(collection) = ctx.content.get_collection(&id).await? {
+        if let Some(collection) = ctx.content.collections.get(&id).await? {
             let mut state_id = collection.workflow_state_id.clone();
             if collection.workflow_state_pending_id.is_some() {
                 state_id = collection.workflow_state_pending_id.clone().unwrap();
             }
             ctx.content
-                .set_collection_workflow_state(&ctx.principal, &collection, &state_id, &state.status, true, true)
+                .collection_workflows
+                .set_state(&ctx.principal, &collection, &state_id, &state.status, true, true)
                 .await?;
             Ok(true)
         } else {
@@ -285,7 +286,7 @@ impl CollectionMutationObject {
         let ctx = ctx.data::<BoscaContext>()?;
         let collection_id = Uuid::parse_str(id.as_str())?;
         ctx.check_collection_action(&collection_id, PermissionAction::Manage).await?;
-        ctx.content.set_collection_attributes(&collection_id, attributes).await?;
+        ctx.content.collections.set_attributes(&collection_id, attributes).await?;
         Ok(true)
     }
 
@@ -298,7 +299,7 @@ impl CollectionMutationObject {
         let ctx = ctx.data::<BoscaContext>()?;
         let collection_id = Uuid::parse_str(id.as_str())?;
         ctx.check_collection_action(&collection_id, PermissionAction::Manage).await?;
-        ctx.content.set_collection_ordering(&collection_id, ordering).await?;
+        ctx.content.collections.set_ordering(&collection_id, ordering).await?;
         Ok(true)
     }
 
@@ -309,7 +310,7 @@ impl CollectionMutationObject {
         if collection.ready.is_some() {
             return Err(Error::new("collection already ready"));
         }
-        ctx.content.set_collection_ready_and_enqueue(&ctx.workflow, &ctx.principal, &collection, None).await?;
+        ctx.content.collection_workflows.set_ready_and_enqueue(&ctx.workflow, &ctx.principal, &collection, None).await?;
         Ok(true)
     }
 }
