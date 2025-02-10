@@ -23,6 +23,15 @@ create table document_templates
     primary key (id)
 );
 
+create table document_template_categories
+(
+    template_id bigint not null,
+    category_id uuid   not null,
+    primary key (template_id, category_id),
+    foreign key (template_id) references document_templates (id) on delete cascade,
+    foreign key (category_id) references categories (id) on delete cascade
+);
+
 create table document_template_metadata_attributes
 (
     id          bigint                           not null,

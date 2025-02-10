@@ -11,3 +11,4 @@ pub mod attributes_filter;
 pub mod item;
 pub mod slug;
 pub mod ordering;
+mod document_template;
