@@ -6,6 +6,7 @@ use crate::datastores::content::collection_permissions::CollectionPermissionsDat
 use crate::datastores::content::collection_workflows::CollectionWorkflowsDataStore;
 use crate::datastores::content::collections::CollectionsDataStore;
 use crate::datastores::content::metadata::MetadataDataStore;
+use crate::datastores::content::metadata_documents::MetadataDocumentsDataStore;
 use crate::datastores::content::metadata_permissions::MetadataPermissionsDataStore;
 use crate::datastores::content::metadata_workflows::MetadataWorkflowsDataStore;
 use crate::datastores::notifier::Notifier;
@@ -20,6 +21,7 @@ pub struct ContentDataStore {
     pub collection_permissions: CollectionPermissionsDataStore,
     pub collection_workflows: CollectionWorkflowsDataStore,
     pub metadata: MetadataDataStore,
+    pub metadata_documents: MetadataDocumentsDataStore,
     pub metadata_permissions: MetadataPermissionsDataStore,
     pub metadata_workflows: MetadataWorkflowsDataStore,
 }
@@ -31,6 +33,7 @@ impl ContentDataStore {
             collection_permissions: CollectionPermissionsDataStore::new(Arc::clone(&pool), Arc::clone(&notifier)),
             collection_workflows: CollectionWorkflowsDataStore::new(Arc::clone(&pool), Arc::clone(&notifier)),
             metadata: MetadataDataStore::new(Arc::clone(&pool), Arc::clone(&notifier)),
+            metadata_documents: MetadataDocumentsDataStore::new(Arc::clone(&pool), Arc::clone(&notifier)),
             metadata_permissions: MetadataPermissionsDataStore::new(Arc::clone(&pool), Arc::clone(&notifier)),
             metadata_workflows: MetadataWorkflowsDataStore::new(Arc::clone(&pool), Arc::clone(&notifier)),
             pool,
