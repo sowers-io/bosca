@@ -3,6 +3,7 @@ use crate::graphql::content::metadata_mutation::MetadataMutationObject;
 use async_graphql::{Context, Error, Object};
 use log::error;
 use crate::context::BoscaContext;
+use crate::graphql::content::category_mutation::CategoryMutationObject;
 use crate::models::content::search::SearchDocumentInput;
 use crate::util::storage::index_documents;
 
@@ -10,6 +11,7 @@ pub struct ContentMutationObject {}
 
 #[Object(name = "ContentMutation")]
 impl ContentMutationObject {
+    async fn category(&self) -> CategoryMutationObject { CategoryMutationObject{} }
     async fn collection(&self) -> CollectionMutationObject {
         CollectionMutationObject {}
     }

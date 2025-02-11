@@ -1,7 +1,6 @@
 use crate::context::BoscaContext;
 use crate::graphql::content::collection::CollectionObject;
 use crate::graphql::content::metadata::MetadataObject;
-use crate::graphql::content::source::SourceObject;
 use crate::graphql::content::supplementary::MetadataSupplementaryObject;
 use crate::models::content::search::{SearchDocument, SearchQuery, SearchResultObject};
 use crate::models::content::slug::SlugType;
@@ -11,6 +10,8 @@ use log::error;
 use serde_json::Value;
 use std::str::FromStr;
 use uuid::Uuid;
+use crate::graphql::content::categories::CategoriesObject;
+use crate::graphql::content::sources::SourcesObject;
 use crate::graphql::profiles::profile::ProfileObject;
 
 pub struct ContentObject {}
@@ -26,6 +27,14 @@ enum ContentItem {
     Metadata(MetadataObject),
     Collection(CollectionObject),
     Profile(ProfileObject),
+}
+
+#[derive(Enum, Clone, Copy, Eq, PartialEq, Hash, Debug)]
+pub enum ExtensionFilterType {
+    Document,
+    DocumentTemplate,
+    Guide,
+    GuideTemplate,
 }
 
 #[Object(name = "Content")]
@@ -93,6 +102,7 @@ impl ContentObject {
         ctx: &Context<'_>,
         attributes: Vec<FindAttributeInput>,
         content_types: Option<Vec<String>>,
+        extension_filter: Option<ExtensionFilterType>,
         limit: i64,
         offset: i64,
     ) -> Result<Vec<MetadataObject>, Error> {
@@ -100,7 +110,7 @@ impl ContentObject {
         Ok(ctx
             .content
             .metadata
-            .find(&attributes, &content_types, limit, offset)
+            .find(&attributes, &content_types, extension_filter, limit, offset)
             .await?
             .into_iter()
             .map(MetadataObject::new)
@@ -147,24 +157,12 @@ impl ContentObject {
         }
     }
 
-    async fn sources(&self, ctx: &Context<'_>) -> Result<Vec<SourceObject>, Error> {
-        let ctx = ctx.data::<BoscaContext>()?;
-        Ok(ctx
-            .content
-            .get_sources()
-            .await?
-            .into_iter()
-            .map(SourceObject::new)
-            .collect())
+    async fn categories(&self) -> CategoriesObject {
+        CategoriesObject {}
     }
 
-    async fn source(&self, ctx: &Context<'_>, id: String) -> Result<Option<SourceObject>, Error> {
-        let ctx = ctx.data::<BoscaContext>()?;
-        Ok(match Uuid::parse_str(id.as_str()) {
-            Ok(id) => ctx.content.get_source_by_id(&id).await?,
-            Err(_) => ctx.content.get_source_by_name(&id).await?,
-        }
-        .map(|s| s.into()))
+    async fn sources(&self) -> SourcesObject {
+        SourcesObject {}
     }
 
     async fn search(

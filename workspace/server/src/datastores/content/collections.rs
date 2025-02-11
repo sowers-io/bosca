@@ -1,5 +1,5 @@
 use crate::context::BoscaContext;
-use crate::datastores::content::find::{build_find_args, build_ordering, build_ordering_names};
+use crate::datastores::content::util::{build_find_args, build_ordering, build_ordering_names};
 use crate::datastores::notifier::Notifier;
 use crate::graphql::content::content::FindAttributeInput;
 use crate::models::content::collection::{
@@ -61,12 +61,19 @@ impl CollectionsDataStore {
         limit: i64,
         offset: i64,
     ) -> Result<Vec<Collection>, Error> {
+        let mut limit = limit;
+        if limit > 10000 {
+            // TODO: come up with a reasonable limit... or make it configurable somewhere.
+            limit = 10000;
+        }
         let connection = self.pool.get().await?;
         let content_types = None::<Vec<String>>;
         let (query, values) = build_find_args(
-            "select * from collections where ",
+            "select c.* from collections as c ",
+            "c",
             attributes,
             &content_types,
+            None,
             &offset,
             &limit,
         );

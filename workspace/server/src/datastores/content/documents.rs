@@ -139,11 +139,6 @@ impl DocumentsDataStore {
         )
         .await?;
         txn.execute(
-            "delete from document_template_categories where metadata_id = $1 and version = $2",
-            &[metadata_id, &version],
-        )
-        .await?;
-        txn.execute(
             "delete from document_template_blocks where metadata_id = $1 and version = $2",
             &[metadata_id, &version],
         )
@@ -162,11 +157,6 @@ impl DocumentsDataStore {
         version: i32,
         template: &DocumentTemplateInput,
     ) -> Result<(), Error> {
-        let stmt = txn.prepare_cached("insert into document_template_categories (metadata_id, version, category_id) values ($1, $2, $3)").await?;
-        for category_id in &template.category_ids {
-            let id = Uuid::parse_str(category_id.as_str())?;
-            txn.execute(&stmt, &[metadata_id, &version, &id]).await?;
-        }
         let stmt = txn.prepare_cached("insert into document_template_metadata_attributes (metadata_id, version, key, name, description, type) values ($1, $2, $3, $4, $5, $6)").await?;
         let stmt_wid = txn.prepare_cached("insert into document_template_attribute_workflow_ids (metadata_id, version, key, workflow_id, auto_run) values ($1, $2, $3, $4, $5)").await?;
         for attr in template.attributes.iter() {

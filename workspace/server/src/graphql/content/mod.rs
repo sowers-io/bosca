@@ -24,3 +24,7 @@ pub mod document_template;
 pub mod document_template_attribute_object;
 pub mod document_template_attribute_workflow_object;
 pub mod document_template_block;
+pub mod category;
+pub mod category_mutation;
+pub mod categories;
+pub mod sources;

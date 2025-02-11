@@ -155,7 +155,7 @@ impl WorkflowsMutationObject {
         ctx.check_has_service_account().await?;
         let mut ids = Vec::new();
         // TODO: page through items
-        for metadata in ctx.content.metadata.find(&attributes, &content_types, 0, 1000).await? {
+        for metadata in ctx.content.metadata.find(&attributes, &content_types, None, 0, 10000).await? {
             let id = ctx.workflow
                 .enqueue_metadata_workflow(&workflow_id, &metadata.id, &metadata.version, configurations.as_ref(), None)
                 .await?;

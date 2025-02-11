@@ -105,7 +105,7 @@ impl ProfileDataStore {
     ) -> async_graphql::Result<Vec<ProfileAttribute>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
-            .prepare_cached("select * from profile_attributes where profiles = $1 and (expired is null or expired > now()) order by priority asc, confidence desc")
+            .prepare_cached("select * from profile_attributes where profile = $1 and (expiration is null or expiration > now()) order by priority asc, confidence desc")
             .await?;
         let rows = connection.query(&stmt, &[profile_id]).await?;
         Ok(rows.iter().map(|r| r.into()).collect())

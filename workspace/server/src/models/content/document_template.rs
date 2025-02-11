@@ -18,7 +18,6 @@ pub struct DocumentTemplate {
 pub struct DocumentTemplateInput {
     pub name: String,
     pub description: String,
-    pub category_ids: Vec<String>,
     pub allow_user_defined_blocks: bool,
     pub attributes: Vec<DocumentTemplateAttributeInput>,
     pub blocks: Vec<DocumentTemplateBlockInput>,

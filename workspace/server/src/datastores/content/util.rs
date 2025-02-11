@@ -1,4 +1,4 @@
-use crate::graphql::content::content::FindAttributeInput;
+use crate::graphql::content::content::{ExtensionFilterType, FindAttributeInput};
 use postgres_types::ToSql;
 use crate::models::content::ordering::Order::Ascending;
 use crate::models::content::ordering::Ordering;
@@ -49,30 +49,37 @@ pub fn build_ordering<'a>(
 
 pub fn build_find_args<'a>(
     query: &str,
+    alias: &str,
     attributes: &'a [FindAttributeInput],
     content_types: &'a Option<Vec<String>>,
+    extension_filter: Option<ExtensionFilterType>,
     offset: &'a i64,
     limit: &'a i64,
 ) -> (String, Vec<&'a (dyn ToSql + Sync)>) {
     let mut q = query.to_string();
     let mut values = Vec::new();
     let mut pos = 1;
-    for i in 0..attributes.len() {
-        let attr = attributes.get(i).unwrap();
-        if i > 0 {
-            q.push_str(" and ");
+    if !attributes.is_empty() || (content_types.is_some() && !content_types.as_ref().unwrap().is_empty()) {
+        q.push_str(" where ");
+    }
+    if !attributes.is_empty() {
+        for i in 0..attributes.len() {
+            let attr = attributes.get(i).unwrap();
+            if i > 0 {
+                q.push_str(" and ");
+            }
+            q.push_str(format!(" {}.attributes->>(${}::varchar) = ${}::varchar ", alias, pos, pos + 1).as_str());
+            pos += 2;
+            values.push(&attr.key as &(dyn ToSql + Sync));
+            values.push(&attr.value as &(dyn ToSql + Sync));
         }
-        q.push_str(format!("attributes->>(${}::varchar) = ${}::varchar", pos, pos + 1).as_str());
-        pos += 2;
-        values.push(&attr.key as &(dyn ToSql + Sync));
-        values.push(&attr.value as &(dyn ToSql + Sync));
     }
     if let Some(content_types) = content_types {
         if !content_types.is_empty() {
             if !values.is_empty() {
                 q.push_str(" and ");
             }
-            q.push_str("content_type in (");
+            q.push_str(format!(" {}.content_type in (", alias).as_str());
             for (ix, content_type) in content_types.iter().enumerate() {
                 if ix > 0 {
                     q.push_str(", ");
@@ -84,7 +91,22 @@ pub fn build_find_args<'a>(
             q.push_str(") ")
         }
     }
-    q.push_str(" order by lower(name) asc "); // TODO: when adding MetadataIndex & CollectionIndex, make this configurable so it is based on an index
+    match extension_filter {
+        Some(ExtensionFilterType::Document) => {
+            q.push_str(format!(" inner join documents d on ({}.id = d.metadata_id and {}.version = d.version) ", alias, alias).as_str());
+        }
+        Some(ExtensionFilterType::DocumentTemplate) => {
+            q.push_str(format!(" inner join document_templates d on ({}.id = d.metadata_id and {}.version = d.version) ", alias, alias).as_str());
+        }
+        Some(ExtensionFilterType::Guide) => {
+            q.push_str(format!(" inner join guides g on ({}.id = g.metadata_id and {}.version = g.version) ", alias, alias).as_str());
+        }
+        Some(ExtensionFilterType::GuideTemplate) => {
+            q.push_str(format!(" inner join guide_templates g on ({}.id = g.metadata_id and {}.version = g.version) ", alias, alias).as_str());
+        }
+        _ => {}
+    }
+    q.push_str(format!(" order by lower({}.name) asc ", alias).as_str()); // TODO: when adding MetadataIndex & CollectionIndex, make this configurable so it is based on an index
     q.push_str(format!(" offset ${}", pos).as_str());
     pos += 1;
     values.push(offset as &(dyn ToSql + Sync));

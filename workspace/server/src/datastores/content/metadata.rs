@@ -1,7 +1,7 @@
 use crate::context::BoscaContext;
-use crate::datastores::content::find::build_find_args;
+use crate::datastores::content::util::build_find_args;
 use crate::datastores::notifier::Notifier;
-use crate::graphql::content::content::FindAttributeInput;
+use crate::graphql::content::content::{ExtensionFilterType, FindAttributeInput};
 use crate::models::content::collection::MetadataChildInput;
 use crate::models::content::metadata::{Metadata, MetadataInput};
 use crate::models::content::metadata_relationship::{
@@ -17,6 +17,7 @@ use log::error;
 use serde_json::{Map, Value};
 use std::sync::Arc;
 use uuid::Uuid;
+use crate::models::content::category::Category;
 use crate::models::content::metadata_profile::MetadataProfile;
 
 #[derive(Clone)]
@@ -60,14 +61,17 @@ impl MetadataDataStore {
         &self,
         attributes: &[FindAttributeInput],
         content_types: &Option<Vec<String>>,
+        extension_filter: Option<ExtensionFilterType>,
         limit: i64,
         offset: i64,
     ) -> Result<Vec<Metadata>, Error> {
         let connection = self.pool.get().await?;
         let (query, values) = build_find_args(
-            "select * from metadata where ",
+            "select m.* from metadata m ",
+            "m",
             attributes,
             content_types,
+            extension_filter,
             &offset,
             &limit,
         );
@@ -107,6 +111,15 @@ impl MetadataDataStore {
             return Ok(None);
         }
         Ok(Some(rows.first().unwrap().into()))
+    }
+
+    pub async fn get_categories(&self, id: &Uuid) -> Result<Vec<Category>, Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("select c.* from metadata_categories mc inner join categories c on (mc.category_id = c.id) where metadata_id = $1")
+            .await?;
+        let rows = connection.query(&stmt, &[id]).await?;
+        Ok(rows.iter().map(|r| r.into()).collect())
     }
 
     pub async fn get_parent_ids(

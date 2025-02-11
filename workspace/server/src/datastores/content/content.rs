@@ -12,11 +12,13 @@ use async_graphql::Error;
 use deadpool_postgres::Pool;
 use std::sync::Arc;
 use uuid::Uuid;
+use crate::datastores::content::categories::CategoriesDataStore;
 
 #[derive(Clone)]
 pub struct ContentDataStore {
     pool: Arc<Pool>,
 
+    pub categories: CategoriesDataStore,
     pub collections: CollectionsDataStore,
     pub collection_permissions: CollectionPermissionsDataStore,
     pub collection_workflows: CollectionWorkflowsDataStore,
@@ -29,6 +31,7 @@ pub struct ContentDataStore {
 impl ContentDataStore {
     pub fn new(pool: Arc<Pool>, notifier: Arc<Notifier>) -> Self {
         Self {
+            categories: CategoriesDataStore::new(Arc::clone(&pool), Arc::clone(&notifier)),
             collections: CollectionsDataStore::new(Arc::clone(&pool), Arc::clone(&notifier)),
             collection_permissions: CollectionPermissionsDataStore::new(
                 Arc::clone(&pool),

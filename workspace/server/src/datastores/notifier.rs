@@ -14,6 +14,17 @@ impl Notifier {
         Self { redis }
     }
 
+    pub async fn listen_category_changes(&self) -> Result<impl Stream<Item=String>, Error> {
+        let connection = self.redis.get().await?;
+        let mut pubsub = connection.get_pubsub().await?;
+        pubsub.subscribe("category_changes").await?;
+        Ok(pubsub
+            .into_on_message()
+            .filter_map(|msg| async move {
+                msg.get_payload().ok()
+            }))
+    }
+
     pub async fn listen_metadata_changes(&self) -> Result<impl Stream<Item=String>, Error> {
         let connection = self.redis.get().await?;
         let mut pubsub = connection.get_pubsub().await?;
@@ -111,6 +122,15 @@ impl Notifier {
             .filter_map(|msg| async move {
                 msg.get_payload().ok()
             }))
+    }
+
+    pub async fn category_changed(&self, id: &Uuid) -> async_graphql::Result<(), Error> {
+        let connection = self.redis.get().await?;
+        let mut conn = connection.get_connection().await?;
+        let id = id.to_string();
+        conn.publish::<&str, String, ()>("category_changed", id)
+            .await?;
+        Ok(())
     }
 
     pub async fn metadata_changed(&self, id: &Uuid) -> async_graphql::Result<(), Error> {

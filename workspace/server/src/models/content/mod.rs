@@ -21,3 +21,4 @@ pub mod document;
 pub mod document_block;
 pub mod document_block_metadata;
 pub mod document_template_attribute_workflow;
+pub mod category;

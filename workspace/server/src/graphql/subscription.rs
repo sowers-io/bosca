@@ -7,6 +7,14 @@ pub struct SubscriptionObject;
 #[Subscription(name = "Subscription")]
 impl SubscriptionObject {
 
+    async fn category(&self, ctx: &Context<'_>) -> Result<impl Stream<Item = String>> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        if ctx.principal.anonymous {
+            return Err(Error::new("Unauthorized"));
+        }
+        ctx.notifier.listen_category_changes().await
+    }
+
     async fn metadata(&self, ctx: &Context<'_>) -> Result<impl Stream<Item = String>> {
         let ctx = ctx.data::<BoscaContext>()?;
         if ctx.principal.anonymous {
