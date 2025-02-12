@@ -1,7 +1,10 @@
 use crate::context::BoscaContext;
+use crate::graphql::content::categories::CategoriesObject;
 use crate::graphql::content::collection::CollectionObject;
 use crate::graphql::content::metadata::MetadataObject;
+use crate::graphql::content::sources::SourcesObject;
 use crate::graphql::content::supplementary::MetadataSupplementaryObject;
+use crate::graphql::profiles::profile::ProfileObject;
 use crate::models::content::search::{SearchDocument, SearchQuery, SearchResultObject};
 use crate::models::content::slug::SlugType;
 use crate::models::security::permission::PermissionAction;
@@ -10,9 +13,6 @@ use log::error;
 use serde_json::Value;
 use std::str::FromStr;
 use uuid::Uuid;
-use crate::graphql::content::categories::CategoriesObject;
-use crate::graphql::content::sources::SourcesObject;
-use crate::graphql::profiles::profile::ProfileObject;
 
 pub struct ContentObject {}
 
@@ -54,8 +54,10 @@ impl ContentObject {
                         .into(),
                 ))),
                 SlugType::Profile => Ok(Some(ContentItem::Profile(
-                    ctx.check_profile_action(&slug.id, PermissionAction::View).await?.into()
-                )))
+                    ctx.check_profile_action(&slug.id, PermissionAction::View)
+                        .await?
+                        .into(),
+                ))),
             }
         } else {
             Ok(None)
@@ -66,6 +68,7 @@ impl ContentObject {
         &self,
         ctx: &Context<'_>,
         attributes: Vec<FindAttributeInput>,
+        category_ids: Option<Vec<String>>,
         limit: i64,
         offset: i64,
     ) -> Result<Vec<CollectionObject>, Error> {
@@ -73,7 +76,12 @@ impl ContentObject {
         Ok(ctx
             .content
             .collections
-            .find(&attributes, limit, offset)
+            .find(
+                &attributes,
+                category_ids.map(|c| c.iter().map(|c| Uuid::parse_str(c).unwrap()).collect()),
+                limit,
+                offset,
+            )
             .await?
             .into_iter()
             .map(CollectionObject::new)
@@ -102,6 +110,7 @@ impl ContentObject {
         ctx: &Context<'_>,
         attributes: Vec<FindAttributeInput>,
         content_types: Option<Vec<String>>,
+        category_ids: Option<Vec<String>>,
         extension_filter: Option<ExtensionFilterType>,
         limit: i64,
         offset: i64,
@@ -110,7 +119,14 @@ impl ContentObject {
         Ok(ctx
             .content
             .metadata
-            .find(&attributes, &content_types, extension_filter, limit, offset)
+            .find(
+                &attributes,
+                &content_types,
+                category_ids.map(|c| c.iter().map(|c| Uuid::parse_str(c).unwrap()).collect()),
+                extension_filter,
+                limit,
+                offset,
+            )
             .await?
             .into_iter()
             .map(MetadataObject::new)

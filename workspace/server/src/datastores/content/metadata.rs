@@ -61,16 +61,19 @@ impl MetadataDataStore {
         &self,
         attributes: &[FindAttributeInput],
         content_types: &Option<Vec<String>>,
+        category_ids: Option<Vec<Uuid>>,
         extension_filter: Option<ExtensionFilterType>,
         limit: i64,
         offset: i64,
     ) -> Result<Vec<Metadata>, Error> {
         let connection = self.pool.get().await?;
         let (query, values) = build_find_args(
+            "metadata",
             "select m.* from metadata m ",
             "m",
             attributes,
             content_types,
+            &category_ids,
             extension_filter,
             &offset,
             &limit,

@@ -155,13 +155,13 @@ impl WorkflowsMutationObject {
         ctx.check_has_service_account().await?;
         let mut ids = Vec::new();
         // TODO: page through items
-        for metadata in ctx.content.metadata.find(&attributes, &content_types, None, 0, 10000).await? {
+        for metadata in ctx.content.metadata.find(&attributes, &content_types, None, None, 0, 10000).await? {
             let id = ctx.workflow
                 .enqueue_metadata_workflow(&workflow_id, &metadata.id, &metadata.version, configurations.as_ref(), None)
                 .await?;
             ids.push(id);
         }
-        for collection in ctx.content.collections.find(&attributes, 0, 1000).await? {
+        for collection in ctx.content.collections.find(&attributes, None,0, 1000).await? {
             let id = ctx.workflow
                 .enqueue_collection_workflow(&workflow_id, &collection.id, configurations.as_ref(), None)
                 .await?;

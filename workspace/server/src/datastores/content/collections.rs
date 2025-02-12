@@ -17,6 +17,7 @@ use serde_json::Value;
 use std::sync::Arc;
 use tokio_postgres::Statement;
 use uuid::Uuid;
+use crate::models::content::category::Category;
 
 #[derive(Clone)]
 pub struct CollectionsDataStore {
@@ -58,6 +59,7 @@ impl CollectionsDataStore {
     pub async fn find(
         &self,
         attributes: &[FindAttributeInput],
+        category_ids: Option<Vec<Uuid>>,
         limit: i64,
         offset: i64,
     ) -> Result<Vec<Collection>, Error> {
@@ -69,16 +71,27 @@ impl CollectionsDataStore {
         let connection = self.pool.get().await?;
         let content_types = None::<Vec<String>>;
         let (query, values) = build_find_args(
+            "collection",
             "select c.* from collections as c ",
             "c",
             attributes,
             &content_types,
+            &category_ids,
             None,
             &offset,
             &limit,
         );
         let stmt = connection.prepare_cached(query.as_str()).await?;
         let rows = connection.query(&stmt, values.as_slice()).await?;
+        Ok(rows.iter().map(|r| r.into()).collect())
+    }
+
+    pub async fn get_categories(&self, id: &Uuid) -> Result<Vec<Category>, Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("select c.* from collection_categories mc inner join categories c on (mc.category_id = c.id) where collection_id = $1")
+            .await?;
+        let rows = connection.query(&stmt, &[id]).await?;
         Ok(rows.iter().map(|r| r.into()).collect())
     }
 
@@ -404,6 +417,13 @@ impl CollectionsDataStore {
             }
         }
 
+        if let Some(category_ids) = &collection.category_ids {
+            for category_id in category_ids {
+                let cid = Uuid::parse_str(category_id)?;
+                self.add_category_txn(txn, &id, &cid).await?
+            }
+        }
+
         Ok(id)
     }
 
@@ -433,6 +453,31 @@ impl CollectionsDataStore {
         Ok(())
     }
 
+    async fn delete_categories_txn<'a>(
+        &'a self,
+        txn: &'a Transaction<'a>,
+        id: &Uuid,
+    ) -> Result<(), Error> {
+        let stmt = txn
+            .prepare("delete from collection_categories where collection_id = $1")
+            .await?;
+        txn.execute(&stmt, &[id]).await?;
+        Ok(())
+    }
+
+    async fn add_category_txn<'a>(
+        &'a self,
+        txn: &'a Transaction<'a>,
+        id: &Uuid,
+        category_id: &Uuid,
+    ) -> Result<(), Error> {
+        let stmt = txn
+            .prepare("insert into collection_categories (collection_id, category_id) values ($1, $2)")
+            .await?;
+        txn.execute(&stmt, &[id, category_id]).await?;
+        Ok(())
+    }
+
     async fn edit_txn<'a>(
         &'a self,
         txn: &'a Transaction<'a>,
@@ -459,10 +504,18 @@ impl CollectionsDataStore {
         )
         .await?;
 
-        self.delete_trait_txn(txn, id).await?;
         if let Some(trait_ids) = &collection.trait_ids {
+            self.delete_trait_txn(txn, id).await?;
             for trait_id in trait_ids {
                 self.add_trait_txn(txn, id, trait_id).await?
+            }
+        }
+
+        if let Some(category_ids) = &collection.category_ids {
+            self.delete_categories_txn(txn, id).await?;
+            for category_id in category_ids {
+                let cid = Uuid::parse_str(category_id)?;
+                self.add_category_txn(txn, id, &cid).await?
             }
         }
 

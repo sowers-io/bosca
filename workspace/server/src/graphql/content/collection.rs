@@ -5,6 +5,7 @@ use async_graphql::{Context, Error, Object, Union};
 use chrono::{DateTime, Utc};
 use serde_json::Value;
 use crate::context::BoscaContext;
+use crate::graphql::content::category::CategoryObject;
 use crate::graphql::workflows::workflow_execution_plan::WorkflowExecutionPlanObject;
 use crate::models::content::attributes_filter::AttributesFilterInput;
 use crate::models::content::ordering::Ordering;
@@ -53,6 +54,18 @@ impl CollectionObject {
 
     async fn description(&self) -> &Option<String> {
         &self.collection.description
+    }
+
+    async fn categories(&self, ctx: &Context<'_>) -> Result<Vec<CategoryObject>, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        Ok(ctx
+            .content
+            .collections
+            .get_categories(&self.collection.id)
+            .await?
+            .into_iter()
+            .map(CategoryObject::new)
+            .collect())
     }
 
     async fn trait_ids(&self, ctx: &Context<'_>) -> Result<Vec<String>, Error> {

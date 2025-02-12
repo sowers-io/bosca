@@ -1,5 +1,6 @@
 use crate::graphql::content::content::{ExtensionFilterType, FindAttributeInput};
 use postgres_types::ToSql;
+use uuid::Uuid;
 use crate::models::content::ordering::Order::Ascending;
 use crate::models::content::ordering::Ordering;
 
@@ -48,10 +49,12 @@ pub fn build_ordering<'a>(
 
 
 pub fn build_find_args<'a>(
+    base_type: &str,
     query: &str,
     alias: &str,
     attributes: &'a [FindAttributeInput],
     content_types: &'a Option<Vec<String>>,
+    category_ids: &'a Option<Vec<Uuid>>,
     extension_filter: Option<ExtensionFilterType>,
     offset: &'a i64,
     limit: &'a i64,
@@ -59,6 +62,33 @@ pub fn build_find_args<'a>(
     let mut q = query.to_string();
     let mut values = Vec::new();
     let mut pos = 1;
+
+    if let Some(category_ids) = category_ids {
+        if !category_ids.is_empty() {
+            for category_id in category_ids {
+                q.push_str(format!(" inner join {}_categories as cid on (cid.{}_id = {}.id and cid.category_id = ${}) ", base_type, base_type, alias, pos).as_str());
+                pos += 1;
+                values.push(category_id as &(dyn ToSql + Sync));
+            }
+        }
+    }
+
+    match extension_filter {
+        Some(ExtensionFilterType::Document) => {
+            q.push_str(format!(" inner join documents d on ({}.id = d.metadata_id and {}.version = d.version) ", alias, alias).as_str());
+        }
+        Some(ExtensionFilterType::DocumentTemplate) => {
+            q.push_str(format!(" inner join document_templates d on ({}.id = d.metadata_id and {}.version = d.version) ", alias, alias).as_str());
+        }
+        Some(ExtensionFilterType::Guide) => {
+            q.push_str(format!(" inner join guides g on ({}.id = g.metadata_id and {}.version = g.version) ", alias, alias).as_str());
+        }
+        Some(ExtensionFilterType::GuideTemplate) => {
+            q.push_str(format!(" inner join guide_templates g on ({}.id = g.metadata_id and {}.version = g.version) ", alias, alias).as_str());
+        }
+        _ => {}
+    }
+
     if !attributes.is_empty() || (content_types.is_some() && !content_types.as_ref().unwrap().is_empty()) {
         q.push_str(" where ");
     }
@@ -90,21 +120,6 @@ pub fn build_find_args<'a>(
             }
             q.push_str(") ")
         }
-    }
-    match extension_filter {
-        Some(ExtensionFilterType::Document) => {
-            q.push_str(format!(" inner join documents d on ({}.id = d.metadata_id and {}.version = d.version) ", alias, alias).as_str());
-        }
-        Some(ExtensionFilterType::DocumentTemplate) => {
-            q.push_str(format!(" inner join document_templates d on ({}.id = d.metadata_id and {}.version = d.version) ", alias, alias).as_str());
-        }
-        Some(ExtensionFilterType::Guide) => {
-            q.push_str(format!(" inner join guides g on ({}.id = g.metadata_id and {}.version = g.version) ", alias, alias).as_str());
-        }
-        Some(ExtensionFilterType::GuideTemplate) => {
-            q.push_str(format!(" inner join guide_templates g on ({}.id = g.metadata_id and {}.version = g.version) ", alias, alias).as_str());
-        }
-        _ => {}
     }
     q.push_str(format!(" order by lower({}.name) asc ", alias).as_str()); // TODO: when adding MetadataIndex & CollectionIndex, make this configurable so it is based on an index
     q.push_str(format!(" offset ${}", pos).as_str());
