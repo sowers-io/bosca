@@ -255,13 +255,15 @@ impl DocumentsDataStore {
     ) -> Result<(), Error> {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
-        let stmt = txn.prepare_cached("insert into documents (metadata_id, version, template_id, title, allow_user_defined_blocks) values ($1, $2, $3, $4, $5)").await?;
+        let stmt = txn.prepare_cached("insert into documents (metadata_id, version, template_metadata_id, template_metadata_version, title, allow_user_defined_blocks) values ($1, $2, $3, $4, $5, $6)").await?;
+        let template_metadata_id = document.template_metadata_id.as_ref().map(|id| Uuid::parse_str(id.as_str()).unwrap());
         txn.execute(
             &stmt,
             &[
                 metadata_id,
                 &version,
-                &document.template_id,
+                &template_metadata_id,
+                &document.template_metadata_version,
                 &document.title,
                 &document.allow_user_defined_blocks,
             ],
@@ -282,15 +284,17 @@ impl DocumentsDataStore {
     ) -> Result<(), Error> {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
-        let stmt = txn.prepare_cached("update documents set template_id = $1, title = $2, allow_user_defined_blocks = $3 where metadata_id = $4 and version = $5").await?;
+        let stmt = txn.prepare_cached("insert into documents (metadata_id, version, template_metadata_id, template_metadata_version, title, allow_user_defined_blocks) values ($1, $2, $3, $4, $5, $6) on conflict (metadata_id, version) do update set template_metadata_id = $3, template_metadata_version = $4, title = $5, allow_user_defined_blocks = $6").await?;
+        let template_metadata_id = document.template_metadata_id.as_ref().map(|id| Uuid::parse_str(id.as_str()).unwrap());
         txn.execute(
             &stmt,
             &[
-                &document.template_id,
-                &document.title,
-                &document.allow_user_defined_blocks,
                 metadata_id,
                 &version,
+                &template_metadata_id,
+                &document.template_metadata_version,
+                &document.title,
+                &document.allow_user_defined_blocks,
             ],
         )
         .await?;
@@ -319,7 +323,7 @@ impl DocumentsDataStore {
         document: &DocumentInput,
     ) -> Result<(), Error> {
         let stmt = txn.prepare_cached("insert into document_blocks (metadata_id, version, type, sort, content) values ($1, $2, $3, $4, $5) returning id").await?;
-        let stmt_wid = txn.prepare_cached("insert into document_block_metadata (metadata_id, version, block_id, metadata_id, attributes, sort) values ($1, $2, $3, $4, $5, $6)").await?;
+        let stmt_wid = txn.prepare_cached("insert into document_block_metadata (metadata_id, version, block_id, metadata_reference_id, attributes, sort) values ($1, $2, $3, $4, $5, $6)").await?;
         for (index, block) in document.blocks.iter().enumerate() {
             let index = index as i32;
             let block_id_results = txn
@@ -334,7 +338,7 @@ impl DocumentsDataStore {
                     ],
                 )
                 .await?;
-            let block_id: i64 = block_id_results.first().unwrap().get("block_id");
+            let block_id: i64 = block_id_results.first().unwrap().get("id");
             for (ref_index, r) in block.references.iter().enumerate() {
                 let ref_index = ref_index as i32;
                 let mid = Uuid::parse_str(r.metadata_id.as_str())?;
