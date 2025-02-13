@@ -20,7 +20,7 @@ impl ProfilesObject {
             .get_all(offset, limit)
             .await?
             .into_iter()
-            .map(|p| ProfileObject::new(p)).collect())
+            .map(ProfileObject::new).collect())
     }
 
     async fn profile(&self, ctx: &Context<'_>) -> Result<Option<ProfileObject>, Error> {

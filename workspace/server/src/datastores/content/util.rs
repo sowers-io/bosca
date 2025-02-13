@@ -47,7 +47,7 @@ pub fn build_ordering<'a>(
     buf
 }
 
-
+#[allow(clippy::too_many_arguments)]
 pub fn build_find_args<'a>(
     base_type: &str,
     query: &str,

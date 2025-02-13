@@ -105,6 +105,7 @@ impl ContentObject {
         ))
     }
 
+    #[allow(clippy::too_many_arguments)]
     async fn find_metadata(
         &self,
         ctx: &Context<'_>,

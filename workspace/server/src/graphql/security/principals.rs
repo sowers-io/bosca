@@ -20,7 +20,7 @@ impl PrincipalsObject {
             .get_principals(offset, limit)
             .await?
             .into_iter()
-            .map(|p| PrincipalObject::new(p))
+            .map(PrincipalObject::new)
             .collect())
     }
 
