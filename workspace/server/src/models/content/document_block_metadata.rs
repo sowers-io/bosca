@@ -19,7 +19,7 @@ impl From<&Row> for DocumentBlockMetadata {
     fn from(row: &Row) -> Self {
         Self {
             metadata_id: row.get("metadata_reference_id"),
-            attributes: row.get("sort"),
+            attributes: row.get("attributes"),
         }
     }
 }

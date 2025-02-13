@@ -64,6 +64,8 @@ create table document_template_blocks
     name        varchar             not null,
     description varchar             not null,
     type        document_block_type not null,
+    validation  jsonb,
+    content     jsonb               not null,
     primary key (metadata_id, version, id),
     foreign key (metadata_id, version) references document_templates (metadata_id, version) on delete cascade
 );
@@ -103,5 +105,5 @@ create table document_block_metadata
     sort                  int    not null,
     primary key (metadata_id, version, block_id, metadata_reference_id),
     foreign key (metadata_id, version, block_id) references document_blocks (metadata_id, version, id) on delete cascade,
-    foreign key (metadata_reference_id) references metadata (id)
+    foreign key (metadata_reference_id) references metadata (id) on delete cascade
 );

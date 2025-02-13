@@ -16,6 +16,19 @@ impl ProfileDataStore {
         Self { pool }
     }
 
+    pub async fn get_all(
+        &self,
+        offset: i64,
+        limit: i64,
+    ) -> async_graphql::Result<Vec<Profile>, Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("select * from profiles order by id offset $1 limit $2")
+            .await?;
+        let rows = connection.query(&stmt, &[&offset, &limit]).await?;
+        Ok(rows.iter().map(|r| r.into()).collect())
+    }
+
     pub async fn get_by_id(
         &self,
         id: &Uuid,

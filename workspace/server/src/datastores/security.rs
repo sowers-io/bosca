@@ -47,10 +47,10 @@ impl SecurityDataStore {
         Ok(Group::new(id, name.clone()))
     }
 
-    pub async fn get_groups(&self) -> Result<Vec<Group>, Error> {
+    pub async fn get_groups(&self, offset: i64, limit: i64) -> Result<Vec<Group>, Error> {
         let connection = self.pool.get().await?;
-        let stmt = connection.prepare_cached("select * from groups").await?;
-        let results = connection.query(&stmt, &[]).await?;
+        let stmt = connection.prepare_cached("select * from groups order by id offset $1 limit $2").await?;
+        let results = connection.query(&stmt, &[&offset, &limit]).await?;
         Ok(results.iter().map(Group::from).collect())
     }
 
@@ -70,6 +70,21 @@ impl SecurityDataStore {
             .await?;
         let results = connection.query(&stmt, &[name]).await?;
         Ok(results.first().unwrap().into())
+    }
+
+    pub async fn get_principals(
+        &self,
+        offset: i64,
+        limit: i64
+    ) -> Result<Vec<Principal>, Error> {
+        let mut principals = Vec::<Principal>::new();
+        let connection = self.pool.get().await?;
+        let stmt = connection.prepare_cached("select * from principals order by id offset $1 limit $2").await?;
+        let results = connection.query(&stmt, &[&offset, &limit]).await?;
+        for result in results.iter() {
+            principals.push(result.into())
+        }
+        Ok(principals)
     }
 
     pub async fn get_administrators_group(&self) -> Result<Group, Error> {

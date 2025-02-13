@@ -1,5 +1,6 @@
 pub mod group;
 pub mod login;
+pub mod principal;
 pub mod principals;
 #[allow(clippy::module_inception)]
 pub mod security;

@@ -163,11 +163,15 @@ impl BoscaContext {
     }
 
     pub async fn check_has_admin_account(&self) -> Result<(), Error> {
-        let admin = self.security.get_administrators_group().await?;
-        if !self.principal.has_group(&admin.id) {
+        if !self.has_admin_account().await? {
             return Err(Error::new("invalid permissions"));
         }
         Ok(())
+    }
+
+    pub async fn has_admin_account(&self) -> Result<bool, Error> {
+        let admin = self.security.get_administrators_group().await?;
+        Ok(self.principal.has_group(&admin.id))
     }
 
     pub async fn check_has_service_account(&self) -> Result<(), Error> {

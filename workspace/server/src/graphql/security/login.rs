@@ -1,10 +1,10 @@
-use crate::graphql::security::principals::PrincipalObject;
 use crate::graphql::security::token::TokenObject;
 use crate::models::security::principal::Principal;
 use crate::security::token::Token;
 use async_graphql::*;
 use crate::context::BoscaContext;
 use crate::graphql::profiles::profile::ProfileObject;
+use crate::graphql::security::principal::PrincipalObject;
 use crate::models::profiles::profile::Profile;
 
 pub struct LoginObject {}

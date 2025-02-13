@@ -1,31 +1,31 @@
-use crate::graphql::security::group::GroupObject;
-use crate::models::security::principal::Principal;
-use async_graphql::Object;
+use crate::context::BoscaContext;
+use crate::graphql::security::principal::PrincipalObject;
+use async_graphql::{Context, Error, Object};
 
-pub struct PrincipalObject {
-    principal: Principal,
+pub struct PrincipalsObject {
 }
 
-impl PrincipalObject {
-    pub fn new(principal: Principal) -> Self {
-        Self { principal }
+#[Object(name = "Principals")]
+impl PrincipalsObject {
+    async fn all(
+        &self,
+        ctx: &Context<'_>,
+        offset: i64,
+        limit: i64,
+    ) -> Result<Vec<PrincipalObject>, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        ctx.check_has_admin_account().await?;
+        Ok(ctx
+            .security
+            .get_principals(offset, limit)
+            .await?
+            .into_iter()
+            .map(|p| PrincipalObject::new(p))
+            .collect())
     }
-}
 
-#[Object(name = "Principal")]
-impl PrincipalObject {
-    async fn id(&self) -> String {
-        self.principal.id.to_string()
-    }
-
-    async fn verified(&self) -> bool {
-        self.principal.verified
-    }
-
-    async fn groups(&self) -> Vec<GroupObject> {
-        match &self.principal.get_groups() {
-            Some(groups) => groups.iter().map(|g| GroupObject::new(g.clone())).collect(),
-            None => Vec::new(),
-        }
+    async fn current(&self, ctx: &Context<'_>) -> async_graphql::Result<PrincipalObject, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        Ok(PrincipalObject::new(ctx.principal.clone()))
     }
 }

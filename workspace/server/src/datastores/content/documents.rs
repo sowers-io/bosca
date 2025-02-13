@@ -186,7 +186,7 @@ impl DocumentsDataStore {
                 .await?;
             }
         }
-        let stmt = txn.prepare_cached("insert into document_template_blocks (metadata_id, version, name, description, type, sort) values ($1, $2, $3, $4, $5, $6)").await?;
+        let stmt = txn.prepare_cached("insert into document_template_blocks (metadata_id, version, name, description, type, validation, content, sort) values ($1, $2, $3, $4, $5, $6, $7, $8)").await?;
         for (index, block) in template.blocks.iter().enumerate() {
             let index = index as i32;
             txn.execute(
@@ -197,6 +197,8 @@ impl DocumentsDataStore {
                     &block.name,
                     &block.description,
                     &block.block_type,
+                    &block.validation,
+                    &block.content,
                     &index,
                 ],
             )

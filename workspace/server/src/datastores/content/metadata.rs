@@ -535,7 +535,7 @@ impl MetadataDataStore {
         source_id: &Option<Uuid>,
         source_identifier: &Option<String>,
     ) -> Result<(), Error> {
-        let stmt = txn.prepare("update metadata set name = $1, labels = $2, attributes = $3, language_tag = $4, source_id = $5, source_identifier = $6, content_type = $7 where id = $8").await?;
+        let stmt = txn.prepare("update metadata set name = $1, labels = $2, attributes = $3, language_tag = $4, source_id = $5, source_identifier = $6, content_type = $7, modified = now() where id = $8").await?;
         let labels = metadata.labels.clone().unwrap_or_default();
         txn.query(
             &stmt,

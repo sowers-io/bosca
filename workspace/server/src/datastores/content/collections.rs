@@ -484,7 +484,7 @@ impl CollectionsDataStore {
         id: &Uuid,
         collection: &CollectionInput,
     ) -> Result<(), Error> {
-        let stmt = txn.prepare("update collections set name = $1, description = $2, type = $3, labels = $4, attributes = $5, ordering = $6 where id = $7").await?;
+        let stmt = txn.prepare("update collections set name = $1, description = $2, type = $3, labels = $4, attributes = $5, ordering = $6, modified = now() where id = $7").await?;
         let labels = collection.labels.clone().unwrap_or_default();
         let ordering = collection
             .ordering

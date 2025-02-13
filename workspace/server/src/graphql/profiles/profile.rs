@@ -21,6 +21,7 @@ impl ProfileObject {
         Ok(
             if self.profile.principal == ctx.principal.id
                 || self.profile.visibility == ProfileVisibility::Public
+                || ctx.has_admin_account().await?
             {
                 ctx.profile.get_slug(&self.profile.id).await?
             } else {
@@ -35,6 +36,7 @@ impl ProfileObject {
         Ok(
             if self.profile.principal == ctx.principal.id
                 || self.profile.visibility == ProfileVisibility::Public
+                || ctx.has_admin_account().await?
             {
                 Some(self.profile.name.clone())
             } else {
@@ -50,7 +52,7 @@ impl ProfileObject {
     async fn attributes(&self, ctx: &Context<'_>) -> Result<Vec<ProfileAttributeObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let attributes = ctx.profile.get_attributes(&self.profile.id).await?;
-        if self.profile.principal == ctx.principal.id {
+        if self.profile.principal == ctx.principal.id || ctx.has_admin_account().await? {
             Ok(attributes
                 .into_iter()
                 .filter(|a| a.visibility != ProfileVisibility::System)
