@@ -92,11 +92,13 @@ impl MetadataWorkflowsDataStore {
 
     pub async fn validate(&self, ctx: &BoscaContext, id: &Uuid, version: i32) -> Result<(), Error> {
         self.validate_document(ctx, id, version).await?;
+        self.validate_guide(ctx, id, version).await?;
         Ok(())
     }
 
     pub async fn validate_guide(&self, _: &BoscaContext, _: &Uuid, _: i32) -> Result<(), Error> {
-        todo!()
+        // TODO
+        Ok(())
     }
 
     pub async fn validate_document(
@@ -160,7 +162,7 @@ impl MetadataWorkflowsDataStore {
             return Err(Error::new("metadata already ready"));
         }
 
-        self.validate(&ctx, &metadata.id, metadata.version).await?;
+        self.validate(ctx, &metadata.id, metadata.version).await?;
 
         let workflow = &ctx.workflow;
         let process_id = "metadata.process".to_owned();
