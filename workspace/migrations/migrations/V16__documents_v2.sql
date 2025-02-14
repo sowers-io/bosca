@@ -57,18 +57,22 @@ create table document_template_attribute_workflow_ids
 
 create table document_template_blocks
 (
-    metadata_id uuid                not null,
-    version     int                 not null,
-    id          bigserial           not null,
-    sort        int                 not null,
-    name        varchar             not null,
-    description varchar             not null,
-    type        document_block_type not null,
-    validation  jsonb,
-    content     jsonb               not null,
-    primary key (metadata_id, version, id),
+    id            bigserial           not null,
+    metadata_id   uuid                not null,
+    version       int                 not null,
+    sort          int                 not null,
+    name          varchar             not null,
+    description   varchar             not null,
+    type          document_block_type not null,
+    configuration jsonb               not null,
+    validation    jsonb,
+    content       jsonb               not null,
+    required      bool                not null default false,
+    primary key (id),
     foreign key (metadata_id, version) references document_templates (metadata_id, version) on delete cascade
 );
+
+create index doc_temp_block_ix on document_template_blocks (metadata_id, version);
 
 create table documents
 (
@@ -85,14 +89,16 @@ create table documents
 
 create table document_blocks
 (
-    metadata_id uuid                not null,
-    version     int                 not null,
-    id          bigserial           not null,
-    type        document_block_type not null,
-    sort        int                 not null,
-    content     jsonb               not null,
+    id                bigserial           not null,
+    metadata_id       uuid                not null,
+    version           int                 not null,
+    template_block_id bigint,
+    type              document_block_type not null,
+    sort              int                 not null,
+    content           jsonb               not null,
     primary key (metadata_id, version, id),
-    foreign key (metadata_id, version) references documents (metadata_id, version) on delete cascade
+    foreign key (metadata_id, version) references documents (metadata_id, version) on delete cascade,
+    foreign key (template_block_id) references document_template_blocks (id)
 );
 
 create table document_block_metadata

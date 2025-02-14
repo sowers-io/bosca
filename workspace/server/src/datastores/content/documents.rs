@@ -186,7 +186,7 @@ impl DocumentsDataStore {
                 .await?;
             }
         }
-        let stmt = txn.prepare_cached("insert into document_template_blocks (metadata_id, version, name, description, type, validation, content, sort) values ($1, $2, $3, $4, $5, $6, $7, $8)").await?;
+        let stmt = txn.prepare_cached("insert into document_template_blocks (metadata_id, version, name, description, type, configuration, validation, content, required, sort) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)").await?;
         for (index, block) in template.blocks.iter().enumerate() {
             let index = index as i32;
             txn.execute(
@@ -197,8 +197,10 @@ impl DocumentsDataStore {
                     &block.name,
                     &block.description,
                     &block.block_type,
+                    &block.configuration,
                     &block.validation,
                     &block.content,
+                    &block.required,
                     &index,
                 ],
             )
@@ -224,13 +226,13 @@ impl DocumentsDataStore {
         &self,
         metadata_id: &Uuid,
         version: i32,
-    ) -> Result<Option<DocumentBlock>, Error> {
+    ) -> Result<Vec<DocumentBlock>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached("select * from document_blocks where metadata_id = $1 and version = $2 order by sort asc")
             .await?;
         let rows = connection.query(&stmt, &[metadata_id, &version]).await?;
-        Ok(rows.first().map(|r| r.into()))
+        Ok(rows.iter().map(|r| r.into()).collect())
     }
 
     pub async fn get_metadata(
@@ -324,7 +326,7 @@ impl DocumentsDataStore {
         version: i32,
         document: &DocumentInput,
     ) -> Result<(), Error> {
-        let stmt = txn.prepare_cached("insert into document_blocks (metadata_id, version, type, sort, content) values ($1, $2, $3, $4, $5) returning id").await?;
+        let stmt = txn.prepare_cached("insert into document_blocks (metadata_id, version, template_block_id, type, sort, content) values ($1, $2, $3, $4, $5, $6) returning id").await?;
         let stmt_wid = txn.prepare_cached("insert into document_block_metadata (metadata_id, version, block_id, metadata_reference_id, attributes, sort) values ($1, $2, $3, $4, $5, $6)").await?;
         for (index, block) in document.blocks.iter().enumerate() {
             let index = index as i32;
@@ -334,6 +336,7 @@ impl DocumentsDataStore {
                     &[
                         metadata_id,
                         &version,
+                        &block.template_block_id,
                         &block.block_type,
                         &index,
                         &block.content,

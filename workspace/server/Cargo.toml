@@ -38,6 +38,7 @@ object_store = { version = "0.11.0", features = ["aws"] }
 redis = { version = "0.27.6", features = ["aio", "tokio-comp", "r2d2", "streams", "connection-manager"] }
 r2d2 = "0.8.10"
 bosca-database = { path = "../util/database" }
+jsonschema = "0.29.0"
 
 reqwest = "0.12.8"
 bosca-telemetry = { path = "../util/telemetry" }

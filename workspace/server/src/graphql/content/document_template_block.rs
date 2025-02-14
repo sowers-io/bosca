@@ -28,11 +28,19 @@ impl DocumentTemplateBlockObject {
         &self.block.description
     }
 
+    pub async fn configuration(&self) -> &Value {
+        &self.block.configuration
+    }
+
     pub async fn validation(&self) -> &Option<Value> {
         &self.block.validation
     }
 
     pub async fn content(&self) -> &Value {
         &self.block.content
+    }
+
+    pub async fn required(&self) -> bool {
+        self.block.required
     }
 }
