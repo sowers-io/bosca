@@ -1,14 +1,20 @@
 use crate::models::security::principal::Principal;
 use crate::security::token::Token;
+use argon2::password_hash::rand_core::{OsRng, RngCore};
 use chrono::Utc;
 use jsonwebtoken::errors::Error;
 use jsonwebtoken::{decode, encode, Algorithm, DecodingKey, EncodingKey, Header, Validation};
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
+
+use aes_gcm::aead::{Aead, KeyInit};
+use aes_gcm::{Aes256Gcm, Key, Nonce};
 
 #[derive(Clone)]
 pub struct Keys {
     encoding: EncodingKey,
     decoding: DecodingKey,
+    secret: Vec<u8>,
 }
 
 impl Keys {
@@ -16,6 +22,7 @@ impl Keys {
         Self {
             encoding: EncodingKey::from_secret(secret),
             decoding: DecodingKey::from_secret(secret),
+            secret: secret.to_vec(),
         }
     }
 
@@ -42,6 +49,32 @@ impl Jwt {
             iss: issuer.to_owned(),
             validation,
         }
+    }
+
+    pub fn new_refresh_token(&self, principal: &Principal) -> Result<String, Error> {
+        let mut random_bytes = [0u8; 32];
+        OsRng.fill_bytes(&mut random_bytes);
+
+        let mut bytes = Vec::new();
+        bytes.extend_from_slice(&random_bytes);
+        bytes.extend_from_slice(principal.id.as_bytes());
+
+        let hashed_key = Sha256::digest(&self.keys.secret);
+        let key = Key::<Aes256Gcm>::from_slice(&hashed_key);
+        let cipher = Aes256Gcm::new(key);
+
+        let mut nonce_bytes = [0u8; 12];
+        OsRng.fill_bytes(&mut nonce_bytes);
+        let nonce = Nonce::from_slice(&nonce_bytes);
+
+        let ciphertext = cipher
+            .encrypt(nonce, bytes.as_ref())
+            .expect("Encryption failed");
+
+        let mut token_data = Vec::new();
+        token_data.extend_from_slice(nonce);
+        token_data.extend_from_slice(&ciphertext);
+        Ok(hex::encode(token_data))
     }
 
     pub fn new_token(&self, principal: &Principal) -> Result<Token, Error> {

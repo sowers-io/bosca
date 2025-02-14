@@ -16,4 +16,8 @@ impl TokenObject<'_> {
     async fn token(&self) -> String {
         self.token.token.to_string()
     }
+
+    async fn issued_at(&self) -> usize { self.token.issued_at }
+
+    async fn expires_at(&self) -> usize { self.token.expires_at }
 }

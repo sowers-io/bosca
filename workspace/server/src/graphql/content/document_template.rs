@@ -4,6 +4,7 @@ use crate::graphql::content::document_template_block::DocumentTemplateBlockObjec
 use crate::models::content::document_template::DocumentTemplate;
 use async_graphql::{Context, Error, Object};
 use chrono::{DateTime, Utc};
+use serde_json::Value;
 use uuid::Uuid;
 
 pub struct DocumentTemplateObject {
@@ -34,6 +35,10 @@ impl DocumentTemplateObject {
 
     pub async fn description(&self) -> &String {
         &self.template.description
+    }
+
+    pub async fn configuration(&self) -> &Value {
+        &self.template.configuration
     }
 
     pub async fn allow_user_defined_blocks(&self) -> bool {

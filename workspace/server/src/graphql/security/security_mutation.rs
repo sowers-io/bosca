@@ -16,6 +16,12 @@ impl SecurityMutationObject {
         SignupMutationObject {}
     }
 
+    async fn expire_refresh_tokens(&self, ctx: &Context<'_>) -> Result<bool, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        ctx.security.expire_refresh_tokens().await?;
+        Ok(true)
+    }
+
     async fn add_principal_group(
         &self,
         ctx: &Context<'_>,

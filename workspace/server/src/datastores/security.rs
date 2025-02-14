@@ -4,12 +4,13 @@ use crate::models::security::password::{encrypt, verify};
 use crate::models::security::principal::Principal;
 use crate::security::jwt::Jwt;
 use crate::security::token::Token;
+use crate::util::signed_url::{sign_url, verify_signed_url};
 use async_graphql::*;
 use deadpool_postgres::{GenericClient, Object, Pool};
 use serde_json::Value;
 use std::sync::Arc;
+use chrono::{DateTime, Utc};
 use uuid::Uuid;
-use crate::util::signed_url::{sign_url, verify_signed_url};
 
 #[derive(Clone)]
 pub struct SecurityDataStore {
@@ -104,6 +105,46 @@ impl SecurityDataStore {
 
     pub fn new_token(&self, principal: &Principal) -> Result<Token, jsonwebtoken::errors::Error> {
         self.jwt.new_token(principal)
+    }
+
+    pub fn new_refresh_token(&self, principal: &Principal) -> Result<String, jsonwebtoken::errors::Error> {
+        self.jwt.new_refresh_token(principal)
+    }
+
+    pub async fn validate_refresh_token(&self, refresh_token: &str) -> Result<Option<Uuid>, Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("delete from principal_refresh_tokens where token = $1 returning principal_id, expires")
+            .await?;
+        let token = refresh_token.to_string();
+        let results = connection.query(&stmt, &[&token]).await?;
+        if let Some(result) = results.first() {
+            let expires: DateTime<Utc> = result.get("expires");
+            if expires > Utc::now() {
+                let principal_id: Uuid = result.get("principal_id");
+                return Ok(Some(principal_id));
+            }
+        }
+        Ok(None)
+    }
+
+    pub async fn add_refresh_token(&self, principal: &Principal, refresh_token: &str) -> Result<(), Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("insert into principal_refresh_tokens (token, principal_id) values ($1, $2)")
+            .await?;
+        let token = refresh_token.to_string();
+        connection.execute(&stmt, &[&token, &principal.id]).await?;
+        Ok(())
+    }
+
+    pub async fn expire_refresh_tokens(&self) -> Result<(), Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("delete from principal_refresh_tokens where expires <= now()")
+            .await?;
+        connection.execute(&stmt, &[]).await?;
+        Ok(())
     }
 
     pub async fn add_principal(
