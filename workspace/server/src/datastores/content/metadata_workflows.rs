@@ -99,7 +99,12 @@ impl MetadataWorkflowsDataStore {
         todo!()
     }
 
-    pub async fn validate_document(&self, ctx: &BoscaContext, id: &Uuid, version: i32) -> Result<(), Error> {
+    pub async fn validate_document(
+        &self,
+        ctx: &BoscaContext,
+        id: &Uuid,
+        version: i32,
+    ) -> Result<(), Error> {
         let document = ctx.content.documents.get_document(id, version).await?;
         if let Some(document) = document {
             if let Some(template_id) = &document.template_metadata_id {
@@ -135,7 +140,7 @@ impl MetadataWorkflowsDataStore {
         Ok(())
     }
 
-    pub async fn set_metadata_ready(&self, id: &Uuid) -> Result<(), Error> {
+    async fn set_metadata_ready(&self, id: &Uuid) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached("update metadata set ready = now() where id = $1")
@@ -154,6 +159,9 @@ impl MetadataWorkflowsDataStore {
         if metadata.ready.is_some() {
             return Err(Error::new("metadata already ready"));
         }
+
+        self.validate(&ctx, &metadata.id, metadata.version).await?;
+
         let workflow = &ctx.workflow;
         let process_id = "metadata.process".to_owned();
         self.set_metadata_workflow_state(
