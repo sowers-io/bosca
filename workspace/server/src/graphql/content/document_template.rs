@@ -1,9 +1,7 @@
 use crate::context::BoscaContext;
 use crate::graphql::content::document_template_attribute_object::DocumentTemplateAttributeObject;
-use crate::graphql::content::document_template_block::DocumentTemplateBlockObject;
 use crate::models::content::document_template::DocumentTemplate;
 use async_graphql::{Context, Error, Object};
-use chrono::{DateTime, Utc};
 use serde_json::Value;
 use uuid::Uuid;
 
@@ -25,32 +23,16 @@ impl DocumentTemplateObject {
 
 #[Object(name = "DocumentTemplate")]
 impl DocumentTemplateObject {
-    pub async fn id(&self) -> i64 {
-        self.template.id
-    }
-
-    pub async fn name(&self) -> &String {
-        &self.template.name
-    }
-
-    pub async fn description(&self) -> &String {
-        &self.template.description
-    }
-
-    pub async fn configuration(&self) -> &Value {
+    pub async fn configuration(&self) -> &Option<Value> {
         &self.template.configuration
     }
 
-    pub async fn allow_user_defined_blocks(&self) -> bool {
-        self.template.allow_user_defined_blocks
+    pub async fn schema(&self) -> &Option<Value> {
+        &self.template.schema
     }
 
-    pub async fn created(&self) -> &DateTime<Utc> {
-        &self.template.created
-    }
-
-    pub async fn modified(&self) -> &DateTime<Utc> {
-        &self.template.modified
+    pub async fn content(&self) -> &Value {
+        &self.template.content
     }
 
     pub async fn attributes(
@@ -65,21 +47,6 @@ impl DocumentTemplateObject {
             .await?
             .into_iter()
             .map(|a| DocumentTemplateAttributeObject::new(self.metadata_id, self.version, a))
-            .collect())
-    }
-
-    pub async fn blocks(
-        &self,
-        ctx: &Context<'_>,
-    ) -> Result<Vec<DocumentTemplateBlockObject>, Error> {
-        let ctx = ctx.data::<BoscaContext>()?;
-        Ok(ctx
-            .content
-            .documents
-            .get_template_blocks(&self.metadata_id, self.version)
-            .await?
-            .into_iter()
-            .map(DocumentTemplateBlockObject::new)
             .collect())
     }
 }

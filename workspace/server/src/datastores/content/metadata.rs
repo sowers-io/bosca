@@ -107,7 +107,7 @@ impl MetadataDataStore {
     pub async fn get_by_version(&self, id: &Uuid, version: i32) -> Result<Option<Metadata>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
-            .prepare_cached("select * from metadata where id = $1 and version = $2")
+            .prepare_cached("select * from metadata_versions where id = $1 and version = $2")
             .await?;
         let rows = connection.query(&stmt, &[id, &version]).await?;
         if rows.is_empty() {
@@ -322,7 +322,7 @@ impl MetadataDataStore {
     }
 
     #[allow(dead_code)]
-    pub async fn add(&self, metadata: &MetadataInput) -> Result<(Uuid, i32), Error> {
+    pub async fn add(&self, metadata: &MetadataInput) -> Result<(Uuid, i32, i32), Error> {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
 
@@ -472,14 +472,14 @@ impl MetadataDataStore {
         &'a self,
         txn: &'a Transaction<'a>,
         metadata: &MetadataInput,
-    ) -> Result<(Uuid, i32), Error> {
+    ) -> Result<(Uuid, i32, i32), Error> {
         let mut source_id: Option<Uuid> = None;
         let mut source_identifier: Option<String> = None;
         if let Some(source) = &metadata.source {
             source_id = Some(Uuid::parse_str(&source.id)?);
             source_identifier = Some(source.identifier.clone());
         }
-        let stmt = txn.prepare("insert into metadata (name, type, content_type, content_length, labels, attributes, source_id, source_identifier, language_tag) values ($1, 'standard', $2, $3, $4, ($5)::jsonb, $6, $7, $8) returning id, version").await?;
+        let stmt = txn.prepare("insert into metadata (name, type, content_type, content_length, labels, attributes, source_id, source_identifier, language_tag) values ($1, 'standard', $2, $3, $4, ($5)::jsonb, $6, $7, $8) returning id, version, active_version").await?;
         let labels = metadata.labels.clone().unwrap_or_default();
         let rows = txn
             .query(
@@ -499,6 +499,7 @@ impl MetadataDataStore {
 
         let id: Uuid = rows.first().unwrap().get(0);
         let version: i32 = rows.first().unwrap().get(1);
+        let active_version: i32 = rows.first().unwrap().get(2);
 
         if let Some(trait_ids) = &metadata.trait_ids {
             for trait_id in trait_ids {
@@ -524,7 +525,7 @@ impl MetadataDataStore {
         self.ensure_content_type_traits(&id, &metadata.content_type, txn)
             .await?;
 
-        Ok((id, version))
+        Ok((id, version, active_version))
     }
 
     async fn edit_txn<'a>(
@@ -794,7 +795,7 @@ impl MetadataDataStore {
         &self,
         ctx: &BoscaContext,
         metadatas: &mut [MetadataChildInput],
-    ) -> Result<Vec<(Uuid, i32)>, Error> {
+    ) -> Result<Vec<(Uuid, i32, i32)>, Error> {
         let mut conn = self.pool.get().await?;
         let txn = conn.transaction().await?;
         let mut search_documents = Vec::new();
@@ -807,7 +808,7 @@ impl MetadataDataStore {
         } else {
             error!("failed to index documents, missing storage system");
         }
-        for (id, _) in &ids {
+        for (id, _, _) in &ids {
             self.on_metadata_changed(id).await?
         }
         Ok(ids)
@@ -822,7 +823,7 @@ impl MetadataDataStore {
         search_documents: &mut Vec<SearchDocumentInput>,
         ignore_permission_check: bool,
         permissions: Option<Vec<Permission>>,
-    ) -> Result<Vec<(Uuid, i32)>, Error> {
+    ) -> Result<Vec<(Uuid, i32, i32)>, Error> {
         let mut new_metadatas = Vec::new();
         for metadata_child in metadatas {
             let metadata = &metadata_child.metadata;
@@ -835,7 +836,7 @@ impl MetadataDataStore {
                 ctx.check_collection_action_txn(txn, &collection_id, PermissionAction::Edit)
                     .await?;
             }
-            let (id, version) = self.add_txn(txn, metadata).await?;
+            let (id, version, active_version) = self.add_txn(txn, metadata).await?;
             let permissions = if let Some(permissions) = &permissions {
                 permissions.clone()
             } else {
@@ -869,7 +870,7 @@ impl MetadataDataStore {
                     content: "".to_owned(),
                 });
             }
-            new_metadatas.push((id, version));
+            new_metadatas.push((id, version, active_version));
         }
         Ok(new_metadatas)
     }

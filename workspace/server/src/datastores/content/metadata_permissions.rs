@@ -50,6 +50,16 @@ impl MetadataPermissionsDataStore {
         Ok(eval.evaluate(principal, &action))
     }
 
+    pub async fn has_metadata_version_permission(
+        &self,
+        metadata: &Metadata,
+        principal: &Principal,
+        action: PermissionAction,
+    ) -> Result<bool, Error> {
+        let eval = Evaluator::new(self.get_metadata_permissions(&metadata.id).await?);
+        Ok(eval.evaluate(principal, &action))
+    }
+
     pub async fn add_metadata_permission(&self, permission: &Permission) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection.prepare_cached("insert into metadata_permissions (metadata_id, group_id, action) values ($1, $2, $3)").await?;

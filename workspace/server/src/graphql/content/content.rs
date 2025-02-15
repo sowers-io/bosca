@@ -138,27 +138,43 @@ impl ContentObject {
         &self,
         ctx: &Context<'_>,
         id: String,
+        version: Option<i32>,
     ) -> Result<Option<MetadataObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::from_str(id.as_str())?;
-        Ok(Some(
-            ctx.check_metadata_action(&id, PermissionAction::View)
-                .await?
-                .into(),
-        ))
+        if let Some(version) = version {
+            Ok(Some(
+                ctx.check_metadata_version_action(&id, version, PermissionAction::View)
+                    .await?
+                    .into(),
+            ))
+        } else {
+            Ok(Some(
+                ctx.check_metadata_action(&id, PermissionAction::View)
+                    .await?
+                    .into(),
+            ))
+        }
     }
 
     async fn metadata_supplementary(
         &self,
         ctx: &Context<'_>,
         id: String,
+        version: Option<i32>,
         key: String,
     ) -> Result<Option<MetadataSupplementaryObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::from_str(id.as_str())?;
-        let metadata = ctx
-            .check_metadata_action(&id, PermissionAction::View)
-            .await?;
+        let metadata = if let Some(version) = version {
+            ctx
+                .check_metadata_version_action(&id, version, PermissionAction::View)
+                .await?
+        } else {
+            ctx
+                .check_metadata_action(&id, PermissionAction::View)
+                .await?
+        };
         let supplementary = ctx
             .content
             .metadata

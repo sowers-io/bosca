@@ -1,8 +1,10 @@
 use crate::context::BoscaContext;
 use crate::graphql::content::document_template_attribute_workflow_object::DocumentTemplateAttributeWorkflowObject;
 use crate::models::content::document_attribute_type::DocumentAttributeType;
+use crate::models::content::document_attribute_ui_type::DocumentAttributeUiType;
 use crate::models::content::document_template_attributes::DocumentTemplateAttribute;
 use async_graphql::{Context, Error, Object};
+use serde_json::Value;
 use uuid::Uuid;
 
 pub struct DocumentTemplateAttributeObject {
@@ -23,10 +25,6 @@ impl DocumentTemplateAttributeObject {
 
 #[Object(name = "DocumentTemplateAttribute")]
 impl DocumentTemplateAttributeObject {
-    pub async fn id(&self) -> i64 {
-        self.attribute.id
-    }
-
     pub async fn key(&self) -> &String {
         &self.attribute.key
     }
@@ -39,9 +37,22 @@ impl DocumentTemplateAttributeObject {
         &self.attribute.description
     }
 
+    pub async fn configuration(&self) -> &Option<Value> {
+        &self.attribute.configuration
+    }
+
     #[graphql(name = "type")]
     pub async fn attribute_type(&self) -> DocumentAttributeType {
         self.attribute.attribute_type
+    }
+
+    #[graphql(name = "ui")]
+    pub async fn ui(&self) -> DocumentAttributeUiType {
+        self.attribute.ui
+    }
+
+    pub async fn list(&self) -> bool {
+        self.attribute.list
     }
 
     pub async fn workflows(
