@@ -77,11 +77,15 @@ impl BoscaContext {
     }
 
     pub async fn check_metadata_version_action(&self, id: &Uuid, version: i32, action: PermissionAction) -> Result<Metadata, Error> {
+        let metadata = self.check_metadata_action(id, action).await?;
+        if metadata.version == version {
+            return Ok(metadata)
+        }
         match self.content.metadata.get_by_version(id, version).await? {
             Some(metadata) => {
                 if !self.content
                     .metadata_permissions
-                    .has_metadata_permission(&metadata, &self.principal, action)
+                    .has_metadata_version_permission(&metadata, &self.principal, action)
                     .await?
                 {
                     let admin = self.security.get_administrators_group().await?;

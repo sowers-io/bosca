@@ -6,7 +6,6 @@ use crate::models::security::principal::Principal;
 use async_graphql::*;
 use deadpool_postgres::{GenericClient, Pool};
 use log::error;
-use std::collections::HashMap;
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -107,33 +106,19 @@ impl MetadataWorkflowsDataStore {
         id: &Uuid,
         version: i32,
     ) -> Result<(), Error> {
-        let document = ctx.content.documents.get_document(id, version).await?;
-        if let Some(document) = document {
+        if let Some(document) = ctx.content.documents.get_document(id, version).await? {
             if let Some(template_id) = &document.template_metadata_id {
                 if let Some(template_version) = &document.template_metadata_version {
-                    let template_blocks = ctx
+                    if let Some(template) = ctx
                         .content
                         .documents
-                        .get_template_blocks(template_id, *template_version)
-                        .await?;
-                    let mut template_block_by_id = HashMap::new();
-                    for block in template_blocks {
-                        template_block_by_id.insert(block.id, block);
-                    }
-                    let blocks = ctx.content.documents.get_blocks(id, version).await?;
-                    for block in blocks.iter() {
-                        if let Some(template_block_id) = block.template_block_id {
-                            let tb = template_block_by_id.remove(&template_block_id).unwrap();
-                            if let Some(schema) = &tb.validation {
-                                if !jsonschema::is_valid(schema, &block.content) {
-                                    return Err(Error::new("block validation failed"));
-                                }
+                        .get_template(template_id, *template_version)
+                        .await?
+                    {
+                        if let Some(schema) = template.schema {
+                            if !jsonschema::is_valid(&schema, &document.content) {
+                                return Err(Error::new("document validation failed"));
                             }
-                        }
-                    }
-                    for block in template_block_by_id.values() {
-                        if block.required {
-                            return Err(Error::new("required block missing"));
                         }
                     }
                 }

@@ -2,7 +2,7 @@ use std::error::Error;
 use async_graphql::Enum;
 use bytes::{BufMut, BytesMut};
 use postgres_types::{to_sql_checked, FromSql, IsNull, ToSql, Type};
-
+// create type document_attribute_ui_type as enum ('text', 'image', 'profile', 'file');
 #[derive(Enum, Debug, Copy, Clone, Eq, PartialEq)]
 pub enum DocumentAttributeType {
     String,
@@ -10,6 +10,8 @@ pub enum DocumentAttributeType {
     Float,
     Date,
     DateTime,
+    Profile,
+    Metadata,
 }
 
 impl<'a> FromSql<'a> for DocumentAttributeType {
@@ -24,6 +26,8 @@ impl<'a> FromSql<'a> for DocumentAttributeType {
             "float" => DocumentAttributeType::Float,
             "date" => DocumentAttributeType::Date,
             "datetime" => DocumentAttributeType::DateTime,
+            "profile" => DocumentAttributeType::Profile,
+            "metadata" => DocumentAttributeType::Metadata,
             _ => DocumentAttributeType::String,
         })
     }
@@ -45,6 +49,8 @@ impl ToSql for DocumentAttributeType {
             DocumentAttributeType::Float => w.put_slice("float".as_ref()),
             DocumentAttributeType::Date => w.put_slice("date".as_ref()),
             DocumentAttributeType::DateTime => w.put_slice("datetime".as_ref()),
+            DocumentAttributeType::Profile => w.put_slice("profile".as_ref()),
+            DocumentAttributeType::Metadata => w.put_slice("metadata".as_ref()),
         }
         Ok(IsNull::No)
     }

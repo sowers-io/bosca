@@ -45,13 +45,24 @@ impl MetadataMutationObject {
             attributes: collection_item_attributes,
         }];
         let metadata_ids = ctx.content.metadata.add_all(ctx, &mut metadatas).await?;
-        let (metadata_id, version) = metadata_ids.first().unwrap();
-        let new_metadata = ctx
-            .content
-            .metadata
-            .get_by_version(metadata_id, *version)
-            .await?
-            .unwrap();
+        let Some((metadata_id, version, active_version)) = metadata_ids.first() else {
+            return Err(Error::new("Error creating metadata"));
+        };
+        let new_metadata = if version == active_version {
+            ctx
+                .content
+                .metadata
+                .get(metadata_id)
+                .await?
+                .unwrap()
+        } else {
+            ctx
+                .content
+                .metadata
+                .get_by_version(metadata_id, *version)
+                .await?
+                .unwrap()
+        };
         if let Some(document) = &metadata.document {
             ctx.content
                 .documents
@@ -130,13 +141,22 @@ impl MetadataMutationObject {
         let mut metadatas = metadatas;
         let metadata_ids = ctx.content.metadata.add_all(ctx, &mut metadatas).await?;
         let mut metadatas = Vec::new();
-        for (id, version) in metadata_ids {
-            let metadata = ctx
-                .content
-                .metadata
-                .get_by_version(&id, version)
-                .await?
-                .unwrap();
+        for (id, version, active_version) in metadata_ids {
+            let metadata = if version == active_version {
+                ctx
+                    .content
+                    .metadata
+                    .get(&id)
+                    .await?
+                    .unwrap()
+            } else {
+                ctx
+                    .content
+                    .metadata
+                    .get_by_version(&id, version)
+                    .await?
+                    .unwrap()
+            };
             metadatas.push(metadata.into());
         }
         Ok(metadatas)

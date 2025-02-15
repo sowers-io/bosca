@@ -168,7 +168,7 @@ impl MetadataObject {
             .documents
             .get_document(&self.metadata.id, self.metadata.version)
             .await?;
-        Ok(document.map(|d| DocumentObject::new(self.metadata.id, self.metadata.version, d)))
+        Ok(document.map(DocumentObject::new))
     }
 
     async fn document_template(

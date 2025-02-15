@@ -106,7 +106,7 @@ pub fn build_find_args<'a>(
     }
     if let Some(content_types) = content_types {
         if !content_types.is_empty() {
-            if !values.is_empty() {
+            if !attributes.is_empty() && !values.is_empty() {
                 q.push_str(" and ");
             }
             q.push_str(format!(" {}.content_type in (", alias).as_str());
