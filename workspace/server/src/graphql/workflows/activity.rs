@@ -42,7 +42,7 @@ impl ActivityObject {
         &self.activity.child_workflow_id
     }
 
-    async fn configuration(&self) -> &Value {
+    async fn configuration(&self) -> &Option<Value> {
         &self.activity.configuration
     }
     async fn inputs(&self, ctx: &Context<'_>) -> Result<Vec<ActivityParameterObject>, Error> {

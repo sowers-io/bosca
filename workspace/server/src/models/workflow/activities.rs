@@ -1,4 +1,3 @@
-use crate::worklfow::yaml::into;
 use async_graphql::*;
 use bytes::{BufMut, BytesMut};
 use postgres_types::{to_sql_checked, FromSql, IsNull, ToSql, Type};
@@ -6,7 +5,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio_postgres::Row;
 use uuid::Uuid;
-use yaml_rust2::Yaml;
 
 #[derive(Enum, Debug, Copy, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum ActivityParameterType {
@@ -21,7 +19,7 @@ pub struct Activity {
     pub name: String,
     pub description: String,
     pub child_workflow_id: Option<String>,
-    pub configuration: Value,
+    pub configuration: Option<Value>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -31,7 +29,7 @@ pub struct WorkflowActivity {
     pub activity_id: String,
     pub queue: String,
     pub execution_group: i32,
-    pub configuration: Value,
+    pub configuration: Option<Value>,
 }
 
 #[derive(InputObject)]
@@ -40,7 +38,7 @@ pub struct ActivityInput {
     pub name: String,
     pub description: String,
     pub child_workflow_id: Option<String>,
-    pub configuration: Value,
+    pub configuration: Option<Value>,
     pub inputs: Vec<ActivityParameterInput>,
     pub outputs: Vec<ActivityParameterInput>,
 }
@@ -61,7 +59,7 @@ pub struct ActivityParameterInput {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorkflowActivityModel {
     pub model_id: Uuid,
-    pub configuration: Value,
+    pub configuration: Option<Value>,
 }
 
 #[derive(Serialize, Deserialize, InputObject)]
@@ -199,138 +197,6 @@ impl From<Row> for WorkflowActivity {
             queue: row.get("queue"),
             execution_group: row.get("execution_group"),
             configuration: row.get("configuration"),
-        }
-    }
-}
-
-impl From<&Yaml> for ActivityInput {
-    fn from(yaml: &Yaml) -> Self {
-        let mut inputs: Vec<ActivityParameterInput> = vec![];
-        let mut outputs: Vec<ActivityParameterInput> = vec![];
-
-        if !yaml["inputs"].is_null() && !yaml["inputs"].is_badvalue() {
-            for item in yaml["inputs"].as_hash().unwrap() {
-                inputs.push(ActivityParameterInput {
-                    name: item.0.as_str().unwrap().to_string(),
-                    parameter_type: ActivityParameterType::from_sql(
-                        &Type::VARCHAR,
-                        item.1.as_str().unwrap().as_ref(),
-                    )
-                    .unwrap(),
-                })
-            }
-        }
-
-        if !yaml["outputs"].is_null() && !yaml["outputs"].is_badvalue() {
-            for item in yaml["outputs"].as_hash().unwrap() {
-                outputs.push(ActivityParameterInput {
-                    name: item.0.as_str().unwrap().to_string(),
-                    parameter_type: ActivityParameterType::from_sql(
-                        &Type::VARCHAR,
-                        item.1.as_str().unwrap().as_ref(),
-                    )
-                    .unwrap(),
-                })
-            }
-        }
-
-        Self {
-            id: yaml["id"].as_str().unwrap_or("").to_string(),
-            name: yaml["name"].as_str().unwrap_or("").to_string(),
-            child_workflow_id: if yaml["child_workflow_id"].is_null()
-                || yaml["child_workflow_id"].is_badvalue()
-            {
-                None
-            } else {
-                Some(yaml["child_workflow_id"].as_str().unwrap().to_string())
-            },
-            description: yaml["description"]
-                .as_str()
-                .unwrap_or("")
-                .to_string(),
-            inputs,
-            outputs,
-            configuration: into(&yaml["configuration"]),
-        }
-    }
-}
-
-impl From<&Yaml> for WorkflowActivityInput {
-    fn from(yaml: &Yaml) -> Self {
-        let mut inputs: Vec<WorkflowActivityParameterInput> = vec![];
-        let mut outputs: Vec<WorkflowActivityParameterInput> = vec![];
-        let mut models: Vec<WorkflowActivityModelInput> = vec![];
-        let mut storage_systems: Vec<WorkflowActivityStorageSystemInput> = vec![];
-        let mut prompts: Vec<WorkflowActivityPromptInput> = vec![];
-
-        if !yaml["prompts"].is_null() && !yaml["prompts"].is_badvalue() {
-            for item in yaml["prompts"].as_hash().unwrap() {
-                let p = item.1;
-                prompts.push(WorkflowActivityPromptInput {
-                    prompt_id: item.0.as_str().unwrap().to_string(),
-                    configuration: Some(into(&p["configuration"])),
-                })
-            }
-        }
-
-        if !yaml["models"].is_null() && !yaml["models"].is_badvalue() {
-            for item in yaml["models"].as_hash().unwrap() {
-                let m = item.1;
-                models.push(WorkflowActivityModelInput {
-                    model_id: item.0.as_str().unwrap().to_string(),
-                    configuration: Some(into(&m["configuration"])),
-                })
-            }
-        }
-
-        if !yaml["storageSystems"].is_null() && !yaml["storageSystems"].is_badvalue() {
-            for item in yaml["storageSystems"].as_hash().unwrap() {
-                let s = item.1;
-                storage_systems.push(WorkflowActivityStorageSystemInput {
-                    system_id: item.0.as_str().unwrap().to_string(),
-                    configuration: Some(into(&s["configuration"])),
-                })
-            }
-        }
-
-        if !yaml["inputs"].is_null() && !yaml["inputs"].is_badvalue() {
-            for item in yaml["inputs"].as_hash().unwrap() {
-                inputs.push(WorkflowActivityParameterInput {
-                    name: item.0.as_str().unwrap().to_string(),
-                    value: item.1.as_str().unwrap().to_string(),
-                })
-            }
-        }
-
-        if !yaml["outputs"].is_null() && !yaml["outputs"].is_badvalue() {
-            for item in yaml["outputs"].as_hash().unwrap() {
-                outputs.push(WorkflowActivityParameterInput {
-                    name: item.0.as_str().unwrap().to_string(),
-                    value: item.1.as_str().unwrap().to_string(),
-                })
-            }
-        }
-
-        Self {
-            activity_id: yaml["activity_id"]
-                .as_str()
-                .unwrap_or("")
-                .to_string(),
-            queue: yaml["queue"]
-                .as_str()
-                .unwrap_or("")
-                .to_string(),
-            execution_group: yaml["executionGroup"].as_i64().unwrap_or(0) as i32,
-            description: yaml["description"]
-                .as_str()
-                .unwrap_or("")
-                .to_string(),
-            models,
-            prompts,
-            storage_systems,
-            inputs,
-            outputs,
-            configuration: Some(into(&yaml["configuration"])),
         }
     }
 }

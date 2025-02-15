@@ -1236,9 +1236,9 @@ impl WorkflowDataStore {
             if let Some(Value::Object(o)) =
                 configuration_overrides.get(&workflow_activity.activity_id)
             {
-                if workflow_activity.configuration.is_null() {
-                    workflow_activity.configuration = Value::Object(o.clone());
-                } else if let Value::Object(ref mut o2) = workflow_activity.configuration {
+                if workflow_activity.configuration.is_none() || workflow_activity.configuration.as_ref().unwrap().is_null() {
+                    workflow_activity.configuration = Some(Value::Object(o.clone()));
+                } else if let Some(Value::Object(ref mut o2)) = workflow_activity.configuration {
                     for (k, v) in o.iter() {
                         o2.insert(k.to_owned(), v.to_owned());
                     }

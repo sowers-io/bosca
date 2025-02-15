@@ -40,7 +40,7 @@ impl WorkflowActivityObject {
         self.activity.execution_group
     }
 
-    async fn configuration(&self) -> &Value {
+    async fn configuration(&self) -> &Option<Value> {
         &self.activity.configuration
     }
 

@@ -16,7 +16,7 @@ impl WorkflowActivityModelObject {
 
 #[Object(name = "WorkflowActivityModel")]
 impl WorkflowActivityModelObject {
-    async fn configuration(&self) -> &Value {
+    async fn configuration(&self) -> &Option<Value> {
         &self.activity.configuration
     }
 
