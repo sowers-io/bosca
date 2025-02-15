@@ -823,7 +823,7 @@ impl WorkflowDataStore {
 
     pub async fn add_prompt(&self, prompt: &PromptInput) -> Result<Uuid, Error> {
         let connection = self.pool.get().await?;
-        let stmt = connection.prepare_cached("insert into prompts (name, description, system_prompt, user_prompt, input_type, output_type) values ($1, $2, $3, $4, $5, $6) returning id").await?;
+        let stmt = connection.prepare_cached("insert into prompts (name, description, system_prompt, user_prompt, input_type, output_type, schema) values ($1, $2, $3, $4, $5, $6, $7) returning id").await?;
         let rows = connection
             .query(
                 &stmt,
@@ -834,6 +834,7 @@ impl WorkflowDataStore {
                     &prompt.user_prompt,
                     &prompt.input_type,
                     &prompt.output_type,
+                    &prompt.schema,
                 ],
             )
             .await?;
@@ -848,7 +849,7 @@ impl WorkflowDataStore {
 
     pub async fn edit_prompt(&self, id: &Uuid, prompt: &PromptInput) -> Result<(), Error> {
         let connection = self.pool.get().await?;
-        let stmt = connection.prepare_cached("update prompts set name = $1, description = $2, system_prompt = $3, user_prompt = $4, input_type = $5, output_type = $6 where id = $7").await?;
+        let stmt = connection.prepare_cached("update prompts set name = $1, description = $2, system_prompt = $3, user_prompt = $4, input_type = $5, output_type = $6, schema = $7 where id = $8").await?;
         connection
             .execute(
                 &stmt,
@@ -859,6 +860,7 @@ impl WorkflowDataStore {
                     &prompt.user_prompt,
                     &prompt.input_type,
                     &prompt.output_type,
+                    &prompt.schema,
                     id,
                 ],
             )

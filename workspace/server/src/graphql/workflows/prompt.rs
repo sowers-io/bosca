@@ -1,5 +1,6 @@
 use crate::models::workflow::prompts::Prompt;
 use async_graphql::Object;
+use serde_json::Value;
 
 pub struct PromptObject {
     prompt: Prompt,
@@ -39,6 +40,10 @@ impl PromptObject {
 
     async fn output_type(&self) -> &String {
         &self.prompt.output_type
+    }
+
+    async fn schema(&self) -> &Option<Value> {
+        &self.prompt.schema
     }
 }
 

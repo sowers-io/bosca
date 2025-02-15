@@ -11,7 +11,6 @@ pub struct DocumentTemplate {
     pub name: String,
     pub description: String,
     pub allow_user_defined_blocks: bool,
-    pub configuration: Value,
     pub created: DateTime<Utc>,
     pub modified: DateTime<Utc>,
 }
@@ -32,7 +31,6 @@ impl From<&Row> for DocumentTemplate {
             id: row.get("id"),
             name: row.get("name"),
             description: row.get("description"),
-            configuration: row.get("configuration"),
             allow_user_defined_blocks: row.get("allow_user_defined_blocks"),
             created: row.get("created"),
             modified: row.get("modified"),
