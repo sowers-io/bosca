@@ -59,7 +59,7 @@ impl WorkflowExecutionPlanObject {
     async fn supplementary_id(&self) -> &Option<String> {
         &self.plan.supplementary_id
     }
-    async fn context(&self) -> &Value {
+    async fn context(&self) -> &Option<Value> {
         &self.plan.context
     }
     async fn active(&self) -> Vec<i32> {

@@ -31,7 +31,7 @@ impl WorkflowStateObject {
         &self.state.description
     }
 
-    async fn configuration(&self) -> &Value {
+    async fn configuration(&self) -> &Option<Value> {
         &self.state.configuration
     }
 

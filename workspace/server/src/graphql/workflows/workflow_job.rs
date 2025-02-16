@@ -126,7 +126,7 @@ impl WorkflowJobObject {
         self.job.models.iter().map(|p| p.clone().into()).collect()
     }
 
-    async fn context(&self) -> &Value {
+    async fn context(&self) -> &Option<Value> {
         &self.job.context
     }
 }

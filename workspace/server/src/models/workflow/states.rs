@@ -1,10 +1,8 @@
-use crate::worklfow::yaml::into;
 use async_graphql::*;
 use bytes::{BufMut, BytesMut};
 use postgres_types::{to_sql_checked, FromSql, IsNull, ToSql, Type};
 use serde_json::Value;
 use tokio_postgres::Row;
-use yaml_rust2::Yaml;
 
 #[derive(Enum, Debug, Copy, Clone, Eq, PartialEq)]
 pub enum WorkflowStateType {
@@ -22,7 +20,7 @@ pub struct WorkflowState {
     pub name: String,
     pub description: String,
     pub state_type: WorkflowStateType,
-    pub configuration: Value,
+    pub configuration: Option<Value>,
 
     pub workflow_id: Option<String>,
     pub entry_workflow_id: Option<String>,
@@ -104,73 +102,4 @@ impl ToSql for WorkflowStateType {
     }
 
     to_sql_checked!();
-}
-
-impl From<&Yaml> for WorkflowState {
-    fn from(yaml: &Yaml) -> Self {
-        Self {
-            id: yaml["id"].as_str().unwrap().to_string(),
-            name: yaml["name"].as_str().unwrap().to_string(),
-            description: yaml["description"].as_str().unwrap().to_string(),
-            state_type: WorkflowStateType::from_sql(
-                &Type::VARCHAR,
-                yaml["type"].as_str().unwrap().as_ref(),
-            )
-            .unwrap(),
-            configuration: into(&yaml["description"]),
-            workflow_id: if yaml["workflowId"].is_null() {
-                None
-            } else {
-                Some(yaml["workflowId"].as_str().unwrap().to_string())
-            },
-            entry_workflow_id: if yaml["entryWorkflowId"].is_null() {
-                None
-            } else {
-                Some(yaml["entryWorkflowId"].as_str().unwrap().to_string())
-            },
-            exit_workflow_id: if yaml["exitWorkflowId"].is_null() {
-                None
-            } else {
-                Some(yaml["exitWorkflowId"].as_str().unwrap().to_string())
-            },
-        }
-    }
-}
-
-impl From<&Yaml> for WorkflowStateInput {
-    fn from(yaml: &Yaml) -> Self {
-        Self {
-            id: yaml["id"].as_str().unwrap_or("").to_string(),
-            name: yaml["name"].as_str().unwrap_or("").to_string(),
-            description: yaml["description"]
-                .as_str()
-                .unwrap_or("")
-                .to_string(),
-            state_type: WorkflowStateType::from_sql(
-                &Type::VARCHAR,
-                yaml["type"].as_str().unwrap().as_ref(),
-            )
-            .unwrap(),
-            configuration: into(&yaml["description"]),
-            workflow_id: if yaml["workflowId"].is_null() || yaml["workflowId"].is_badvalue() {
-                None
-            } else {
-                Some(yaml["workflowId"].as_str().unwrap().to_string())
-            },
-            entry_workflow_id: if yaml["entryWorkflowId"].is_null()
-                || yaml["entryWorkflowId"].is_badvalue()
-            {
-                None
-            } else {
-                Some(yaml["entryWorkflowId"].as_str().unwrap().to_string())
-            },
-            exit_workflow_id: if yaml["exitWorkflowId"].is_null()
-                || yaml["exitWorkflowId"].is_badvalue()
-            {
-                None
-            } else {
-                Some(yaml["exitWorkflowId"].as_str().unwrap().to_string())
-            },
-        }
-    }
 }
