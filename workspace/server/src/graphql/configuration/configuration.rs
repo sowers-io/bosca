@@ -41,7 +41,7 @@ impl ConfigurationObject {
             .get_permissions(&self.configuration.id)
             .await?
             .into_iter()
-            .map(|p| ConfigurationPermissionObject::new(p))
+            .map(ConfigurationPermissionObject::new)
             .collect())
     }
 
@@ -58,9 +58,9 @@ impl ConfigurationObject {
         if !evaluator.evaluate(&ctx.principal, &PermissionAction::View) {
             return Ok(None);
         }
-        Ok(ctx
+        ctx
             .configuration
             .get_configuration_value(&self.configuration.key)
-            .await?)
+            .await
     }
 }

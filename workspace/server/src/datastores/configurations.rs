@@ -109,8 +109,8 @@ impl ConfigurationDataStore {
     pub async fn get_configuration_value(&self, key: &str) -> Result<Option<Value>, Error> {
         let cache = self.cache.read().await;
         let value = cache.get(key);
-        if value.is_some() {
-            return Ok(Some(value.unwrap().clone()))
+        if let Some(value) = value {
+            return Ok(Some(value.clone()))
         }
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -139,7 +139,7 @@ impl ConfigurationDataStore {
     fn encrypt_value(&self, plaintext: &str) -> Result<(Vec<u8>, Vec<u8>), Error> {
         let key = self.derive_key();
         let cipher = Aes256Gcm::new(&key);
-        let binding = OsRng::default().gen::<[u8; 12]>();
+        let binding = OsRng.gen::<[u8; 12]>();
         let nonce = Nonce::from_slice(&binding);
         let ciphertext = cipher
             .encrypt(nonce, plaintext.as_bytes())
