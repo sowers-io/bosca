@@ -83,6 +83,7 @@ use crate::schema::BoscaSchema;
 use crate::util::profile::add_password_principal;
 use bosca_database::build_pool;
 use tokio::time::sleep;
+use crate::datastores::configurations::ConfigurationDataStore;
 use crate::datastores::content::content::ContentDataStore;
 
 #[global_allocator]
@@ -399,6 +400,15 @@ async fn main() {
             Uuid::new_v4().to_string()
         }
     };
+    let configuration_secret_key = match env::var("CONFIGURATION_SECRET_KEY") {
+        Ok(url_secret_key) => url_secret_key,
+        _ => {
+            println!(
+                "Environment variable CONFIGURATION_SECRET_KEY could not be read"
+            );
+            exit(1);
+        }
+    };
 
     let redis_jobs_queue_client = build_redis_client("REDIS_JOBS_QUEUE_URL").await.unwrap();
     let redis_notifier_client = build_redis_client("REDIS_NOTIFIER_PUBSUB_URL")
@@ -419,6 +429,7 @@ async fn main() {
             Arc::clone(&notifier),
             Arc::clone(&search),
         ),
+        configuration: ConfigurationDataStore::new(Arc::clone(&bosca_pool), configuration_secret_key, Arc::clone(&notifier)),
         profile: ProfileDataStore::new(Arc::clone(&bosca_pool)),
         queries: PersistedQueriesDataStore::new(Arc::clone(&bosca_pool)).await,
         content: ContentDataStore::new(bosca_pool, Arc::clone(&notifier)),

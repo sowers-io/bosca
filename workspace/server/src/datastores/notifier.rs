@@ -9,6 +9,8 @@ pub struct Notifier {
     redis: RedisClient,
 }
 
+// TODO: check for access to the ID before forwarding on the event
+
 impl Notifier {
     pub fn new(redis: RedisClient) -> Self {
         Self { redis }
@@ -18,6 +20,17 @@ impl Notifier {
         let connection = self.redis.get().await?;
         let mut pubsub = connection.get_pubsub().await?;
         pubsub.subscribe("category_changes").await?;
+        Ok(pubsub
+            .into_on_message()
+            .filter_map(|msg| async move {
+                msg.get_payload().ok()
+            }))
+    }
+
+    pub async fn listen_configuration_changes(&self) -> Result<impl Stream<Item=String>, Error> {
+        let connection = self.redis.get().await?;
+        let mut pubsub = connection.get_pubsub().await?;
+        pubsub.subscribe("configuration_changes").await?;
         Ok(pubsub
             .into_on_message()
             .filter_map(|msg| async move {
@@ -210,6 +223,15 @@ impl Notifier {
         let mut conn = connection.get_connection().await?;
         let id = id.to_string();
         conn.publish::<&str, String, ()>("state_changes", id)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn configuration_changed(&self, id: &str) -> async_graphql::Result<(), Error> {
+        let connection = self.redis.get().await?;
+        let mut conn = connection.get_connection().await?;
+        let id = id.to_string();
+        conn.publish::<&str, String, ()>("configuration_changes", id)
             .await?;
         Ok(())
     }

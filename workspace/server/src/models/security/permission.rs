@@ -22,7 +22,7 @@ pub struct Permission {
     pub action: PermissionAction,
 }
 
-#[derive(InputObject)]
+#[derive(InputObject, Clone)]
 pub struct PermissionInput {
     pub entity_id: String,
     pub group_id: String,

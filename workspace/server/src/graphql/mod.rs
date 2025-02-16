@@ -7,3 +7,4 @@ pub mod queries_mutation;
 pub mod queries;
 pub mod subscription;
 pub mod profiles;
+pub mod configuration;

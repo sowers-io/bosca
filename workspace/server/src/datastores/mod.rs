@@ -4,3 +4,4 @@ pub mod persisted_queries;
 pub mod notifier;
 pub mod profile;
 pub mod content;
+pub mod configurations;

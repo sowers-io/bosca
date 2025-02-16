@@ -3,6 +3,7 @@ use async_graphql::Error;
 use deadpool_postgres::Transaction;
 use meilisearch_sdk::client::Client;
 use uuid::Uuid;
+use crate::datastores::configurations::ConfigurationDataStore;
 use crate::datastores::content::content::ContentDataStore;
 use crate::datastores::persisted_queries::PersistedQueriesDataStore;
 use crate::datastores::security::SecurityDataStore;
@@ -26,6 +27,7 @@ pub struct BoscaContext {
     pub storage: ObjectStorage,
     pub workflow: WorkflowDataStore,
     pub queries: PersistedQueriesDataStore,
+    pub configuration: ConfigurationDataStore,
     pub notifier: Arc<Notifier>,
     pub search: Arc<Client>,
     pub principal: Principal,

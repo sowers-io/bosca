@@ -383,7 +383,7 @@ impl JobQueues {
         let Some(mut plan) = self.get_plan_and_lock(&transaction, plan_id).await? else {
             return Err(Error::new("can't set plan context, missing plan"));
         };
-        plan.context = context.clone();
+        plan.context = if context.is_null() { None } else { Some(context.clone()) };
         self.set_plan(&transaction, &plan, false).await?;
         transaction.commit().await?;
         self.incr("queue::context::set::count").await?;
@@ -401,9 +401,9 @@ impl JobQueues {
             return Err(Error::new("can't set job context, missing plan"));
         };
         let job = plan.jobs.get_mut(job_id.index as usize).unwrap();
-        job.context = context.clone();
+        job.context = if context.is_null() { None } else { Some(context.clone()) };
         if let Some(plan_job) = plan.jobs.get_mut(job_id.index as usize) {
-            plan_job.context = context.clone();
+            plan_job.context = if context.is_null() { None } else { Some(context.clone()) };
         }
         self.set_plan(&transaction, &plan, false).await?;
         transaction.commit().await?;

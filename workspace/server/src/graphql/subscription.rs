@@ -87,4 +87,12 @@ impl SubscriptionObject {
         }
         ctx.notifier.listen_state_changes().await
     }
+
+    async fn configuration(&self, ctx: &Context<'_>) -> Result<impl Stream<Item = String>> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        if ctx.principal.anonymous {
+            return Err(Error::new("Unauthorized"));
+        }
+        ctx.notifier.listen_configuration_changes().await
+    }
 }
