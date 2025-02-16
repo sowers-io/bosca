@@ -16,6 +16,15 @@ impl ProfileObject {
 
 #[Object(name = "Profile")]
 impl ProfileObject {
+    async fn id(&self, ctx: &Context<'_>) -> Result<Option<String>, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        Ok(if self.profile.principal == ctx.principal.id || ctx.has_admin_account().await? {
+            Some(self.profile.id.to_string())
+        } else {
+            None
+        })
+    }
+
     async fn slug(&self, ctx: &Context<'_>) -> Result<Option<String>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         Ok(

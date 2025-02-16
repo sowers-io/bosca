@@ -7,7 +7,7 @@ use crate::worklfow::transaction::{RedisTransaction, RedisTransactionOp};
 use async_graphql::{Error, InputObject};
 use chrono::{DateTime, Utc};
 use deadpool_postgres::Transaction;
-use log::{debug, error};
+use log::{debug, error, info};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashSet;
@@ -120,6 +120,7 @@ pub struct WorkflowJob {
     pub failed_children: HashSet<WorkflowExecutionId>,
     pub complete: bool,
     pub finished: Option<DateTime<Utc>>,
+    pub failures: i32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
@@ -222,6 +223,7 @@ impl WorkflowExecutionPlan {
         redis_txn.add_op(RedisTransactionOp::RemoveJobRunning(job_id.clone()));
         let job = self.jobs.get_mut(job_id.index as usize).unwrap();
         job.error = None;
+        job.failures = 0;
         job.complete = job.children.len() == job.completed_children.len();
         if job.complete {
             job.finished = Some(Utc::now());
@@ -249,10 +251,14 @@ impl WorkflowExecutionPlan {
         self.active.remove(&job_id.index);
         let job = self.jobs.get_mut(job_id.index as usize).unwrap();
         job.error = Some(error.to_owned());
+        let failure_count = job.failures + 1;
+        job.failures = failure_count;
+        info!("job failures: {} {} {}", self.id, job_id, failure_count);
+        let timeout = failure_count * 30;
         queues.set_plan(db_txn, self, false).await?;
         // TODO: setup exponential back-off and limit to failures
         redis_txn.add_op(RedisTransactionOp::RemoveJobRunning(job_id.clone()));
-        redis_txn.add_op(RedisTransactionOp::QueueJob(job_id.clone()));
+        redis_txn.add_op(RedisTransactionOp::QueueJobLater(job_id.clone(), timeout));
         redis_txn.add_op(RedisTransactionOp::PlanCheckin(self.id.clone()));
         Ok(())
     }

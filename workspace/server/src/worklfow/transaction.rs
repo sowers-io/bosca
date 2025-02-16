@@ -44,7 +44,9 @@ impl RedisTransaction {
                     key_ix += 2;
                     script.push_str(&zrem);
                 }
-                RedisTransactionOp::PlanCheckin(_) | RedisTransactionOp::JobCheckin(_) => {
+                RedisTransactionOp::PlanCheckin(_)
+                | RedisTransactionOp::JobCheckin(_)
+                | RedisTransactionOp::QueueJobLater(_, _) => {
                     let zadd_incr = format!("redis.call('ZADD', tostring(KEYS[{}]), tonumber(ARGV[{}]) + tonumber(ARGV[{}]), tostring(KEYS[{}]))\nredis.call('INCR', 'queue::job::checkin::count')\n", key_ix + 1, arg_ix + 1, arg_ix + 2, key_ix + 2);
                     key_ix += 2;
                     arg_ix += 2;
@@ -75,12 +77,29 @@ impl RedisTransaction {
                 RedisTransactionOp::PlanCheckin(op) => {
                     let queue_key = JobQueues::running_plan_queue_key(&op.queue);
                     let key = JobQueues::queue_plan_key(&op.queue, &op.id);
-                    invocation.key(queue_key).key(key).arg(Utc::now().timestamp()).arg(1800);
+                    invocation
+                        .key(queue_key)
+                        .key(key)
+                        .arg(Utc::now().timestamp())
+                        .arg(1800);
                 }
                 RedisTransactionOp::JobCheckin(op) => {
                     let queue_key = JobQueues::running_job_queue_key(&op.queue);
                     let key = JobQueues::queue_job_key(&op.queue, &op.id, op.index);
-                    invocation.key(queue_key).key(key).arg(Utc::now().timestamp()).arg(1800);
+                    invocation
+                        .key(queue_key)
+                        .key(key)
+                        .arg(Utc::now().timestamp())
+                        .arg(1800);
+                }
+                RedisTransactionOp::QueueJobLater(op, timeout) => {
+                    let queue_key = JobQueues::running_job_queue_key(&op.queue);
+                    let key = JobQueues::queue_job_key(&op.queue, &op.id, op.index);
+                    invocation
+                        .key(queue_key)
+                        .key(key)
+                        .arg(Utc::now().timestamp())
+                        .arg(timeout);
                 }
             }
         }
@@ -106,6 +125,7 @@ pub enum RedisTransactionOp {
     PlanCheckin(WorkflowExecutionId),
     JobCheckin(WorkflowJobId),
     QueueJob(WorkflowJobId),
+    QueueJobLater(WorkflowJobId, i32),
     RemovePlanRunning(WorkflowExecutionId),
     RemoveJobRunning(WorkflowJobId),
 }

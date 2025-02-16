@@ -1297,6 +1297,7 @@ impl WorkflowDataStore {
                 failed_children: HashSet::new(),
                 complete: false,
                 finished: None,
+                failures: 0,
             };
             if job.workflow_activity.execution_group == 1 {
                 current_execution_group.push(id.index);
