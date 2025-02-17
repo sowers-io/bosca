@@ -18,7 +18,8 @@ impl ConfigurationsObject {
         let mut cfg = Vec::new();
         for c in all {
             let permissions = ctx.configuration.get_permissions(&c.id).await?;
-            if permissions.is_empty() && !ctx.has_admin_account().await? {
+            if permissions.is_empty() && ctx.has_admin_account().await? {
+                cfg.push(c);
                 continue;
             }
             let evaluator = Evaluator::new(permissions);

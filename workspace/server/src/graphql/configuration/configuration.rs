@@ -53,10 +53,11 @@ impl ConfigurationObject {
             .await?;
         if permission.is_empty() {
             ctx.check_has_admin_account().await?;
-        }
-        let evaluator = Evaluator::new(permission);
-        if !evaluator.evaluate(&ctx.principal, &PermissionAction::View) {
-            return Ok(None);
+        } else {
+            let evaluator = Evaluator::new(permission);
+            if !evaluator.evaluate(&ctx.principal, &PermissionAction::View) {
+                return Ok(None);
+            }
         }
         ctx
             .configuration

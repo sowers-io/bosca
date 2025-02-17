@@ -23,7 +23,7 @@ impl ProfilesObject {
             .map(ProfileObject::new).collect())
     }
 
-    async fn profile(&self, ctx: &Context<'_>) -> Result<Option<ProfileObject>, Error> {
+    async fn current(&self, ctx: &Context<'_>) -> Result<Option<ProfileObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let principal_id = ctx.principal.id;
         Ok(ctx

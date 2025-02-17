@@ -63,7 +63,7 @@ impl ConfigurationDataStore {
     pub async fn get_permissions(&self, id: &Uuid) -> Result<Vec<Permission>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
-            .prepare_cached("select * from configuration_permissions where configuration_id = $1")
+            .prepare_cached("select * from configuration_permissions where entity_id = $1")
             .await?;
         let rows = connection.query(&stmt, &[id]).await?;
         Ok(rows.iter().map(|r| r.into()).collect())
@@ -79,14 +79,15 @@ impl ConfigurationDataStore {
         let id: Uuid = result.get("id");
         let stmt = txn.prepare_cached("delete from configuration_values where configuration_id = $1").await?;
         txn.execute(&stmt, &[&id]).await?;
-        let stmt = txn.prepare_cached("delete from configuration_permissions where configuration_id = $1").await?;
+        let stmt = txn.prepare_cached("delete from configuration_permissions where entity_id = $1").await?;
         txn.execute(&stmt, &[&id]).await?;
-        let stmt = txn.prepare_cached("insert into configuration_permissions (configuration_id, group_id, action) values ($1, $2, $3)").await?;
+        let stmt = txn.prepare_cached("insert into configuration_permissions (entity_id, group_id, action) values ($1, $2, $3)").await?;
         for permission in configuration.permissions.iter() {
             txn.execute(&stmt, &[&id, &permission.group_id, &permission.action]).await?;
         }
         let stmt = txn.prepare_cached("insert into configuration_values (configuration_id, value, nonce) values ($1, $2, $3)").await?;
         txn.execute(&stmt, &[&id, &value, &nonce]).await?;
+        txn.commit().await?;
         let id_str = id.to_string();
         self.notifier.configuration_changed(&id_str).await?;
         Ok(id)
@@ -107,10 +108,12 @@ impl ConfigurationDataStore {
     }
 
     pub async fn get_configuration_value(&self, key: &str) -> Result<Option<Value>, Error> {
-        let cache = self.cache.read().await;
-        let value = cache.get(key);
-        if let Some(value) = value {
-            return Ok(Some(value.clone()))
+        {
+            let cache = self.cache.read().await;
+            let value = cache.get(key);
+            if let Some(value) = value {
+                return Ok(Some(value.clone()))
+            }
         }
         let connection = self.pool.get().await?;
         let stmt = connection
