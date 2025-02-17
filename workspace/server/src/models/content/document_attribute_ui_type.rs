@@ -6,6 +6,7 @@ use postgres_types::{to_sql_checked, FromSql, IsNull, ToSql, Type};
 #[derive(Enum, Debug, Copy, Clone, Eq, PartialEq)]
 pub enum DocumentAttributeUiType {
     Input,
+    Textarea,
     Image,
     Profile,
     File,
@@ -19,6 +20,7 @@ impl<'a> FromSql<'a> for DocumentAttributeUiType {
         let e: String = String::from_utf8_lossy(raw).parse().unwrap();
         Ok(match e.as_str() {
             "input" => DocumentAttributeUiType::Input,
+            "textarea" => DocumentAttributeUiType::Textarea,
             "image" => DocumentAttributeUiType::Image,
             "profile" => DocumentAttributeUiType::Profile,
             "file" => DocumentAttributeUiType::File,
@@ -39,6 +41,7 @@ impl ToSql for DocumentAttributeUiType {
     ) -> async_graphql::Result<IsNull, Box<dyn Error + Sync + Send>> {
         match *self {
             DocumentAttributeUiType::Input => w.put_slice("input".as_ref()),
+            DocumentAttributeUiType::Textarea => w.put_slice("textarea".as_ref()),
             DocumentAttributeUiType::Image => w.put_slice("image".as_ref()),
             DocumentAttributeUiType::Profile => w.put_slice("profile".as_ref()),
             DocumentAttributeUiType::File => w.put_slice("file".as_ref()),

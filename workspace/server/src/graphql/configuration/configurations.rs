@@ -30,7 +30,7 @@ impl ConfigurationsObject {
         Ok(cfg.into_iter().map(ConfigurationObject::new).collect())
     }
 
-    async fn get(
+    async fn configuration(
         &self,
         ctx: &Context<'_>,
         key: String,
@@ -44,12 +44,14 @@ impl ConfigurationsObject {
         let permissions = ctx.configuration.get_permissions(&configuration.id).await?;
         if permissions.is_empty() {
             ctx.check_has_admin_account().await?;
-        }
-        let evaluator = Evaluator::new(permissions);
-        if evaluator.evaluate(&ctx.principal, &PermissionAction::View) {
             Ok(Some(ConfigurationObject::new(configuration)))
         } else {
-            Ok(None)
+            let evaluator = Evaluator::new(permissions);
+            if evaluator.evaluate(&ctx.principal, &PermissionAction::View) {
+                Ok(Some(ConfigurationObject::new(configuration)))
+            } else {
+                Ok(None)
+            }
         }
     }
 }

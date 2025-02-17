@@ -10,7 +10,7 @@ drop type document_block_type;
 drop type document_metadata_attribute_type;
 
 create type document_attribute_type as enum ('string', 'int', 'float', 'date', 'datetime', 'profile', 'metadata');
-create type document_attribute_ui_type as enum ('input', 'image', 'profile', 'file');
+create type document_attribute_ui_type as enum ('input', 'textarea', 'image', 'profile', 'file');
 
 create table document_templates
 (

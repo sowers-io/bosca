@@ -12,6 +12,7 @@ pub enum PermissionAction {
     Delete,
     Manage,
     List,
+    Impersonate,
     Execute
 }
 
@@ -61,6 +62,7 @@ impl<'a> FromSql<'a> for PermissionAction {
             "delete" => PermissionAction::Delete,
             "manage" => PermissionAction::Manage,
             "list" => PermissionAction::List,
+            "impersonate" => PermissionAction::Impersonate,
             "execute" => PermissionAction::Execute,
             _ => PermissionAction::View,
         })
@@ -83,6 +85,7 @@ impl ToSql for PermissionAction {
             PermissionAction::Delete => w.put_slice("delete".as_ref()),
             PermissionAction::Manage => w.put_slice("manage".as_ref()),
             PermissionAction::List => w.put_slice("list".as_ref()),
+            PermissionAction::Impersonate => w.put_slice("impersonate".as_ref()),
             PermissionAction::Execute => w.put_slice("execute".as_ref()),
         }
         Ok(IsNull::No)
