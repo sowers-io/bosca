@@ -1,6 +1,7 @@
 use crate::context::BoscaContext;
 use async_graphql::*;
 use tokio_stream::Stream;
+use crate::datastores::notifier::MetadataSupplementaryIdObject;
 
 pub struct SubscriptionObject;
 
@@ -21,6 +22,14 @@ impl SubscriptionObject {
             return Err(Error::new("Unauthorized"));
         }
         ctx.notifier.listen_metadata_changes().await
+    }
+
+    async fn metadata_supplementary(&self, ctx: &Context<'_>) -> Result<impl Stream<Item = MetadataSupplementaryIdObject>> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        if ctx.principal.anonymous {
+            return Err(Error::new("Unauthorized"));
+        }
+        ctx.notifier.listen_metadata_supplementary_changes().await
     }
 
     async fn collection(&self, ctx: &Context<'_>) -> Result<impl Stream<Item = String>> {

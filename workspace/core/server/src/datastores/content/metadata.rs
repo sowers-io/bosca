@@ -38,6 +38,13 @@ impl MetadataDataStore {
         Ok(())
     }
 
+    async fn on_metadata_supplementary_changed(&self, id: &Uuid, key: &str) -> Result<(), Error> {
+        if let Err(e) = self.notifier.metadata_supplementary_changed(id, key).await {
+            error!("Failed to notify metadata supplementary changes: {:?}", e);
+        }
+        Ok(())
+    }
+
     async fn on_collection_changed(&self, id: &Uuid) -> Result<(), Error> {
         if let Err(e) = self.notifier.collection_changed(id).await {
             error!("Failed to notify collection changes: {:?}", e);
@@ -222,7 +229,7 @@ impl MetadataDataStore {
                 ],
             )
             .await?;
-        self.on_metadata_changed(&id).await?;
+        self.on_metadata_supplementary_changed(&id, &supplementary.key).await?;
         Ok(())
     }
 
@@ -241,7 +248,7 @@ impl MetadataDataStore {
         connection
             .execute(&stmt, &[&content_type, &len, &metadata_id, &key])
             .await?;
-        self.on_metadata_changed(metadata_id).await?;
+        self.on_metadata_supplementary_changed(metadata_id, &key).await?;
         Ok(())
     }
 
@@ -283,7 +290,7 @@ impl MetadataDataStore {
             )
             .await?;
         connection.execute(&stmt, &[&metadata_id, &key]).await?;
-        self.on_metadata_changed(metadata_id).await?;
+        self.on_metadata_supplementary_changed(metadata_id, key).await?;
         Ok(())
     }
 
