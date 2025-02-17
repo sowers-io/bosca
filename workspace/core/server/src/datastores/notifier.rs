@@ -64,7 +64,7 @@ impl Notifier {
             .into_on_message()
             .filter_map(|msg| async move {
                 let bytes = msg.get_payload_bytes();
-                let publish: MetadataSupplementaryIdObject = serde_json::from_slice(&bytes).ok()?;
+                let publish: MetadataSupplementaryIdObject = serde_json::from_slice(bytes).ok()?;
                 Some(publish)
             }))
     }
