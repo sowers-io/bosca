@@ -2,7 +2,7 @@
   <configuration default="false" name="Run bosca" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
     <option name="buildProfileId" value="dev" />
     <option name="command" value="run --package bosca-server --bin bosca-server" />
-    <option name="workingDirectory" value="file://$PROJECT_DIR$/workspace/server" />
+    <option name="workingDirectory" value="file://$PROJECT_DIR$/workspace/core/server" />
     <envs>
       <env name="AWS_ACCESS_KEY_ID" value="67fO5gFs6BuksBrh6rMp" />
       <env name="AWS_ALLOW_HTTP" value="true" />
