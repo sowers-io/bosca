@@ -1,0 +1,6 @@
+fragment WorkflowActivityPrompt on WorkflowActivityPrompt {
+    prompt {
+        id
+    }
+    configuration
+}

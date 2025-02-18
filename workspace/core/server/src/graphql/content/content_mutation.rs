@@ -72,6 +72,28 @@ impl ContentMutationObject {
             }
             search_documents.clear();
         }
+        offset = 0;
+        loop {
+            let items = ctx.profile.get_all(offset, LIMIT).await?;
+            if items.is_empty() {
+                break;
+            }
+            offset += LIMIT;
+            for item in items {
+                search_documents.push(SearchDocumentInput {
+                    collection_id: None,
+                    metadata_id: None,
+                    profile_id: Some(item.id.to_string()),
+                    content: "".to_owned(),
+                });
+            }
+            if let Some(storage_system) = &storage_system {
+                index_documents(ctx, &search_documents, storage_system).await?;
+            } else {
+                error!("error, failed to index, no storage system")
+            }
+            search_documents.clear();
+        }
         Ok(true)
     }
 }

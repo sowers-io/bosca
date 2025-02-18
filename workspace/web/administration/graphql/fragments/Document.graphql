@@ -1,0 +1,7 @@
+fragment Document on Document {
+    templateMetadataId
+    templateMetadataVersion
+    title
+    content
+}
+

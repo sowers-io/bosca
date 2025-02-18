@@ -1,0 +1,15 @@
+query ExecuteSearch($query: String!, $filter: String, $offset: Int!, $limit: Int!, $storageSystemId: String!) {
+    search(query: {query: $query, filter: $filter, offset: $offset, limit: $limit, storageSystemId: $storageSystemId}) {
+        documents {
+            collection {
+                ...CollectionIdName
+            }
+            metadata {
+                ...MetadataIdName
+            }
+            profile {
+                ...ProfileIdName
+            }
+        }
+    }
+}

@@ -2,23 +2,23 @@ use crate::context::BoscaContext;
 use crate::datastores::content::util::build_find_args;
 use crate::datastores::notifier::Notifier;
 use crate::graphql::content::content::{ExtensionFilterType, FindAttributeInput};
+use crate::models::content::category::Category;
 use crate::models::content::collection::MetadataChildInput;
 use crate::models::content::metadata::{Metadata, MetadataInput};
+use crate::models::content::metadata_profile::MetadataProfile;
 use crate::models::content::metadata_relationship::{
     MetadataRelationship, MetadataRelationshipInput,
 };
 use crate::models::content::search::SearchDocumentInput;
 use crate::models::content::supplementary::{MetadataSupplementary, MetadataSupplementaryInput};
 use crate::models::security::permission::{Permission, PermissionAction};
-use crate::util::storage::index_documents;
+use crate::util::storage::{index_documents, storage_system_metadata_delete};
 use async_graphql::*;
 use deadpool_postgres::{GenericClient, Pool, Transaction};
 use log::error;
 use serde_json::{Map, Value};
 use std::sync::Arc;
 use uuid::Uuid;
-use crate::models::content::category::Category;
-use crate::models::content::metadata_profile::MetadataProfile;
 
 #[derive(Clone)]
 pub struct MetadataDataStore {
@@ -164,7 +164,9 @@ impl MetadataDataStore {
     pub async fn get_profiles(&self, id: &Uuid) -> Result<Vec<MetadataProfile>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
-            .prepare_cached("select * from metadata_profiles where metadata_id = $1 order by sort asc")
+            .prepare_cached(
+                "select * from metadata_profiles where metadata_id = $1 order by sort asc",
+            )
             .await?;
         let rows = connection.query(&stmt, &[id]).await?;
         Ok(rows.iter().map(|r| r.into()).collect())
@@ -229,7 +231,8 @@ impl MetadataDataStore {
                 ],
             )
             .await?;
-        self.on_metadata_supplementary_changed(&id, &supplementary.key).await?;
+        self.on_metadata_supplementary_changed(&id, &supplementary.key)
+            .await?;
         Ok(())
     }
 
@@ -248,11 +251,36 @@ impl MetadataDataStore {
         connection
             .execute(&stmt, &[&content_type, &len, &metadata_id, &key])
             .await?;
-        self.on_metadata_supplementary_changed(metadata_id, &key).await?;
+        self.on_metadata_supplementary_changed(metadata_id, &key)
+            .await?;
         Ok(())
     }
 
-    pub async fn delete(&self, metadata_id: &Uuid) -> Result<(), Error> {
+    pub async fn delete(&self, ctx: &BoscaContext, metadata_id: &Uuid) -> Result<(), Error> {
+        let Some(metadata) = self.get(metadata_id).await? else {
+            return Ok(());
+        };
+
+        let storage_systems = ctx.workflow.get_storage_systems().await?;
+        storage_system_metadata_delete(&ctx.storage, &metadata, &storage_systems, &ctx.search)
+            .await?;
+
+        let supplementaries = ctx
+            .content
+            .metadata
+            .get_supplementaries(metadata_id)
+            .await?;
+        for supplementary in supplementaries {
+            let path = ctx
+                .storage
+                .get_metadata_path(&metadata, Some(supplementary.key.clone()))
+                .await?;
+            ctx.storage.delete(&path).await?;
+        }
+
+        // TODO: delete versions
+        // TODO: delete search documents
+
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
         let stmt = txn
@@ -275,6 +303,7 @@ impl MetadataDataStore {
         for collection_id in collection_ids {
             self.on_collection_changed(&collection_id).await?;
         }
+
         Ok(())
     }
 
@@ -290,7 +319,8 @@ impl MetadataDataStore {
             )
             .await?;
         connection.execute(&stmt, &[&metadata_id, &key]).await?;
-        self.on_metadata_supplementary_changed(metadata_id, key).await?;
+        self.on_metadata_supplementary_changed(metadata_id, key)
+            .await?;
         Ok(())
     }
 
@@ -328,25 +358,12 @@ impl MetadataDataStore {
         Ok(())
     }
 
-    #[allow(dead_code)]
-    pub async fn add(&self, metadata: &MetadataInput) -> Result<(Uuid, i32, i32), Error> {
-        let mut connection = self.pool.get().await?;
-        let txn = connection.transaction().await?;
-
-        match self.add_txn(&txn, metadata).await {
-            Ok(value) => {
-                txn.commit().await?;
-                self.on_metadata_changed(&value.0).await?;
-                Ok(value)
-            }
-            Err(err) => {
-                txn.rollback().await?;
-                Err(err)
-            }
-        }
-    }
-
-    pub async fn edit(&self, id: &Uuid, metadata: &MetadataInput) -> Result<(), Error> {
+    pub async fn edit(
+        &self,
+        ctx: &BoscaContext,
+        id: &Uuid,
+        metadata: &MetadataInput,
+    ) -> Result<(), Error> {
         let mut source_id: Option<Uuid> = None;
         let mut source_identifier: Option<String> = None;
         if let Some(source) = &metadata.source {
@@ -370,6 +387,7 @@ impl MetadataDataStore {
         {
             Ok(value) => {
                 txn.commit().await?;
+                self.index_document(ctx, id, metadata);
                 self.on_metadata_changed(id).await?;
                 for collection_id in collection_ids {
                     self.on_collection_changed(&collection_id).await?;
@@ -381,6 +399,68 @@ impl MetadataDataStore {
                 Err(err)
             }
         }
+    }
+
+    async fn new_search_document(id: &Uuid, _: &MetadataInput) -> Result<SearchDocumentInput, Error> {
+        Ok(SearchDocumentInput {
+            metadata_id: Some(id.to_string()),
+            collection_id: None,
+            profile_id: None,
+            content: "".to_owned(),
+        })
+    }
+
+    fn index_documents(&self, ctx: &BoscaContext, documents: Vec<SearchDocumentInput>) {
+        let new_ctx = ctx.clone();
+        tokio::spawn(async move {
+            if let Ok(Some(storage_system)) = new_ctx.workflow.get_default_search_storage_system().await {
+                if let Err(err) = index_documents(&new_ctx, &documents, &storage_system).await {
+                    error!("failed to index documents: {:?}", err);
+                }
+            } else {
+                error!("failed to index documents, missing storage system");
+            }
+        });
+    }
+
+    fn index_document(&self, ctx: &BoscaContext, id: &Uuid, metadata: &MetadataInput) {
+        let new_ctx = ctx.clone();
+        let id = id.clone();
+        let metadata = metadata.clone();
+        tokio::spawn(async move {
+            if metadata.index.unwrap_or(true) {
+                if let Ok(Some(storage_system)) = new_ctx.workflow.get_default_search_storage_system().await {
+                    let mut search_documents = Vec::new();
+                    if let Ok(metadata) = MetadataDataStore::new_search_document(&id, &metadata).await {
+                        search_documents.push(metadata);
+                    }
+                    if let Err(err) =
+                        index_documents(&new_ctx, &search_documents, &storage_system).await
+                    {
+                        error!("failed to index documents: {:?}", err);
+                    }
+                } else {
+                    error!("failed to index documents, missing storage system");
+                }
+            } else if let Ok(Some(metadata)) = new_ctx.content.metadata.get(&id).await {
+                if let Ok(storage_systems) = new_ctx.workflow.get_storage_systems().await {
+                    if let Err(e) = storage_system_metadata_delete(
+                        &new_ctx.storage,
+                        &metadata,
+                        &storage_systems,
+                        &new_ctx.search,
+                    )
+                        .await
+                    {
+                        error!("failed to delete documents: {:?}", e);
+                    }
+                } else {
+                    error!("failed to delete documents, failed to get storage systems");
+                }
+            } else {
+                error!("failed to delete documents, failed to get metadata");
+            }
+        });
     }
 
     pub async fn set_attributes(&self, metadata_id: &Uuid, attributes: Value) -> Result<(), Error> {
@@ -475,7 +555,7 @@ impl MetadataDataStore {
         Ok(())
     }
 
-    pub async fn add_txn<'a>(
+    async fn add_txn<'a>(
         &'a self,
         txn: &'a Transaction<'a>,
         metadata: &MetadataInput,
@@ -558,7 +638,7 @@ impl MetadataDataStore {
                 &id,
             ],
         )
-        .await?;
+            .await?;
 
         if let Some(trait_ids) = &metadata.trait_ids {
             self.delete_traits_txn(txn, id).await?;
@@ -810,11 +890,7 @@ impl MetadataDataStore {
             .add_all_txn(ctx, &txn, metadatas, &mut search_documents, false, None)
             .await?;
         txn.commit().await?;
-        if let Some(storage_system) = ctx.workflow.get_default_search_storage_system().await? {
-            index_documents(ctx, &search_documents, &storage_system).await?;
-        } else {
-            error!("failed to index documents, missing storage system");
-        }
+        self.index_documents(ctx, search_documents);
         for (id, _, _) in &ids {
             self.on_metadata_changed(id).await?
         }

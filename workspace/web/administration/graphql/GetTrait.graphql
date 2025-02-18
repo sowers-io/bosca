@@ -1,0 +1,9 @@
+query GetTrait($id: String!) {
+    workflows {
+        traits {
+            trait(id: $id) {
+                ...Trait
+            }
+        }
+    }
+}

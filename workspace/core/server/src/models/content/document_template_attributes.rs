@@ -11,6 +11,7 @@ pub struct DocumentTemplateAttribute {
     pub description: String,
     pub configuration: Option<serde_json::Value>,
     pub attribute_type: DocumentAttributeType,
+    pub supplementary_key: Option<String>,
     pub ui: DocumentAttributeUiType,
     pub list: bool,
 }
@@ -23,6 +24,7 @@ pub struct DocumentTemplateAttributeInput {
     pub configuration: Option<serde_json::Value>,
     #[graphql(name = "type")]
     pub attribute_type: DocumentAttributeType,
+    pub supplementary_key: Option<String>,
     pub ui: DocumentAttributeUiType,
     pub list: bool,
     pub workflow_ids: Vec<DocumentTemplateAttributeWorkflowInput>
@@ -37,6 +39,7 @@ impl From<&Row> for DocumentTemplateAttribute {
             description: row.get("description"),
             configuration: row.get("configuration"),
             attribute_type: row.get("type"),
+            supplementary_key: row.get("supplementary_key"),
             ui: row.get("ui"),
             list: row.get("list"),
         }

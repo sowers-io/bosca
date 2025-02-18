@@ -1,0 +1,7 @@
+query FindCollection($attributes: [FindAttributeInput!]!, $categoryIds: [String!], $offset: Int!, $limit: Int!) {
+    content {
+        findCollection(attributes: $attributes, categoryIds: $categoryIds, offset: $offset, limit: $limit) {
+            ...Collection
+        }
+    }
+}

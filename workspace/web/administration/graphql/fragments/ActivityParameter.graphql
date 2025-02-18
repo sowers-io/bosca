@@ -1,0 +1,4 @@
+fragment ActivityParameter on ActivityParameter {
+    name
+    type
+}

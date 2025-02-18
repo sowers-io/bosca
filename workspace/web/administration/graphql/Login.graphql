@@ -1,0 +1,21 @@
+mutation Login($identifier: String!, $password: String!) {
+    security {
+        login {
+            password(identifier: $identifier, password: $password) {
+                profile {
+                    ...Profile
+                }
+                principal {
+                    id
+                    groups {
+                        id
+                        name
+                    }
+                }
+                token {
+                    token
+                }
+            }
+        }
+    }
+}

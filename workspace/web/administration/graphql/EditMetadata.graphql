@@ -1,0 +1,9 @@
+mutation EditMetadata($id: String!, $metadata: MetadataInput!) {
+    content {
+        metadata {
+            edit(id: $id, metadata: $metadata) {
+                id
+            }
+        }
+    }
+}

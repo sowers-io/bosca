@@ -1,0 +1,240 @@
+import { Api } from './api'
+import {
+  AddCollectionDocument,
+  BeginCollectionTransitionDocument,
+  type CollectionFragment,
+  type CollectionInput,
+  DeleteCollectionDocument,
+  ExtensionFilterType,
+  type FindAttributeInput,
+  FindCollectionDocument,
+  GetCollectionDocument,
+  GetCollectionListDocument,
+  GetCollectionParentsDocument,
+  type MetadataFragment,
+  type ParentCollectionFragment,
+  SetCollectionPublicDocument,
+  SetCollectionPublicListDocument,
+  SetCollectionReadyDocument,
+} from '~/lib/graphql/graphql'
+import type { AsyncData } from '#app/composables/asyncData'
+import { NetworkClient } from '~/lib/bosca/networkclient'
+
+export type CollectionItem = CollectionFragment | MetadataFragment
+
+export interface CollectionAndItems {
+  collection: CollectionFragment
+  items: Array<CollectionItem>
+}
+
+export class ContentCollections<T extends NetworkClient> extends Api<T> {
+  constructor(network: T) {
+    super(network)
+  }
+
+  getCollectionParentAsyncData(
+    id: string | Ref<string, string>,
+  ): AsyncData<ParentCollectionFragment | null, any> {
+    return this.executeAndTransformAsyncData(
+      GetCollectionParentsDocument,
+      { id },
+      (data) => {
+        if (!data) return null
+        return data.content?.collection
+          ?.parentCollections[0] as ParentCollectionFragment
+      },
+    )
+  }
+
+  findAsyncData(query: {
+    attributes?:
+      | Array<FindAttributeInput>
+      | Ref<Array<FindAttributeInput>>
+      | null
+    extension?: ExtensionFilterType | Ref<ExtensionFilterType> | null
+    categoryIds?: Array<string[]> | Ref<Array<string[]>> | null
+    offset?: number | Ref<number>
+    limit?: number | Ref<number>
+  }): AsyncData<CollectionFragment[] | null, any> {
+    return this.executeAndTransformAsyncData(
+      FindCollectionDocument,
+      {
+        attributes: query.attributes,
+        extension: query.extension,
+        categoryIds: query.categoryIds,
+        offset: query.offset,
+        limit: query.limit,
+      },
+      (data) => {
+        if (!data) return null
+        return data.content.findCollection as CollectionFragment[]
+      },
+    )
+  }
+
+  async list(id: string): Promise<CollectionAndItems | null> {
+    const response = await this.network.execute(GetCollectionListDocument, {
+      id,
+    })
+    if (!response?.content?.collection) return null
+    return {
+      collection: response!.content!.collection!,
+      items: response!.content!.collection!.items,
+    } as CollectionAndItems
+  }
+
+  listAsyncData(
+    id: string | Ref<string, string>,
+  ): AsyncData<CollectionAndItems | null, any> {
+    return this.executeAndTransformAsyncData(
+      GetCollectionListDocument,
+      { id },
+      (data) => {
+        if (!data) return null
+        return {
+          collection: data!.content!.collection!,
+          items: data!.content!.collection!.items,
+        } as CollectionAndItems
+      },
+    )
+  }
+
+  async get(id: string): Promise<CollectionFragment | null> {
+    const response = await this.network.execute(GetCollectionDocument, {
+      id: id,
+    })
+    return response?.content.collection as CollectionFragment | null
+  }
+
+  getAsyncData(
+    id: string | Ref<string, string>,
+  ): AsyncData<CollectionFragment | null, any> {
+    return this.executeAndTransformAsyncData(
+      GetCollectionDocument,
+      { id },
+      (data) => {
+        if (!data) return null
+        return data.content.collection as CollectionFragment
+      },
+    )
+  }
+
+  // suspend fun getParents(id: String): List<ParentCollection> {
+  //     val response = network.client.query(GetCollectionParentsQuery(Optional.presentIfNotNull(id))).execute()
+  //     response.validate()
+  //     return response.data?.content?.collection?.collectionParents?.parentCollections?.map { it.parentCollection } ?: emptyList()
+  // }
+  //
+  // suspend fun getPermissions(id: String): List<Permission> {
+  //     val response = network.client.query(GetCollectionPermissionsQuery(Optional.presentIfNotNull(id))).execute()
+  //     response.validate()
+  //     return response.data?.content?.collection?.permissions?.map { it.permission } ?: emptyList()
+  // }
+
+  async add(collection: CollectionInput): Promise<string> {
+    const response = await this.network.execute(AddCollectionDocument, {
+      collection,
+    })
+    return response!.content.collection.add.id
+  }
+
+  async delete(id: string): Promise<void> {
+    await this.network.execute(DeleteCollectionDocument, { id })
+  }
+
+  // suspend fun add(collection: CollectionInput): String? {
+  //     val response = network.client.mutation(AddCollectionMutation(collection)).execute()
+  //     response.validate()
+  //     return response.data?.content?.collection?.add?.id
+  // }
+  //
+  // suspend fun edit(id: String, collection: CollectionInput): String? {
+  //     val response = network.client.mutation(EditCollectionMutation(id, collection)).execute()
+  //     response.validate()
+  //     return response.data?.content?.collection?.edit?.id
+  // }
+  //
+  // suspend fun setAttributes(id: String, attributes: Any?) {
+  //     val response = network.client.mutation(SetCollectionAttributesMutation(id, attributes ?: emptyMap<Any, Any>())).execute()
+  //     response.validate()
+  // }
+  //
+  // suspend fun addPermission(input: PermissionInput) {
+  //     val response = network.client.mutation(AddCollectionPermissionMutation(input)).execute()
+  //     response.validate()
+  // }
+  //
+  // suspend fun removePermission(input: PermissionInput) {
+  //     val response = network.client.mutation(RemoveCollectionPermissionMutation(input)).execute()
+  //     response.validate()
+  // }
+  //
+  // suspend fun beginTransition(id: String, state: String): Boolean? {
+  //     val response = network.client.mutation(BeginCollectionTransitionMutation(id, state)).execute()
+  //     response.validate()
+  //     return response.data?.workflows?.beginTransition
+  // }
+  //
+
+  async findCollection(
+    attributes: Array<FindAttributeInput>,
+    offset: number | Ref<number>,
+    limit: number | Ref<number>,
+  ): Promise<CollectionFragment[]> {
+    const response = await this.network.execute(FindCollectionDocument, {
+      attributes,
+      offset,
+      limit,
+    })
+    return response!.content!.findCollection as CollectionFragment[]
+  }
+
+  async beginTransition(id: string, state: string) {
+    await this.network.execute(BeginCollectionTransitionDocument, {
+      id,
+      state,
+    })
+  }
+
+  async setReady(id: string): Promise<void> {
+    await this.network.execute(SetCollectionReadyDocument, { id })
+  }
+
+  async setPublic(id: string, isPublic: boolean): Promise<void> {
+    await this.network.execute(SetCollectionPublicDocument, {
+      id,
+      public: isPublic,
+    })
+  }
+
+  async setPublicList(id: string, isPublic: boolean): Promise<void> {
+    await this.network.execute(SetCollectionPublicListDocument, {
+      id,
+      public: isPublic,
+    })
+  }
+
+  // suspend fun addCollection(collectionId: String, id: String): String? {
+  //     val response = network.client.mutation(AddCollectionCollectionMutation(collectionId, id)).execute()
+  //     response.validate()
+  //     return response.data?.content?.collection?.addChildCollection?.id
+  // }
+  //
+  // suspend fun removeCollection(collectionId: String, id: String): String? {
+  //     val response = network.client.mutation(RemoveCollectionCollectionMutation(collectionId, id)).execute()
+  //     response.validate()
+  //     return response.data?.content?.collection?.removeChildCollection?.id
+  // }
+  //
+  // suspend fun addMetadata(collectionId: String, metadataId: String): String? {
+  //     val response = network.client.mutation(AddMetadataCollectionMutation(collectionId, metadataId)).execute()
+  //     response.validate()
+  //     return response.data?.content?.collection?.addChildMetadata?.id
+  // }
+  //
+  // suspend fun removeMetadata(collectionId: String, metadataId: String): String? {
+  //     val response = network.client.mutation(RemoveMetadataCollectionMutation(collectionId, metadataId)).execute()
+  //     response.validate()
+  //     return response.data?.content?.collection?.removeChildMetadata?.id
+  // }
+}

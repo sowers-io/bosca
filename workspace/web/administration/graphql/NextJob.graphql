@@ -1,0 +1,46 @@
+query NextJob($queue: String!) {
+    workflows {
+        nextJob(queue: $queue) {
+            planId {
+                id
+                queue
+            }
+            id {
+                id
+                index
+                queue
+            }
+            collection {
+                ...Collection
+            }
+            metadata {
+                ...Metadata
+            }
+            activity {
+                ...Activity
+            }
+            context
+            workflowActivity {
+                ...WorkflowActivity
+            }
+            storageSystems {
+                system {
+                    ...StorageSystem
+                }
+                configuration
+            }
+            prompts {
+                prompt {
+                    ...Prompt
+                }
+                configuration
+            }
+            models {
+                model {
+                    ...Model
+                }
+                configuration
+            }
+        }
+    }
+}

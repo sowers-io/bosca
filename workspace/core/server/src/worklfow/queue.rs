@@ -415,7 +415,7 @@ impl JobQueues {
         &self,
         job_id: &WorkflowJobId,
         error: &str,
-    ) -> Result<(), Error> {
+    ) -> Result<WorkflowExecutionPlan, Error> {
         let mut connection = self.pool.get().await?;
         let db_txn = connection.transaction().await?;
         let Some(mut plan) = self.get_plan_and_lock_by_job(&db_txn, job_id).await? else {
@@ -427,7 +427,7 @@ impl JobQueues {
         db_txn.commit().await?;
         redis_txn.execute(&self.redis).await?;
         self.incr("queue::job::failed").await?;
-        Ok(())
+        Ok(plan)
     }
 
     pub async fn set_execution_plan_job_checkin(
@@ -443,7 +443,7 @@ impl JobQueues {
     pub async fn set_execution_plan_job_complete(
         &self,
         job_id: &WorkflowJobId,
-    ) -> Result<(), Error> {
+    ) -> Result<WorkflowExecutionPlan, Error> {
         let mut connection = self.pool.get().await?;
         let transaction = connection.transaction().await?;
         let Some(mut plan) = self.get_plan_and_lock_by_job(&transaction, job_id).await? else {
@@ -458,7 +458,7 @@ impl JobQueues {
                 if result == WorkflowExecutePlanState::Complete
                     || result == WorkflowExecutePlanState::Error
                 {
-                    redis_txn.add_op(RedisTransactionOp::RemovePlanRunning(plan.id))
+                    redis_txn.add_op(RedisTransactionOp::RemovePlanRunning(plan.id.clone()))
                 }
                 transaction.commit().await?;
                 redis_txn.execute(&self.redis).await?;
@@ -466,7 +466,7 @@ impl JobQueues {
                 if result == WorkflowExecutePlanState::Error {
                     return Err(Error::new("plan is in an error state"));
                 }
-                Ok(())
+                Ok(plan)
             }
             Err(e) => {
                 transaction.rollback().await?;

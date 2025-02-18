@@ -1,20 +1,13 @@
-use crate::datastores::profile::ProfileDataStore;
-use crate::datastores::security::SecurityDataStore;
 use crate::models::content::collection::{CollectionInput, CollectionType};
 use crate::models::profiles::profile::ProfileInput;
 use crate::models::security::credentials::PasswordCredential;
 use crate::models::security::permission::{Permission, PermissionAction};
 use crate::models::security::principal::Principal;
 use async_graphql::Error;
-use crate::datastores::workflow::WorkflowDataStore;
-use crate::datastores::content::content::ContentDataStore;
+use crate::context::BoscaContext;
 
-#[allow(clippy::too_many_arguments)]
 pub async fn add_password_principal(
-    security: &SecurityDataStore,
-    workflow: &WorkflowDataStore,
-    content: &ContentDataStore,
-    profiles: &ProfileDataStore,
+    ctx: &BoscaContext,
     identifier: &str,
     password: &str,
     profile: &ProfileInput,
@@ -23,7 +16,7 @@ pub async fn add_password_principal(
 ) -> Result<Principal, Error> {
     let password_credential = PasswordCredential::new(identifier.to_string(), password.to_string());
     let groups = vec![];
-    let principal_id = security
+    let principal_id = ctx.security
         .add_principal(
             auto_verify,
             serde_json::Value::Null,
@@ -33,7 +26,7 @@ pub async fn add_password_principal(
         .await?;
 
     let collection_name = format!("Collection for {}", identifier);
-    let collection_id = content
+    let collection_id = ctx.content
         .collections
         .add(&CollectionInput {
             name: collection_name,
@@ -42,27 +35,27 @@ pub async fn add_password_principal(
             ..Default::default()
         })
         .await?;
-    let collection = content.collections.get(&collection_id).await?.unwrap();
+    let collection = ctx.content.collections.get(&collection_id).await?.unwrap();
 
     let group_name = format!("principal.{}", principal_id);
     let description = format!("Group for {}", identifier);
-    let group = security.add_group(&group_name, &description).await?;
-    security
+    let group = ctx.security.add_group(&group_name, &description).await?;
+    ctx.security
         .add_principal_group(&principal_id, &group.id)
         .await?;
-    profiles
-        .add(&principal_id, profile, &collection_id)
+    ctx.profile
+        .add(ctx, &principal_id, profile, &collection_id)
         .await?;
-    let principal = security.get_principal_by_id(&principal_id).await?;
+    let principal = ctx.security.get_principal_by_id(&principal_id).await?;
 
     let permission = Permission {
         entity_id: collection_id,
         group_id: group.id,
         action: PermissionAction::View,
     };
-    content.collection_permissions.add(&permission).await?;
+    ctx.content.collection_permissions.add(&permission).await?;
     if set_ready {
-        content.collection_workflows.set_ready_and_enqueue(workflow, &principal, &collection, None).await?;
+        ctx.content.collection_workflows.set_ready_and_enqueue(&ctx.workflow, &principal, &collection, None).await?;
     }
 
     Ok(principal)

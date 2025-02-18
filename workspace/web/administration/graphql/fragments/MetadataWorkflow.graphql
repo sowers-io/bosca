@@ -1,0 +1,4 @@
+fragment MetadataWorkflow on MetadataWorkflow {
+    state
+    pending
+}

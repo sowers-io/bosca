@@ -1,0 +1,9 @@
+mutation RemoveMetadataCollection($collectionId: String!, $id: String!) {
+    content {
+        collection {
+            removeChildMetadata(id: $collectionId, metadataId: $id) {
+                id
+            }
+        }
+    }
+}

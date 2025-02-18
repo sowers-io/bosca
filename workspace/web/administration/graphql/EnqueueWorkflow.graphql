@@ -1,0 +1,14 @@
+mutation EnqueueWorkflow($workflowId: String!, $collectionId: String, $metadataId: String, $version: Int, $configurations: [WorkflowConfigurationInput!]) {
+    workflows {
+        enqueueWorkflow(
+            workflowId: $workflowId,
+            collectionId: $collectionId,
+            metadataId: $metadataId,
+            version: $version,
+            configurations: $configurations
+        ) {
+            id
+            queue
+        }
+    }
+}

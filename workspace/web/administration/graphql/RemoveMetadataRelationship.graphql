@@ -1,0 +1,7 @@
+mutation RemoveMetadataRelationship($id1: String!, $id2: String!, $relationship: String!) {
+    content {
+        metadata {
+            deleteRelationship(id1: $id1, id2: $id2, relationship: $relationship)
+        }
+    }
+}

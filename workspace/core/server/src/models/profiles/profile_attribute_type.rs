@@ -1,8 +1,17 @@
+use async_graphql::InputObject;
 use crate::models::profiles::profile_visibility::ProfileVisibility;
 use tokio_postgres::Row;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProfileAttributeType {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+    pub visibility: ProfileVisibility,
+}
+
+#[derive(InputObject, Debug, Clone, PartialEq, Eq)]
+pub struct ProfileAttributeTypeInput {
     pub id: String,
     pub name: String,
     pub description: String,

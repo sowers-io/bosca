@@ -1,0 +1,9 @@
+query GetStorageSystems {
+    workflows {
+        storageSystems {
+            all {
+                ...StorageSystem
+            }
+        }
+    }
+}

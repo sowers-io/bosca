@@ -25,16 +25,17 @@ create table document_templates
 
 create table document_template_attributes
 (
-    metadata_id   uuid                       not null,
-    version       int                        not null,
-    key           varchar                    not null,
-    name          varchar                    not null,
-    description   varchar                    not null,
-    configuration jsonb,
-    type          document_attribute_type    not null,
-    ui            document_attribute_ui_type not null,
-    list          boolean                    not null,
-    sort          int                        not null,
+    metadata_id       uuid                       not null,
+    version           int                        not null,
+    key               varchar                    not null,
+    name              varchar                    not null,
+    description       varchar                    not null,
+    supplementary_key varchar,
+    configuration     jsonb,
+    type              document_attribute_type    not null,
+    ui                document_attribute_ui_type not null,
+    list              boolean                    not null,
+    sort              int                        not null,
     primary key (metadata_id, version, key),
     foreign key (metadata_id, version) references document_templates (metadata_id, version) on delete cascade
 );

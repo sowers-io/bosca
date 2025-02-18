@@ -1047,6 +1047,7 @@ impl WorkflowDataStore {
         connection
             .query(&stmt, &[&t.from_state_id, &t.to_state_id, &t.description])
             .await?;
+        self.notifier.transition_changed(&t.from_state_id, &t.to_state_id).await?;
         Ok(())
     }
 
@@ -1056,6 +1057,7 @@ impl WorkflowDataStore {
         connection
             .query(&stmt, &[&t.from_state_id, &t.to_state_id, &t.description])
             .await?;
+        self.notifier.transition_changed(&t.from_state_id, &t.to_state_id).await?;
         Ok(())
     }
 
@@ -1073,6 +1075,7 @@ impl WorkflowDataStore {
         connection
             .query(&stmt, &[from_state_id, to_state_id])
             .await?;
+        self.notifier.transition_changed(from_state_id, to_state_id).await?;
         Ok(())
     }
 
@@ -1438,7 +1441,11 @@ impl WorkflowDataStore {
         &self,
         job_id: &WorkflowJobId,
     ) -> Result<(), Error> {
-        self.queues.set_execution_plan_job_complete(job_id).await
+        let plan = self.queues.set_execution_plan_job_complete(job_id).await?;
+        if plan.finished.is_some() {
+            self.notifier.workflow_plan_finished(&plan.id).await?;
+        }
+        Ok(())
     }
 
     pub async fn set_execution_plan_job_failed(
@@ -1446,9 +1453,13 @@ impl WorkflowDataStore {
         job_id: &WorkflowJobId,
         error: &str,
     ) -> Result<(), Error> {
-        self.queues
+        let plan = self.queues
             .set_execution_plan_job_failed(job_id, error)
-            .await
+            .await?;
+        if plan.finished.is_some() {
+            self.notifier.workflow_plan_failed(&plan.id).await?;
+        }
+        Ok(())
     }
 
     /* queues */

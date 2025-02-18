@@ -1,0 +1,9 @@
+query GetMetadataSupplementary($id: String!, $key: String) {
+    content {
+        metadata(id: $id) {
+            supplementary(key: $key) {
+                ...MetadataSupplementary
+            }
+        }
+    }
+}

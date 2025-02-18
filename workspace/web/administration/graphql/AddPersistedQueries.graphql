@@ -1,0 +1,5 @@
+mutation AddPersistedQueries($application: String!, $queries: [PersistedQueryInput!]!) {
+    persistedQueries {
+        addAll(application: $application, queries: $queries)
+    }
+}

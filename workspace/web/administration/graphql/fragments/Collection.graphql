@@ -1,0 +1,52 @@
+fragment CollectionIdName on Collection {
+    id
+    name
+}
+
+fragment CollectionList on Collection {
+    ...Collection
+    items(offset: 0, limit: 1000) {
+        __typename
+        ... on Collection {
+            ...Collection
+        }
+        ... on Metadata {
+            ...Metadata
+        }
+    }
+}
+
+fragment Collection on Collection {
+    id
+    traitIds
+    name
+    labels
+    created
+    modified
+    attributes
+    systemAttributes
+    ready
+    public
+    publicList
+    ordering {
+        ...Ordering
+    }
+    categories {
+        ...Category
+    }
+    workflow {
+        ...CollectionWorkflow
+    }
+}
+
+fragment CollectionParents on Collection {
+    parentCollections(offset: 0, limit: 100) {
+        ...ParentCollection
+    }
+}
+
+fragment CollectionPermissions on Collection {
+    permissions {
+        ...Permission
+    }
+}

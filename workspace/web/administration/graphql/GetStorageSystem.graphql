@@ -1,0 +1,9 @@
+query GetStorageSystem($id: String!) {
+    workflows {
+        storageSystems {
+            storageSystem(id: $id) {
+                ...StorageSystem
+            }
+        }
+    }
+}

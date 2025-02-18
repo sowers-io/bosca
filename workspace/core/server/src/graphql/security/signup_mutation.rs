@@ -17,10 +17,7 @@ impl SignupMutationObject {
     ) -> Result<PrincipalObject, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let principal = add_password_principal(
-            &ctx.security,
-            &ctx.workflow,
-            &ctx.content,
-            &ctx.profile,
+            &ctx,
             &identifier,
             &password,
             &profile,

@@ -14,12 +14,10 @@ use crate::models::content::search::SearchDocumentInput;
 use crate::models::content::supplementary::MetadataSupplementaryInput;
 use crate::models::security::permission::{Permission, PermissionAction, PermissionInput};
 use crate::models::workflow::execution_plan::WorkflowExecutionPlan;
-use crate::util::delete::delete_metadata;
 use crate::util::storage::{index_documents, storage_system_metadata_delete};
 use async_graphql::*;
 use bytes::Bytes;
 use futures_util::AsyncReadExt;
-use log::error;
 use object_store::MultipartUpload;
 use uuid::Uuid;
 
@@ -94,7 +92,7 @@ impl MetadataMutationObject {
                 "Cannot edit a non-draft metadata that has been marked ready",
             ));
         }
-        ctx.content.metadata.edit(&id, &metadata).await?;
+        ctx.content.metadata.edit(ctx, &id, &metadata).await?;
         let version = if let Some(version) = metadata.version {
             version
         } else {
@@ -111,20 +109,6 @@ impl MetadataMutationObject {
                 .documents
                 .edit_template(&id, version, document_template)
                 .await?;
-        }
-        if metadata.index.unwrap_or(true) {
-            let storage_system = ctx.workflow.get_default_search_storage_system().await?;
-            let search_documents = vec![SearchDocumentInput {
-                metadata_id: Some(id.to_string()),
-                collection_id: None,
-                profile_id: None,
-                content: "".to_owned(),
-            }];
-            if let Some(storage_system) = &storage_system {
-                index_documents(ctx, &search_documents, storage_system).await?;
-            } else {
-                error!("error, failed to index, no storage system")
-            }
         }
         match ctx.content.metadata.get(&id).await? {
             Some(metadata) => Ok(metadata.into()),
@@ -165,7 +149,8 @@ impl MetadataMutationObject {
     async fn delete(&self, ctx: &Context<'_>, metadata_id: String) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::parse_str(metadata_id.as_str())?;
-        delete_metadata(ctx, &id).await?;
+        ctx.check_metadata_action(&id, PermissionAction::Delete).await?;
+        ctx.content.metadata.delete(ctx, &id).await?;
         Ok(true)
     }
 

@@ -4,6 +4,8 @@ use futures_util::StreamExt;
 use redis::AsyncCommands;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+use crate::graphql::workflows::workflow_execution_id::WorkflowExecutionIdObject;
+use crate::models::workflow::execution_plan::WorkflowExecutionId;
 use crate::redis::RedisClient;
 
 pub struct Notifier {
@@ -18,9 +20,41 @@ pub struct MetadataSupplementaryIdObject {
     pub supplementary: String,
 }
 
+#[derive(SimpleObject, Serialize, Deserialize, Debug)]
+pub struct TransitionIdObject {
+    pub from_state_id: String,
+    pub to_state_id: String,
+}
+
 impl Notifier {
     pub fn new(redis: RedisClient) -> Self {
         Self { redis }
+    }
+
+    pub async fn listen_workflow_plan_finished(&self) -> Result<impl Stream<Item=WorkflowExecutionIdObject>, Error> {
+        let connection = self.redis.get().await?;
+        let mut pubsub = connection.get_pubsub().await?;
+        pubsub.subscribe("workflow_plan_finished").await?;
+        Ok(pubsub
+            .into_on_message()
+            .filter_map(|msg| async move {
+                let bytes = msg.get_payload_bytes();
+                let publish: WorkflowExecutionId = serde_json::from_slice(bytes).ok()?;
+                Some(WorkflowExecutionIdObject::new(publish))
+            }))
+    }
+
+    pub async fn listen_workflow_plan_failed(&self) -> Result<impl Stream<Item=WorkflowExecutionIdObject>, Error> {
+        let connection = self.redis.get().await?;
+        let mut pubsub = connection.get_pubsub().await?;
+        pubsub.subscribe("workflow_plan_failed").await?;
+        Ok(pubsub
+            .into_on_message()
+            .filter_map(|msg| async move {
+                let bytes = msg.get_payload_bytes();
+                let publish: WorkflowExecutionId = serde_json::from_slice(bytes).ok()?;
+                Some(WorkflowExecutionIdObject::new(publish))
+            }))
     }
 
     pub async fn listen_category_changes(&self) -> Result<impl Stream<Item=String>, Error> {
@@ -65,6 +99,19 @@ impl Notifier {
             .filter_map(|msg| async move {
                 let bytes = msg.get_payload_bytes();
                 let publish: MetadataSupplementaryIdObject = serde_json::from_slice(bytes).ok()?;
+                Some(publish)
+            }))
+    }
+
+    pub async fn listen_transition_changes(&self) -> Result<impl Stream<Item=TransitionIdObject>, Error> {
+        let connection = self.redis.get().await?;
+        let mut pubsub = connection.get_pubsub().await?;
+        pubsub.subscribe("transition_changes").await?;
+        Ok(pubsub
+            .into_on_message()
+            .filter_map(|msg| async move {
+                let bytes = msg.get_payload_bytes();
+                let publish: TransitionIdObject = serde_json::from_slice(bytes).ok()?;
                 Some(publish)
             }))
     }
@@ -157,11 +204,24 @@ impl Notifier {
             }))
     }
 
+    pub async fn transition_changed(&self, from_state_id: &str, to_state_id: &str) -> async_graphql::Result<(), Error> {
+        let connection = self.redis.get().await?;
+        let mut conn = connection.get_connection().await?;
+        let id = TransitionIdObject {
+            from_state_id: from_state_id.to_string(),
+            to_state_id: to_state_id.to_string(),
+        };
+        let data = serde_json::to_string(&id)?;
+        conn.publish::<&str, String, ()>("transition_changes", data)
+            .await?;
+        Ok(())
+    }
+
     pub async fn category_changed(&self, id: &Uuid) -> async_graphql::Result<(), Error> {
         let connection = self.redis.get().await?;
         let mut conn = connection.get_connection().await?;
         let id = id.to_string();
-        conn.publish::<&str, String, ()>("category_changed", id)
+        conn.publish::<&str, String, ()>("category_changes", id)
             .await?;
         Ok(())
     }
@@ -267,6 +327,24 @@ impl Notifier {
         let mut conn = connection.get_connection().await?;
         let id = id.to_string();
         conn.publish::<&str, String, ()>("configuration_changes", id)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn workflow_plan_failed(&self, id: &WorkflowExecutionId) -> Result<(), Error> {
+        let connection = self.redis.get().await?;
+        let mut conn = connection.get_connection().await?;
+        let id = serde_json::to_string(id)?;
+        conn.publish::<&str, String, ()>("workflow_plan_failed", id)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn workflow_plan_finished(&self, id: &WorkflowExecutionId) -> Result<(), Error> {
+        let connection = self.redis.get().await?;
+        let mut conn = connection.get_connection().await?;
+        let id = serde_json::to_string(id)?;
+        conn.publish::<&str, String, ()>("workflow_plan_finished", id)
             .await?;
         Ok(())
     }

@@ -1,0 +1,6 @@
+fragment WorkflowActivityModel on WorkflowActivityModel {
+    model {
+        id
+    }
+    configuration
+}

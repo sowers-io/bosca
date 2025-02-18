@@ -1,10 +1,15 @@
+use crate::context::BoscaContext;
+use crate::models::content::search::SearchDocumentInput;
 use crate::models::profiles::profile::{Profile, ProfileInput};
 use crate::models::profiles::profile_attribute::ProfileAttribute;
+use crate::models::profiles::profile_attribute_type::{
+    ProfileAttributeType, ProfileAttributeTypeInput,
+};
+use crate::util::storage::index_documents;
 use async_graphql::Error;
 use deadpool_postgres::{GenericClient, Pool};
 use std::sync::Arc;
 use uuid::Uuid;
-use crate::models::profiles::profile_attribute_type::ProfileAttributeType;
 
 #[derive(Clone)]
 pub struct ProfileDataStore {
@@ -29,10 +34,7 @@ impl ProfileDataStore {
         Ok(rows.iter().map(|r| r.into()).collect())
     }
 
-    pub async fn get_by_id(
-        &self,
-        id: &Uuid,
-    ) -> async_graphql::Result<Option<Profile>, Error> {
+    pub async fn get_by_id(&self, id: &Uuid) -> async_graphql::Result<Option<Profile>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached("select * from profiles where id = $1")
@@ -60,7 +62,7 @@ impl ProfileDataStore {
             .await?;
         let rows = connection.query(&stmt, &[id]).await?;
         if rows.is_empty() {
-            return Ok(None)
+            return Ok(None);
         }
         Ok(Some(rows.first().unwrap().get("slug")))
     }
@@ -76,8 +78,63 @@ impl ProfileDataStore {
         Ok(rows.iter().map(|r| r.into()).collect())
     }
 
+    pub async fn add_profile_attribute_type(
+        &self,
+        attribute: &ProfileAttributeTypeInput,
+    ) -> Result<(), Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("insert into profile_attribute_types (id, name, description, visibility) values ($1, $2, $3, $4)")
+            .await?;
+        connection
+            .execute(
+                &stmt,
+                &[
+                    &attribute.id,
+                    &attribute.name,
+                    &attribute.description,
+                    &attribute.visibility,
+                ],
+            )
+            .await?;
+        Ok(())
+    }
+
+    pub async fn edit_profile_attribute_type(
+        &self,
+        attribute: &ProfileAttributeTypeInput,
+    ) -> Result<(), Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("update profile_attribute_types set name = $1, description = $2, visibility = $3 where id = $4")
+            .await?;
+        connection
+            .execute(
+                &stmt,
+                &[
+                    &attribute.name,
+                    &attribute.description,
+                    &attribute.visibility,
+                    &attribute.id,
+                ],
+            )
+            .await?;
+        Ok(())
+    }
+
+    pub async fn delete_profile_attribute_type(&self, id: &str) -> Result<(), Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("delete from profile_attribute_types where id = $1")
+            .await?;
+        let id = id.to_string();
+        connection.execute(&stmt, &[&id]).await?;
+        Ok(())
+    }
+
     pub async fn add(
         &self,
+        ctx: &BoscaContext,
         principal: &Uuid,
         profile: &ProfileInput,
         collection_id: &Uuid,
@@ -86,12 +143,20 @@ impl ProfileDataStore {
         let txn = connection.transaction().await?;
         let stmt = txn.prepare_cached("insert into profiles (principal, name, visibility, collection_id) values ($1, $2, $3, $4) returning id").await?;
         let results = txn
-            .query(&stmt, &[&principal, &profile.name, &profile.visibility, &collection_id])
+            .query(
+                &stmt,
+                &[
+                    &principal,
+                    &profile.name,
+                    &profile.visibility,
+                    &collection_id,
+                ],
+            )
             .await?;
         if results.is_empty() {
             return Err(Error::new("failed to create principal"));
         }
-        let id = results[0].get("id");
+        let id: Uuid = results[0].get("id");
         let stmt = txn.prepare_cached("insert into profile_attributes (profile, type_id, visibility, confidence, priority, source, attributes) values ($1, $2, $3, $4, $5, $6, $7)").await?;
         for attribute in profile.attributes.iter() {
             txn.execute(
@@ -109,6 +174,7 @@ impl ProfileDataStore {
             .await?;
         }
         txn.commit().await?;
+        self.index_profile(ctx, &id, profile).await?;
         Ok(id)
     }
 
@@ -126,6 +192,7 @@ impl ProfileDataStore {
 
     pub async fn edit(
         &self,
+        ctx: &BoscaContext,
         principal: &Uuid,
         profile: &ProfileInput,
     ) -> async_graphql::Result<(), Error> {
@@ -142,12 +209,12 @@ impl ProfileDataStore {
         if results.is_empty() {
             return Err(Error::new("failed to create principal"));
         }
-        let id: i64 = results[0].get("id");
+        let id: Uuid = results[0].get("id");
         let update_stmt = txn.prepare_cached("update profile_attributes set visibility = $1, confidence = $2, priority = $3, source = $4, attributes = $5 where id = $6").await?;
         let insert_stmt = txn.prepare_cached("insert into profile_attributes (profile, type_id, visibility, confidence, priority, source, attributes) values ($1, $2, $3, $4, $5, $6, $7)").await?;
         for attribute in profile.attributes.iter() {
             if let Some(id) = attribute.id.as_ref() {
-                let id = Uuid::parse_str(id)?;
+                let attr_id = Uuid::parse_str(id)?;
                 txn.execute(
                     &update_stmt,
                     &[
@@ -156,7 +223,7 @@ impl ProfileDataStore {
                         &attribute.priority,
                         &attribute.source,
                         &attribute.attributes,
-                        &id,
+                        &attr_id,
                     ],
                 )
                 .await?;
@@ -177,6 +244,34 @@ impl ProfileDataStore {
             }
         }
         txn.commit().await?;
+        self.index_profile(ctx, &id, profile).await?;
+        Ok(())
+    }
+
+    async fn new_search_document(
+        id: &Uuid,
+        _: &ProfileInput,
+    ) -> Result<Option<SearchDocumentInput>, Error> {
+        Ok(Some(SearchDocumentInput {
+            metadata_id: None,
+            collection_id: None,
+            profile_id: Some(id.to_string()),
+            content: "".to_owned(),
+        }))
+    }
+
+    async fn index_profile(
+        &self,
+        ctx: &BoscaContext,
+        id: &Uuid,
+        profile: &ProfileInput,
+    ) -> Result<(), Error> {
+        if let Some(document) = ProfileDataStore::new_search_document(id, profile).await? {
+            let documents = vec![document];
+            if let Some(storage_system) = ctx.workflow.get_default_search_storage_system().await? {
+                index_documents(ctx, &documents, &storage_system).await?;
+            }
+        }
         Ok(())
     }
 }

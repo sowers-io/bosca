@@ -1,0 +1,9 @@
+mutation SignUp($profile: ProfileInput!, $identifier: String!, $password: String!) {
+    security {
+        signup {
+            password(profile: $profile, identifier: $identifier, password: $password) {
+                id
+            }
+        }
+    }
+}

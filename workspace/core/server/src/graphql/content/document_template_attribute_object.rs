@@ -55,6 +55,10 @@ impl DocumentTemplateAttributeObject {
         self.attribute.list
     }
 
+    pub async fn supplementary_key(&self) -> &Option<String> {
+        &self.attribute.supplementary_key
+    }
+
     pub async fn workflows(
         &self,
         ctx: &Context<'_>,

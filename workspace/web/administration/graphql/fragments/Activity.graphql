@@ -1,0 +1,13 @@
+fragment Activity on Activity {
+    childWorkflowId
+    configuration
+    description
+    id
+    inputs {
+        ...ActivityParameter
+    }
+    name
+    outputs {
+        ...ActivityParameter
+    }
+}

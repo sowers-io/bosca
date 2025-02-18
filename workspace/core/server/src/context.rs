@@ -150,7 +150,7 @@ impl BoscaContext {
     pub async fn check_profile_action(&self, id: &Uuid, action: PermissionAction) -> Result<Profile, Error> {
         match self.profile.get_by_id(id).await? {
             Some(profile) => {
-                if profile.principal == self.principal.id {
+                if profile.principal == Some(self.principal.id) {
                     return Ok(profile)
                 }
                 if action == PermissionAction::View && profile.visibility != ProfileVisibility::Public {

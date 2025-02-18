@@ -64,7 +64,7 @@ create type profile_visibility as enum ('system', 'user', 'friends', 'friends_of
 create table profiles
 (
     id         uuid               not null default gen_random_uuid(),
-    principal  uuid               not null,
+    principal  uuid,
     name       varchar            not null check (length(name) > 0),
     visibility profile_visibility not null default 'system'::profile_visibility,
     created    timestamp          not null default now(),

@@ -195,17 +195,12 @@ async fn build_redis_client(key: &str) -> Result<RedisClient, Error> {
     RedisClient::new(url).await
 }
 
-async fn initialize_security(
-    security: &SecurityDataStore,
-    workflow: &WorkflowDataStore,
-    content: &ContentDataStore,
-    profiles: &ProfileDataStore,
-) {
-    match security.get_principal_by_identifier("admin").await {
+async fn initialize_security(ctx: &BoscaContext) {
+    match ctx.security.get_principal_by_identifier("admin").await {
         Ok(_) => {}
         Err(_) => {
             let groups = vec![];
-            security
+            ctx.security
                 .add_anonymous_principal(Value::Null, &groups)
                 .await
                 .unwrap();
@@ -218,10 +213,7 @@ async fn initialize_security(
                 attributes: vec![],
             };
             let principal = add_password_principal(
-                security,
-                workflow,
-                content,
-                profiles,
+                ctx,
                 &identifier,
                 &password,
                 &profile,
@@ -231,8 +223,8 @@ async fn initialize_security(
             .await
             .unwrap();
 
-            let group = security.get_administrators_group().await.unwrap();
-            security
+            let group = ctx.security.get_administrators_group().await.unwrap();
+            ctx.security
                 .add_principal_group(&principal.id, &group.id)
                 .await
                 .unwrap();
@@ -439,7 +431,7 @@ async fn main() {
         principal: get_anonymous_principal(),
     };
 
-    initialize_security(&ctx.security, &ctx.workflow, &ctx.content, &ctx.profile).await;
+    initialize_security(&ctx).await;
     initialize_content(&ctx).await;
 
     let jobs_expiration = jobs.clone();

@@ -1,12 +1,29 @@
 use crate::context::BoscaContext;
 use async_graphql::*;
 use tokio_stream::Stream;
-use crate::datastores::notifier::MetadataSupplementaryIdObject;
+use crate::datastores::notifier::{MetadataSupplementaryIdObject, TransitionIdObject};
+use crate::graphql::workflows::workflow_execution_id::WorkflowExecutionIdObject;
 
 pub struct SubscriptionObject;
 
 #[Subscription(name = "Subscription")]
 impl SubscriptionObject {
+
+    async fn workflow_plan_failed(&self, ctx: &Context<'_>) -> Result<impl Stream<Item = WorkflowExecutionIdObject>> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        if ctx.principal.anonymous {
+            return Err(Error::new("Unauthorized"));
+        }
+        ctx.notifier.listen_workflow_plan_failed().await
+    }
+
+    async fn workflow_plan_finished(&self, ctx: &Context<'_>) -> Result<impl Stream<Item = WorkflowExecutionIdObject>> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        if ctx.principal.anonymous {
+            return Err(Error::new("Unauthorized"));
+        }
+        ctx.notifier.listen_workflow_plan_finished().await
+    }
 
     async fn category(&self, ctx: &Context<'_>) -> Result<impl Stream<Item = String>> {
         let ctx = ctx.data::<BoscaContext>()?;
@@ -103,5 +120,13 @@ impl SubscriptionObject {
             return Err(Error::new("Unauthorized"));
         }
         ctx.notifier.listen_configuration_changes().await
+    }
+
+    async fn transition(&self, ctx: &Context<'_>) -> Result<impl Stream<Item = TransitionIdObject>> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        if ctx.principal.anonymous {
+            return Err(Error::new("Unauthorized"));
+        }
+        ctx.notifier.listen_transition_changes().await
     }
 }

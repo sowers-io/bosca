@@ -3,7 +3,7 @@ use uuid::Uuid;
 use crate::context::BoscaContext;
 use crate::models::content::collection::CollectionType;
 use crate::models::security::permission::PermissionAction;
-use crate::util::storage::{storage_system_collection_delete, storage_system_metadata_delete};
+use crate::util::storage::storage_system_collection_delete;
 
 pub async fn delete_collection(ctx: &BoscaContext, collection_id: &Uuid, recursive: Option<bool>) -> Result<(), Error> {
     let collection = ctx.check_collection_action(collection_id, PermissionAction::Delete).await?;
@@ -18,7 +18,7 @@ pub async fn delete_collection(ctx: &BoscaContext, collection_id: &Uuid, recursi
                 ctx.content.collections.remove_child_metadata(collection_id, &item.id).await?;
                 let collection_ids = ctx.content.metadata.get_parent_ids(&item.id, 0, 1).await?;
                 if collection_ids.is_empty() {
-                    delete_metadata(ctx, &item.id).await?;
+                    ctx.content.metadata.delete(ctx, &item.id).await?;
                 }
             }
         }
@@ -36,27 +36,5 @@ pub async fn delete_collection(ctx: &BoscaContext, collection_id: &Uuid, recursi
         storage_system_collection_delete(&collection, &storage_system, &ctx.search).await?;
     }
     ctx.content.collections.delete(collection_id).await?;
-    Ok(())
-}
-
-pub async fn delete_metadata(ctx: &BoscaContext, id: &Uuid) -> Result<(), Error> {
-    let metadata = ctx.check_metadata_action(id, PermissionAction::Delete).await?;
-    let storage_systems = ctx.workflow.get_storage_systems().await?;
-    storage_system_metadata_delete(
-        &ctx.storage,
-        &metadata,
-        &storage_systems,
-        &ctx.search
-    ).await?;
-    let supplementaries = ctx.content.metadata.get_supplementaries(id).await?;
-    for supplementary in supplementaries {
-        let path = ctx.storage
-            .get_metadata_path(&metadata, Some(supplementary.key.clone()))
-            .await?;
-        ctx.storage.delete(&path).await?;
-    }
-    // TODO: delete versions
-    // TODO: delete search documents
-    ctx.content.metadata.delete(id).await?;
     Ok(())
 }

@@ -7,14 +7,22 @@ pub struct ProfileAttributeTypesObject {}
 
 #[Object(name = "ProfileAttributeTypes")]
 impl ProfileAttributeTypesObject {
+
     async fn all(&self, ctx: &Context<'_>) -> Result<Vec<ProfileAttributeTypeObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
+        let is_admin = ctx.has_admin_account().await?;
         Ok(ctx
             .profile
             .get_attribute_types()
             .await?
             .into_iter()
-            .filter(|a| a.visibility != ProfileVisibility::System)
+            .filter(|a| {
+                if is_admin {
+                    true
+                } else {
+                    a.visibility == ProfileVisibility::Public
+                }
+            })
             .map(ProfileAttributeTypeObject::new)
             .collect())
     }

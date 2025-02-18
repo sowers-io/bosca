@@ -7,7 +7,7 @@ use uuid::Uuid;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Profile {
     pub id: Uuid,
-    pub principal: Uuid,
+    pub principal: Option<Uuid>,
     pub name: String,
     pub visibility: ProfileVisibility,
 }
