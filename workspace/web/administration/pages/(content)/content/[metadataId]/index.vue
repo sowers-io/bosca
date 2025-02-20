@@ -35,6 +35,14 @@ function onSave() {
   window.dispatchEvent(new Event('save-document'))
 }
 
+function onPreview() {
+
+}
+
+function onDelete() {
+
+}
+
 client.listeners.onMetadataChanged(async (id) => {
   if (id === metadata.value.id) {
     metadata.value = await client.metadata.get(id)
@@ -52,7 +60,7 @@ onMounted(() => {
 </script>
 <template>
   <Tabs v-model:model-value="selectedItem" class="h-full space-y-6">
-    <div class="flex">
+    <div class="flex items-center">
       <TabsList>
         <TabsTrigger value="document">
           Document
@@ -62,6 +70,9 @@ onMounted(() => {
         </TabsTrigger>
       </TabsList>
       <div class="grow"></div>
+      <div class="me-4">
+        <Badge variant="secondary">{{ metadata?.workflow?.state }}</Badge>
+      </div>
       <div
           v-if="
           selectedItem === 'document' &&
@@ -69,9 +80,14 @@ onMounted(() => {
         "
           class="flex gap-2"
       >
-        <Button @click="onSave" class="flex gap-2">
-          <Icon name="i-lucide-save" class="size-4 me-2"/>
-          Save
+        <Button @click="onSave" class="flex gap-2" variant="secondary">
+          <Icon name="i-lucide-save" class="size-4"/>
+        </Button>
+        <Button @click="onPreview" class="flex gap-2" variant="secondary">
+          <Icon name="i-lucide-screen-share" class="size-4"/>
+        </Button>
+        <Button @click="onDelete" class="flex gap-2" variant="secondary">
+          <Icon name="i-lucide-trash" class="size-4"/>
         </Button>
       </div>
     </div>

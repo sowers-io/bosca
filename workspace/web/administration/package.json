@@ -34,6 +34,8 @@
     "@tiptap/extension-document": "^2.11.5",
     "@tiptap/extension-placeholder": "^2.11.5",
     "@tiptap/extension-history": "^2.11.5",
+    "@tiptap/extension-underline": "^2.11.5",
+    "@tiptap/extension-text-align": "^2.11.5",
     "media-icons": "^1.1.5",
     "tippy.js": "^6.3.7",
     "@unovis/ts": "^1.5.0",

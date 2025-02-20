@@ -2,9 +2,11 @@
 import {BubbleMenu, EditorContent, type Range, useEditor} from '@tiptap/vue-3'
 import Document from '@tiptap/extension-document'
 import Placeholder from '@tiptap/extension-placeholder'
+import Underline from '@tiptap/extension-underline'
 import StarterKit from '@tiptap/starter-kit'
 import Commands from '@/lib/editor/commands'
 import Suggestion from '@/lib/editor/suggestion'
+import TextAlign from '@tiptap/extension-text-align'
 import {
   type CollectionIdNameFragment, type CollectionParentsFragment, DocumentAttributeType,
   DocumentAttributeUiType,
@@ -139,6 +141,10 @@ const editor = useEditor({
     CustomDocument,
     StarterKit.configure({document: false}),
     Image,
+    Underline,
+    TextAlign.configure({
+      types: ['heading', 'paragraph'],
+    }),
     Placeholder.configure({
       showOnlyCurrent: false,
       placeholder: ({node}) => {
@@ -519,7 +525,7 @@ client.listeners.onMetadataSupplementaryChanged(async (id, key) => {
 <template>
   <div class="w-full h-full" v-if="editor" :data-update="update">
     <bubble-menu
-        class="flex border bg-background gap-1 rounded-md p-1 drop-shadow-xl ms-2"
+        class="flex border bg-background gap-1 rounded-md p-1 drop-shadow-xl ms-2 w-442px"
         :tippy-options="{ duration: 100, offset: [0, 20] }"
         :editor="editor"
     >
@@ -530,10 +536,8 @@ client.listeners.onMetadataSupplementaryChanged(async (id, key) => {
             :class="
             {
               'inline-flex size-8 rounded-md': true,
-              'items-center justify-center hover:bg-accent hover:text-accent-foreground':
-                true,
-              'bg-accent text-foreground': item.name &&
-                editor.isActive(item.name, item.attributes),
+              'items-center justify-center hover:bg-accent hover:text-accent-foreground': true,
+              'bg-accent text-foreground': item.name && editor.isActive(item.name, item.attributes) || !item.name && item.attributes && editor.isActive(item.attributes || {}),
             }
           "
             @click="item.command({ editor })"

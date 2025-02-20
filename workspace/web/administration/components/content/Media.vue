@@ -21,7 +21,7 @@ const props = defineProps<{
 const filter = ref<ContentTypeFilter>(props.filter)
 const dropZoneRef = ref<HTMLDivElement>()
 const currentPage = ref(1)
-const limit = ref(20)
+const limit = ref(18)
 const offset = computed(() => (currentPage.value - 1) * limit.value)
 
 const client = useBoscaClient()
@@ -96,12 +96,12 @@ client.listeners.onMetadataChanged((id) => {
         </PaginationList>
       </Pagination>
     </div>
-    <div class="grid grid-cols-5 flex-wrap mt-6 gap-x-6 gap-y-14 pb-8">
+    <div class="grid grid-cols-6 w-full mt-6 gap-x-6 gap-y-14 pb-8">
       <ContentMetadataImage
         v-for="item in metadata"
         :key="item.id"
         :metadata="item"
-        class="w-full min-h-[330px]"
+        class="w-[200px] h-[300px]"
         aspect-ratio="portrait"
         :on-selected="onSelected"
       />
