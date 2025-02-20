@@ -116,12 +116,17 @@ pub async fn download(
                 )
             })?
         } else {
-            metadata.content_type.parse().map_err(|_| {
+            let content_type = metadata.content_type.parse().map_err(|_| {
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "Internal Server Error".to_owned(),
                 )
-            })?
+            })?;
+            if content_type == "audio/mpeg" && metadata.name.ends_with(".mp3") {
+                "audio/mp3".parse().unwrap()
+            } else {
+                content_type
+            }
         },
     );
     Ok((headers, body))

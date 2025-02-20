@@ -1,28 +1,32 @@
 use crate::context::BoscaContext;
 use crate::graphql::content::document_template_attribute_object::DocumentTemplateAttributeObject;
+use crate::graphql::content::metadata::MetadataObject;
 use crate::models::content::document_template::DocumentTemplate;
 use async_graphql::{Context, Error, Object};
 use serde_json::Value;
-use uuid::Uuid;
 
 pub struct DocumentTemplateObject {
-    pub metadata_id: Uuid,
-    pub version: i32,
     pub template: DocumentTemplate,
 }
 
 impl DocumentTemplateObject {
-    pub fn new(metadata_id: Uuid, version: i32, template: DocumentTemplate) -> Self {
-        Self {
-            metadata_id,
-            version,
-            template,
-        }
+    pub fn new(template: DocumentTemplate) -> Self {
+        Self { template }
     }
 }
 
 #[Object(name = "DocumentTemplate")]
 impl DocumentTemplateObject {
+    pub async fn metadata(&self, ctx: &Context<'_>) -> Result<Option<MetadataObject>, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let metadata = ctx
+            .content
+            .metadata
+            .get_by_version(&self.template.metadata_id, self.template.version)
+            .await?;
+        Ok(metadata.map(MetadataObject::new))
+    }
+
     pub async fn configuration(&self) -> &Option<Value> {
         &self.template.configuration
     }
@@ -43,10 +47,16 @@ impl DocumentTemplateObject {
         Ok(ctx
             .content
             .documents
-            .get_template_attributes(&self.metadata_id, self.version)
+            .get_template_attributes(&self.template.metadata_id, self.template.version)
             .await?
             .into_iter()
-            .map(|a| DocumentTemplateAttributeObject::new(self.metadata_id, self.version, a))
+            .map(|a| {
+                DocumentTemplateAttributeObject::new(
+                    self.template.metadata_id,
+                    self.template.version,
+                    a,
+                )
+            })
             .collect())
     }
 }

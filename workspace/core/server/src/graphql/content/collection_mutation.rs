@@ -6,6 +6,8 @@ use async_graphql::*;
 use log::error;
 use uuid::Uuid;
 use crate::context::BoscaContext;
+use crate::graphql::content::collection_metadata_relationship::CollectionMetadataRelationshipObject;
+use crate::models::content::collection_metadata_relationship::CollectionMetadataRelationshipInput;
 use crate::models::content::collection_workflow_state::{CollectionWorkflowCompleteState, CollectionWorkflowState};
 use crate::models::content::search::SearchDocumentInput;
 use crate::util::delete::delete_collection;
@@ -102,6 +104,63 @@ impl CollectionMutationObject {
         let ctx = ctx.data::<BoscaContext>()?;
         let collection_id = Uuid::parse_str(id.as_str())?;
         delete_collection(ctx, &collection_id, recursive).await?;
+        Ok(true)
+    }
+
+    async fn add_metadata_relationship(
+        &self,
+        ctx: &Context<'_>,
+        relationship: CollectionMetadataRelationshipInput,
+    ) -> Result<CollectionMetadataRelationshipObject, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let id = Uuid::parse_str(relationship.id.as_str())?;
+        ctx.check_collection_action(&id, PermissionAction::Edit)
+            .await?;
+        let metadata_id = Uuid::parse_str(relationship.metadata_id.as_str())?;
+        ctx.check_metadata_action(&metadata_id, PermissionAction::Edit)
+            .await?;
+        ctx.content.collections.add_metadata_relationship(&relationship).await?;
+        match ctx.content.collections.get_metadata_relationship(&id, &metadata_id).await? {
+            Some(relationship) => Ok(relationship.into()),
+            None => Err(Error::new("error creating relationship")),
+        }
+    }
+
+    async fn edit_metadata_relationship(
+        &self,
+        ctx: &Context<'_>,
+        relationship: CollectionMetadataRelationshipInput,
+    ) -> Result<bool, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let id = Uuid::parse_str(relationship.id.as_str())?;
+        ctx.check_collection_action(&id, PermissionAction::Edit)
+            .await?;
+        let metadata_id = Uuid::parse_str(relationship.metadata_id.as_str())?;
+        ctx.check_metadata_action(&metadata_id, PermissionAction::Edit)
+            .await?;
+        ctx.content.collections.edit_metadata_relationship(&relationship).await?;
+        ctx.content.collections.get_metadata_relationship(&id, &metadata_id).await?;
+        Ok(true)
+    }
+
+    async fn delete_metadata_relationship(
+        &self,
+        ctx: &Context<'_>,
+        id: String,
+        metadata_id: String,
+        relationship: String,
+    ) -> Result<bool, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let id = Uuid::parse_str(id.as_str())?;
+        ctx.check_metadata_action(&id, PermissionAction::Edit)
+            .await?;
+        let metadata_id = Uuid::parse_str(metadata_id.as_str())?;
+        ctx.check_metadata_action(&metadata_id, PermissionAction::Edit)
+            .await?;
+        ctx.content
+            .collections
+            .delete_metadata_relationship(&id, &metadata_id, &relationship)
+            .await?;
         Ok(true)
     }
 

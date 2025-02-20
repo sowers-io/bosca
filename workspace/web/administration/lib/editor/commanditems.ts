@@ -17,6 +17,7 @@ export interface CommandProperties {
 export interface CommandItem {
   label: string
   name?: string | null
+  attributes?: Record<string, string>
   icon: string
   command: (cmd: CommandProperties) => void
 }
@@ -33,9 +34,10 @@ export const CommandItems = [
   {
     name: 'heading',
     label: 'Heading 2',
+    attributes: { level: 2 },
     icon: 'i-lucide-heading-2',
     command: ({ editor, range }: CommandProperties) => {
-      if (!editor.isActive('heading')) {
+      if (!editor.isActive('heading', { level: 2 })) {
         newCommand(editor, range).setNode('heading', { level: 2 }).run()
       } else {
         newCommand(editor, range).setNode('paragraph').run()
@@ -45,9 +47,10 @@ export const CommandItems = [
   {
     name: 'heading',
     label: 'Heading 3',
+    attributes: { level: 3 },
     icon: 'i-lucide-heading-3',
     command: ({ editor, range }: CommandProperties) => {
-      if (!editor.isActive('heading')) {
+      if (!editor.isActive('heading', { level: 3 })) {
         newCommand(editor, range).setNode('heading', { level: 3 }).run()
       } else {
         newCommand(editor, range).setNode('paragraph').run()

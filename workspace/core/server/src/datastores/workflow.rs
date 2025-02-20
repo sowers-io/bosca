@@ -738,7 +738,7 @@ impl WorkflowDataStore {
         self.search.wait_for_task(create_task, None, None).await?;
         let index = self.search.get_index(index_name).await?;
         let mut settings = index.get_settings().await?;
-        settings.filterable_attributes = Some(vec!["_type".to_owned()]);
+        settings.filterable_attributes = Some(vec!["type".to_owned(), "_type".to_owned()]);
         index.set_settings(&settings).await?;
         Ok(())
     }

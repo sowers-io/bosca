@@ -58,6 +58,7 @@ pub fn build_find_args<'a>(
     extension_filter: Option<ExtensionFilterType>,
     offset: &'a i64,
     limit: &'a i64,
+    count: bool
 ) -> (String, Vec<&'a (dyn ToSql + Sync)>) {
     let mut q = query.to_string();
     let mut values = Vec::new();
@@ -121,11 +122,13 @@ pub fn build_find_args<'a>(
             q.push_str(") ")
         }
     }
-    q.push_str(format!(" order by lower({}.name) asc ", alias).as_str()); // TODO: when adding MetadataIndex & CollectionIndex, make this configurable so it is based on an index
-    q.push_str(format!(" offset ${}", pos).as_str());
-    pos += 1;
-    values.push(offset as &(dyn ToSql + Sync));
-    q.push_str(format!(" limit ${}", pos).as_str());
-    values.push(limit as &(dyn ToSql + Sync));
+    if !count {
+        q.push_str(format!(" order by lower({}.name) asc ", alias).as_str()); // TODO: when adding MetadataIndex & CollectionIndex, make this configurable so it is based on an index
+        q.push_str(format!(" offset ${}", pos).as_str());
+        pos += 1;
+        values.push(offset as &(dyn ToSql + Sync));
+        q.push_str(format!(" limit ${}", pos).as_str());
+        values.push(limit as &(dyn ToSql + Sync));
+    }
     (q.to_string(), values)
 }

@@ -13,7 +13,8 @@ pub struct ProfileAttribute {
     pub confidence: i32,
     pub priority: i32,
     pub source: String,
-    pub attributes: Value,
+    pub attributes: Option<Value>,
+    pub metadata_id: Option<Uuid>,
     pub expiration: Option<DateTime<Utc>>,
 }
 
@@ -25,7 +26,9 @@ pub struct ProfileAttributeInput {
     pub confidence: i32,
     pub priority: i32,
     pub source: String,
-    pub attributes: Value,
+    pub attributes: Option<Value>,
+    pub metadata_id: Option<String>,
+    pub metadata_supplementary: Option<String>,
     pub expiration: Option<DateTime<Utc>>,
 }
 
@@ -38,6 +41,7 @@ impl From<&Row> for ProfileAttribute {
             confidence: row.get("confidence"),
             priority: row.get("priority"),
             source: row.get("source"),
+            metadata_id: row.get("metadata_id"),
             attributes: row.get("attributes"),
             expiration: row.get("expiration"),
         }

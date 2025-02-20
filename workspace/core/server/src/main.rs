@@ -208,6 +208,7 @@ async fn initialize_security(ctx: &BoscaContext) {
             let identifier = "admin".to_string();
             let password = "password".to_string();
             let profile = ProfileInput {
+                slug: None,
                 name: "Administrator".to_string(),
                 visibility: ProfileVisibility::Public,
                 attributes: vec![],

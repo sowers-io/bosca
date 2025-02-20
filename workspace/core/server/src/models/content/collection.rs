@@ -90,6 +90,7 @@ pub struct MetadataChildInput {
 
 #[derive(InputObject, Default)]
 pub struct CollectionInput {
+    pub slug: Option<String>,
     pub parent_collection_id: Option<String>,
     pub collection_type: Option<CollectionType>,
     pub name: String,

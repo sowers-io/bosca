@@ -1,4 +1,5 @@
 pub mod collection;
+pub mod collection_metadata_relationship;
 pub mod collection_mutation;
 #[allow(clippy::module_inception)]
 pub mod content;
@@ -25,3 +26,4 @@ pub mod category;
 pub mod category_mutation;
 pub mod categories;
 pub mod sources;
+pub mod document_templates;

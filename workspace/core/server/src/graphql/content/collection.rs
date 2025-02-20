@@ -6,6 +6,7 @@ use chrono::{DateTime, Utc};
 use serde_json::Value;
 use crate::context::BoscaContext;
 use crate::graphql::content::category::CategoryObject;
+use crate::graphql::content::collection_metadata_relationship::CollectionMetadataRelationshipObject;
 use crate::graphql::workflows::workflow_execution_plan::WorkflowExecutionPlanObject;
 use crate::models::content::attributes_filter::AttributesFilterInput;
 use crate::models::content::ordering::Ordering;
@@ -77,11 +78,16 @@ impl CollectionObject {
         &self.collection.labels
     }
 
-    async fn attributes(&self, filter: Option<AttributesFilterInput>) -> Value {
+    async fn attributes(&self, filter: Option<AttributesFilterInput>) -> Option<Value> {
+        let mut value = self.collection.attributes.clone();
         if let Some(filter) = filter {
-            return filter.filter(&self.collection.attributes);
+            value = filter.filter(&value);
         }
-        self.collection.attributes.to_owned()
+        if value.is_null() {
+            None
+        } else {
+            Some(value)
+        }
     }
 
     async fn item_attributes(&self) -> &Option<Value> {
@@ -90,6 +96,21 @@ impl CollectionObject {
 
     async fn system_attributes(&self) -> &Option<Value> {
         &self.collection.system_attributes
+    }
+
+    async fn metadata_relationships(
+        &self,
+        ctx: &Context<'_>,
+    ) -> Result<Vec<CollectionMetadataRelationshipObject>, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        Ok(ctx
+            .content
+            .collections
+            .get_metadata_relationships(&self.collection.id)
+            .await?
+            .into_iter()
+            .map(|s| s.into())
+            .collect())
     }
 
     async fn ordering(&self) -> &Option<Vec<Ordering>> {

@@ -2,6 +2,7 @@ use crate::context::BoscaContext;
 use crate::datastores::content::util::{build_find_args, build_ordering, build_ordering_names};
 use crate::datastores::notifier::Notifier;
 use crate::graphql::content::content::FindAttributeInput;
+use crate::models::content::category::Category;
 use crate::models::content::collection::{
     Collection, CollectionChild, CollectionChildInput, CollectionInput, CollectionType,
 };
@@ -17,7 +18,7 @@ use serde_json::Value;
 use std::sync::Arc;
 use tokio_postgres::Statement;
 use uuid::Uuid;
-use crate::models::content::category::Category;
+use crate::models::content::collection_metadata_relationship::{CollectionMetadataRelationship, CollectionMetadataRelationshipInput};
 
 #[derive(Clone)]
 pub struct CollectionsDataStore {
@@ -80,6 +81,7 @@ impl CollectionsDataStore {
             None,
             &offset,
             &limit,
+            false
         );
         let stmt = connection.prepare_cached(query.as_str()).await?;
         let rows = connection.query(&stmt, values.as_slice()).await?;
@@ -357,11 +359,7 @@ impl CollectionsDataStore {
         }
     }
 
-    pub async fn edit(
-        &self,
-        id: &Uuid,
-        collection: &CollectionInput,
-    ) -> Result<(), Error> {
+    pub async fn edit(&self, id: &Uuid, collection: &CollectionInput) -> Result<(), Error> {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
 
@@ -410,6 +408,10 @@ impl CollectionsDataStore {
             .await?;
 
         let id = rows.first().unwrap().get(0);
+
+        let stmt = txn.prepare_cached("insert into slugs (slug, collection_id) values (case when length($1) > 0 then $1 else slugify($2) end, $3) on conflict (slug) do update set slug = slugify($2) || nextval('duplicate_slug_seq')").await?;
+        txn.execute(&stmt, &[&collection.slug, &collection.name, &id])
+            .await?;
 
         if let Some(trait_ids) = &collection.trait_ids {
             for trait_id in trait_ids {
@@ -472,7 +474,9 @@ impl CollectionsDataStore {
         category_id: &Uuid,
     ) -> Result<(), Error> {
         let stmt = txn
-            .prepare("insert into collection_categories (collection_id, category_id) values ($1, $2)")
+            .prepare(
+                "insert into collection_categories (collection_id, category_id) values ($1, $2)",
+            )
             .await?;
         txn.execute(&stmt, &[id, category_id]).await?;
         Ok(())
@@ -503,6 +507,13 @@ impl CollectionsDataStore {
             ],
         )
         .await?;
+
+        if let Some(slug) = collection.slug.as_ref() {
+            let stmt = txn
+                .prepare_cached("update slugs set slug = $1 where collection_id = $2)")
+                .await?;
+            txn.execute(&stmt, &[slug, &id]).await?;
+        }
 
         if let Some(trait_ids) = &collection.trait_ids {
             self.delete_trait_txn(txn, id).await?;
@@ -640,11 +651,7 @@ impl CollectionsDataStore {
         Ok(())
     }
 
-    pub async fn set_ordering(
-        &self,
-        collection_id: &Uuid,
-        ordering: Value,
-    ) -> Result<(), Error> {
+    pub async fn set_ordering(&self, collection_id: &Uuid, ordering: Value) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached("update collections set ordering = $1, modified = now() where id = $2")
@@ -768,15 +775,17 @@ impl CollectionsDataStore {
                 for child in children.iter_mut() {
                     child.metadata.parent_collection_id = Some(id.to_string());
                 }
-                ctx.content.metadata.add_all_txn(
-                    ctx,
-                    txn,
-                    children,
-                    search_documents,
-                    true,
-                    Some(permissions.clone()),
-                )
-                .await?;
+                ctx.content
+                    .metadata
+                    .add_all_txn(
+                        ctx,
+                        txn,
+                        children,
+                        search_documents,
+                        true,
+                        Some(permissions.clone()),
+                    )
+                    .await?;
             }
             if collection.index.unwrap_or(true) {
                 search_documents.push(SearchDocumentInput {
@@ -791,4 +800,83 @@ impl CollectionsDataStore {
         Ok(new_collections)
     }
 
+    pub async fn get_metadata_relationships(&self, id: &Uuid) -> Result<Vec<CollectionMetadataRelationship>, Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare("select * from collection_metadata_relationships where collection_id = $1")
+            .await?;
+        let rows = connection.query(&stmt, &[&id]).await?;
+        Ok(rows.iter().map(CollectionMetadataRelationship::from).collect())
+    }
+
+    pub async fn get_metadata_relationship(&self, id: &Uuid, metadata_id: &Uuid) -> Result<Option<CollectionMetadataRelationship>, Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare("select * from collection_metadata_relationships where collection_id = $1 and metadata_id = $2")
+            .await?;
+        let rows = connection.query(&stmt, &[id, metadata_id]).await?;
+        Ok(rows.first().map(CollectionMetadataRelationship::from))
+    }
+
+    pub async fn add_metadata_relationship(
+        &self,
+        relationship: &CollectionMetadataRelationshipInput,
+    ) -> Result<(), Error> {
+        let id = Uuid::parse_str(relationship.id.as_str())?;
+        let metadata_id = Uuid::parse_str(relationship.metadata_id.as_str())?;
+        let connection = self.pool.get().await?;
+        let stmt = connection.prepare_cached("insert into collection_metadata_relationships (collection_id, metadata_id, relationship, attributes) values ($1, $2, $3, $4)").await?;
+        connection
+            .execute(
+                &stmt,
+                &[
+                    &id,
+                    &metadata_id,
+                    &relationship.relationship,
+                    &relationship.attributes,
+                ],
+            )
+            .await?;
+        self.on_collection_changed(&id).await?;
+        self.on_metadata_changed(&metadata_id).await?;
+        Ok(())
+    }
+
+    pub async fn edit_metadata_relationship(
+        &self,
+        relationship: &CollectionMetadataRelationshipInput,
+    ) -> Result<(), Error> {
+        let id = Uuid::parse_str(relationship.id.as_str())?;
+        let metadata_id = Uuid::parse_str(relationship.metadata_id.as_str())?;
+        let relationship = relationship.to_owned();
+        let connection = self.pool.get().await?;
+        let stmt = connection.prepare("update metadata_relationships set relationship = $1, attributes = $2 where collection_id = $3 and metadata_id = $4 and (relationship = $1 or relationship is null or relationship = '')").await?;
+        connection
+            .query(&stmt, &[&relationship.relationship, &relationship.attributes, &id, &metadata_id])
+            .await?;
+        self.on_collection_changed(&id).await?;
+        self.on_metadata_changed(&metadata_id).await?;
+        Ok(())
+    }
+
+    pub async fn delete_metadata_relationship(
+        &self,
+        id: &Uuid,
+        metadata_id: &Uuid,
+        relationship: &str,
+    ) -> Result<(), Error> {
+        let connection = self.pool.get().await?;
+        let relationship = relationship.to_owned();
+        let stmt = connection
+            .prepare_cached(
+                "delete from collection_metadata_relationships where collection_id = $1 and metadata_id = $2 and relationship = $3",
+            )
+            .await?;
+        connection
+            .execute(&stmt, &[id, metadata_id, &relationship])
+            .await?;
+        self.on_collection_changed(id).await?;
+        self.on_metadata_changed(metadata_id).await?;
+        Ok(())
+    }
 }

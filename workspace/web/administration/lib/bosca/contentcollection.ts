@@ -1,6 +1,7 @@
 import { Api } from './api'
 import {
-  AddCollectionDocument,
+  AddCollectionCollectionDocument,
+  AddCollectionDocument, AddMetadataCollectionDocument,
   BeginCollectionTransitionDocument,
   type CollectionFragment,
   type CollectionInput,
@@ -12,7 +13,7 @@ import {
   GetCollectionListDocument,
   GetCollectionParentsDocument,
   type MetadataFragment,
-  type ParentCollectionFragment,
+  type ParentCollectionFragment, RemoveCollectionCollectionDocument, RemoveMetadataCollectionDocument,
   SetCollectionPublicDocument,
   SetCollectionPublicListDocument,
   SetCollectionReadyDocument,
@@ -142,12 +143,6 @@ export class ContentCollections<T extends NetworkClient> extends Api<T> {
     await this.network.execute(DeleteCollectionDocument, { id })
   }
 
-  // suspend fun add(collection: CollectionInput): String? {
-  //     val response = network.client.mutation(AddCollectionMutation(collection)).execute()
-  //     response.validate()
-  //     return response.data?.content?.collection?.add?.id
-  // }
-  //
   // suspend fun edit(id: String, collection: CollectionInput): String? {
   //     val response = network.client.mutation(EditCollectionMutation(id, collection)).execute()
   //     response.validate()
@@ -214,27 +209,31 @@ export class ContentCollections<T extends NetworkClient> extends Api<T> {
     })
   }
 
-  // suspend fun addCollection(collectionId: String, id: String): String? {
-  //     val response = network.client.mutation(AddCollectionCollectionMutation(collectionId, id)).execute()
-  //     response.validate()
-  //     return response.data?.content?.collection?.addChildCollection?.id
-  // }
-  //
-  // suspend fun removeCollection(collectionId: String, id: String): String? {
-  //     val response = network.client.mutation(RemoveCollectionCollectionMutation(collectionId, id)).execute()
-  //     response.validate()
-  //     return response.data?.content?.collection?.removeChildCollection?.id
-  // }
-  //
-  // suspend fun addMetadata(collectionId: String, metadataId: String): String? {
-  //     val response = network.client.mutation(AddMetadataCollectionMutation(collectionId, metadataId)).execute()
-  //     response.validate()
-  //     return response.data?.content?.collection?.addChildMetadata?.id
-  // }
-  //
-  // suspend fun removeMetadata(collectionId: String, metadataId: String): String? {
-  //     val response = network.client.mutation(RemoveMetadataCollectionMutation(collectionId, metadataId)).execute()
-  //     response.validate()
-  //     return response.data?.content?.collection?.removeChildMetadata?.id
-  // }
+  async addCollection(collectionId: string, id: string): Promise<void> {
+    await this.network.execute(AddCollectionCollectionDocument, {
+      collectionId,
+      id
+    })
+  }
+
+  async removeCollection(collectionId: string, id: string): Promise<void> {
+    await this.network.execute(RemoveCollectionCollectionDocument, {
+      collectionId,
+      id
+    })
+  }
+
+  async addMetadata(collectionId: string, metadataId: string): Promise<void> {
+    await this.network.execute(AddMetadataCollectionDocument, {
+      collectionId,
+      id: metadataId
+    })
+  }
+
+  async removeMetadata(collectionId: string, metadataId: string): Promise<void> {
+    await this.network.execute(RemoveMetadataCollectionDocument, {
+      collectionId,
+      id: metadataId
+    })
+  }
 }

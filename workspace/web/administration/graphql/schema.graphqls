@@ -61,7 +61,7 @@ type CategoryMutation {
 }
 
 type Collection {
-    attributes(filter: AttributesFilterInput): JSON!
+    attributes(filter: AttributesFilterInput): JSON
     categories: [Category!]!
     collections(limit: Int!, offset: Int!): [Collection!]!
     created: DateTime!
@@ -71,6 +71,7 @@ type Collection {
     items(limit: Int!, offset: Int!): [CollectionItem!]!
     labels: [String!]!
     metadata(limit: Int!, offset: Int!): [Metadata!]!
+    metadataRelationships: [CollectionMetadataRelationship!]!
     modified: DateTime!
     name: String!
     ordering: [Ordering!]
@@ -86,15 +87,24 @@ type Collection {
     workflow: CollectionWorkflow!
 }
 
+type CollectionMetadataRelationship {
+    attributes: JSON
+    metadata: Metadata!
+    relationship: String
+}
+
 type CollectionMutation {
     add(collection: CollectionInput!, collectionItemAttributes: JSON): Collection!
     addBulk(collections: [CollectionChildInput!]!): [Collection!]!
     addChildCollection(attributes: JSON, collectionId: String!, id: String!): Collection!
     addChildMetadata(attributes: JSON, id: String!, metadataId: String!): Collection!
+    addMetadataRelationship(relationship: CollectionMetadataRelationshipInput!): CollectionMetadataRelationship!
     addPermission(permission: PermissionInput!): Permission!
     delete(id: String!, recursive: Boolean): Boolean!
+    deleteMetadataRelationship(id: String!, metadataId: String!, relationship: String!): Boolean!
     deletePermission(permission: PermissionInput!): Permission!
     edit(collection: CollectionInput!, id: String!): Collection!
+    editMetadataRelationship(relationship: CollectionMetadataRelationshipInput!): Boolean!
     removeChildCollection(collectionId: String!, id: String!): Collection!
     removeChildMetadata(id: String!, metadataId: String!): Collection!
     setChildItemAttributes(attributes: JSON, childCollectionId: String, childMetadataId: String, id: String!): Collection!
@@ -140,8 +150,10 @@ type ConfigurationsMutation {
 type Content {
     categories: Categories!
     collection(id: String): Collection
+    documentTemplates: DocumentTemplates!
     findCollection(attributes: [FindAttributeInput!]!, categoryIds: [String!], limit: Int!, offset: Int!): [Collection!]!
     findMetadata(attributes: [FindAttributeInput!]!, categoryIds: [String!], contentTypes: [String!], extensionFilter: ExtensionFilterType, limit: Int!, offset: Int!): [Metadata!]!
+    findMetadataCount(attributes: [FindAttributeInput!]!, categoryIds: [String!], contentTypes: [String!], extensionFilter: ExtensionFilterType): Int!
     metadata(id: String!, version: Int): Metadata
     metadataSupplementary(id: String!, key: String!, version: Int): MetadataSupplementary
     slug(slug: String!): ContentItem
@@ -166,6 +178,7 @@ type DocumentTemplate {
     attributes: [DocumentTemplateAttribute!]!
     configuration: JSON
     content: JSON!
+    metadata: Metadata
     schema: JSON
 }
 
@@ -184,6 +197,10 @@ type DocumentTemplateAttribute {
 type DocumentTemplateAttributeWorkflow {
     autoRun: Boolean!
     workflow: Workflow
+}
+
+type DocumentTemplates {
+    all: [DocumentTemplate!]!
 }
 
 type Group {
@@ -212,7 +229,7 @@ type LoginResponse {
 }
 
 type Metadata {
-    attributes(filter: AttributesFilterInput): JSON!
+    attributes(filter: AttributesFilterInput): JSON
     categories: [Category!]!
     content: MetadataContent!
     created: DateTime!
@@ -307,6 +324,7 @@ type MetadataRelationship {
 type MetadataSource {
     id: String
     identifier: String
+    sourceUrl: String
 }
 
 type MetadataSupplementary {
@@ -428,10 +446,11 @@ type Profile {
 }
 
 type ProfileAttribute {
-    attributes: JSON!
+    attributes: JSON
     confidence: Int!
     expires: DateTime
     id: String!
+    metadata: Metadata
     priority: Int!
     source: String!
     typeId: String!
@@ -457,10 +476,11 @@ type Profiles {
 }
 
 type ProfilesMutation {
-    addProfileAttributeType(attribute: ProfileAttributeTypeInput!): Boolean!
-    deleteProfileAttributeType(attributeId: String!): Boolean!
-    editProfile(profile: ProfileInput!): Profile
-    editProfileAttributeType(attribute: ProfileAttributeTypeInput!): Boolean!
+    add(profile: ProfileInput!): Profile
+    addAttributeType(attribute: ProfileAttributeTypeInput!): Boolean!
+    deleteAttributeType(attributeId: String!): Boolean!
+    edit(id: String, profile: ProfileInput!): Profile
+    editAttributeType(attribute: ProfileAttributeTypeInput!): Boolean!
 }
 
 type Prompt {
@@ -810,6 +830,7 @@ enum CollectionType {
 }
 
 enum DocumentAttributeType {
+    COLLECTION
     DATE
     DATE_TIME
     FLOAT
@@ -820,9 +841,11 @@ enum DocumentAttributeType {
 }
 
 enum DocumentAttributeUiType {
+    COLLECTION
     FILE
     IMAGE
     INPUT
+    METADATA
     PROFILE
     TEXTAREA
 }
@@ -942,8 +965,16 @@ input CollectionInput {
     name: String!
     ordering: [OrderingInput!]
     parentCollectionId: String
+    slug: String
     state: CollectionWorkflowInput
     traitIds: [String!]
+}
+
+input CollectionMetadataRelationshipInput {
+    attributes: JSON
+    id: String!
+    metadataId: String!
+    relationship: String
 }
 
 input CollectionWorkflowCompleteState {
@@ -1026,6 +1057,7 @@ input MetadataInput {
     parentCollectionId: String
     parentId: String
     profiles: [MetadataProfileInput!]
+    slug: String
     source: MetadataSourceInput
     state: MetadataWorkflowInput
     traitIds: [String!]
@@ -1038,15 +1070,16 @@ input MetadataProfileInput {
 }
 
 input MetadataRelationshipInput {
-    attributes: JSON!
+    attributes: JSON
     id1: String!
     id2: String!
-    relationship: String!
+    relationship: String
 }
 
 input MetadataSourceInput {
-    id: String!
-    identifier: String!
+    id: String
+    identifier: String
+    sourceUrl: String
 }
 
 input MetadataSupplementaryInput {
@@ -1101,10 +1134,12 @@ input PersistedQueryInput {
 }
 
 input ProfileAttributeInput {
-    attributes: JSON!
+    attributes: JSON
     confidence: Int!
     expiration: DateTime
     id: String
+    metadataId: String
+    metadataSupplementary: String
     priority: Int!
     source: String!
     typeId: String!
@@ -1121,6 +1156,7 @@ input ProfileAttributeTypeInput {
 input ProfileInput {
     attributes: [ProfileAttributeInput!]!
     name: String!
+    slug: String
     visibility: ProfileVisibility!
 }
 

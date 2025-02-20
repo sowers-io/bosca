@@ -452,7 +452,7 @@ impl MetadataMutationObject {
                 &id1,
                 &id2,
                 &relationship.relationship,
-                relationship.attributes,
+                &relationship.attributes,
             )
             .await?;
         Ok(true)

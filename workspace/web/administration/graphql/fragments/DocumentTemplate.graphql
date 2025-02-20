@@ -9,6 +9,7 @@ fragment DocumentTemplate on DocumentTemplate {
         type
         supplementaryKey
         ui
+        configuration
         workflows {
             workflow {
                 ...Workflow

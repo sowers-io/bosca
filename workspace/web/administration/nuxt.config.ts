@@ -1,3 +1,5 @@
+import { vite as vidstack } from 'vidstack/plugins';
+
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({
   devtools: { enabled: false },
@@ -10,6 +12,16 @@ export default defineNuxtConfig({
     '@pinia/nuxt',
     '@nuxtjs/color-mode',
   ],
+
+  vue: {
+    compilerOptions: {
+      isCustomElement: (tag) => tag.startsWith('media-'),
+    },
+  },
+
+  vite: {
+    plugins: [vidstack()],
+  },
 
   css: [
     '@unocss/reset/tailwind.css',

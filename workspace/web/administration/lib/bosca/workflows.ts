@@ -15,7 +15,7 @@ import {
   type TraitFragment,
   type TraitInput,
   type TransitionFragment,
-  type WorkflowConfigurationInput,
+  type WorkflowConfigurationInput, type WorkflowExecutionId,
   type WorkflowFragment,
   type WorkflowPlanFragment,
   type WorkflowStateFragment,
@@ -301,13 +301,14 @@ export class Workflows<T extends NetworkClient> extends Api<T> {
     metadataId: string,
     version: number,
     configuration: Array<WorkflowConfigurationInput> = [],
-  ) {
-    await this.network.execute(EnqueueWorkflowDocument, {
+  ): Promise<WorkflowExecutionId> {
+    const response = await this.network.execute(EnqueueWorkflowDocument, {
       workflowId,
       metadataId,
       version,
       configuration,
     })
+    return response!.workflows!.enqueueWorkflow!
   }
 
   // suspend fun enqueueMetadataWorkflow(workflowId: String, metadataId: String, version: Int, configuration: List<WorkflowConfigurationInput>? = null) {

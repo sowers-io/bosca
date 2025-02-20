@@ -12,6 +12,7 @@ pub enum DocumentAttributeType {
     DateTime,
     Profile,
     Metadata,
+    Collection,
 }
 
 impl<'a> FromSql<'a> for DocumentAttributeType {
@@ -28,6 +29,7 @@ impl<'a> FromSql<'a> for DocumentAttributeType {
             "datetime" => DocumentAttributeType::DateTime,
             "profile" => DocumentAttributeType::Profile,
             "metadata" => DocumentAttributeType::Metadata,
+            "collection" => DocumentAttributeType::Collection,
             _ => DocumentAttributeType::String,
         })
     }
@@ -51,6 +53,7 @@ impl ToSql for DocumentAttributeType {
             DocumentAttributeType::DateTime => w.put_slice("datetime".as_ref()),
             DocumentAttributeType::Profile => w.put_slice("profile".as_ref()),
             DocumentAttributeType::Metadata => w.put_slice("metadata".as_ref()),
+            DocumentAttributeType::Collection => w.put_slice("collection".as_ref()),
         }
         Ok(IsNull::No)
     }

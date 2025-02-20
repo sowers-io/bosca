@@ -18,7 +18,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
-import { Check, ChevronsUpDown } from 'lucide-vue-next'
+import { Check } from 'lucide-vue-next'
 import { ref } from 'vue'
 
 const client = useBoscaClient()
@@ -37,18 +37,26 @@ const { data: profiles } = client.search.searchAsyncData(
   storageSystemId || '',
 )
 
-defineProps<{
+const props = defineProps<{
   profile: MetadataProfile | null
   attribute: DocumentTemplateAttribute
   editable: boolean
   onChange: (
     attribute: DocumentTemplateAttribute,
-    profile: MetadataProfileInput,
+    profile: MetadataProfileInput | null,
   ) => void
 }>()
 
 const open = ref(false)
 const value = ref('')
+
+function onSelect(id: string) {
+  props.onChange(props.attribute, {
+    profileId: id,
+    relationship: 'author',
+  })
+  open.value = false
+}
 </script>
 
 <template>
@@ -61,8 +69,8 @@ const value = ref('')
       >
         <Avatar>
           <AvatarImage
-            src="https://github.com/radix-vue.png"
-            alt="@radix-vue"
+            :src="'/content/image?id=' + profile?.profile?.attributes?.find(a => a.typeId === 'bosca.profiles.avatar')?.metadata?.id || '#'"
+            :alt="profile?.profile?.name || 'Select a Profile'"
           />
           <AvatarFallback>{{
             profile?.profile?.name?.substring(0, 1)
@@ -70,6 +78,11 @@ const value = ref('')
           }}</AvatarFallback>
         </Avatar>
         {{ profile?.profile?.name || 'Select a Profile' }}
+      </div>
+      <div class="grid justify-items-end" v-if="editable && profile">
+        <Button variant="ghost" @click="onChange(attribute, null)">
+          Clear
+        </Button>
       </div>
     </PopoverTrigger>
     <PopoverContent class="w-[200px] p-0">
@@ -82,15 +95,7 @@ const value = ref('')
               v-for="p in profiles || []"
               :key="p.id!"
               :value="p.id!"
-              @select="
-                ;((ev) => {
-                  onChange(attribute, {
-                    profileId: p.id!,
-                    relationship: 'author',
-                  })
-                  open = false
-                })
-              "
+              @select="onSelect(p.id!)"
             >
               {{ p.name }}
               <Check

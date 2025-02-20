@@ -14,4 +14,8 @@ impl MetadataSourceObject {
     async fn identifier(&self) -> &Option<String> {
         &self.metadata.source_identifier
     }
+
+    async fn source_url(&self) -> &Option<String> {
+        &self.metadata.source_url
+    }
 }

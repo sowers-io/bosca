@@ -14,6 +14,7 @@ pub struct Profile {
 
 #[derive(InputObject, Debug, Clone, PartialEq, Eq)]
 pub struct ProfileInput {
+    pub slug: Option<String>,
     pub name: String,
     pub visibility: ProfileVisibility,
     pub attributes: Vec<ProfileAttributeInput>,

@@ -84,10 +84,42 @@ impl MetadataDataStore {
             extension_filter,
             &offset,
             &limit,
+            false,
         );
         let stmt = connection.prepare_cached(query.as_str()).await?;
         let rows = connection.query(&stmt, values.as_slice()).await?;
         Ok(rows.iter().map(|r| r.into()).collect())
+    }
+
+    pub async fn find_count(
+        &self,
+        attributes: &[FindAttributeInput],
+        content_types: &Option<Vec<String>>,
+        category_ids: Option<Vec<Uuid>>,
+        extension_filter: Option<ExtensionFilterType>,
+    ) -> Result<i64, Error> {
+        let connection = self.pool.get().await?;
+        let offset = 0;
+        let limit = 1;
+        let (query, values) = build_find_args(
+            "metadata",
+            "select count(*) as count from metadata m ",
+            "m",
+            attributes,
+            content_types,
+            &category_ids,
+            extension_filter,
+            &offset,
+            &limit,
+            true,
+        );
+        let stmt = connection.prepare_cached(query.as_str()).await?;
+        let rows = connection.query(&stmt, values.as_slice()).await?;
+        if rows.is_empty() {
+            Ok(0)
+        } else {
+            Ok(rows.first().unwrap().get("count"))
+        }
     }
 
     pub async fn get(&self, id: &Uuid) -> Result<Option<Metadata>, Error> {
@@ -366,9 +398,11 @@ impl MetadataDataStore {
     ) -> Result<(), Error> {
         let mut source_id: Option<Uuid> = None;
         let mut source_identifier: Option<String> = None;
+        let mut source_url: Option<String> = None;
         if let Some(source) = &metadata.source {
-            source_id = Some(Uuid::parse_str(&source.id)?);
-            source_identifier = Some(source.identifier.clone());
+            source_id = source.id.as_ref().map(|id| Uuid::parse_str(id).unwrap());
+            source_identifier = source.identifier.clone();
+            source_url = source.source_url.clone();
         }
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
@@ -382,7 +416,14 @@ impl MetadataDataStore {
         let collection_ids: Vec<Uuid> = rows.iter().map(|r| r.get("collection_id")).collect();
 
         match self
-            .edit_txn(&txn, id, metadata, &source_id, &source_identifier)
+            .edit_txn(
+                &txn,
+                id,
+                metadata,
+                &source_id,
+                &source_identifier,
+                &source_url,
+            )
             .await
         {
             Ok(value) => {
@@ -401,7 +442,10 @@ impl MetadataDataStore {
         }
     }
 
-    async fn new_search_document(id: &Uuid, _: &MetadataInput) -> Result<SearchDocumentInput, Error> {
+    async fn new_search_document(
+        id: &Uuid,
+        _: &MetadataInput,
+    ) -> Result<SearchDocumentInput, Error> {
         Ok(SearchDocumentInput {
             metadata_id: Some(id.to_string()),
             collection_id: None,
@@ -413,7 +457,9 @@ impl MetadataDataStore {
     fn index_documents(&self, ctx: &BoscaContext, documents: Vec<SearchDocumentInput>) {
         let new_ctx = ctx.clone();
         tokio::spawn(async move {
-            if let Ok(Some(storage_system)) = new_ctx.workflow.get_default_search_storage_system().await {
+            if let Ok(Some(storage_system)) =
+                new_ctx.workflow.get_default_search_storage_system().await
+            {
                 if let Err(err) = index_documents(&new_ctx, &documents, &storage_system).await {
                     error!("failed to index documents: {:?}", err);
                 }
@@ -429,9 +475,13 @@ impl MetadataDataStore {
         let metadata = metadata.clone();
         tokio::spawn(async move {
             if metadata.index.unwrap_or(true) {
-                if let Ok(Some(storage_system)) = new_ctx.workflow.get_default_search_storage_system().await {
+                if let Ok(Some(storage_system)) =
+                    new_ctx.workflow.get_default_search_storage_system().await
+                {
                     let mut search_documents = Vec::new();
-                    if let Ok(metadata) = MetadataDataStore::new_search_document(&id, &metadata).await {
+                    if let Ok(metadata) =
+                        MetadataDataStore::new_search_document(&id, &metadata).await
+                    {
                         search_documents.push(metadata);
                     }
                     if let Err(err) =
@@ -450,7 +500,7 @@ impl MetadataDataStore {
                         &storage_systems,
                         &new_ctx.search,
                     )
-                        .await
+                    .await
                     {
                         error!("failed to delete documents: {:?}", e);
                     }
@@ -562,11 +612,13 @@ impl MetadataDataStore {
     ) -> Result<(Uuid, i32, i32), Error> {
         let mut source_id: Option<Uuid> = None;
         let mut source_identifier: Option<String> = None;
+        let mut source_url: Option<String> = None;
         if let Some(source) = &metadata.source {
-            source_id = Some(Uuid::parse_str(&source.id)?);
-            source_identifier = Some(source.identifier.clone());
+            source_id = source.id.as_ref().map(|id| Uuid::parse_str(id).unwrap());
+            source_identifier = source.identifier.clone();
+            source_url = source.source_url.clone();
         }
-        let stmt = txn.prepare("insert into metadata (name, type, content_type, content_length, labels, attributes, source_id, source_identifier, language_tag) values ($1, 'standard', $2, $3, $4, ($5)::jsonb, $6, $7, $8) returning id, version, active_version").await?;
+        let stmt = txn.prepare("insert into metadata (name, type, content_type, content_length, labels, attributes, source_id, source_identifier, source_url, language_tag) values ($1, 'standard', $2, $3, $4, ($5)::jsonb, $6, $7, $8, $9) returning id, version, active_version").await?;
         let labels = metadata.labels.clone().unwrap_or_default();
         let rows = txn
             .query(
@@ -579,6 +631,7 @@ impl MetadataDataStore {
                     &metadata.attributes.as_ref().or(Some(&Value::Null)),
                     &source_id,
                     &source_identifier,
+                    &source_url,
                     &metadata.language_tag,
                 ],
             )
@@ -587,6 +640,10 @@ impl MetadataDataStore {
         let id: Uuid = rows.first().unwrap().get(0);
         let version: i32 = rows.first().unwrap().get(1);
         let active_version: i32 = rows.first().unwrap().get(2);
+
+        let stmt = txn.prepare_cached("insert into slugs (slug, metadata_id) values (case when length($1) > 0 then $1 else slugify($2) end, $3) on conflict (slug) do update set slug = slugify($2) || nextval('duplicate_slug_seq')").await?;
+        txn.execute(&stmt, &[&metadata.slug, &metadata.name, &id])
+            .await?;
 
         if let Some(trait_ids) = &metadata.trait_ids {
             for trait_id in trait_ids {
@@ -622,8 +679,9 @@ impl MetadataDataStore {
         metadata: &MetadataInput,
         source_id: &Option<Uuid>,
         source_identifier: &Option<String>,
+        source_url: &Option<String>,
     ) -> Result<(), Error> {
-        let stmt = txn.prepare("update metadata set name = $1, labels = $2, attributes = $3, language_tag = $4, source_id = $5, source_identifier = $6, content_type = $7, modified = now() where id = $8").await?;
+        let stmt = txn.prepare("update metadata set name = $1, labels = $2, attributes = $3, language_tag = $4, source_id = $5, source_identifier = $6, source_url = $7, content_type = $8, modified = now() where id = $9").await?;
         let labels = metadata.labels.clone().unwrap_or_default();
         txn.query(
             &stmt,
@@ -634,11 +692,19 @@ impl MetadataDataStore {
                 &metadata.language_tag,
                 source_id,
                 source_identifier,
+                source_url,
                 &metadata.content_type,
                 &id,
             ],
         )
-            .await?;
+        .await?;
+
+        if let Some(slug) = metadata.slug.as_ref() {
+            let stmt = txn
+                .prepare_cached("update slugs set slug = $1 where metadata_id = $2)")
+                .await?;
+            txn.execute(&stmt, &[slug, &id]).await?;
+        }
 
         if let Some(trait_ids) = &metadata.trait_ids {
             self.delete_traits_txn(txn, id).await?;
@@ -843,8 +909,8 @@ impl MetadataDataStore {
         &self,
         id1: &Uuid,
         id2: &Uuid,
-        relationship: &str,
-        attributes: Value,
+        relationship: &Option<String>,
+        attributes: &Option<Value>,
     ) -> Result<(), Error> {
         let relationship = relationship.to_owned();
         let connection = self.pool.get().await?;

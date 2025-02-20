@@ -3,30 +3,58 @@ use crate::graphql::profiles::profile::ProfileObject;
 use crate::models::profiles::profile::ProfileInput;
 use crate::models::profiles::profile_attribute_type::ProfileAttributeTypeInput;
 use async_graphql::*;
+use uuid::Uuid;
 
 pub struct ProfilesMutationObject {}
 
 #[Object(name = "ProfilesMutation")]
 impl ProfilesMutationObject {
-    async fn edit_profile(
+    async fn add(
         &self,
         ctx: &Context<'_>,
+        profile: ProfileInput,
+    ) -> Result<Option<ProfileObject>, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        ctx.check_has_admin_account().await?;
+        let id = ctx.profile.add(ctx, None, &profile, None).await?;
+        Ok(ctx
+            .profile
+            .get_by_id(&id)
+            .await?
+            .map(ProfileObject::new))
+    }
+
+    async fn edit(
+        &self,
+        ctx: &Context<'_>,
+        id: Option<String>,
         profile: ProfileInput,
     ) -> Result<Option<ProfileObject>> {
         let ctx = ctx.data::<BoscaContext>()?;
         if ctx.principal.anonymous {
             return Err(Error::new("not authorized"));
         }
-        let principal_id = ctx.principal.id;
-        ctx.profile.edit(ctx, &principal_id, &profile).await?;
-        Ok(ctx
-            .profile
-            .get_by_principal(&principal_id)
-            .await?
-            .map(ProfileObject::new))
+        if let Some(id) = id {
+            ctx.check_has_admin_account().await?;
+            let id = Uuid::parse_str(&id)?;
+            ctx.profile.edit_by_id(ctx, &id, &profile).await?;
+            Ok(ctx
+                .profile
+                .get_by_id(&id)
+                .await?
+                .map(ProfileObject::new))
+        } else {
+            let principal_id = ctx.principal.id;
+            ctx.profile.edit_by_principal(ctx, &principal_id, &profile).await?;
+            Ok(ctx
+                .profile
+                .get_by_principal(&principal_id)
+                .await?
+                .map(ProfileObject::new))
+        }
     }
 
-    async fn add_profile_attribute_type(
+    async fn add_attribute_type(
         &self,
         ctx: &Context<'_>,
         attribute: ProfileAttributeTypeInput,
@@ -37,7 +65,7 @@ impl ProfilesMutationObject {
         Ok(true)
     }
 
-    async fn edit_profile_attribute_type(
+    async fn edit_attribute_type(
         &self,
         ctx: &Context<'_>,
         attribute: ProfileAttributeTypeInput,
@@ -48,7 +76,7 @@ impl ProfilesMutationObject {
         Ok(true)
     }
 
-    async fn delete_profile_attribute_type(
+    async fn delete_attribute_type(
         &self,
         ctx: &Context<'_>,
         attribute_id: String,

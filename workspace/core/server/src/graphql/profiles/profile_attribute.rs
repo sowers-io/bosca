@@ -1,7 +1,11 @@
 use crate::models::profiles::profile_visibility::ProfileVisibility;
 use crate::models::profiles::profile_attribute::ProfileAttribute;
-use async_graphql::Object;
+use async_graphql::{Context, Error, Object};
 use chrono::{DateTime, Utc};
+use serde_json::Value;
+use crate::context::BoscaContext;
+use crate::graphql::content::metadata::MetadataObject;
+use crate::models::security::permission::PermissionAction;
 
 pub struct ProfileAttributeObject {
     attribute: ProfileAttribute,
@@ -36,10 +40,23 @@ impl ProfileAttributeObject {
         &self.attribute.source
     }
 
-    async fn attributes(&self) -> &serde_json::Value {
+    async fn attributes(&self) -> &Option<Value> {
         &self.attribute.attributes
     }
     async fn expires(&self) -> &Option<DateTime<Utc>> {
         &self.attribute.expiration
+    }
+
+    async fn metadata(&self, ctx: &Context<'_>) -> Result<Option<MetadataObject>, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        if let Some(metadata_id) = self.attribute.metadata_id {
+            if let Ok(metadata) = ctx.check_metadata_action(&metadata_id, PermissionAction::View).await {
+                Ok(Some(MetadataObject::new(metadata)))
+            } else {
+                Ok(None)
+            }
+        } else {
+            Ok(None)
+        }
     }
 }

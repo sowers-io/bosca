@@ -16,7 +16,6 @@ use crate::models::security::permission::{Permission, PermissionAction};
 use async_graphql::{Context, Error, Object};
 use chrono::{DateTime, Utc};
 use serde_json::Value;
-use std::borrow::ToOwned;
 
 pub struct MetadataObject {
     metadata: Metadata,
@@ -75,11 +74,16 @@ impl MetadataObject {
         &self.metadata.labels
     }
 
-    async fn attributes(&self, filter: Option<AttributesFilterInput>) -> Value {
+    async fn attributes(&self, filter: Option<AttributesFilterInput>) -> Option<Value> {
+        let mut value = self.metadata.attributes.clone();
         if let Some(filter) = filter {
-            return filter.filter(&self.metadata.attributes);
+            value = filter.filter(&value);
         }
-        self.metadata.attributes.to_owned()
+        if value.is_null() {
+            None
+        } else {
+            Some(value)
+        }
     }
 
     async fn categories(&self, ctx: &Context<'_>) -> Result<Vec<CategoryObject>, Error> {
@@ -181,8 +185,7 @@ impl MetadataObject {
             .documents
             .get_template(&self.metadata.id, self.metadata.version)
             .await?;
-        Ok(document
-            .map(|t| DocumentTemplateObject::new(self.metadata.id, self.metadata.version, t)))
+        Ok(document.map(|t| DocumentTemplateObject::new(t)))
     }
 
     async fn profiles(&self, ctx: &Context<'_>) -> Result<Vec<MetadataProfileObject>, Error> {

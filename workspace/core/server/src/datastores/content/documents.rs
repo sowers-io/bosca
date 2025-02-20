@@ -27,6 +27,17 @@ impl DocumentsDataStore {
         Ok(())
     }
 
+    pub async fn get_templates(&self) -> Result<Vec<DocumentTemplate>, Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached(
+                "select * from document_templates",
+            )
+            .await?;
+        let rows = connection.query(&stmt, &[]).await?;
+        Ok(rows.iter().map(|r| r.into()).collect())
+    }
+
     pub async fn get_template(
         &self,
         metadata_id: &Uuid,

@@ -2,9 +2,12 @@ use crate::models::content::document_template_attributes::DocumentTemplateAttrib
 use async_graphql::InputObject;
 use serde_json::Value;
 use tokio_postgres::Row;
+use uuid::Uuid;
 
 #[derive(Clone)]
 pub struct DocumentTemplate {
+    pub metadata_id: Uuid,
+    pub version: i32,
     pub configuration: Option<Value>,
     pub schema: Option<Value>,
     pub content: Value,
@@ -21,6 +24,8 @@ pub struct DocumentTemplateInput {
 impl From<&Row> for DocumentTemplate {
     fn from(row: &Row) -> Self {
         Self {
+            metadata_id: row.get("metadata_id"),
+            version: row.get("version"),
             configuration: row.get("configuration"),
             schema: row.get("schema"),
             content: row.get("content"),

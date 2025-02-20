@@ -3,7 +3,7 @@ import type {
   DocumentTemplateAttribute,
   MetadataFragment,
 } from '~/lib/graphql/graphql'
-import { toast } from '~/components/ui/toast'
+import {toast} from '~/components/ui/toast'
 
 const props = defineProps<{
   attribute: DocumentTemplateAttribute
@@ -11,8 +11,8 @@ const props = defineProps<{
   editable: boolean
   uploader: Uploader
   onChange: (
-    attribute: DocumentTemplateAttribute,
-    value: MetadataFragment,
+      attribute: DocumentTemplateAttribute,
+      value: MetadataFragment | null,
   ) => void
   onClick: (attribute: DocumentTemplateAttribute) => void
 }>()
@@ -24,12 +24,12 @@ useDropZone(dropzone, {
   onDrop: async function (files: File[] | null) {
     if (!props.editable) return
     if (!files || files.length === 0) return
-    toast({ title: 'Uploading files, please wait...' })
+    toast({title: 'Uploading files, please wait...'})
     try {
       const metadataIds = await props.uploader.upload(files)
       const metadata = await client.metadata.get(metadataIds[0])
       props.onChange(props.attribute, metadata)
-      toast({ title: 'File(s) uploaded' })
+      toast({title: 'File(s) uploaded'})
     } catch (e) {
       console.error('Error uploading file(s)', e)
       toast({
@@ -45,33 +45,42 @@ useDropZone(dropzone, {
 <template>
   <div>
     <label class="block font-bold mt-4 mb-2">{{ attribute.name }}</label>
-    <div
-      v-if="editable"
-      ref="dropzone"
-      @click="onClick(attribute)"
-      class="cursor-pointer overflow-hidden bg-background rounded-md"
-    >
-      <img
-        v-if="metadata?.id"
-        :src="'/content/image?id=' + metadata?.id"
-        :alt="attribute.name"
-        class="w-full h-full object-cover"
-      />
+    <div v-if="editable">
       <div
-        v-else
-        class="flex w-full h-64 justify-center items-center text-gray-200 text-xl font-bold"
+          ref="dropzone"
+          @click="onClick(attribute)"
+          class="cursor-pointer overflow-hidden bg-background rounded-md"
       >
-        Click or Drop Image Here
+        <img
+            v-if="metadata?.id"
+            :src="'/content/image?id=' + metadata?.id"
+            :alt="attribute.name"
+            class="w-full h-full object-cover"
+        />
+        <div
+            v-else
+            class="flex w-full h-64 justify-center items-center text-gray-200 text-xl font-bold"
+        >
+          Click or Drop Image Here
+        </div>
+      </div>
+      <div class="grid justify-items-end" v-if="editable && metadata">
+        <Button variant="ghost" @click="onChange(attribute, null)">
+          Clear
+        </Button>
+      </div>
+    </div>
+    <div v-else-if="metadata?.id">
+      <div class="overflow-hidden bg-background rounded-md">
+        <img
+            :src="'/content/image?id=' + metadata?.id"
+            :alt="attribute.name"
+            class="w-full h-full object-cover"
+        />
       </div>
     </div>
     <div v-else>
-      <img
-        v-if="metadata?.id"
-        :src="'/content/image?id=' + metadata?.id"
-        :alt="attribute.name"
-        class="w-full h-full object-cover"
-      />
-      <span v-else>No image</span>
+      No image
     </div>
   </div>
 </template>

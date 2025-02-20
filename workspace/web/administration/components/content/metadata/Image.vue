@@ -5,8 +5,6 @@ import type { MetadataFragment } from '~/lib/graphql/graphql'
 interface MetadataImageProps {
   metadata: MetadataFragment
   aspectRatio?: 'portrait' | 'square'
-  width?: number
-  height?: number
   onSelected?: (id: string) => void
 }
 
@@ -38,19 +36,17 @@ const imageUrl = computed(() => {
 
 <template>
   <div
-    :class="cn('space-y-3 cursor-pointer', $attrs.class ?? '')"
+    :class="cn('space-y-3 cursor-pointer w-full h-full', $attrs.class ?? '')"
     @click="onClick"
   >
-    <div class="overflow-hidden rounded-md">
+    <div class="overflow-hidden rounded-lg w-full h-full">
       <img
         v-if="imageUrl"
         :src="imageUrl"
         :alt="metadata.name"
-        :width="width"
-        :height="height"
         :class="
           cn(
-            'h-auto bg-gray-100 dark:bg-slate-800 w-auto object-cover transition-all hover:scale-105',
+            'overflow-hidden rounded-lg h-full w-full bg-gray-100 dark:bg-slate-800 w-auto object-cover transition-all hover:scale-105',
             aspectRatio === 'portrait' ? 'aspect-[3/4]' : 'aspect-square',
           )
         "
@@ -59,7 +55,7 @@ const imageUrl = computed(() => {
         v-else
         :class="
           cn(
-            'h-auto bg-gray-100 dark:bg-slate-800 w-auto object-cover transition-all hover:scale-105',
+            'overflow-hidden rounded-lg h-full w-full bg-gray-100 dark:bg-slate-800 w-auto object-cover transition-all hover:scale-105',
             aspectRatio === 'portrait' ? 'aspect-[3/4]' : 'aspect-square',
           )
         "

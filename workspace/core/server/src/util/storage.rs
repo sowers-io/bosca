@@ -195,7 +195,9 @@ async fn create_search_document(
             if attr.visibility != ProfileVisibility::Public {
                 continue;
             }
-            m.insert(attr.type_id.to_string().replace(".", "_"), attr.attributes.clone());
+            if let Some(value) = &attr.attributes {
+                m.insert(attr.type_id.to_string().replace(".", "_"), value.clone());
+            }
         }
         Some(m)
     } else {

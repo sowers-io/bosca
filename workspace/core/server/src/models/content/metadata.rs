@@ -38,6 +38,7 @@ pub struct Metadata {
     pub workflow_state_pending_id: Option<String>,
     pub source_id: Option<Uuid>,
     pub source_identifier: Option<String>,
+    pub source_url: Option<String>,
     pub delete_workflow_id: Option<String>,
     pub uploaded: Option<DateTime<Utc>>,
     pub ready: Option<DateTime<Utc>>,
@@ -76,12 +77,14 @@ pub struct MetadataWorkflowInput {
 
 #[derive(InputObject, Clone)]
 pub struct MetadataSourceInput {
-    pub id: String,
-    pub identifier: String,
+    pub id: Option<String>,
+    pub identifier: Option<String>,
+    pub source_url: Option<String>
 }
 
 #[derive(InputObject, Default, Clone)]
 pub struct MetadataInput {
+    pub slug: Option<String>,
     pub parent_collection_id: Option<String>,
     pub parent_id: Option<String>,
     pub version: Option<i32>,
@@ -123,6 +126,7 @@ impl From<&Row> for Metadata {
             workflow_state_pending_id: row.get("workflow_state_pending_id"),
             source_id: row.get("source_id"),
             source_identifier: row.get("source_identifier"),
+            source_url: row.get("source_url"),
             delete_workflow_id: row.get("delete_workflow_id"),
             uploaded: row.get("uploaded"),
             ready: row.get("ready"),

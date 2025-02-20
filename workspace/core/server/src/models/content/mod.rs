@@ -19,3 +19,4 @@ pub mod document_attribute_ui_type;
 pub mod document;
 pub mod document_template_attribute_workflow;
 pub mod category;
+pub mod collection_metadata_relationship;

@@ -1,6 +1,7 @@
 use crate::context::BoscaContext;
 use crate::graphql::content::categories::CategoriesObject;
 use crate::graphql::content::collection::CollectionObject;
+use crate::graphql::content::document_templates::DocumentTemplatesObject;
 use crate::graphql::content::metadata::MetadataObject;
 use crate::graphql::content::sources::SourcesObject;
 use crate::graphql::content::supplementary::MetadataSupplementaryObject;
@@ -131,6 +132,27 @@ impl ContentObject {
             .collect())
     }
 
+    async fn find_metadata_count(
+        &self,
+        ctx: &Context<'_>,
+        attributes: Vec<FindAttributeInput>,
+        content_types: Option<Vec<String>>,
+        category_ids: Option<Vec<String>>,
+        extension_filter: Option<ExtensionFilterType>,
+    ) -> Result<i64, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        Ok(ctx
+            .content
+            .metadata
+            .find_count(
+                &attributes,
+                &content_types,
+                category_ids.map(|c| c.iter().map(|c| Uuid::parse_str(c).unwrap()).collect()),
+                extension_filter,
+            )
+            .await?)
+    }
+
     async fn metadata(
         &self,
         ctx: &Context<'_>,
@@ -164,12 +186,10 @@ impl ContentObject {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::from_str(id.as_str())?;
         let metadata = if let Some(version) = version {
-            ctx
-                .check_metadata_version_action(&id, version, PermissionAction::View)
+            ctx.check_metadata_version_action(&id, version, PermissionAction::View)
                 .await?
         } else {
-            ctx
-                .check_metadata_action(&id, PermissionAction::View)
+            ctx.check_metadata_action(&id, PermissionAction::View)
                 .await?
         };
         let supplementary = ctx
@@ -185,6 +205,10 @@ impl ContentObject {
         } else {
             Ok(None)
         }
+    }
+
+    async fn document_templates(&self) -> DocumentTemplatesObject {
+        DocumentTemplatesObject {}
     }
 
     async fn categories(&self) -> CategoriesObject {

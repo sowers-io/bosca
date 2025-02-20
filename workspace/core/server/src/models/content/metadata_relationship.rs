@@ -15,8 +15,8 @@ pub struct MetadataRelationship {
 pub struct MetadataRelationshipInput {
     pub id1: String,
     pub id2: String,
-    pub relationship: String,
-    pub attributes: Value,
+    pub relationship: Option<String>,
+    pub attributes: Option<Value>,
 }
 
 impl From<&Row> for MetadataRelationship {

@@ -44,7 +44,7 @@ pub async fn add_password_principal(
         .add_principal_group(&principal_id, &group.id)
         .await?;
     ctx.profile
-        .add(ctx, &principal_id, profile, &collection_id)
+        .add(ctx, Some(principal_id), profile, Some(collection_id))
         .await?;
     let principal = ctx.security.get_principal_by_id(&principal_id).await?;
 

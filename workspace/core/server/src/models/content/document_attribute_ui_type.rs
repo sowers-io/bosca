@@ -9,6 +9,8 @@ pub enum DocumentAttributeUiType {
     Textarea,
     Image,
     Profile,
+    Collection,
+    Metadata,
     File,
 }
 
@@ -23,6 +25,8 @@ impl<'a> FromSql<'a> for DocumentAttributeUiType {
             "textarea" => DocumentAttributeUiType::Textarea,
             "image" => DocumentAttributeUiType::Image,
             "profile" => DocumentAttributeUiType::Profile,
+            "collection" => DocumentAttributeUiType::Collection,
+            "metadata" => DocumentAttributeUiType::Metadata,
             "file" => DocumentAttributeUiType::File,
             _ => DocumentAttributeUiType::Input,
         })
@@ -44,6 +48,8 @@ impl ToSql for DocumentAttributeUiType {
             DocumentAttributeUiType::Textarea => w.put_slice("textarea".as_ref()),
             DocumentAttributeUiType::Image => w.put_slice("image".as_ref()),
             DocumentAttributeUiType::Profile => w.put_slice("profile".as_ref()),
+            DocumentAttributeUiType::Collection => w.put_slice("collection".as_ref()),
+            DocumentAttributeUiType::Metadata => w.put_slice("metadata".as_ref()),
             DocumentAttributeUiType::File => w.put_slice("file".as_ref()),
         }
         Ok(IsNull::No)

@@ -13,5 +13,19 @@ fragment Profile on Profile {
         typeId
         visibility
         attributes
+        metadata {
+            id
+            content {
+                urls {
+                    download {
+                        url
+                        headers {
+                            name
+                            value
+                        }
+                    }
+                }
+            }
+        }
     }
 }
