@@ -189,8 +189,8 @@ type DocumentTemplateAttribute {
     list: Boolean!
     name: String!
     supplementaryKey: String
-    type: DocumentAttributeType!
-    ui: DocumentAttributeUiType!
+    type: AttributeType!
+    ui: AttributeUiType!
     workflows: [DocumentTemplateAttributeWorkflow!]!
 }
 
@@ -821,15 +821,7 @@ enum ActivityParameterType {
     SUPPLEMENTARY_ARRAY
 }
 
-enum CollectionType {
-    FOLDER
-    QUEUE
-    ROOT
-    STANDARD
-    SYSTEM
-}
-
-enum DocumentAttributeType {
+enum AttributeType {
     COLLECTION
     DATE
     DATE_TIME
@@ -840,7 +832,7 @@ enum DocumentAttributeType {
     STRING
 }
 
-enum DocumentAttributeUiType {
+enum AttributeUiType {
     COLLECTION
     FILE
     IMAGE
@@ -848,6 +840,14 @@ enum DocumentAttributeUiType {
     METADATA
     PROFILE
     TEXTAREA
+}
+
+enum CollectionType {
+    FOLDER
+    QUEUE
+    ROOT
+    STANDARD
+    SYSTEM
 }
 
 enum ExtensionFilterType {
@@ -1015,8 +1015,8 @@ input DocumentTemplateAttributeInput {
     list: Boolean!
     name: String!
     supplementaryKey: String
-    type: DocumentAttributeType!
-    ui: DocumentAttributeUiType!
+    type: AttributeType!
+    ui: AttributeUiType!
     workflowIds: [DocumentTemplateAttributeWorkflowInput!]!
 }
 

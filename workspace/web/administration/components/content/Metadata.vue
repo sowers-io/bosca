@@ -36,6 +36,9 @@ client.listeners.onMetadataSupplementaryChanged((id) => {
         <TabsTrigger value="traits">
           Traits
         </TabsTrigger>
+        <TabsTrigger value="content" v-if="metadata.uploaded">
+          Content
+        </TabsTrigger>
         <TabsTrigger value="supplementary">
           Supplementary
         </TabsTrigger>
@@ -57,6 +60,9 @@ client.listeners.onMetadataSupplementaryChanged((id) => {
         <ContentStates :content="metadata" class="w-[600px]" />
         <ContentContents :content="metadata" class="w-[600px]" />
       </div>
+    </TabsContent>
+    <TabsContent value="content" class="border-none p-0 outline-none">
+      <ContentMetadataContent class="col-span-2" :metadata="metadata" />
     </TabsContent>
     <TabsContent value="traits" class="border-none p-0 outline-none">
       <ContentTraits class="col-span-2" :content="metadata" />

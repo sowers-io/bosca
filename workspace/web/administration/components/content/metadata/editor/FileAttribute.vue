@@ -1,25 +1,22 @@
 <script lang="ts" setup>
-import type {
-  DocumentTemplateAttribute,
-  MetadataFragment, MetadataRelationship, MetadataRelationshipFragment,
-} from '~/lib/graphql/graphql'
 import {toast} from '~/components/ui/toast'
+import type {AttributeState} from "~/lib/attribute.ts";
+import type {MetadataRelationshipFragment} from "~/lib/graphql/graphql.ts";
 
 const props = defineProps<{
-  attribute: DocumentTemplateAttribute
-  relationship?: MetadataRelationshipFragment | null | undefined
+  attribute: AttributeState | null | undefined
   uploader: Uploader
   editable: boolean
-  onChange: (attribute: DocumentTemplateAttribute, value: any) => void
-  onClick: (attribute: DocumentTemplateAttribute) => void
 }>()
 
 const client = useBoscaClient()
 const dropzone = ref()
+const dialogOpen = ref(false)
 
 const metadata = asyncComputed(async () => {
-  if (props.relationship?.metadata?.id) {
-    return await client.metadata.get(props.relationship.metadata.id)
+  if (props.attribute?.value) {
+    const relationship = props.attribute.value as MetadataRelationshipFragment
+    return await client.metadata.get(relationship.metadata.id)
   }
   return null
 })
@@ -31,8 +28,7 @@ useDropZone(dropzone, {
     toast({title: 'Uploading files, please wait...'})
     try {
       const metadataIds = await props.uploader.upload(files)
-      const metadata = await client.metadata.get(metadataIds[0])
-      props.onChange(props.attribute, metadata)
+      await onMetadataSelected(metadataIds[0])
       toast({title: 'File(s) uploaded'})
     } catch (e) {
       console.error('Error uploading file(s)', e)
@@ -45,15 +41,28 @@ useDropZone(dropzone, {
   multiple: false,
   preventDefaultForUnhandled: false,
 })
+
+async function onMetadataSelected(id: string) {
+  if (!props.attribute) return
+  dialogOpen.value = false
+  const metadata = await client.metadata.get(id)
+  props.attribute.value = {
+    metadata: {
+      id: metadata.id,
+      name: metadata.name,
+    },
+    relationship: props.attribute.configuration.relationship,
+  } as MetadataRelationshipFragment
+}
 </script>
 <template>
-  <div>
+  <div v-if="attribute">
     <label class="block font-bold mt-4 mb-2">{{ attribute.name }}</label>
     <div
-        v-if="editable && !relationship"
+        v-if="editable && !attribute.value"
         ref="dropzone"
         class="cursor-pointer overflow-hidden bg-background rounded-md"
-        @click="onClick(attribute)"
+        @click="dialogOpen = true"
     >
       <div
           class="flex w-full h-32 justify-center items-center text-gray-200 text-xl font-bold"
@@ -62,11 +71,16 @@ useDropZone(dropzone, {
       </div>
     </div>
     <div v-else-if="metadata">
-      <template v-if="metadata.content.type.startsWith('audio/') || metadata.content.type.startsWith('video/')">
+      <template
+          v-if="
+          metadata.content.type.startsWith('audio/') ||
+          metadata.content.type.startsWith('video/')
+        "
+      >
         <MediaPlayer :metadata="metadata"/>
       </template>
-      <div class="grid justify-items-end" v-if="editable && relationship">
-        <Button variant="ghost" @click="onChange(attribute, null)">
+      <div class="grid justify-items-end" v-if="editable && attribute.value">
+        <Button variant="ghost" @click="attribute.value = null">
           Clear
         </Button>
       </div>
@@ -74,5 +88,17 @@ useDropZone(dropzone, {
     <div v-else>
       No File
     </div>
+
+    <Dialog v-model:open="dialogOpen">
+      <DialogContent
+          class="h-[calc(100dvh-100px)] w-[calc(100dvw-100px)] max-w-full overflow-y-auto"
+      >
+        <div class="flex flex-col gap-2 h-full">
+          <h1 class="font-bold">Click to Select Your Item</h1>
+          <ContentMedia :filter="{ mp4: true, webm: true, jpg: false, mp3: false, png: false, webp: false }"
+                        :on-selected="onMetadataSelected"/>
+        </div>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>

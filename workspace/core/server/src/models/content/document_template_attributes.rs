@@ -1,7 +1,7 @@
 use async_graphql::*;
 use tokio_postgres::Row;
-use crate::models::content::document_attribute_type::DocumentAttributeType;
-use crate::models::content::document_attribute_ui_type::DocumentAttributeUiType;
+use crate::models::content::attribute_type::AttributeType;
+use crate::models::content::attribute_ui_type::AttributeUiType;
 use crate::models::content::document_template_attribute_workflow::DocumentTemplateAttributeWorkflowInput;
 
 #[derive(Clone)]
@@ -10,9 +10,9 @@ pub struct DocumentTemplateAttribute {
     pub name: String,
     pub description: String,
     pub configuration: Option<serde_json::Value>,
-    pub attribute_type: DocumentAttributeType,
+    pub attribute_type: AttributeType,
     pub supplementary_key: Option<String>,
-    pub ui: DocumentAttributeUiType,
+    pub ui: AttributeUiType,
     pub list: bool,
 }
 
@@ -23,9 +23,9 @@ pub struct DocumentTemplateAttributeInput {
     pub description: String,
     pub configuration: Option<serde_json::Value>,
     #[graphql(name = "type")]
-    pub attribute_type: DocumentAttributeType,
+    pub attribute_type: AttributeType,
     pub supplementary_key: Option<String>,
-    pub ui: DocumentAttributeUiType,
+    pub ui: AttributeUiType,
     pub list: bool,
     pub workflow_ids: Vec<DocumentTemplateAttributeWorkflowInput>
 }

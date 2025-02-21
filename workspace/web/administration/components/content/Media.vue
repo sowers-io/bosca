@@ -27,15 +27,17 @@ const offset = computed(() => (currentPage.value - 1) * limit.value)
 const client = useBoscaClient()
 const uploader = new Uploader(client)
 
-const { data: metadata, refresh: refreshList } = client.metadata.getByContentType(
+const { data: metadata, refresh: refreshList } = client.metadata
+  .getByContentType(
     filter,
     offset,
     limit,
-)
+  )
 
-const { data: count, refresh: refreshCount } = client.metadata.getByContentTypeCount(
+const { data: count, refresh: refreshCount } = client.metadata
+  .getByContentTypeCount(
     filter,
-)
+  )
 
 async function onDrop(files: File[] | null) {
   if (!files) return
@@ -76,15 +78,30 @@ client.listeners.onMetadataChanged((id) => {
 <template>
   <div ref="dropZoneRef" class="h-full">
     <div class="flex justify-between items-center">
-    <ContentMultiContentTypeFilter v-model:model-value="filter" />
-      <Pagination v-slot="{ page }" v-model:page="currentPage" :total="count || 0" :items-per-page="limit" :sibling-count="1" show-edges>
+      <ContentMultiContentTypeFilter v-model:model-value="filter" />
+      <Pagination
+        v-slot="{ page }"
+        v-model:page="currentPage"
+        :total="count || 0"
+        :items-per-page="limit"
+        :sibling-count="1"
+        show-edges
+      >
         <PaginationList v-slot="{ items }" class="flex items-center gap-1">
           <PaginationFirst />
           <PaginationPrev />
 
           <template v-for="(item, index) in items">
-            <PaginationListItem v-if="item.type === 'page'" :key="index" :value="item.value" as-child>
-              <Button class="w-10 h-10 p-0" :variant="item.value === page ? 'default' : 'outline'">
+            <PaginationListItem
+              v-if="item.type === 'page'"
+              :key="index"
+              :value="item.value"
+              as-child
+            >
+              <Button
+                class="w-10 h-10 p-0"
+                :variant="item.value === page ? 'default' : 'outline'"
+              >
                 {{ item.value }}
               </Button>
             </PaginationListItem>

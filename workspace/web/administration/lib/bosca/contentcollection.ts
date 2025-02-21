@@ -1,7 +1,8 @@
 import { Api } from './api'
 import {
   AddCollectionCollectionDocument,
-  AddCollectionDocument, AddMetadataCollectionDocument,
+  AddCollectionDocument,
+  AddMetadataCollectionDocument,
   BeginCollectionTransitionDocument,
   type CollectionFragment,
   type CollectionInput,
@@ -13,7 +14,9 @@ import {
   GetCollectionListDocument,
   GetCollectionParentsDocument,
   type MetadataFragment,
-  type ParentCollectionFragment, RemoveCollectionCollectionDocument, RemoveMetadataCollectionDocument,
+  type ParentCollectionFragment,
+  RemoveCollectionCollectionDocument,
+  RemoveMetadataCollectionDocument,
   SetCollectionPublicDocument,
   SetCollectionPublicListDocument,
   SetCollectionReadyDocument,
@@ -212,28 +215,31 @@ export class ContentCollections<T extends NetworkClient> extends Api<T> {
   async addCollection(collectionId: string, id: string): Promise<void> {
     await this.network.execute(AddCollectionCollectionDocument, {
       collectionId,
-      id
+      id,
     })
   }
 
   async removeCollection(collectionId: string, id: string): Promise<void> {
     await this.network.execute(RemoveCollectionCollectionDocument, {
       collectionId,
-      id
+      id,
     })
   }
 
   async addMetadata(collectionId: string, metadataId: string): Promise<void> {
     await this.network.execute(AddMetadataCollectionDocument, {
       collectionId,
-      id: metadataId
+      id: metadataId,
     })
   }
 
-  async removeMetadata(collectionId: string, metadataId: string): Promise<void> {
+  async removeMetadata(
+    collectionId: string,
+    metadataId: string,
+  ): Promise<void> {
     await this.network.execute(RemoveMetadataCollectionDocument, {
       collectionId,
-      id: metadataId
+      id: metadataId,
     })
   }
 }

@@ -1,5 +1,5 @@
 use crate::context::BoscaContext;
-use crate::graphql::content::document_template_attribute_object::DocumentTemplateAttributeObject;
+use crate::graphql::content::document_attribute_object::DocumentTemplateAttributeObject;
 use crate::graphql::content::metadata::MetadataObject;
 use crate::models::content::document_template::DocumentTemplate;
 use async_graphql::{Context, Error, Object};

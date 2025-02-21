@@ -1,4 +1,4 @@
-import { vite as vidstack } from 'vidstack/plugins';
+import { vite as vidstack } from 'vidstack/plugins'
 
 // https://nuxt.com/docs/api/configuration/nuxt-config
 export default defineNuxtConfig({

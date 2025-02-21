@@ -96,6 +96,27 @@ export enum ActivityParameterType {
   SupplementaryArray = 'SUPPLEMENTARY_ARRAY'
 }
 
+export enum AttributeType {
+  Collection = 'COLLECTION',
+  Date = 'DATE',
+  DateTime = 'DATE_TIME',
+  Float = 'FLOAT',
+  Int = 'INT',
+  Metadata = 'METADATA',
+  Profile = 'PROFILE',
+  String = 'STRING'
+}
+
+export enum AttributeUiType {
+  Collection = 'COLLECTION',
+  File = 'FILE',
+  Image = 'IMAGE',
+  Input = 'INPUT',
+  Metadata = 'METADATA',
+  Profile = 'PROFILE',
+  Textarea = 'TEXTAREA'
+}
+
 export type AttributesFilterInput = {
   attributes: Array<Scalars['String']['input']>;
   childAttributes?: InputMaybe<AttributesFilterInput>;
@@ -555,27 +576,6 @@ export type Document = {
   title: Scalars['String']['output'];
 };
 
-export enum DocumentAttributeType {
-  Collection = 'COLLECTION',
-  Date = 'DATE',
-  DateTime = 'DATE_TIME',
-  Float = 'FLOAT',
-  Int = 'INT',
-  Metadata = 'METADATA',
-  Profile = 'PROFILE',
-  String = 'STRING'
-}
-
-export enum DocumentAttributeUiType {
-  Collection = 'COLLECTION',
-  File = 'FILE',
-  Image = 'IMAGE',
-  Input = 'INPUT',
-  Metadata = 'METADATA',
-  Profile = 'PROFILE',
-  Textarea = 'TEXTAREA'
-}
-
 export type DocumentInput = {
   content: Scalars['JSON']['input'];
   templateMetadataId?: InputMaybe<Scalars['String']['input']>;
@@ -600,8 +600,8 @@ export type DocumentTemplateAttribute = {
   list: Scalars['Boolean']['output'];
   name: Scalars['String']['output'];
   supplementaryKey?: Maybe<Scalars['String']['output']>;
-  type: DocumentAttributeType;
-  ui: DocumentAttributeUiType;
+  type: AttributeType;
+  ui: AttributeUiType;
   workflows: Array<DocumentTemplateAttributeWorkflow>;
 };
 
@@ -612,8 +612,8 @@ export type DocumentTemplateAttributeInput = {
   list: Scalars['Boolean']['input'];
   name: Scalars['String']['input'];
   supplementaryKey?: InputMaybe<Scalars['String']['input']>;
-  type: DocumentAttributeType;
-  ui: DocumentAttributeUiType;
+  type: AttributeType;
+  ui: AttributeUiType;
   workflowIds: Array<DocumentTemplateAttributeWorkflowInput>;
 };
 
@@ -2620,7 +2620,7 @@ export type GetMetadataDocumentTemplateQueryVariables = Exact<{
 }>;
 
 
-export type GetMetadataDocumentTemplateQuery = { __typename?: 'Query', content: { __typename?: 'Content', metadata?: { __typename?: 'Metadata', documentTemplate?: { __typename?: 'DocumentTemplate', configuration?: any | null, schema?: any | null, content: any, attributes: Array<{ __typename?: 'DocumentTemplateAttribute', key: string, name: string, description: string, type: DocumentAttributeType, supplementaryKey?: string | null, ui: DocumentAttributeUiType, configuration?: any | null, workflows: Array<{ __typename?: 'DocumentTemplateAttributeWorkflow', autoRun: boolean, workflow?: { __typename?: 'Workflow', id: string, queue: string, name: string, description: string, configuration: any } | null }> }> } | null } | null } };
+export type GetMetadataDocumentTemplateQuery = { __typename?: 'Query', content: { __typename?: 'Content', metadata?: { __typename?: 'Metadata', documentTemplate?: { __typename?: 'DocumentTemplate', configuration?: any | null, schema?: any | null, content: any, attributes: Array<{ __typename?: 'DocumentTemplateAttribute', key: string, name: string, description: string, type: AttributeType, supplementaryKey?: string | null, ui: AttributeUiType, configuration?: any | null, workflows: Array<{ __typename?: 'DocumentTemplateAttributeWorkflow', autoRun: boolean, workflow?: { __typename?: 'Workflow', id: string, queue: string, name: string, description: string, configuration: any } | null }> }> } | null } | null } };
 
 export type GetMetadataParentsQueryVariables = Exact<{
   id: Scalars['String']['input'];
@@ -3063,7 +3063,7 @@ export type CollectionWorkflowFragment = { __typename?: 'CollectionWorkflow', st
 
 export type DocumentFragment = { __typename?: 'Document', templateMetadataId?: string | null, templateMetadataVersion?: number | null, title: string, content: any };
 
-export type DocumentTemplateFragment = { __typename?: 'DocumentTemplate', configuration?: any | null, schema?: any | null, content: any, attributes: Array<{ __typename?: 'DocumentTemplateAttribute', key: string, name: string, description: string, type: DocumentAttributeType, supplementaryKey?: string | null, ui: DocumentAttributeUiType, configuration?: any | null, workflows: Array<{ __typename?: 'DocumentTemplateAttributeWorkflow', autoRun: boolean, workflow?: { __typename?: 'Workflow', id: string, queue: string, name: string, description: string, configuration: any } | null }> }> };
+export type DocumentTemplateFragment = { __typename?: 'DocumentTemplate', configuration?: any | null, schema?: any | null, content: any, attributes: Array<{ __typename?: 'DocumentTemplateAttribute', key: string, name: string, description: string, type: AttributeType, supplementaryKey?: string | null, ui: AttributeUiType, configuration?: any | null, workflows: Array<{ __typename?: 'DocumentTemplateAttributeWorkflow', autoRun: boolean, workflow?: { __typename?: 'Workflow', id: string, queue: string, name: string, description: string, configuration: any } | null }> }> };
 
 export type GroupFragment = { __typename?: 'Group', id: string, name: string };
 

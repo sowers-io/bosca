@@ -5,13 +5,15 @@ import {
   AddMetadataPermissionDocument,
   AddMetadataRelationshipDocument,
   AddMetadataTraitDocument,
-  BeginMetadataTransitionDocument, type CollectionIdNameFragment,
+  BeginMetadataTransitionDocument,
+  type CollectionIdNameFragment,
   DeleteMetadataDocument,
   type DocumentFragment,
   type DocumentTemplateFragment,
   EditMetadataDocument,
   ExtensionFilterType,
-  type FindAttributeInput, FindMetadataCountDocument,
+  type FindAttributeInput,
+  FindMetadataCountDocument,
   FindMetadataDocument,
   GetMetadataDocument,
   GetMetadataDocumentDocument,
@@ -19,7 +21,8 @@ import {
   GetMetadataParentsDocument,
   GetMetadataPermissionsDocument,
   GetMetadataRelationshipsDocument,
-  GetMetadataSupplementaryDocument, GetMetadataSupplementaryJsonDocument,
+  GetMetadataSupplementaryDocument,
+  GetMetadataSupplementaryJsonDocument,
   GetMetadataSupplementaryTextDocument,
   GetMetadataUploadDocument,
   type MetadataFragment,
@@ -128,31 +131,33 @@ export class ContentMetadata<T extends NetworkClient> extends Api<T> {
   }
 
   getByContentType(
-      filter: Ref<ContentTypeFilter>,
-      offset: Ref<number>,
-      limit: Ref<number>,
+    filter: Ref<ContentTypeFilter>,
+    offset: Ref<number>,
+    limit: Ref<number>,
   ): AsyncData<MetadataFragment[] | null, any> {
     const contentTypes = this.getContentTypes(filter)
     return this.executeAndTransformAsyncData(
-        FindMetadataDocument,
-        { attributes: [], contentTypes, offset, limit },
-        (data) => {
-          if (!data) return null
-          return data.content.findMetadata as MetadataFragment[]
-        },
+      FindMetadataDocument,
+      { attributes: [], contentTypes, offset, limit },
+      (data) => {
+        if (!data) return null
+        return data.content.findMetadata as MetadataFragment[]
+      },
     )
   }
 
-  getByContentTypeCount(filter: Ref<ContentTypeFilter>): AsyncData<number | null, any> {
+  getByContentTypeCount(
+    filter: Ref<ContentTypeFilter>,
+  ): AsyncData<number | null, any> {
     const contentTypes = this.getContentTypes(filter)
     return this.executeAndTransformAsyncData(
-        FindMetadataCountDocument,
-        { attributes: [], contentTypes },
-        (data) => {
-          console.log(data)
-          if (!data) return 0
-          return data.content.findMetadataCount || 0
-        },
+      FindMetadataCountDocument,
+      { attributes: [], contentTypes },
+      (data) => {
+        console.log(data)
+        if (!data) return 0
+        return data.content.findMetadataCount || 0
+      },
     )
   }
 
@@ -170,10 +175,14 @@ export class ContentMetadata<T extends NetworkClient> extends Api<T> {
   }
 
   async getParents(
-      id: string,
+    id: string,
   ): Promise<Array<ParentCollectionFragment> | null> {
-    const response = await this.network.execute(GetMetadataParentsDocument, { id })
-    return response?.content?.metadata?.parentCollections as Array<ParentCollectionFragment>
+    const response = await this.network.execute(GetMetadataParentsDocument, {
+      id,
+    })
+    return response?.content?.metadata?.parentCollections as Array<
+      ParentCollectionFragment
+    >
   }
 
   getParentsAsyncData(
@@ -237,15 +246,15 @@ export class ContentMetadata<T extends NetworkClient> extends Api<T> {
   }
 
   async getSupplementaryText(
-      id: string,
-      key: string,
+    id: string,
+    key: string,
   ): Promise<string | null> {
     const response = await this.network.execute(
-        GetMetadataSupplementaryTextDocument,
-        {
-          id: id,
-          key,
-        },
+      GetMetadataSupplementaryTextDocument,
+      {
+        id: id,
+        key,
+      },
     )
     const supplementary = response?.content?.metadata?.supplementary
     if (!supplementary || supplementary.length === 0) return null
@@ -253,15 +262,15 @@ export class ContentMetadata<T extends NetworkClient> extends Api<T> {
   }
 
   async getSupplementaryJson(
-      id: string,
-      key: string,
+    id: string,
+    key: string,
   ): Promise<any | null> {
     const response = await this.network.execute(
-        GetMetadataSupplementaryJsonDocument,
-        {
-          id: id,
-          key,
-        },
+      GetMetadataSupplementaryJsonDocument,
+      {
+        id: id,
+        key,
+      },
     )
     const supplementary = response?.content?.metadata?.supplementary
     if (!supplementary || supplementary.length === 0) return null

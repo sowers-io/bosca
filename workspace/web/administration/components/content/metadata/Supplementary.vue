@@ -36,6 +36,7 @@ async function onDownload(supplementary: MetadataSupplementary) {
       <Table>
         <TableHeader>
           <TableRow>
+            <TableCell>Key</TableCell>
             <TableCell>Name</TableCell>
           </TableRow>
         </TableHeader>
@@ -46,6 +47,7 @@ async function onDownload(supplementary: MetadataSupplementary) {
             class="cursor-pointer"
             @click="onDownload(supplementary)"
           >
+            <TableCell>{{ supplementary.key }}</TableCell>
             <TableCell>{{ supplementary.name }}</TableCell>
           </TableRow>
         </TableBody>
