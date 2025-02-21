@@ -138,7 +138,7 @@ onMounted(() => {
       </TabsList>
       <div class="grow"></div>
       <div>
-        <Button variant="outline" @click="onAdd">
+        <Button @click="onAdd">
           <Icon name="i-lucide-plus" />
         </Button>
       </div>
@@ -148,86 +148,32 @@ onMounted(() => {
       :value="collection.id"
       class="border-none p-0 mt-0 outline-none"
     >
-      <Tabs
-        v-model:model-value="selectedType"
-        class="h-full space-y-6"
-        @update:model-value="updateAttributes"
-      >
-        <TabsList>
-          <TabsTrigger value="items">
-            Items
-          </TabsTrigger>
-          <TabsTrigger value="templates">
-            Templates
-          </TabsTrigger>
-        </TabsList>
-        <TabsContent value="items" class="border-none p-0 m-0 outline-none">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Content Name</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <TableRow
-                v-for="item in content"
-                :key="item.id"
-                @click="router.push(`/content/${item.id}`)"
-                class="cursor-pointer"
-              >
-                <TableCell class="font-medium flex content-center">
-                  <NuxtLink :to="'/content/' + item.id">{{
-                    item.name
-                  }}</NuxtLink>
-                </TableCell>
-              </TableRow>
-            </TableBody>
-            <TableFooter>
-              <TableRow v-if="content.length === 0">
-                <TableCell class="font-medium flex content-center">
-                  No content found.
-                </TableCell>
-              </TableRow>
-            </TableFooter>
-          </Table>
-        </TabsContent>
-        <TabsContent value="templates" class="border-none p-0 m-0 outline-none">
-          <Table>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Template Name</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                <TableRow
-                  v-for="item in templates"
-                  :key="item.id"
-                  @click="
-                    router.push(
-                      `/content/template/${item.id}`,
-                    )
-                  "
-                  class="cursor-pointer"
-                >
-                  <TableCell class="font-medium flex content-center">
-                    <NuxtLink :to="'/content/template/' + item.id">{{
-                      item.name
-                    }}</NuxtLink>
-                  </TableCell>
-                </TableRow>
-              </TableBody>
-              <TableFooter>
-                <TableRow v-if="templates.length === 0">
-                  <TableCell class="font-medium flex content-center">
-                    No templates found.
-                  </TableCell>
-                </TableRow>
-              </TableFooter>
-            </Table>
-          </Table>
-        </TabsContent>
-      </Tabs>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Content Name</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow
+            v-for="item in content"
+            :key="item.id"
+            @click="router.push(`/content/${item.id}`)"
+            class="cursor-pointer"
+          >
+            <TableCell class="font-medium flex content-center">
+              <NuxtLink :to="'/content/' + item.id">{{ item.name }}</NuxtLink>
+            </TableCell>
+          </TableRow>
+        </TableBody>
+        <TableFooter>
+          <TableRow v-if="content.length === 0">
+            <TableCell class="font-medium flex content-center">
+              No content found.
+            </TableCell>
+          </TableRow>
+        </TableFooter>
+      </Table>
     </TabsContent>
   </Tabs>
 </template>

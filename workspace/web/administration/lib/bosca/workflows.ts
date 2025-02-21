@@ -345,6 +345,11 @@ export class Workflows<T extends NetworkClient> extends Api<T> {
     )
   }
 
+  async getStates(): Promise<Array<WorkflowStateFragment> | null> {
+    const response = await this.network.execute(GetStatesDocument)
+    return response?.workflows.states.all as Array<WorkflowStateFragment>
+  }
+
   // suspend fun getState(id: String): WorkflowState? {
   //     val response = network.client.query(GetStateQuery(id)).execute()
   //     response.validate()

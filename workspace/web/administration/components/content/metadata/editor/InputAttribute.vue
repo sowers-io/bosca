@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { AttributeState } from "~/lib/attribute.ts";
+import type { AttributeState } from '~/lib/attribute.ts'
 
 defineProps<{
   attribute: AttributeState
@@ -26,7 +26,11 @@ defineProps<{
             variant="ghost"
             @click="onRunWorkflow(attribute)"
           >
-            <Icon name="i-lucide-sparkles" class="size-4" v-if="!attribute.loading" />
+            <Icon
+              name="i-lucide-sparkles"
+              class="size-4"
+              v-if="!attribute.loading"
+            />
             <Icon
               name="i-lucide-loader-circle"
               class="size-4 animate-spin"

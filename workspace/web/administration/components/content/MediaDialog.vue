@@ -13,7 +13,19 @@ const open = ref(false)
       class="h-[calc(100dvh-100px)] w-[calc(100dvw-100px)] max-w-full overflow-auto z-100"
     >
       <div class="flex flex-col gap-2 h-full">
-        <ContentMedia :on-selected="onSelected" />
+        <ContentMedia
+          :filter="
+            {
+              jpg: true,
+              mp3: true,
+              mp4: true,
+              png: true,
+              webm: true,
+              webp: true,
+            }
+          "
+          :on-selected="onSelected"
+        />
       </div>
     </DialogContent>
   </Dialog>

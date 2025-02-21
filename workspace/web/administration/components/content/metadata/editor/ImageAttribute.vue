@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { toast } from '~/components/ui/toast'
-import type { AttributeState } from "~/lib/attribute.ts";
-import type {MetadataRelationshipFragment} from "~/lib/graphql/graphql.ts";
+import type { AttributeState } from '~/lib/attribute.ts'
+import type { MetadataRelationshipFragment } from '~/lib/graphql/graphql.ts'
 
 const props = defineProps<{
   attribute: AttributeState | null | undefined
@@ -58,8 +58,8 @@ async function onMetadataSelected(id: string) {
         class="cursor-pointer overflow-hidden bg-background rounded-md"
       >
         <img
-          v-if="attribute.value"
-          :src="'/content/image?id=' + attribute.value.id"
+          v-if="attribute.value?.metadata?.id"
+          :src="'/content/image?id=' + attribute.value.metadata.id"
           :alt="attribute.name"
           class="w-full h-full object-cover"
         />
@@ -79,7 +79,7 @@ async function onMetadataSelected(id: string) {
     <div v-else-if="attribute.value">
       <div class="overflow-hidden bg-background rounded-md">
         <img
-          :src="'/content/image?id=' + attribute.value.id"
+          :src="'/content/image?id=' + attribute.value.metadata.id"
           :alt="attribute.name"
           class="w-full h-full object-cover"
         />
@@ -91,12 +91,23 @@ async function onMetadataSelected(id: string) {
 
     <Dialog v-model:open="dialogOpen">
       <DialogContent
-          class="h-[calc(100dvh-100px)] w-[calc(100dvw-100px)] max-w-full overflow-y-auto"
+        class="h-[calc(100dvh-100px)] w-[calc(100dvw-100px)] max-w-full overflow-y-auto"
       >
         <div class="flex flex-col gap-2 h-full">
           <h1 class="font-bold">Click to Select Your Item</h1>
-          <ContentMedia :filter="{ mp4: true, webm: true, jpg: false, mp3: false, png: false, webp: false }"
-                        :on-selected="onMetadataSelected"/>
+          <ContentMedia
+            :filter="
+              {
+                mp4: false,
+                mp3: false,
+                webm: false,
+                jpg: true,
+                png: true,
+                webp: true,
+              }
+            "
+            :on-selected="onMetadataSelected"
+          />
         </div>
       </DialogContent>
     </Dialog>

@@ -127,7 +127,7 @@ onMounted(() => {
               :key="bible.id"
               @click="
                 router.push(
-                  '/collections/edit/metadata/' + bible.id,
+                  '/metadata/edit/' + bible.id,
                 )
               "
               class="cursor-pointer"

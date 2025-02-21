@@ -18,7 +18,7 @@ onMounted(() => {
   const links: BreadcrumbLink[] = [
     route.query.bible ? { title: 'Bible', to: '/bible' } : {
       title: 'Collections',
-      to: '/collections' +
+      to: '/collections/browse' +
         (route.query.parent ? '?id=' + route.query.parent : ''),
     },
   ]

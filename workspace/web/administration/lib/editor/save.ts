@@ -1,96 +1,102 @@
 import type {
-    CollectionIdNameFragment,
-    Document,
-    DocumentInput,
-    DocumentTemplateFragment,
-    MetadataFragment,
-    MetadataRelationshipFragment
-} from "~/lib/graphql/graphql.ts";
-import {AttributeUiType} from "~/lib/graphql/graphql.ts";
-import type {BoscaClient} from "~/lib/bosca/client.ts";
-import type {Reactive} from "vue";
-import {toMetadataInput} from "~/lib/metadata.ts";
+  CollectionIdNameFragment,
+  Document,
+  DocumentInput,
+  DocumentTemplateFragment,
+  MetadataFragment,
+  MetadataRelationshipFragment,
+} from '~/lib/graphql/graphql.ts'
+import { AttributeUiType } from '~/lib/graphql/graphql.ts'
+import type { BoscaClient } from '~/lib/bosca/client.ts'
+import type { Reactive } from 'vue'
+import { toMetadataInput } from '~/lib/metadata.ts'
 
 export async function save(
-    client: BoscaClient<any>,
-    document: Document,
-    metadata: MetadataFragment,
-    template: DocumentTemplateFragment,
-    parents: CollectionIdNameFragment[],
-    title: string,
-    relationships: MetadataRelationshipFragment[],
-    attributes: Reactive<Map<string, AttributeState>>,
-    content: any
+  client: BoscaClient<any>,
+  document: Document,
+  metadata: MetadataFragment,
+  template: DocumentTemplateFragment | null,
+  parents: CollectionIdNameFragment[],
+  title: string,
+  relationships: MetadataRelationshipFragment[],
+  attributes: Reactive<Map<string, AttributeState>>,
+  content: any,
 ) {
-    const newDocument: DocumentInput = {
-        templateMetadataId: document.templateMetadataId,
-        templateMetadataVersion: document.templateMetadataVersion,
-        title: title,
-        content: {
-            document: content,
-        },
-    }
-    const input = toMetadataInput(metadata)
-    input.document = newDocument
-    input.name = title
+  const newDocument: DocumentInput = {
+    templateMetadataId: document.templateMetadataId,
+    templateMetadataVersion: document.templateMetadataVersion,
+    title: title,
+    content: {
+      document: content,
+    },
+  }
+  const input = toMetadataInput(toRaw(metadata))
+  input.document = newDocument
+  input.name = title
 
-    for (const attribute of template.attributes) {
-        const attr = attributes.get(attribute.key)
-        if (attr) {
-            switch (attr.ui) {
-                case AttributeUiType.Textarea:
-                case AttributeUiType.Input:
-                    if (!input.attributes) input.attributes = {}
-                    input.attributes[attr.key] = attr.value
-                    break
-                case AttributeUiType.Profile:
-                    if (!input.profiles) input.profiles = []
-                    input.profiles = (input.profiles || []).filter((p) => p.relationship !== attr.configuration.relationship)
-                    input.profiles.push(attr.value)
-                    break
-            }
+  for (const attribute of template?.attributes || []) {
+    const attr = toRaw(attributes.get(attribute.key))
+    if (attr) {
+      switch (attr.ui) {
+        case AttributeUiType.Textarea:
+        case AttributeUiType.Input:
+          if (!input.attributes) input.attributes = {}
+          input.attributes[attr.key] = attr.value
+          break
+        case AttributeUiType.Profile:
+          if (!input.profiles) input.profiles = []
+          input.profiles = (input.profiles || []).filter((p) =>
+            p.relationship !== attr.configuration.relationship
+          )
+          if (attr.value) {
+            input.profiles.push(attr.value)
+          }
+          break
+      }
+    }
+  }
+
+  await client.metadata.edit(metadata.id, input)
+
+  for (const collection of parents || []) {
+    await client.collections.removeMetadata(collection.id, metadata.id)
+  }
+
+  for (const attribute of template?.attributes || []) {
+    const attr = attributes.get(attribute.key)
+    if (attr) {
+      switch (attr.ui) {
+        case AttributeUiType.Collection: {
+          const collections = attr.value
+          if (!collections) continue
+          for (const collection of collections) {
+            await client.collections.addMetadata(collection.id, metadata.id)
+          }
+          break
         }
-    }
-
-    await client.metadata.edit(metadata.id, input)
-
-    for (const collection of parents || []) {
-        await client.collections.removeMetadata(collection.id, metadata.id)
-    }
-
-    for (const attribute of template.attributes) {
-        const attr = attributes.get(attribute.key)
-        if (attr) {
-            switch (attr.ui) {
-                case AttributeUiType.Collection:
-                    const collections = attr.value
-                    if (!collections) continue
-                    for (const collection of collections) {
-                        await client.collections.addMetadata(collection.id, metadata.id)
-                    }
-                    break
-                case AttributeUiType.Image:
-                case AttributeUiType.File:
-                    const removeRelationshipId = relationships.find((r) =>
-                        r.relationship === attr.configuration.relationship
-                    )?.metadata?.id
-                    if (removeRelationshipId) {
-                        await client.metadata.removeRelationship(
-                            metadata.id,
-                            removeRelationshipId,
-                            attr.key,
-                        )
-                    }
-                    const relationship = attr.value
-                    if (!relationship) continue
-                    await client.metadata.addRelationship({
-                        id1: metadata.id,
-                        id2: relationship.metadata.id,
-                        attributes: {},
-                        relationship: relationship.relationship,
-                    })
-                    break
-            }
+        case AttributeUiType.Image:
+        case AttributeUiType.File: {
+          const removeRelationshipId = relationships.find((r) =>
+            r.relationship === attr.configuration.relationship
+          )?.metadata?.id
+          if (removeRelationshipId) {
+            await client.metadata.removeRelationship(
+              metadata.id,
+              removeRelationshipId,
+              attr.configuration.relationship,
+            )
+          }
+          if (!attr.value) continue
+          const relationship = toRaw(attr.value)
+          await client.metadata.addRelationship({
+            id1: metadata.id,
+            id2: relationship.metadata.id,
+            attributes: {},
+            relationship: attr.configuration.relationship,
+          })
+          break
         }
+      }
     }
+  }
 }

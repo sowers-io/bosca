@@ -74,7 +74,7 @@ function onClick(item: CollectionItem) {
   switch (item.__typename) {
     case 'Collection':
       router.push(
-        '/collections?id=' + item.id + '&parent=' + props.collection.id,
+        '/collections/browse?id=' + item.id + '&parent=' + props.collection.id,
       )
       break
     case 'Metadata':

@@ -1,7 +1,7 @@
 <script lang="ts" setup>
-import {toast} from '~/components/ui/toast'
-import type {AttributeState} from "~/lib/attribute.ts";
-import type {MetadataRelationshipFragment} from "~/lib/graphql/graphql.ts";
+import { toast } from '~/components/ui/toast'
+import type { AttributeState } from '~/lib/attribute.ts'
+import type { MetadataRelationshipFragment } from '~/lib/graphql/graphql.ts'
 
 const props = defineProps<{
   attribute: AttributeState | null | undefined
@@ -25,11 +25,11 @@ useDropZone(dropzone, {
   onDrop: async function (files: File[] | null) {
     if (!props.editable) return
     if (!files || files.length === 0) return
-    toast({title: 'Uploading files, please wait...'})
+    toast({ title: 'Uploading files, please wait...' })
     try {
       const metadataIds = await props.uploader.upload(files)
       await onMetadataSelected(metadataIds[0])
-      toast({title: 'File(s) uploaded'})
+      toast({ title: 'File(s) uploaded' })
     } catch (e) {
       console.error('Error uploading file(s)', e)
       toast({
@@ -59,25 +59,25 @@ async function onMetadataSelected(id: string) {
   <div v-if="attribute">
     <label class="block font-bold mt-4 mb-2">{{ attribute.name }}</label>
     <div
-        v-if="editable && !attribute.value"
-        ref="dropzone"
-        class="cursor-pointer overflow-hidden bg-background rounded-md"
-        @click="dialogOpen = true"
+      v-if="editable && !attribute.value"
+      ref="dropzone"
+      class="cursor-pointer overflow-hidden bg-background rounded-md"
+      @click="dialogOpen = true"
     >
       <div
-          class="flex w-full h-32 justify-center items-center text-gray-200 text-xl font-bold"
+        class="flex w-full h-32 justify-center items-center text-gray-200 text-xl font-bold"
       >
         Click or Drop File Here
       </div>
     </div>
     <div v-else-if="metadata">
       <template
-          v-if="
+        v-if="
           metadata.content.type.startsWith('audio/') ||
           metadata.content.type.startsWith('video/')
         "
       >
-        <MediaPlayer :metadata="metadata"/>
+        <MediaPlayer :metadata="metadata" />
       </template>
       <div class="grid justify-items-end" v-if="editable && attribute.value">
         <Button variant="ghost" @click="attribute.value = null">
@@ -91,12 +91,23 @@ async function onMetadataSelected(id: string) {
 
     <Dialog v-model:open="dialogOpen">
       <DialogContent
-          class="h-[calc(100dvh-100px)] w-[calc(100dvw-100px)] max-w-full overflow-y-auto"
+        class="h-[calc(100dvh-100px)] w-[calc(100dvw-100px)] max-w-full overflow-y-auto"
       >
         <div class="flex flex-col gap-2 h-full">
           <h1 class="font-bold">Click to Select Your Item</h1>
-          <ContentMedia :filter="{ mp4: true, webm: true, jpg: false, mp3: false, png: false, webp: false }"
-                        :on-selected="onMetadataSelected"/>
+          <ContentMedia
+            :filter="
+              {
+                mp4: true,
+                webm: true,
+                mp3: true,
+                jpg: false,
+                png: false,
+                webp: false,
+              }
+            "
+            :on-selected="onMetadataSelected"
+          />
         </div>
       </DialogContent>
     </Dialog>

@@ -154,7 +154,6 @@ export class ContentMetadata<T extends NetworkClient> extends Api<T> {
       FindMetadataCountDocument,
       { attributes: [], contentTypes },
       (data) => {
-        console.log(data)
         if (!data) return 0
         return data.content.findMetadataCount || 0
       },
@@ -420,11 +419,17 @@ export class ContentMetadata<T extends NetworkClient> extends Api<T> {
     await this.network.execute(RemoveMetadataPermissionDocument, { permission })
   }
 
-  async beginTransition(id: string, version: number, state: string) {
+  async beginTransition(
+    id: string,
+    version: number,
+    state: string,
+    status: string,
+  ) {
     await this.network.execute(BeginMetadataTransitionDocument, {
       id,
       version,
       state,
+      status,
     })
   }
 

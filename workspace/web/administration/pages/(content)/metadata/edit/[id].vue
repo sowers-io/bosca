@@ -6,7 +6,7 @@ onMounted(() => {
   const links: BreadcrumbLink[] = [
     route.query.media ? { title: 'Media', to: '/media' } : {
       title: 'Collections',
-      to: '/collections' +
+      to: '/collections/browse' +
         (route.query.parent ? '?id=' + route.query.parent : ''),
     },
   ]

@@ -6,9 +6,7 @@ import {
   CardHeader,
   CardTitle,
 } from '~/components/ui/card'
-import type {
-  MetadataFragment,
-} from '~/lib/graphql/graphql.ts'
+import type { MetadataFragment } from '~/lib/graphql/graphql.ts'
 
 defineProps<{
   metadata: MetadataFragment
@@ -19,14 +17,17 @@ defineProps<{
   <Card>
     <CardHeader>
       <CardTitle>Content</CardTitle>
-      <CardDescription>View the contents.</CardDescription>
+      <CardDescription>View the content</CardDescription>
     </CardHeader>
     <CardContent>
       <template v-if="metadata.content.type.startsWith('image/')">
-        <img :src="metadata.content.urls.download.url" />
+        <img
+          :src="metadata.content.urls.download.url"
+          class="overflow-hidden rounded-md"
+        />
       </template>
       <template
-          v-if="
+        v-if="
           metadata.content.type.startsWith('audio/') ||
           metadata.content.type.startsWith('video/')
         "
