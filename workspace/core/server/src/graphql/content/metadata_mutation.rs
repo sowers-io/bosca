@@ -47,15 +47,9 @@ impl MetadataMutationObject {
             return Err(Error::new("Error creating metadata"));
         };
         let new_metadata = if version == active_version {
-            ctx
-                .content
-                .metadata
-                .get(metadata_id)
-                .await?
-                .unwrap()
+            ctx.content.metadata.get(metadata_id).await?.unwrap()
         } else {
-            ctx
-                .content
+            ctx.content
                 .metadata
                 .get_by_version(metadata_id, *version)
                 .await?
@@ -127,15 +121,9 @@ impl MetadataMutationObject {
         let mut metadatas = Vec::new();
         for (id, version, active_version) in metadata_ids {
             let metadata = if version == active_version {
-                ctx
-                    .content
-                    .metadata
-                    .get(&id)
-                    .await?
-                    .unwrap()
+                ctx.content.metadata.get(&id).await?.unwrap()
             } else {
-                ctx
-                    .content
+                ctx.content
                     .metadata
                     .get_by_version(&id, version)
                     .await?
@@ -149,7 +137,8 @@ impl MetadataMutationObject {
     async fn delete(&self, ctx: &Context<'_>, metadata_id: String) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::parse_str(metadata_id.as_str())?;
-        ctx.check_metadata_action(&id, PermissionAction::Delete).await?;
+        ctx.check_metadata_action(&id, PermissionAction::Delete)
+            .await?;
         ctx.content.metadata.delete(ctx, &id).await?;
         Ok(true)
     }
@@ -738,10 +727,14 @@ impl MetadataMutationObject {
             .set_uploaded(&metadata_id, &None, &content_type, len)
             .await?;
         if ready.is_some() && ready.unwrap() && metadata.ready.is_none() {
-            ctx.content
+            if !ctx
+                .content
                 .metadata_workflows
                 .set_metadata_ready_and_enqueue(ctx, &metadata, configurations)
-                .await?;
+                .await?
+            {
+                return Ok(false);
+            }
         }
         Ok(true)
     }
@@ -758,12 +751,12 @@ impl MetadataMutationObject {
             .check_metadata_action(&metadata_id, PermissionAction::Edit)
             .await?;
         if metadata.ready.is_some() {
-            return Err(Error::new("metadata already ready"));
+            return Ok(false);
         }
-        ctx.content
+        Ok(ctx
+            .content
             .metadata_workflows
             .set_metadata_ready_and_enqueue(ctx, &metadata, configurations)
-            .await?;
-        Ok(true)
+            .await?)
     }
 }

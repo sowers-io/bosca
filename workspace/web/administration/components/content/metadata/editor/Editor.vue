@@ -2,7 +2,6 @@
 import { BubbleMenu, EditorContent, type Range } from '@tiptap/vue-3'
 import {
   AttributeUiType,
-  type CollectionIdNameFragment,
   type DocumentFragment,
   type DocumentTemplateAttribute,
   type DocumentTemplateFragment,
@@ -25,7 +24,7 @@ const uploader = new Uploader(client)
 const props = defineProps<{
   metadata: MetadataFragment
   documentCollection: ParentCollectionFragment | null | undefined
-  parents: CollectionIdNameFragment[]
+  parents: ParentCollectionFragment[]
   relationships: MetadataRelationshipFragment[]
   document: DocumentFragment
   template: DocumentTemplateFragment | null
@@ -150,7 +149,11 @@ async function updateAttributes() {
           }
           break
         case AttributeUiType.Collection:
-          attr.value = props.parents || []
+          if (attr.list) {
+            attr.value = (props.parents || []).filter((c) => c.attributes.type === cfg.type)
+          } else {
+            attr.value = (props.parents || []).find((c) => c.attributes.type === cfg.type)
+          }
           break
         case AttributeUiType.Image:
         case AttributeUiType.File:
@@ -171,8 +174,8 @@ async function updateAttributes() {
 
 const editor = newEditor(
   props.document,
-  props.template,
   props.metadata,
+  props.template,
   uploader,
   ({ editor, transaction }) => {
     if (transaction.docChanged) {
@@ -197,7 +200,11 @@ async function onRunWorkflow(attribute: AttributeState) {
       attribute.value = ''
       break
     case AttributeUiType.Collection:
-      attribute.value = []
+      if (attribute.list) {
+        attribute.value = []
+      } else {
+        attribute.value = null
+      }
       break
   }
   const attr = props.template?.attributes?.find((a) => a.key === attribute.key)
@@ -346,13 +353,22 @@ const editable = computed(() => props.metadata.workflow.state === 'draft')
       <div class="min-h-[calc(100dvh-170px)]">
         <div class="bg-accent rounded-md px-4 py-2 h-full">
           <div v-for="attr in template?.attributes || []" :key="attr.key">
-            <template v-if="attr.ui === AttributeUiType.Collection">
+            <template v-if="attr.ui === AttributeUiType.Collection && attr.list">
+              <ContentMetadataEditorCollectionsAttribute
+                  :collections="parents || []"
+                  :attribute="attributes.get(attr.key) as AttributeState"
+                  :editable="editable"
+                  :workflows-enabled="!hasDocChanges"
+                  :on-run-workflow="onRunWorkflow"
+              />
+            </template>
+            <template v-if="attr.ui === AttributeUiType.Collection && !attr.list">
               <ContentMetadataEditorCollectionAttribute
-                :collections="parents || []"
-                :attribute="attributes.get(attr.key) as AttributeState"
-                :editable="editable"
-                :workflows-enabled="!hasDocChanges"
-                :on-run-workflow="onRunWorkflow"
+                  :collections="parents || []"
+                  :attribute="attributes.get(attr.key) as AttributeState"
+                  :editable="editable"
+                  :workflows-enabled="!hasDocChanges"
+                  :on-run-workflow="onRunWorkflow"
               />
             </template>
             <template v-if="attr.ui === AttributeUiType.Input">

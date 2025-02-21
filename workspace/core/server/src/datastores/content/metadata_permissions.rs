@@ -50,6 +50,22 @@ impl MetadataPermissionsDataStore {
         Ok(eval.evaluate(principal, &action))
     }
 
+    pub async fn has_metadata_content_permission(
+        &self,
+        metadata: &Metadata,
+        principal: &Principal,
+        action: PermissionAction,
+    ) -> Result<bool, Error> {
+        if action == PermissionAction::View
+            && metadata.public_content
+            && metadata.workflow_state_id == "published"
+        {
+            return Ok(true);
+        }
+        let eval = Evaluator::new(self.get_metadata_permissions(&metadata.id).await?);
+        Ok(eval.evaluate(principal, &action))
+    }
+
     pub async fn has_metadata_version_permission(
         &self,
         metadata: &Metadata,

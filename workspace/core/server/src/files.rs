@@ -63,8 +63,7 @@ pub async fn download(
         .await
         .map_err(|_| (StatusCode::UNAUTHORIZED, "Unauthorized".to_owned()))?;
     let id_str = params.id.as_deref().unwrap_or("");
-    let id =
-        Uuid::parse_str(id_str).map_err(|_| (StatusCode::BAD_REQUEST, "Bad Request".to_owned()))?;
+    let id = Uuid::parse_str(id_str).map_err(|_| (StatusCode::BAD_REQUEST, "Bad Request".to_owned()))?;
     let url = format!("/files{}", request.uri().path_and_query().unwrap());
     let metadata = if ctx.security.verify_signed_url(&url) {
         let metadata = ctx
@@ -78,7 +77,7 @@ pub async fn download(
         }
         metadata.unwrap()
     } else {
-        ctx.check_metadata_action_principal(&principal, &id, PermissionAction::View)
+        ctx.check_metadata_content_action_principal(&principal, &id, PermissionAction::View)
             .await
             .map_err(|_| (StatusCode::FORBIDDEN, "Forbidden".to_owned()))?
     };

@@ -1,6 +1,13 @@
 fragment MetadataRelationshipMetadata on Metadata {
     id
+    version
     name
+    public
+    publicContent
+    workflow {
+        pending
+        state
+    }
 }
 
 fragment MetadataRelationship on MetadataRelationship {

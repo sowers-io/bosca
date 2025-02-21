@@ -1,0 +1,9 @@
+query GetCollectionMetadataRelationships($id: String!) {
+    content {
+        collection(id: $id) {
+            metadataRelationships {
+                ...CollectionMetadataRelationship
+            }
+        }
+    }
+}

@@ -6,11 +6,16 @@ import {
   CardHeader,
   CardTitle,
 } from '~/components/ui/card'
-import type { MetadataFragment } from '~/lib/graphql/graphql.ts'
+import type {MetadataFragment} from '~/lib/graphql/graphql.ts'
+import EditorViewOnly from "~/components/content/metadata/editor/EditorViewOnly.vue";
 
-defineProps<{
+const props = defineProps<{
   metadata: MetadataFragment
 }>()
+
+const client = useBoscaClient()
+const document = props.metadata.content.type === 'bosca/v-document' ? await client.metadata.getDocument(props.metadata.id) : null
+
 </script>
 
 <template>
@@ -22,17 +27,20 @@ defineProps<{
     <CardContent>
       <template v-if="metadata.content.type.startsWith('image/')">
         <img
-          :src="metadata.content.urls.download.url"
-          class="overflow-hidden rounded-md"
+            :src="metadata.content.urls.download.url"
+            class="overflow-hidden rounded-md"
         />
       </template>
       <template
-        v-if="
+          v-if="
           metadata.content.type.startsWith('audio/') ||
           metadata.content.type.startsWith('video/')
         "
       >
-        <MediaPlayer :metadata="metadata" />
+        <MediaPlayer :metadata="metadata"/>
+      </template>
+      <template v-if="document">
+        <EditorViewOnly :metadata="metadata" :document="document"/>
       </template>
     </CardContent>
   </Card>

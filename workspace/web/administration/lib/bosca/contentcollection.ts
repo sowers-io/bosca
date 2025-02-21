@@ -5,13 +5,13 @@ import {
   AddMetadataCollectionDocument,
   BeginCollectionTransitionDocument,
   type CollectionFragment,
-  type CollectionInput,
+  type CollectionInput, type CollectionMetadataRelationshipFragment,
   DeleteCollectionDocument,
   ExtensionFilterType,
   type FindAttributeInput,
   FindCollectionDocument,
   GetCollectionDocument,
-  GetCollectionListDocument,
+  GetCollectionListDocument, GetCollectionMetadataRelationshipsDocument,
   GetCollectionParentsDocument,
   type MetadataFragment,
   type ParentCollectionFragment,
@@ -108,6 +108,13 @@ export class ContentCollections<T extends NetworkClient> extends Api<T> {
       id: id,
     })
     return response?.content.collection as CollectionFragment | null
+  }
+
+  async getRelationships(id: string): Promise<CollectionMetadataRelationshipFragment[] | null> {
+    const response = await this.network.execute(GetCollectionMetadataRelationshipsDocument, {
+      id: id,
+    })
+    return response?.content?.collection?.metadataRelationships as CollectionMetadataRelationshipFragment[] | null
   }
 
   getAsyncData(

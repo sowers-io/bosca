@@ -1,0 +1,7 @@
+fragment CollectionMetadataRelationship on CollectionMetadataRelationship {
+    metadata {
+        ...MetadataRelationshipMetadata
+    }
+    relationship
+    attributes
+}

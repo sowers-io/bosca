@@ -67,9 +67,14 @@ export async function save(
     if (attr) {
       switch (attr.ui) {
         case AttributeUiType.Collection: {
-          const collections = attr.value
-          if (!collections) continue
-          for (const collection of collections) {
+          if (attr.list) {
+            const collections = attr.value
+            if (!collections) continue
+            for (const collection of collections) {
+              await client.collections.addMetadata(collection.id, metadata.id)
+            }
+          } else if (attr.value) {
+            const collection = attr.value as CollectionIdNameFragment
             await client.collections.addMetadata(collection.id, metadata.id)
           }
           break

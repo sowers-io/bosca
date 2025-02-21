@@ -56,6 +56,28 @@ impl BoscaContext {
         }
     }
 
+    pub async fn check_metadata_content_action_principal(&self, principal: &Principal, id: &Uuid, action: PermissionAction) -> Result<Metadata, Error> {
+        match self.content.metadata.get(id).await? {
+            Some(metadata) => {
+                if !self.content
+                    .metadata_permissions
+                    .has_metadata_content_permission(&metadata, principal, action)
+                    .await?
+                {
+                    let admin = self.security.get_administrators_group().await?;
+                    if !self.principal.has_group(&admin.id) {
+                        return Err(Error::new("invalid permissions"));
+                    }
+                }
+                Ok(metadata)
+            }
+            None => Err(Error::new(format!(
+                "metadata not found: {}",
+                id
+            ))),
+        }
+    }
+
     pub async fn check_metadata_action(&self, id: &Uuid, action: PermissionAction) -> Result<Metadata, Error> {
         match self.content.metadata.get(id).await? {
             Some(metadata) => {

@@ -8,6 +8,7 @@ import type { BoscaClient } from '~/lib/bosca/client.ts'
 export class AttributeState {
   readonly key: string
   readonly ui: AttributeUiType
+  readonly list: boolean
   readonly name: string
   readonly description: string
   readonly configuration: any
@@ -19,6 +20,7 @@ export class AttributeState {
   constructor(
     key: string,
     ui: AttributeUiType,
+    list: boolean,
     name: string,
     description: string,
     configuration: any,
@@ -26,6 +28,7 @@ export class AttributeState {
   ) {
     this.key = key
     this.ui = ui
+    this.list = list
     this.name = name
     this.description = description
     this.configuration = configuration
@@ -94,6 +97,7 @@ export function newAttributeState(
   return new AttributeState(
     attribute.key,
     attribute.ui,
+    attribute.list,
     attribute.name,
     attribute.description,
     attribute.configuration,

@@ -142,9 +142,9 @@ impl MetadataWorkflowsDataStore {
         ctx: &BoscaContext,
         metadata: &Metadata,
         configurations: Option<Vec<WorkflowConfigurationInput>>,
-    ) -> Result<(), Error> {
+    ) -> Result<bool, Error> {
         if metadata.ready.is_some() {
-            return Err(Error::new("metadata already ready"));
+            return Ok(false);
         }
 
         self.validate(ctx, &metadata.id, metadata.version).await?;
@@ -171,6 +171,6 @@ impl MetadataWorkflowsDataStore {
             )
             .await?;
         self.on_metadata_changed(&metadata.id).await?;
-        Ok(())
+        Ok(true)
     }
 }

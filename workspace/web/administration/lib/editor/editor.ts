@@ -18,10 +18,11 @@ import { type EditorEvents } from '@tiptap/core'
 
 export function newEditor(
   document: BoscaDocument,
-  template: DocumentTemplateFragment | null,
   metadata: MetadataFragment,
-  uploader: Uploader,
-  onUpdate: (props: EditorEvents['update']) => void,
+  template: DocumentTemplateFragment | null = null,
+  uploader: Uploader | null = null,
+  onUpdate: ((props: EditorEvents['update']) => void) | null = null,
+  editable: boolean = true,
 ) {
   const templateContent = template?.configuration?.content
     ? toRaw(template?.configuration?.content)
@@ -53,7 +54,7 @@ export function newEditor(
     : null
   return useEditor({
     content: content,
-    editable: metadata.workflow.state === 'draft',
+    editable: metadata.workflow.state === 'draft' && editable,
     extensions: [
       CustomDocument,
       StarterKit.configure({ document: false }),
@@ -75,7 +76,11 @@ export function newEditor(
         suggestion: Suggestion,
       }),
     ],
-    onUpdate: onUpdate,
+    onUpdate: (ev) => {
+      if (onUpdate) {
+        onUpdate(ev)
+      }
+    },
     editorProps: {
       attributes: {
         class:
@@ -93,6 +98,7 @@ export function newEditor(
           }
         }
         async function doUpload() {
+          if (!uploader) return
           toast({ title: 'Uploading files, please wait...' })
           try {
             const metadataIds = await uploader.upload(files)
