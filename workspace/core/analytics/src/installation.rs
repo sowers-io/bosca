@@ -57,7 +57,7 @@ impl Installation {
             let node_id = *node_id();
             let cleared_msb = random_msb & !(((1 << NODE_BITS) - 1) << (16 - NODE_BITS));
             let node_msb = cleared_msb | (node_id << (16 - NODE_BITS));
-            let msb = timebits << 16 | u64::from(node_msb);
+            let msb = (timebits << 16) | u64::from(node_msb);
             let id = Ulid::from((msb, lsb));
             if last_creation.millis != timestamp {
                 last_creation.millis = timestamp;

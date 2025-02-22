@@ -14,7 +14,7 @@ impl DocumentTemplatesObject {
             .get_templates()
             .await?
             .into_iter()
-            .map(|t| DocumentTemplateObject::new(t))
+            .map(DocumentTemplateObject::new)
             .collect())
     }
 }

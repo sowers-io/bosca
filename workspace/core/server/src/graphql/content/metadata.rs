@@ -186,7 +186,7 @@ impl MetadataObject {
             .documents
             .get_template(&self.metadata.id, self.metadata.version)
             .await?;
-        Ok(document.map(|t| DocumentTemplateObject::new(t)))
+        Ok(document.map(DocumentTemplateObject::new))
     }
 
     async fn collection_template(
@@ -199,7 +199,7 @@ impl MetadataObject {
             .collection_templates
             .get_template(&self.metadata.id, self.metadata.version)
             .await?;
-        Ok(document.map(|t| CollectionTemplateObject::new(t)))
+        Ok(document.map(CollectionTemplateObject::new))
     }
 
     async fn profiles(&self, ctx: &Context<'_>) -> Result<Vec<MetadataProfileObject>, Error> {

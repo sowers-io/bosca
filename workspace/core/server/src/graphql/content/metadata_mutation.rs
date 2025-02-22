@@ -738,15 +738,12 @@ impl MetadataMutationObject {
             .metadata
             .set_uploaded(&metadata_id, &None, &content_type, len)
             .await?;
-        if ready.is_some() && ready.unwrap() && metadata.ready.is_none() {
-            if !ctx
+        if ready.is_some() && ready.unwrap() && metadata.ready.is_none() && !ctx
                 .content
                 .metadata_workflows
                 .set_metadata_ready_and_enqueue(ctx, &metadata, configurations)
-                .await?
-            {
-                return Ok(false);
-            }
+                .await? {
+            return Ok(false);
         }
         Ok(true)
     }
@@ -765,10 +762,10 @@ impl MetadataMutationObject {
         if metadata.ready.is_some() {
             return Ok(false);
         }
-        Ok(ctx
+        ctx
             .content
             .metadata_workflows
             .set_metadata_ready_and_enqueue(ctx, &metadata, configurations)
-            .await?)
+            .await
     }
 }

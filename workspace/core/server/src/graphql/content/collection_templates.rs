@@ -14,7 +14,7 @@ impl CollectionTemplatesObject {
             .get_templates()
             .await?
             .into_iter()
-            .map(|t| CollectionTemplateObject::new(t))
+            .map(CollectionTemplateObject::new)
             .collect())
     }
 }

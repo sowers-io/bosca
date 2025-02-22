@@ -471,7 +471,7 @@ impl MetadataDataStore {
 
     fn index_document(&self, ctx: &BoscaContext, id: &Uuid, metadata: &MetadataInput) {
         let new_ctx = ctx.clone();
-        let id = id.clone();
+        let id = *id;
         let metadata = metadata.clone();
         tokio::spawn(async move {
             if metadata.index.unwrap_or(true) {

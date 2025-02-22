@@ -142,7 +142,7 @@ impl ContentObject {
         extension_filter: Option<ExtensionFilterType>,
     ) -> Result<i64, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        Ok(ctx
+        ctx
             .content
             .metadata
             .find_count(
@@ -151,7 +151,7 @@ impl ContentObject {
                 category_ids.map(|c| c.iter().map(|c| Uuid::parse_str(c).unwrap()).collect()),
                 extension_filter,
             )
-            .await?)
+            .await
     }
 
     async fn metadata(
