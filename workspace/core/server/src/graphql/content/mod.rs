@@ -27,3 +27,7 @@ pub mod category_mutation;
 pub mod categories;
 pub mod sources;
 pub mod document_templates;
+pub mod collection_template;
+pub mod collection_attribute_object;
+pub mod collection_attribute_workflow_object;
+pub mod collection_templates;

@@ -13,6 +13,7 @@ use deadpool_postgres::Pool;
 use std::sync::Arc;
 use uuid::Uuid;
 use crate::datastores::content::categories::CategoriesDataStore;
+use crate::datastores::content::collection_templates::CollectionTemplatesDataStore;
 
 #[derive(Clone)]
 pub struct ContentDataStore {
@@ -22,6 +23,7 @@ pub struct ContentDataStore {
     pub collections: CollectionsDataStore,
     pub collection_permissions: CollectionPermissionsDataStore,
     pub collection_workflows: CollectionWorkflowsDataStore,
+    pub collection_templates: CollectionTemplatesDataStore,
     pub metadata: MetadataDataStore,
     pub metadata_permissions: MetadataPermissionsDataStore,
     pub metadata_workflows: MetadataWorkflowsDataStore,
@@ -38,6 +40,10 @@ impl ContentDataStore {
                 Arc::clone(&notifier),
             ),
             collection_workflows: CollectionWorkflowsDataStore::new(
+                Arc::clone(&pool),
+                Arc::clone(&notifier),
+            ),
+            collection_templates: CollectionTemplatesDataStore::new(
                 Arc::clone(&pool),
                 Arc::clone(&notifier),
             ),

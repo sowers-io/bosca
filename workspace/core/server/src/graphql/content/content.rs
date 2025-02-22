@@ -11,6 +11,7 @@ use crate::models::security::permission::PermissionAction;
 use async_graphql::*;
 use std::str::FromStr;
 use uuid::Uuid;
+use crate::graphql::content::collection_templates::CollectionTemplatesObject;
 
 pub struct ContentObject {}
 
@@ -209,6 +210,10 @@ impl ContentObject {
 
     async fn document_templates(&self) -> DocumentTemplatesObject {
         DocumentTemplatesObject {}
+    }
+
+    async fn collection_templates(&self) -> CollectionTemplatesObject {
+        CollectionTemplatesObject {}
     }
 
     async fn categories(&self) -> CategoriesObject {

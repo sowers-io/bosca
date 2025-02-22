@@ -20,3 +20,6 @@ pub mod document;
 pub mod document_template_attribute_workflow;
 pub mod category;
 pub mod collection_metadata_relationship;
+pub mod collection_template;
+pub mod collection_template_attributes;
+pub mod collection_template_attribute_workflow;

@@ -9,3 +9,4 @@ pub mod metadata_permissions;
 pub mod metadata_workflows;
 pub mod documents;
 pub mod categories;
+pub mod collection_templates;

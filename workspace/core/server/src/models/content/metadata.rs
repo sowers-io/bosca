@@ -11,6 +11,7 @@ use std::error::Error;
 use std::fmt::Debug;
 use tokio_postgres::Row;
 use uuid::Uuid;
+use crate::models::content::collection_template::CollectionTemplateInput;
 
 #[derive(Enum, Debug, Copy, Clone, Eq, PartialEq)]
 pub enum MetadataType {
@@ -99,6 +100,7 @@ pub struct MetadataInput {
     pub attributes: Option<Value>,
     pub document: Option<DocumentInput>,
     pub document_template: Option<DocumentTemplateInput>,
+    pub collection_template: Option<CollectionTemplateInput>,
     pub state: Option<MetadataWorkflowInput>,
     pub source: Option<MetadataSourceInput>,
     pub profiles: Option<Vec<MetadataProfileInput>>,

@@ -67,6 +67,12 @@ impl MetadataMutationObject {
                 .add_template(&new_metadata.id, new_metadata.version, document_template)
                 .await?;
         }
+        if let Some(collection_template) = &metadata.collection_template {
+            ctx.content
+                .collection_templates
+                .add_template(&new_metadata.id, new_metadata.version, collection_template)
+                .await?;
+        }
         Ok(new_metadata.into())
     }
 
@@ -102,6 +108,12 @@ impl MetadataMutationObject {
             ctx.content
                 .documents
                 .edit_template(&id, version, document_template)
+                .await?;
+        }
+        if let Some(collection_template) = &metadata.collection_template {
+            ctx.content
+                .collection_templates
+                .edit_template(&id, version, collection_template)
                 .await?;
         }
         match ctx.content.metadata.get(&id).await? {

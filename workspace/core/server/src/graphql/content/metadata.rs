@@ -16,6 +16,7 @@ use crate::models::security::permission::{Permission, PermissionAction};
 use async_graphql::{Context, Error, Object};
 use chrono::{DateTime, Utc};
 use serde_json::Value;
+use crate::graphql::content::collection_template::CollectionTemplateObject;
 
 pub struct MetadataObject {
     metadata: Metadata,
@@ -186,6 +187,19 @@ impl MetadataObject {
             .get_template(&self.metadata.id, self.metadata.version)
             .await?;
         Ok(document.map(|t| DocumentTemplateObject::new(t)))
+    }
+
+    async fn collection_template(
+        &self,
+        ctx: &Context<'_>,
+    ) -> Result<Option<CollectionTemplateObject>, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let document = ctx
+            .content
+            .collection_templates
+            .get_template(&self.metadata.id, self.metadata.version)
+            .await?;
+        Ok(document.map(|t| CollectionTemplateObject::new(t)))
     }
 
     async fn profiles(&self, ctx: &Context<'_>) -> Result<Vec<MetadataProfileObject>, Error> {
