@@ -1,6 +1,6 @@
-query FindMetadata($attributes: [FindAttributeInput!]!, $extension: ExtensionFilterType, $categoryIds: [String!], $contentTypes: [String!], $offset: Int!, $limit: Int!) {
+query FindMetadata($query: FindQuery!) {
     content {
-        findMetadata(attributes: $attributes, extensionFilter: $extension, categoryIds: $categoryIds, contentTypes: $contentTypes, offset: $offset, limit: $limit) {
+        findMetadata(query: $query) {
             ...Metadata
         }
     }

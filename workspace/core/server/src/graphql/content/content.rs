@@ -1,6 +1,7 @@
 use crate::context::BoscaContext;
 use crate::graphql::content::categories::CategoriesObject;
 use crate::graphql::content::collection::CollectionObject;
+use crate::graphql::content::collection_templates::CollectionTemplatesObject;
 use crate::graphql::content::document_templates::DocumentTemplatesObject;
 use crate::graphql::content::metadata::MetadataObject;
 use crate::graphql::content::sources::SourcesObject;
@@ -11,7 +12,6 @@ use crate::models::security::permission::PermissionAction;
 use async_graphql::*;
 use std::str::FromStr;
 use uuid::Uuid;
-use crate::graphql::content::collection_templates::CollectionTemplatesObject;
 
 pub struct ContentObject {}
 
@@ -19,6 +19,27 @@ pub struct ContentObject {}
 pub struct FindAttributeInput {
     pub key: String,
     pub value: String,
+}
+
+#[derive(InputObject)]
+pub struct FindQuery {
+    pub attributes: Vec<Vec<FindAttributeInput>>,
+    pub content_types: Option<Vec<String>>,
+    pub category_ids: Option<Vec<String>>,
+    pub extension_filter: Option<ExtensionFilterType>,
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
+}
+
+impl FindQuery {
+    pub fn get_category_uuids(&self) -> Option<Vec<Uuid>> {
+        self.category_ids.clone().map(|category_ids| {
+            category_ids
+                .iter()
+                .map(|id| Uuid::parse_str(id).unwrap())
+                .collect()
+        })
+    }
 }
 
 #[derive(Union)]
@@ -66,21 +87,13 @@ impl ContentObject {
     async fn find_collection(
         &self,
         ctx: &Context<'_>,
-        attributes: Vec<FindAttributeInput>,
-        category_ids: Option<Vec<String>>,
-        limit: i64,
-        offset: i64,
+        mut query: FindQuery,
     ) -> Result<Vec<CollectionObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         Ok(ctx
             .content
             .collections
-            .find(
-                &attributes,
-                category_ids.map(|c| c.iter().map(|c| Uuid::parse_str(c).unwrap()).collect()),
-                limit,
-                offset,
-            )
+            .find(&mut query)
             .await?
             .into_iter()
             .map(CollectionObject::new)
@@ -108,25 +121,13 @@ impl ContentObject {
     async fn find_metadata(
         &self,
         ctx: &Context<'_>,
-        attributes: Vec<FindAttributeInput>,
-        content_types: Option<Vec<String>>,
-        category_ids: Option<Vec<String>>,
-        extension_filter: Option<ExtensionFilterType>,
-        limit: i64,
-        offset: i64,
+        mut query: FindQuery,
     ) -> Result<Vec<MetadataObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         Ok(ctx
             .content
             .metadata
-            .find(
-                &attributes,
-                &content_types,
-                category_ids.map(|c| c.iter().map(|c| Uuid::parse_str(c).unwrap()).collect()),
-                extension_filter,
-                limit,
-                offset,
-            )
+            .find(&mut query)
             .await?
             .into_iter()
             .map(MetadataObject::new)
@@ -136,22 +137,10 @@ impl ContentObject {
     async fn find_metadata_count(
         &self,
         ctx: &Context<'_>,
-        attributes: Vec<FindAttributeInput>,
-        content_types: Option<Vec<String>>,
-        category_ids: Option<Vec<String>>,
-        extension_filter: Option<ExtensionFilterType>,
+        mut query: FindQuery,
     ) -> Result<i64, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        ctx
-            .content
-            .metadata
-            .find_count(
-                &attributes,
-                &content_types,
-                category_ids.map(|c| c.iter().map(|c| Uuid::parse_str(c).unwrap()).collect()),
-                extension_filter,
-            )
-            .await
+        ctx.content.metadata.find_count(&mut query).await
     }
 
     async fn metadata(
