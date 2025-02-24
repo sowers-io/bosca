@@ -117,6 +117,33 @@ type CollectionMutation {
     setWorkflowStateComplete(state: CollectionWorkflowCompleteState!): Boolean!
 }
 
+type CollectionTemplate {
+    attributes: [CollectionTemplateAttribute!]!
+    configuration: JSON
+    metadata: Metadata
+}
+
+type CollectionTemplateAttribute {
+    configuration: JSON
+    description: String!
+    key: String!
+    list: Boolean!
+    name: String!
+    supplementaryKey: String
+    type: AttributeType!
+    ui: AttributeUiType!
+    workflows: [CollectionTemplateAttributeWorkflow!]!
+}
+
+type CollectionTemplateAttributeWorkflow {
+    autoRun: Boolean!
+    workflow: Workflow
+}
+
+type CollectionTemplates {
+    all: [CollectionTemplate!]!
+}
+
 type CollectionWorkflow {
     deleteWorkflow: String
     pending: String
@@ -150,6 +177,7 @@ type ConfigurationsMutation {
 type Content {
     categories: Categories!
     collection(id: String): Collection
+    collectionTemplates: CollectionTemplates!
     documentTemplates: DocumentTemplates!
     findCollection(attributes: [FindAttributeInput!]!, categoryIds: [String!], limit: Int!, offset: Int!): [Collection!]!
     findMetadata(attributes: [FindAttributeInput!]!, categoryIds: [String!], contentTypes: [String!], extensionFilter: ExtensionFilterType, limit: Int!, offset: Int!): [Metadata!]!
@@ -231,6 +259,7 @@ type LoginResponse {
 type Metadata {
     attributes(filter: AttributesFilterInput): JSON
     categories: [Category!]!
+    collectionTemplate: CollectionTemplate
     content: MetadataContent!
     created: DateTime!
     document: Document
@@ -851,6 +880,7 @@ enum CollectionType {
 }
 
 enum ExtensionFilterType {
+    COLLECTION_TEMPLATE
     DOCUMENT
     DOCUMENT_TEMPLATE
     GUIDE
@@ -977,6 +1007,28 @@ input CollectionMetadataRelationshipInput {
     relationship: String
 }
 
+input CollectionTemplateAttributeInput {
+    configuration: JSON
+    description: String!
+    key: String!
+    list: Boolean!
+    name: String!
+    supplementaryKey: String
+    type: AttributeType!
+    ui: AttributeUiType!
+    workflowIds: [CollectionTemplateAttributeWorkflowInput!]!
+}
+
+input CollectionTemplateAttributeWorkflowInput {
+    autoRun: Boolean!
+    workflowId: String!
+}
+
+input CollectionTemplateInput {
+    attributes: [CollectionTemplateAttributeInput!]!
+    configuration: JSON
+}
+
 input CollectionWorkflowCompleteState {
     collectionId: String!
     status: String!
@@ -1045,6 +1097,7 @@ input MetadataChildInput {
 input MetadataInput {
     attributes: JSON
     categoryIds: [String!]
+    collectionTemplate: CollectionTemplateInput
     contentLength: Int
     contentType: String!
     document: DocumentInput

@@ -6,13 +6,13 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-} from '@/components/ui/command'
+} from '~/components/ui/command'
 
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@/components/ui/popover'
+} from '~/components/ui/popover'
 import { Check } from 'lucide-vue-next'
 import { ref } from 'vue'
 import type { AttributeState } from '~/lib/attribute.ts'

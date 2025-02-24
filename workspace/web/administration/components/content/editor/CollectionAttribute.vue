@@ -1,6 +1,6 @@
 <script lang="ts" setup>
-import type { AttributeState } from '~/lib/attribute'
-import CollectionItem from "~/components/content/metadata/editor/CollectionItem.vue";
+import type { AttributeState } from '~/lib/attribute.ts'
+import CollectionItem from "~/components/content/editor/CollectionItem.vue";
 import type { CollectionIdNameFragment } from "~/lib/graphql/graphql.ts";
 
 const props = defineProps<{

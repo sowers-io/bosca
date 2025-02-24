@@ -1,10 +1,7 @@
 <script lang="ts" setup>
 import type {
   CollectionIdNameFragment,
-  DocumentTemplateAttribute,
-  MetadataProfile,
-  MetadataProfileInput,
-} from '~/lib/graphql/graphql'
+} from '~/lib/graphql/graphql.ts'
 
 import {
   Command,
@@ -12,14 +9,14 @@ import {
   CommandGroup,
   CommandItem,
   CommandList,
-} from '@/components/ui/command'
+} from '~/components/ui/command'
 import {
   TagsInput,
   TagsInputInput,
   TagsInputItem,
   TagsInputItemDelete,
   TagsInputItemText,
-} from '@/components/ui/tags-input'
+} from '~/components/ui/tags-input'
 import {
   ComboboxAnchor,
   ComboboxContent,

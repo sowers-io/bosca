@@ -74,20 +74,24 @@ pub fn build_find_args<'a>(
         }
     }
 
-    match extension_filter {
-        Some(ExtensionFilterType::Document) => {
-            q.push_str(format!(" inner join documents d on ({}.id = d.metadata_id and {}.version = d.version) ", alias, alias).as_str());
+    if let Some(extension_filter) = extension_filter {
+        match extension_filter {
+            ExtensionFilterType::Document => {
+                q.push_str(format!(" inner join documents d on ({}.id = d.metadata_id and {}.version = d.version) ", alias, alias).as_str());
+            }
+            ExtensionFilterType::DocumentTemplate => {
+                q.push_str(format!(" inner join document_templates d on ({}.id = d.metadata_id and {}.version = d.version) ", alias, alias).as_str());
+            }
+            ExtensionFilterType::Guide => {
+                q.push_str(format!(" inner join guides g on ({}.id = g.metadata_id and {}.version = g.version) ", alias, alias).as_str());
+            }
+            ExtensionFilterType::GuideTemplate => {
+                q.push_str(format!(" inner join guide_templates g on ({}.id = g.metadata_id and {}.version = g.version) ", alias, alias).as_str());
+            }
+            ExtensionFilterType::CollectionTemplate => {
+                q.push_str(format!(" inner join collection_templates g on ({}.id = g.metadata_id and {}.version = g.version) ", alias, alias).as_str());
+            }
         }
-        Some(ExtensionFilterType::DocumentTemplate) => {
-            q.push_str(format!(" inner join document_templates d on ({}.id = d.metadata_id and {}.version = d.version) ", alias, alias).as_str());
-        }
-        Some(ExtensionFilterType::Guide) => {
-            q.push_str(format!(" inner join guides g on ({}.id = g.metadata_id and {}.version = g.version) ", alias, alias).as_str());
-        }
-        Some(ExtensionFilterType::GuideTemplate) => {
-            q.push_str(format!(" inner join guide_templates g on ({}.id = g.metadata_id and {}.version = g.version) ", alias, alias).as_str());
-        }
-        _ => {}
     }
 
     if !attributes.is_empty() || (content_types.is_some() && !content_types.as_ref().unwrap().is_empty()) {

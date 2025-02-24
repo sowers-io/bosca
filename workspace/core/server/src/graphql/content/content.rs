@@ -34,6 +34,7 @@ pub enum ExtensionFilterType {
     DocumentTemplate,
     Guide,
     GuideTemplate,
+    CollectionTemplate,
 }
 
 #[Object(name = "Content")]

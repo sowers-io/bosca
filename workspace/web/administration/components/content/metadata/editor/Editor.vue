@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { BubbleMenu, EditorContent, type Range } from '@tiptap/vue-3'
+import {BubbleMenu, EditorContent, type Range} from '@tiptap/vue-3'
 import {
   AttributeUiType,
   type DocumentFragment,
@@ -9,14 +9,14 @@ import {
   type MetadataRelationshipFragment,
   type ParentCollectionFragment,
 } from '@/lib/graphql/graphql'
-import { toast } from '~/components/ui/toast'
-import { Uploader } from '@/lib/uploader'
-import { hideAll } from 'tippy.js'
-import { CommandItems, OpenMediaPickerEvent } from '@/lib/editor/commanditems'
-import { AttributeState, newAttributeState } from '~/lib/attribute.ts'
-import { save } from '~/lib/editor/save.ts'
-import { newEditor } from '~/lib/editor/editor.ts'
-import type { WatchSource } from 'vue'
+import {toast} from '~/components/ui/toast'
+import {Uploader} from '@/lib/uploader'
+import {hideAll} from 'tippy.js'
+import {CommandItems, OpenMediaPickerEvent} from '@/lib/editor/commanditems'
+import {AttributeState, newAttributeState} from '~/lib/attribute.ts'
+import {save} from '~/lib/editor/save.ts'
+import {newEditor} from '~/lib/editor/editor.ts'
+import type {WatchSource} from 'vue'
 
 const client = useBoscaClient()
 const uploader = new Uploader(client)
@@ -31,8 +31,8 @@ const props = defineProps<{
   hasChanges: boolean
 }>()
 
-const metadata = defineModel('metadata', { type: Object, default: null })
-const hasChanges = defineModel('hasChanges', { type: Boolean, default: null })
+const metadata = defineModel('metadata', {type: Object, default: null})
+const hasChanges = defineModel('hasChanges', {type: Boolean, default: null})
 const hasDocChanges = ref(false)
 const title = ref(props.metadata.name)
 const attributes = reactive(new Map<string, AttributeState>())
@@ -41,7 +41,7 @@ function isEqual(a: any, b: any) {
   if (!a && !b) return true
   if (a === b) return true
   return typeof a === 'string' && a.length === 0 && !b ||
-    typeof b === 'string' && b.length === 0 && !a
+      typeof b === 'string' && b.length === 0 && !a
 }
 
 function updateHasChanges() {
@@ -62,11 +62,11 @@ function updateHasChanges() {
           break
         case AttributeUiType.Profile:
           if (
-            !isEqual(
-              attr.value?.profileId,
-              props.metadata.profiles.find((p) => p.relationship === attr.key)
-                ?.profile?.id,
-            )
+              !isEqual(
+                  attr.value?.profileId,
+                  props.metadata.profiles.find((p) => p.relationship === attr.key)
+                      ?.profile?.id,
+              )
           ) {
             changes = true
           }
@@ -92,7 +92,7 @@ function updateHasChanges() {
           const metadataId = toRaw(attr.value)?.metadata?.id
           const relationship = attr.configuration.relationship
           const currId = props.relationships.find((r) =>
-            r.relationship === relationship
+              r.relationship === relationship
           )?.metadata?.id
           if (!isEqual(metadataId, currId)) {
             changes = true
@@ -127,7 +127,7 @@ async function updateAttributes() {
       attr = newAttributeState(attribute as DocumentTemplateAttribute)
       attributes.set(attribute.key, reactive(attr) as AttributeState)
       const attrRef = attributes.get(attribute.key) as unknown as WatchSource<
-        AttributeState
+          AttributeState
       >
       const key = attr.key
       const cfg = attr.configuration
@@ -139,7 +139,7 @@ async function updateAttributes() {
           break
         case AttributeUiType.Profile:
           const profile = props.metadata.profiles.find((p) =>
-            p.relationship === cfg.relationship
+              p.relationship === cfg.relationship
           )
           if (profile?.profile?.id) {
             attr.value = {
@@ -158,7 +158,7 @@ async function updateAttributes() {
         case AttributeUiType.Image:
         case AttributeUiType.File:
           const r = props.relationships.find((r) =>
-            r.relationship === attr?.configuration.relationship
+              r.relationship === attr?.configuration.relationship
           )
           if (r) {
             attr.value = {
@@ -173,18 +173,18 @@ async function updateAttributes() {
 }
 
 const editor = newEditor(
-  props.document,
-  props.metadata,
-  props.template,
-  uploader,
-  ({ editor, transaction }) => {
-    if (transaction.docChanged) {
-      hasDocChanges.value = true
-      hasChanges.value = true
-    }
-    const node = editor.view.dom.childNodes[0]
-    title.value = node ? (node as HTMLElement)?.innerText : ''
-  },
+    props.document,
+    props.metadata,
+    props.template,
+    uploader,
+    ({editor, transaction}) => {
+      if (transaction.docChanged) {
+        hasDocChanges.value = true
+        hasChanges.value = true
+      }
+      const node = editor.view.dom.childNodes[0]
+      title.value = node ? (node as HTMLElement)?.innerText : ''
+    },
 )
 
 let pendingRange: Range | null | undefined = null
@@ -210,15 +210,15 @@ async function onRunWorkflow(attribute: AttributeState) {
   const attr = props.template?.attributes?.find((a) => a.key === attribute.key)
   for (const workflow of attr?.workflows || []) {
     await client.workflows.enqueueMetadataWorkflow(
-      workflow.workflow!.id,
-      props.metadata.id,
-      props.metadata.version,
+        workflow.workflow!.id,
+        props.metadata.id,
+        props.metadata.version,
     )
     if (workflows.length > 0) workflows += ', '
     workflows += workflow.workflow!.name
   }
   attribute.loading = true
-  toast({ title: 'Executing: ' + attribute.description })
+  toast({title: 'Executing: ' + attribute.description})
 }
 
 async function onAddMedia(id: string) {
@@ -230,13 +230,13 @@ async function onAddMedia(id: string) {
     pendingRange = null
   }
   chain
-    .setImage({
-      src: '/content/image?id=' + id,
-      metadataId: id,
-    })
-    .setTextSelection(e.state.selection.to + 1)
-    .insertContent({ type: 'paragraph' })
-    .run()
+      .setImage({
+        src: '/content/image?id=' + id,
+        metadataId: id,
+      })
+      .setTextSelection(e.state.selection.to + 1)
+      .insertContent({type: 'paragraph'})
+      .run()
   mediaDialogOpen.value = false
 }
 
@@ -252,15 +252,15 @@ async function onSave() {
   const e = editor.value
   if (!e || !props.document) return
   await save(
-    client,
-    props.document,
-    props.metadata,
-    props.template,
-    props.parents,
-    title.value,
-    props.relationships,
-    attributes,
-    e.state.doc.toJSON(),
+      client,
+      props.document,
+      props.metadata,
+      props.template,
+      props.parents,
+      title.value,
+      props.relationships,
+      attributes,
+      e.state.doc.toJSON(),
   )
 }
 
@@ -268,8 +268,8 @@ async function onReset() {
   attributes.clear()
   await updateAttributes()
   const content = props.document.content?.document
-    ? toRaw(props.document.content?.document)
-    : null
+      ? toRaw(props.document.content?.document)
+      : null
   editor.value!.commands.setContent(content)
   hasDocChanges.value = false
   hasChanges.value = false
@@ -309,7 +309,7 @@ client.listeners.onMetadataSupplementaryChanged(async (id, key) => {
       const wasLoading = attribute.loading
       attribute.setSupplementaryValue(client, id, key)
       if (wasLoading && !attribute.loading) {
-        toast({ title: 'Finished: ' + attr.description })
+        toast({title: 'Finished: ' + attr.description})
       }
       break
     }
@@ -322,15 +322,15 @@ const editable = computed(() => props.metadata.workflow.state === 'draft')
 <template>
   <div class="w-full h-full" v-if="editor">
     <bubble-menu
-      class="flex border bg-background gap-1 rounded-md p-1 drop-shadow-xl ms-2 w-442px"
-      :tippy-options="{ duration: 100, offset: [0, 20] }"
-      :editor="editor"
+        class="flex border bg-background gap-1 rounded-md p-1 drop-shadow-xl ms-2 w-442px"
+        :tippy-options="{ duration: 100, offset: [0, 20] }"
+        :editor="editor"
     >
       <div class="flex items-center space-x-2">
         <button
-          v-for="(item, index) in CommandItems"
-          :key="index.toString() + '-' + item.name"
-          :class="
+            v-for="(item, index) in CommandItems"
+            :key="index.toString() + '-' + item.name"
+            :class="
             {
               'items-center justify-center inline-flex size-8 rounded-md':
                 true,
@@ -341,84 +341,36 @@ const editable = computed(() => props.metadata.workflow.state === 'draft')
                   editor.isActive(item.attributes || {}),
             }
           "
-          @click="item.command({ editor })"
+            @click="item.command({ editor })"
         >
-          <Icon :name="item.icon" class="h-4 w-4" />
+          <Icon :name="item.icon" class="h-4 w-4"/>
         </button>
       </div>
     </bubble-menu>
 
     <div class="grid grid-cols-3 gap-2 h-full w-full">
-      <editor-content class="col-span-2" :editor="editor" />
+      <editor-content class="col-span-2" :editor="editor"/>
       <div class="min-h-[calc(100dvh-170px)]">
         <div class="bg-accent rounded-md px-4 py-2 h-full">
-          <div v-for="attr in template?.attributes || []" :key="attr.key">
-            <template v-if="attr.ui === AttributeUiType.Collection && attr.list">
-              <ContentMetadataEditorCollectionsAttribute
-                  :collections="parents || []"
-                  :attribute="attributes.get(attr.key) as AttributeState"
-                  :editable="editable"
-                  :workflows-enabled="!hasDocChanges"
-                  :on-run-workflow="onRunWorkflow"
-              />
-            </template>
-            <template v-if="attr.ui === AttributeUiType.Collection && !attr.list">
-              <ContentMetadataEditorCollectionAttribute
-                  :collections="parents || []"
-                  :attribute="attributes.get(attr.key) as AttributeState"
-                  :editable="editable"
-                  :workflows-enabled="!hasDocChanges"
-                  :on-run-workflow="onRunWorkflow"
-              />
-            </template>
-            <template v-if="attr.ui === AttributeUiType.Input">
-              <ContentMetadataEditorInputAttribute
-                :attribute="attributes.get(attr.key) as AttributeState"
-                :editable="editable"
-                :workflows-enabled="!hasDocChanges"
-                :on-run-workflow="onRunWorkflow"
-              />
-            </template>
-            <template v-if="attr.ui === AttributeUiType.Textarea">
-              <ContentMetadataEditorTextAreaAttribute
-                :attribute="attributes.get(attr.key) as AttributeState"
-                :editable="editable"
-                :workflows-enabled="!hasDocChanges"
-                :on-run-workflow="onRunWorkflow"
-              />
-            </template>
-            <template v-if="attr.ui === AttributeUiType.Image">
-              <ContentMetadataEditorImageAttribute
-                :attribute="attributes.get(attr.key) as AttributeState"
-                :editable="editable"
-                :uploader="uploader"
-              />
-            </template>
-            <template v-if="attr.ui === AttributeUiType.File">
-              <ContentMetadataEditorFileAttribute
-                :attribute="attributes.get(attr.key) as AttributeState"
-                :editable="editable"
-                :uploader="uploader"
-              />
-            </template>
-            <template v-if="attr.ui === AttributeUiType.Profile">
-              <ContentMetadataEditorProfileAttribute
-                :attribute="attributes.get(attr.key) as AttributeState"
-                :editable="editable"
-              />
-            </template>
-          </div>
+          <ContentEditorAttributes
+              :parents="parents"
+              :attributes="attributes"
+              :workflows-enabled="!hasDocChanges"
+              :uploader="uploader"
+              :editable="editable"
+              :on-run-workflow="onRunWorkflow"
+          />
         </div>
       </div>
     </div>
     <Dialog v-model:open="mediaDialogOpen">
       <DialogContent
-        class="h-[calc(100dvh-100px)] w-[calc(100dvw-100px)] max-w-full overflow-y-auto"
+          class="h-[calc(100dvh-100px)] w-[calc(100dvw-100px)] max-w-full overflow-y-auto"
       >
         <div class="flex flex-col gap-2 h-full">
           <h1 class="font-bold">Click to Select Your Item</h1>
           <ContentMedia
-            :filter="
+              :filter="
               {
                 mp4: true,
                 webm: true,
@@ -428,7 +380,7 @@ const editable = computed(() => props.metadata.workflow.state === 'draft')
                 webp: true,
               }
             "
-            :on-selected="onAddMedia"
+              :on-selected="onAddMedia"
           />
         </div>
       </DialogContent>
