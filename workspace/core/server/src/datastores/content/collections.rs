@@ -1,7 +1,6 @@
 use crate::context::BoscaContext;
 use crate::datastores::content::util::{build_find_args, build_ordering, build_ordering_names};
 use crate::datastores::notifier::Notifier;
-use crate::graphql::content::content::FindAttributeInput;
 use crate::models::content::category::Category;
 use crate::models::content::collection::{
     Collection, CollectionChild, CollectionChildInput, CollectionInput, CollectionType,
@@ -19,6 +18,7 @@ use std::sync::Arc;
 use tokio_postgres::Statement;
 use uuid::Uuid;
 use crate::models::content::collection_metadata_relationship::{CollectionMetadataRelationship, CollectionMetadataRelationshipInput};
+use crate::models::content::find_query::FindQuery;
 
 #[derive(Clone)]
 pub struct CollectionsDataStore {
@@ -59,28 +59,16 @@ impl CollectionsDataStore {
 
     pub async fn find(
         &self,
-        attributes: &[FindAttributeInput],
-        category_ids: Option<Vec<Uuid>>,
-        limit: i64,
-        offset: i64,
+        query: &mut FindQuery,
     ) -> Result<Vec<Collection>, Error> {
-        let mut limit = limit;
-        if limit > 10000 {
-            // TODO: come up with a reasonable limit... or make it configurable somewhere.
-            limit = 10000;
-        }
         let connection = self.pool.get().await?;
-        let content_types = None::<Vec<String>>;
+        let category_ids = query.get_category_ids();
         let (query, values) = build_find_args(
             "collection",
             "select c.* from collections as c ",
             "c",
-            attributes,
-            &content_types,
+            query,
             &category_ids,
-            None,
-            &offset,
-            &limit,
             false
         );
         let stmt = connection.prepare_cached(query.as_str()).await?;

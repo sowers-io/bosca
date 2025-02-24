@@ -1,7 +1,6 @@
 use crate::context::BoscaContext;
 use crate::datastores::content::util::build_find_args;
 use crate::datastores::notifier::Notifier;
-use crate::graphql::content::content::{ExtensionFilterType, FindAttributeInput};
 use crate::models::content::category::Category;
 use crate::models::content::collection::MetadataChildInput;
 use crate::models::content::metadata::{Metadata, MetadataInput};
@@ -19,6 +18,7 @@ use log::error;
 use serde_json::{Map, Value};
 use std::sync::Arc;
 use uuid::Uuid;
+use crate::models::content::find_query::FindQuery;
 
 #[derive(Clone)]
 pub struct MetadataDataStore {
@@ -64,26 +64,15 @@ impl MetadataDataStore {
         Ok(rows.first().unwrap().get("slug"))
     }
 
-    pub async fn find(
-        &self,
-        attributes: &[FindAttributeInput],
-        content_types: &Option<Vec<String>>,
-        category_ids: Option<Vec<Uuid>>,
-        extension_filter: Option<ExtensionFilterType>,
-        limit: i64,
-        offset: i64,
-    ) -> Result<Vec<Metadata>, Error> {
+    pub async fn find(&self, query: &mut FindQuery) -> Result<Vec<Metadata>, Error> {
         let connection = self.pool.get().await?;
+        let category_ids = query.get_category_ids();
         let (query, values) = build_find_args(
             "metadata",
             "select m.* from metadata m ",
             "m",
-            attributes,
-            content_types,
+            query,
             &category_ids,
-            extension_filter,
-            &offset,
-            &limit,
             false,
         );
         let stmt = connection.prepare_cached(query.as_str()).await?;
@@ -91,26 +80,15 @@ impl MetadataDataStore {
         Ok(rows.iter().map(|r| r.into()).collect())
     }
 
-    pub async fn find_count(
-        &self,
-        attributes: &[FindAttributeInput],
-        content_types: &Option<Vec<String>>,
-        category_ids: Option<Vec<Uuid>>,
-        extension_filter: Option<ExtensionFilterType>,
-    ) -> Result<i64, Error> {
+    pub async fn find_count(&self, query: &mut FindQuery) -> Result<i64, Error> {
         let connection = self.pool.get().await?;
-        let offset = 0;
-        let limit = 1;
+        let category_ids = query.get_category_ids();
         let (query, values) = build_find_args(
             "metadata",
             "select count(*) as count from metadata m ",
             "m",
-            attributes,
-            content_types,
+            query,
             &category_ids,
-            extension_filter,
-            &offset,
-            &limit,
             true,
         );
         let stmt = connection.prepare_cached(query.as_str()).await?;

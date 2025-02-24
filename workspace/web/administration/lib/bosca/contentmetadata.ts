@@ -6,13 +6,12 @@ import {
   AddMetadataRelationshipDocument,
   AddMetadataTraitDocument,
   BeginMetadataTransitionDocument,
-  type CollectionIdNameFragment,
   DeleteMetadataDocument,
   type DocumentFragment,
   type DocumentTemplateFragment,
   EditMetadataDocument,
   ExtensionFilterType,
-  type FindAttributeInput,
+  type FindAttributes,
   FindMetadataCountDocument,
   FindMetadataDocument,
   GetMetadataDocument,
@@ -136,9 +135,17 @@ export class ContentMetadata<T extends NetworkClient> extends Api<T> {
     limit: Ref<number>,
   ): AsyncData<MetadataFragment[] | null, any> {
     const contentTypes = this.getContentTypes(filter)
+    const query = computed(() => {
+      return {
+        attributes: [],
+        contentTypes: contentTypes.value,
+        offset: offset.value,
+        limit: limit.value,
+      }
+    })
     return this.executeAndTransformAsyncData(
       FindMetadataDocument,
-      { attributes: [], contentTypes, offset, limit },
+      { query: query },
       (data) => {
         if (!data) return null
         return data.content.findMetadata as MetadataFragment[]
@@ -150,9 +157,15 @@ export class ContentMetadata<T extends NetworkClient> extends Api<T> {
     filter: Ref<ContentTypeFilter>,
   ): AsyncData<number | null, any> {
     const contentTypes = this.getContentTypes(filter)
+    const query = computed(() => {
+      return {
+        attributes: [],
+        contentTypes: contentTypes.value,
+      }
+    })
     return this.executeAndTransformAsyncData(
       FindMetadataCountDocument,
-      { attributes: [], contentTypes },
+      { query: query },
       (data) => {
         if (!data) return 0
         return data.content.findMetadataCount || 0
@@ -320,8 +333,8 @@ export class ContentMetadata<T extends NetworkClient> extends Api<T> {
 
   findAsyncData(query: {
     attributes?:
-      | Array<FindAttributeInput>
-      | Ref<Array<FindAttributeInput>>
+      | Array<FindAttributes>
+      | Ref<Array<FindAttributes>>
       | null
     extension?: ExtensionFilterType | Ref<ExtensionFilterType> | null
     categoryIds?: Array<string> | Ref<string[]> | null
@@ -329,15 +342,21 @@ export class ContentMetadata<T extends NetworkClient> extends Api<T> {
     offset?: number | Ref<number>
     limit?: number | Ref<number>
   }): AsyncData<MetadataFragment[] | null, any> {
+    const q = computed(() => {
+      return {
+        attributes: unref(query.attributes),
+        extension: unref(query.extension),
+        categoryIds: unref(query.categoryIds),
+        // @ts-ignore: this should be fine
+        contentTypes: unref(query.contentTypes),
+        offset: unref(query.offset),
+        limit: unref(query.limit),
+      }
+    })
     return this.executeAndTransformAsyncData(
       FindMetadataDocument,
       {
-        attributes: query.attributes,
-        extension: query.extension,
-        categoryIds: query.categoryIds,
-        contentTypes: query.contentTypes,
-        offset: query.offset,
-        limit: query.limit,
+        query: q
       },
       (data) => {
         if (!data) return null

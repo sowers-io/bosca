@@ -39,6 +39,10 @@ impl DocumentTemplateObject {
         &self.template.content
     }
 
+    pub async fn default_attributes(&self) -> &Option<Value> {
+        &self.template.default_attributes
+    }
+
     pub async fn attributes(
         &self,
         ctx: &Context<'_>,

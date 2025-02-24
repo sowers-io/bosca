@@ -1,8 +1,9 @@
 create table collection_templates
 (
-    metadata_id   uuid not null,
-    version       int  not null,
-    configuration jsonb,
+    metadata_id        uuid not null,
+    version            int  not null,
+    configuration      jsonb,
+    default_attributes jsonb,
     primary key (metadata_id, version),
     foreign key (metadata_id) references metadata (id) on delete cascade
 );
@@ -41,4 +42,5 @@ alter table collections
 alter table collections
     add column template_metadata_version int;
 
-alter table collections add foreign key (template_metadata_id, template_metadata_version) references collection_templates (metadata_id, version) on delete set null;
+alter table collections
+    add foreign key (template_metadata_id, template_metadata_version) references collection_templates (metadata_id, version) on delete set null;

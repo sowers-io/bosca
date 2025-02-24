@@ -10,6 +10,7 @@ pub struct DocumentTemplate {
     pub version: i32,
     pub configuration: Option<Value>,
     pub schema: Option<Value>,
+    pub default_attributes: Option<Value>,
     pub content: Value,
 }
 
@@ -18,6 +19,7 @@ pub struct DocumentTemplateInput {
     pub attributes: Vec<DocumentTemplateAttributeInput>,
     pub configuration: Option<Value>,
     pub schema: Option<Value>,
+    pub default_attributes: Option<Value>,
     pub content: Value,
 }
 
@@ -28,6 +30,7 @@ impl From<&Row> for DocumentTemplate {
             version: row.get("version"),
             configuration: row.get("configuration"),
             schema: row.get("schema"),
+            default_attributes: row.get("default_attributes"),
             content: row.get("content"),
         }
     }

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { CollectionItem } from '~/lib/bosca/contentcollection'
 import { computedAsync } from '@vueuse/core'
-import type { FindAttributeInput, MetadataInput } from '~/lib/graphql/graphql'
+import type { MetadataInput } from '~/lib/graphql/graphql'
 import TableFooter from '~/components/ui/table/TableFooter.vue'
 
 const client = useBoscaClient()
@@ -15,7 +15,7 @@ const offset = ref(0)
 const limit = ref(0)
 
 const { data: collection } = client.collections.findAsyncData({
-  attributes: [{ key: 'editor.type', value: 'Documents and Guides' }],
+  attributes: [ { attributes: [ { key: 'editor.type', value: 'Documents and Guides' } ] } ],
   offset: 0,
   limit: 1,
 })
@@ -30,8 +30,7 @@ const { data: items } = client.metadata.findAsyncData({
 
 const collections = computedAsync<CollectionItem[]>(async () => {
   if (!collection.value) return []
-  const items =
-    (await client.collections.list(collection.value[0].id))?.items || []
+  const items = (await client.collections.list(collection.value[0].id))?.items || []
   if (selectedId.value == '' && items.length > 0) {
     selectedId.value = items[0].id
     limit.value = 50

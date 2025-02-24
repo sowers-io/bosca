@@ -14,11 +14,12 @@ create type attribute_ui_type as enum ('input', 'textarea', 'image', 'profile', 
 
 create table document_templates
 (
-    metadata_id   uuid  not null,
-    version       int   not null,
-    configuration jsonb,
-    schema        jsonb,
-    content       jsonb not null,
+    metadata_id        uuid  not null,
+    version            int   not null,
+    configuration      jsonb,
+    schema             jsonb,
+    content            jsonb not null,
+    default_attributes jsonb,
     primary key (metadata_id, version),
     foreign key (metadata_id) references metadata (id) on delete cascade
 );

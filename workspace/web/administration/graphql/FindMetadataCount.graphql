@@ -1,5 +1,5 @@
-query FindMetadataCount($attributes: [FindAttributeInput!]!, $extension: ExtensionFilterType, $categoryIds: [String!], $contentTypes: [String!]) {
+query FindMetadataCount($query: FindQuery!) {
     content {
-        findMetadataCount(attributes: $attributes, extensionFilter: $extension, categoryIds: $categoryIds, contentTypes: $contentTypes)
+        findMetadataCount(query: $query)
     }
 }

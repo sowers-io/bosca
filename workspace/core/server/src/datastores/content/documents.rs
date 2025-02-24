@@ -86,7 +86,7 @@ impl DocumentsDataStore {
     ) -> Result<(), Error> {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
-        let stmt = txn.prepare_cached("insert into document_templates (metadata_id, version, configuration, schema, content) values ($1, $2, $3, $4, $5)").await?;
+        let stmt = txn.prepare_cached("insert into document_templates (metadata_id, version, configuration, schema, default_attributes, content) values ($1, $2, $3, $4, $5, $6)").await?;
         txn.execute(
             &stmt,
             &[
@@ -94,6 +94,7 @@ impl DocumentsDataStore {
                 &version,
                 &template.configuration,
                 &template.schema,
+                &template.default_attributes,
                 &template.content,
             ],
         )
@@ -113,12 +114,13 @@ impl DocumentsDataStore {
     ) -> Result<(), Error> {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
-        let stmt = txn.prepare_cached("update document_templates set configuration = $1, schema = $2, content = $3 where metadata_id = $4 and version = $5").await?;
+        let stmt = txn.prepare_cached("update document_templates set configuration = $1, schema = $2, default_attributes = $3, content = $4 where metadata_id = $4 and version = $5").await?;
         txn.execute(
             &stmt,
             &[
                 &template.configuration,
                 &template.schema,
+                &template.default_attributes,
                 &template.content,
                 &metadata_id,
                 &version,

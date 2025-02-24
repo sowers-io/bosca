@@ -179,9 +179,9 @@ type Content {
     collection(id: String): Collection
     collectionTemplates: CollectionTemplates!
     documentTemplates: DocumentTemplates!
-    findCollection(attributes: [FindAttributeInput!]!, categoryIds: [String!], limit: Int!, offset: Int!): [Collection!]!
-    findMetadata(attributes: [FindAttributeInput!]!, categoryIds: [String!], contentTypes: [String!], extensionFilter: ExtensionFilterType, limit: Int!, offset: Int!): [Metadata!]!
-    findMetadataCount(attributes: [FindAttributeInput!]!, categoryIds: [String!], contentTypes: [String!], extensionFilter: ExtensionFilterType): Int!
+    findCollection(query: FindQuery!): [Collection!]!
+    findMetadata(query: FindQuery!): [Metadata!]!
+    findMetadataCount(query: FindQuery!): Int!
     metadata(id: String!, version: Int): Metadata
     metadataSupplementary(id: String!, key: String!, version: Int): MetadataSupplementary
     slug(slug: String!): ContentItem
@@ -830,7 +830,7 @@ type WorkflowsMutation {
     enqueueChildWorkflows(jobId: WorkflowJobIdInput!, workflowIds: [String!]!): [WorkflowExecutionId!]!
     enqueueWorkflow(collectionId: String, configurations: [WorkflowConfigurationInput!], metadataId: String, version: Int, workflowId: String!): WorkflowExecutionId!
     expireAll: Boolean!
-    findAndEnqueueWorkflow(attributes: [FindAttributeInput!]!, configurations: [WorkflowConfigurationInput!], contentTypes: [String!], workflowId: String!): [WorkflowExecutionId!]!
+    findAndEnqueueWorkflow(configurations: [WorkflowConfigurationInput!], query: FindQuery!, workflowId: String!): [WorkflowExecutionId!]!
     models: ModelsMutation!
     prompts: PromptsMutation!
     setExecutionJobContext(context: JSON!, jobId: WorkflowJobIdInput!): Boolean!
@@ -1084,9 +1084,22 @@ input DocumentTemplateInput {
     schema: JSON
 }
 
-input FindAttributeInput {
+input FindAttribute {
     key: String!
     value: String!
+}
+
+input FindAttributes {
+    attributes: [FindAttribute!]!
+}
+
+input FindQuery {
+    attributes: [FindAttributes!]!
+    categoryIds: [String!]
+    contentTypes: [String!]
+    extensionFilter: ExtensionFilterType
+    limit: Int
+    offset: Int
 }
 
 input MetadataChildInput {

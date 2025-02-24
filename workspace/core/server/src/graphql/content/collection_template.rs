@@ -27,6 +27,10 @@ impl CollectionTemplateObject {
         Ok(metadata.map(MetadataObject::new))
     }
 
+    pub async fn default_attributes(&self) -> &Option<Value> {
+        &self.template.default_attributes
+    }
+
     pub async fn configuration(&self) -> &Option<Value> {
         &self.template.configuration
     }

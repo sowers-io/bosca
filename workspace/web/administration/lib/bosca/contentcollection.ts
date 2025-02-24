@@ -5,13 +5,15 @@ import {
   AddMetadataCollectionDocument,
   BeginCollectionTransitionDocument,
   type CollectionFragment,
-  type CollectionInput, type CollectionMetadataRelationshipFragment,
+  type CollectionInput,
+  type CollectionMetadataRelationshipFragment,
   DeleteCollectionDocument,
   ExtensionFilterType,
-  type FindAttributeInput,
+  type FindAttributes,
   FindCollectionDocument,
   GetCollectionDocument,
-  GetCollectionListDocument, GetCollectionMetadataRelationshipsDocument,
+  GetCollectionListDocument,
+  GetCollectionMetadataRelationshipsDocument,
   GetCollectionParentsDocument,
   type MetadataFragment,
   type ParentCollectionFragment,
@@ -52,8 +54,8 @@ export class ContentCollections<T extends NetworkClient> extends Api<T> {
 
   findAsyncData(query: {
     attributes?:
-      | Array<FindAttributeInput>
-      | Ref<Array<FindAttributeInput>>
+      | Array<FindAttributes>
+      | Ref<Array<FindAttributes>>
       | null
     extension?: ExtensionFilterType | Ref<ExtensionFilterType> | null
     categoryIds?: Array<string[]> | Ref<Array<string[]>> | null
@@ -63,11 +65,13 @@ export class ContentCollections<T extends NetworkClient> extends Api<T> {
     return this.executeAndTransformAsyncData(
       FindCollectionDocument,
       {
-        attributes: query.attributes,
-        extension: query.extension,
-        categoryIds: query.categoryIds,
-        offset: query.offset,
-        limit: query.limit,
+        query: {
+          attributes: query.attributes,
+          extension: query.extension,
+          categoryIds: query.categoryIds,
+          offset: query.offset,
+          limit: query.limit,
+        }
       },
       (data) => {
         if (!data) return null
@@ -182,14 +186,16 @@ export class ContentCollections<T extends NetworkClient> extends Api<T> {
   //
 
   async findCollection(
-    attributes: Array<FindAttributeInput>,
+    attributes: Array<FindAttributes>,
     offset: number | Ref<number>,
     limit: number | Ref<number>,
   ): Promise<CollectionFragment[]> {
     const response = await this.network.execute(FindCollectionDocument, {
-      attributes,
-      offset,
-      limit,
+      query: {
+        attributes,
+        offset,
+        limit,
+      }
     })
     return response!.content!.findCollection as CollectionFragment[]
   }

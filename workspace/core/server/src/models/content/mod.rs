@@ -23,3 +23,4 @@ pub mod collection_metadata_relationship;
 pub mod collection_template;
 pub mod collection_template_attributes;
 pub mod collection_template_attribute_workflow;
+pub mod find_query;

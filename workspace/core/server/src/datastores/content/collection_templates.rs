@@ -85,12 +85,13 @@ impl CollectionTemplatesDataStore {
     ) -> Result<(), Error> {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
-        let stmt = txn.prepare_cached("insert into collection_templates (metadata_id, version, configuration) values ($1, $2, $3)").await?;
+        let stmt = txn.prepare_cached("insert into collection_templates (metadata_id, version, default_attributes, configuration) values ($1, $2, $3, $4)").await?;
         txn.execute(
             &stmt,
             &[
                 metadata_id,
                 &version,
+                &template.default_attributes,
                 &template.configuration,
             ],
         )
@@ -110,10 +111,11 @@ impl CollectionTemplatesDataStore {
     ) -> Result<(), Error> {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
-        let stmt = txn.prepare_cached("update collection_templates set configuration = $1 where metadata_id = $2 and version = $3").await?;
+        let stmt = txn.prepare_cached("update collection_templates set default_attributes = $1, configuration = $2 where metadata_id = $3 and version = $4").await?;
         txn.execute(
             &stmt,
             &[
+                &template.default_attributes,
                 &template.configuration,
                 &metadata_id,
                 &version,

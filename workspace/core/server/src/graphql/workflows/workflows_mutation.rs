@@ -11,12 +11,12 @@ use async_graphql::{Context, Error, Object};
 use serde_json::Value;
 use uuid::Uuid;
 use crate::context::BoscaContext;
-use crate::graphql::content::content::FindAttributeInput;
 use crate::graphql::content::metadata_mutation::WorkflowConfigurationInput;
 use crate::graphql::workflows::activities_mutation::ActivitiesMutationObject;
 use crate::graphql::workflows::storage_systems_mutation::StorageSystemsMutationObject;
 use crate::graphql::workflows::traits_mutation::TraitsMutationObject;
 use crate::graphql::workflows::transitions_mutation::TransitionsMutationObject;
+use crate::models::content::find_query::FindQuery;
 use crate::models::workflow::transitions::BeginTransitionInput;
 use crate::util::transition::begin_transition;
 
@@ -147,21 +147,20 @@ impl WorkflowsMutationObject {
         &self,
         ctx: &Context<'_>,
         workflow_id: String,
-        attributes: Vec<FindAttributeInput>,
-        content_types: Option<Vec<String>>,
+        mut query: FindQuery,
         configurations: Option<Vec<WorkflowConfigurationInput>>,
     ) -> Result<Vec<WorkflowExecutionIdObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         ctx.check_has_service_account().await?;
         let mut ids = Vec::new();
         // TODO: page through items
-        for metadata in ctx.content.metadata.find(&attributes, &content_types, None, None, 0, 10000).await? {
+        for metadata in ctx.content.metadata.find(&mut query).await? {
             let id = ctx.workflow
                 .enqueue_metadata_workflow(&workflow_id, &metadata.id, &metadata.version, configurations.as_ref(), None)
                 .await?;
             ids.push(id);
         }
-        for collection in ctx.content.collections.find(&attributes, None,0, 1000).await? {
+        for collection in ctx.content.collections.find(&mut query).await? {
             let id = ctx.workflow
                 .enqueue_collection_workflow(&workflow_id, &collection.id, configurations.as_ref(), None)
                 .await?;

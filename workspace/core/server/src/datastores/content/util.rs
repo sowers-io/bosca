@@ -1,6 +1,6 @@
-use crate::graphql::content::content::{ExtensionFilterType, FindAttributeInput};
 use postgres_types::ToSql;
 use uuid::Uuid;
+use crate::models::content::find_query::{ExtensionFilterType, FindQuery};
 use crate::models::content::ordering::Order::Ascending;
 use crate::models::content::ordering::Ordering;
 
@@ -52,12 +52,8 @@ pub fn build_find_args<'a>(
     base_type: &str,
     query: &str,
     alias: &str,
-    attributes: &'a [FindAttributeInput],
-    content_types: &'a Option<Vec<String>>,
+    find_query: &'a FindQuery,
     category_ids: &'a Option<Vec<Uuid>>,
-    extension_filter: Option<ExtensionFilterType>,
-    offset: &'a i64,
-    limit: &'a i64,
     count: bool
 ) -> (String, Vec<&'a (dyn ToSql + Sync)>) {
     let mut q = query.to_string();
@@ -74,44 +70,54 @@ pub fn build_find_args<'a>(
         }
     }
 
-    if let Some(extension_filter) = extension_filter {
-        match extension_filter {
-            ExtensionFilterType::Document => {
-                q.push_str(format!(" inner join documents d on ({}.id = d.metadata_id and {}.version = d.version) ", alias, alias).as_str());
-            }
-            ExtensionFilterType::DocumentTemplate => {
-                q.push_str(format!(" inner join document_templates d on ({}.id = d.metadata_id and {}.version = d.version) ", alias, alias).as_str());
-            }
-            ExtensionFilterType::Guide => {
-                q.push_str(format!(" inner join guides g on ({}.id = g.metadata_id and {}.version = g.version) ", alias, alias).as_str());
-            }
-            ExtensionFilterType::GuideTemplate => {
-                q.push_str(format!(" inner join guide_templates g on ({}.id = g.metadata_id and {}.version = g.version) ", alias, alias).as_str());
-            }
-            ExtensionFilterType::CollectionTemplate => {
-                q.push_str(format!(" inner join collection_templates g on ({}.id = g.metadata_id and {}.version = g.version) ", alias, alias).as_str());
-            }
+    match find_query.extension_filter {
+        Some(ExtensionFilterType::Document) => {
+            q.push_str(format!(" inner join documents d on ({}.id = d.metadata_id and {}.version = d.version) ", alias, alias).as_str());
         }
+        Some(ExtensionFilterType::DocumentTemplate) => {
+            q.push_str(format!(" inner join document_templates dt on ({}.id = dt.metadata_id and {}.version = dt.version) ", alias, alias).as_str());
+        }
+        Some(ExtensionFilterType::Guide) => {
+            q.push_str(format!(" inner join guides g on ({}.id = g.metadata_id and {}.version = g.version) ", alias, alias).as_str());
+        }
+        Some(ExtensionFilterType::GuideTemplate) => {
+            q.push_str(format!(" inner join guide_templates gt on ({}.id = gt.metadata_id and {}.version = gt.version) ", alias, alias).as_str());
+        }
+        Some(ExtensionFilterType::CollectionTemplate) => {
+            q.push_str(format!(" inner join collection_templates ct on ({}.id = c.metadata_id and {}.version = ct.version) ", alias, alias).as_str());
+        }
+        _ => {}
     }
 
-    if !attributes.is_empty() || (content_types.is_some() && !content_types.as_ref().unwrap().is_empty()) {
+    if find_query.attributes.iter().find(|a| !a.attributes.is_empty()).is_some() || (find_query.content_types.is_some() && !find_query.content_types.as_ref().unwrap().is_empty()) {
         q.push_str(" where ");
     }
-    if !attributes.is_empty() {
-        for i in 0..attributes.len() {
-            let attr = attributes.get(i).unwrap();
-            if i > 0 {
-                q.push_str(" and ");
+    if !find_query.attributes.is_empty() {
+        for i in 0..find_query.attributes.len() {
+            let attrs = find_query.attributes.get(i).unwrap();
+            if attrs.attributes.is_empty() {
+                continue;
             }
-            q.push_str(format!(" {}.attributes->>(${}::varchar) = ${}::varchar ", alias, pos, pos + 1).as_str());
-            pos += 2;
-            values.push(&attr.key as &(dyn ToSql + Sync));
-            values.push(&attr.value as &(dyn ToSql + Sync));
+            if i > 0 {
+                q.push_str(" or ");
+            }
+            q.push_str(" ( ");
+            for j in 0..attrs.attributes.len() {
+                if j > 0 {
+                    q.push_str(" and ");
+                }
+                let attr = attrs.attributes.get(j).unwrap();
+                q.push_str(format!(" {}.attributes->>(${}::varchar) = ${}::varchar ", alias, pos, pos + 1).as_str());
+                pos += 2;
+                values.push(&attr.key as &(dyn ToSql + Sync));
+                values.push(&attr.value as &(dyn ToSql + Sync));
+            }
+            q.push_str(" ) ");
         }
     }
-    if let Some(content_types) = content_types {
+    if let Some(content_types) = &find_query.content_types {
         if !content_types.is_empty() {
-            if !attributes.is_empty() && !values.is_empty() {
+            if !find_query.attributes.is_empty() && !values.is_empty() {
                 q.push_str(" and ");
             }
             q.push_str(format!(" {}.content_type in (", alias).as_str());
@@ -130,9 +136,9 @@ pub fn build_find_args<'a>(
         q.push_str(format!(" order by lower({}.name) asc ", alias).as_str()); // TODO: when adding MetadataIndex & CollectionIndex, make this configurable so it is based on an index
         q.push_str(format!(" offset ${}", pos).as_str());
         pos += 1;
-        values.push(offset as &(dyn ToSql + Sync));
+        values.push(&find_query.offset as &(dyn ToSql + Sync));
         q.push_str(format!(" limit ${}", pos).as_str());
-        values.push(limit as &(dyn ToSql + Sync));
+        values.push(&find_query.limit as &(dyn ToSql + Sync));
     }
     (q.to_string(), values)
 }

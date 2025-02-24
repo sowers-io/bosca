@@ -8,12 +8,14 @@ use crate::models::content::collection_template_attributes::CollectionTemplateAt
 pub struct CollectionTemplate {
     pub metadata_id: Uuid,
     pub version: i32,
+    pub default_attributes: Option<Value>,
     pub configuration: Option<Value>,
 }
 
 #[derive(InputObject, Clone)]
 pub struct CollectionTemplateInput {
     pub attributes: Vec<CollectionTemplateAttributeInput>,
+    pub default_attributes: Option<Value>,
     pub configuration: Option<Value>,
 }
 
@@ -22,6 +24,7 @@ impl From<&Row> for CollectionTemplate {
         Self {
             metadata_id: row.get("metadata_id"),
             version: row.get("version"),
+            default_attributes: row.get("default_attributes"),
             configuration: row.get("configuration"),
         }
     }
