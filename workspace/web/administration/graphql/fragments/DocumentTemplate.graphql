@@ -2,6 +2,7 @@ fragment DocumentTemplate on DocumentTemplate {
     configuration
     schema
     content
+    defaultAttributes
     attributes {
         key
         name

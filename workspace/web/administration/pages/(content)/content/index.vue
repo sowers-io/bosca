@@ -82,6 +82,11 @@ async function onAdd() {
         template.id,
         template.version,
       )
+      if (templateDocument.defaultAttributes) {
+        for (const key in templateDocument.defaultAttributes) {
+          attrs[key] = templateDocument.defaultAttributes[key]
+        }
+      }
       const metadata: MetadataInput = {
         parentCollectionId: collection.id,
         name: 'New ' + collection.attributes['editor.type'],
