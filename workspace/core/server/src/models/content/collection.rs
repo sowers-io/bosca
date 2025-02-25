@@ -32,6 +32,8 @@ pub struct Collection {
     pub item_attributes: Option<Value>,
     pub created: DateTime<Utc>,
     pub modified: DateTime<Utc>,
+    pub template_metadata_id: Option<Uuid>,
+    pub template_metadata_version: Option<i32>,
     pub workflow_state_id: String,
     pub workflow_state_pending_id: Option<String>,
     pub delete_workflow_id: Option<String>,
@@ -104,6 +106,8 @@ pub struct CollectionInput {
     pub category_ids: Option<Vec<String>>,
     pub collections: Option<Vec<CollectionChildInput>>,
     pub metadata: Option<Vec<MetadataChildInput>>,
+    pub template_metadata_id: Option<String>,
+    pub template_metadata_version: Option<i32>,
 }
 
 impl From<&Row> for Collection {
@@ -129,6 +133,8 @@ impl From<&Row> for Collection {
             item_attributes: row.try_get("item_attributes").unwrap_or(None),
             created: row.get("created"),
             modified: row.get("modified"),
+            template_metadata_id: row.get("template_metadata_id"),
+            template_metadata_version: row.get("template_metadata_version"),
             workflow_state_id: row.get("workflow_state_id"),
             workflow_state_pending_id: row.get("workflow_state_pending_id"),
             delete_workflow_id: row.get("delete_workflow_id"),

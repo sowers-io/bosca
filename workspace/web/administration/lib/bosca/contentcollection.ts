@@ -6,7 +6,7 @@ import {
   BeginCollectionTransitionDocument,
   type CollectionFragment,
   type CollectionInput,
-  type CollectionMetadataRelationshipFragment,
+  type CollectionMetadataRelationshipFragment, CollectionType,
   DeleteCollectionDocument,
   ExtensionFilterType,
   type FindAttributes,
@@ -58,21 +58,26 @@ export class ContentCollections<T extends NetworkClient> extends Api<T> {
       | Ref<Array<FindAttributes>>
       | null
     extension?: ExtensionFilterType | Ref<ExtensionFilterType> | null
-    categoryIds?: Array<string[]> | Ref<Array<string[]>> | null
+    categoryIds?: Array<string> | Ref<Array<string>> | null
+    type?: CollectionType | Ref<CollectionType> | null
     offset?: number | Ref<number>
     limit?: number | Ref<number>
   }): AsyncData<CollectionFragment[] | null, any> {
+    const q = computed(() => {
+      return {
+        attributes: unref(query.attributes),
+        extension: unref(query.extension),
+        categoryIds: unref(query.categoryIds),
+        // @ts-ignore: this should be fine
+        contentTypes: unref(query.contentTypes),
+        collectionType: unref(query.type),
+        offset: unref(query.offset),
+        limit: unref(query.limit),
+      }
+    })
     return this.executeAndTransformAsyncData(
       FindCollectionDocument,
-      {
-        query: {
-          attributes: query.attributes,
-          extension: query.extension,
-          categoryIds: query.categoryIds,
-          offset: query.offset,
-          limit: query.limit,
-        }
-      },
+      { query: q },
       (data) => {
         if (!data) return null
         return data.content.findCollection as CollectionFragment[]

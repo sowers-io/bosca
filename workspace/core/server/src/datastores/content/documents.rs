@@ -114,7 +114,7 @@ impl DocumentsDataStore {
     ) -> Result<(), Error> {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
-        let stmt = txn.prepare_cached("update document_templates set configuration = $1, schema = $2, default_attributes = $3, content = $4 where metadata_id = $4 and version = $5").await?;
+        let stmt = txn.prepare_cached("update document_templates set configuration = $1, schema = $2, default_attributes = $3, content = $4 where metadata_id = $5 and version = $6").await?;
         txn.execute(
             &stmt,
             &[

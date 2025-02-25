@@ -65,6 +65,7 @@ type Documents = {
     "query GetCollectionMetadataRelationships($id: String!) {\n  content {\n    collection(id: $id) {\n      metadataRelationships {\n        ...CollectionMetadataRelationship\n      }\n    }\n  }\n}": typeof types.GetCollectionMetadataRelationshipsDocument,
     "query GetCollectionParents($id: String) {\n  content {\n    collection(id: $id) {\n      ...CollectionParents\n    }\n  }\n}": typeof types.GetCollectionParentsDocument,
     "query GetCollectionPermissions($id: String) {\n  content {\n    collection(id: $id) {\n      permissions {\n        ...Permission\n      }\n    }\n  }\n}": typeof types.GetCollectionPermissionsDocument,
+    "query GetCollectionTemplate($id: String!, $version: Int) {\n  content {\n    metadata(id: $id, version: $version) {\n      collectionTemplate {\n        ...CollectionTemplate\n      }\n    }\n  }\n}": typeof types.GetCollectionTemplateDocument,
     "query GetCollectionWorkflowPlans($id: String) {\n  content {\n    collection(id: $id) {\n      workflow {\n        plans {\n          ...WorkflowPlan\n        }\n      }\n    }\n  }\n}": typeof types.GetCollectionWorkflowPlansDocument,
     "query GetCurrentProfile {\n  profiles {\n    current {\n      ...Profile\n    }\n  }\n}": typeof types.GetCurrentProfileDocument,
     "query GetGroups($offset: Int!, $limit: Int!) {\n  security {\n    groups {\n      all(offset: $offset, limit: $limit) {\n        ...Group\n      }\n    }\n  }\n}": typeof types.GetGroupsDocument,
@@ -138,6 +139,7 @@ type Documents = {
     "fragment CollectionIdName on Collection {\n  id\n  name\n}\n\nfragment CollectionList on Collection {\n  ...Collection\n  items(offset: 0, limit: 1000) {\n    __typename\n    ... on Collection {\n      ...Collection\n    }\n    ... on Metadata {\n      ...Metadata\n    }\n  }\n}\n\nfragment Collection on Collection {\n  id\n  traitIds\n  name\n  labels\n  created\n  modified\n  attributes\n  systemAttributes\n  ready\n  public\n  publicList\n  ordering {\n    ...Ordering\n  }\n  categories {\n    ...Category\n  }\n  workflow {\n    ...CollectionWorkflow\n  }\n}\n\nfragment CollectionParents on Collection {\n  parentCollections(offset: 0, limit: 100) {\n    ...ParentCollection\n  }\n}\n\nfragment CollectionPermissions on Collection {\n  permissions {\n    ...Permission\n  }\n}": typeof types.CollectionIdNameFragmentDoc,
     "fragment CollectionDetail on Collection {\n  ...Collection\n  items(offset: 0, limit: 1000) {\n    __typename\n    ... on Collection {\n      ...Collection\n    }\n    ... on Metadata {\n      ...Metadata\n    }\n  }\n}": typeof types.CollectionDetailFragmentDoc,
     "fragment CollectionMetadataRelationship on CollectionMetadataRelationship {\n  metadata {\n    ...MetadataRelationshipMetadata\n  }\n  relationship\n  attributes\n}": typeof types.CollectionMetadataRelationshipFragmentDoc,
+    "fragment CollectionTemplate on CollectionTemplate {\n  configuration\n  defaultAttributes\n  attributes {\n    key\n    name\n    description\n    type\n    supplementaryKey\n    ui\n    list\n    configuration\n    workflows {\n      workflow {\n        ...Workflow\n      }\n      autoRun\n    }\n  }\n}": typeof types.CollectionTemplateFragmentDoc,
     "fragment CollectionWorkflow on CollectionWorkflow {\n  state\n  pending\n}": typeof types.CollectionWorkflowFragmentDoc,
     "fragment Document on Document {\n  templateMetadataId\n  templateMetadataVersion\n  title\n  content\n}": typeof types.DocumentFragmentDoc,
     "fragment DocumentTemplate on DocumentTemplate {\n  configuration\n  schema\n  content\n  defaultAttributes\n  attributes {\n    key\n    name\n    description\n    type\n    supplementaryKey\n    ui\n    list\n    configuration\n    workflows {\n      workflow {\n        ...Workflow\n      }\n      autoRun\n    }\n  }\n}": typeof types.DocumentTemplateFragmentDoc,
@@ -221,6 +223,7 @@ const documents: Documents = {
     "query GetCollectionMetadataRelationships($id: String!) {\n  content {\n    collection(id: $id) {\n      metadataRelationships {\n        ...CollectionMetadataRelationship\n      }\n    }\n  }\n}": types.GetCollectionMetadataRelationshipsDocument,
     "query GetCollectionParents($id: String) {\n  content {\n    collection(id: $id) {\n      ...CollectionParents\n    }\n  }\n}": types.GetCollectionParentsDocument,
     "query GetCollectionPermissions($id: String) {\n  content {\n    collection(id: $id) {\n      permissions {\n        ...Permission\n      }\n    }\n  }\n}": types.GetCollectionPermissionsDocument,
+    "query GetCollectionTemplate($id: String!, $version: Int) {\n  content {\n    metadata(id: $id, version: $version) {\n      collectionTemplate {\n        ...CollectionTemplate\n      }\n    }\n  }\n}": types.GetCollectionTemplateDocument,
     "query GetCollectionWorkflowPlans($id: String) {\n  content {\n    collection(id: $id) {\n      workflow {\n        plans {\n          ...WorkflowPlan\n        }\n      }\n    }\n  }\n}": types.GetCollectionWorkflowPlansDocument,
     "query GetCurrentProfile {\n  profiles {\n    current {\n      ...Profile\n    }\n  }\n}": types.GetCurrentProfileDocument,
     "query GetGroups($offset: Int!, $limit: Int!) {\n  security {\n    groups {\n      all(offset: $offset, limit: $limit) {\n        ...Group\n      }\n    }\n  }\n}": types.GetGroupsDocument,
@@ -294,6 +297,7 @@ const documents: Documents = {
     "fragment CollectionIdName on Collection {\n  id\n  name\n}\n\nfragment CollectionList on Collection {\n  ...Collection\n  items(offset: 0, limit: 1000) {\n    __typename\n    ... on Collection {\n      ...Collection\n    }\n    ... on Metadata {\n      ...Metadata\n    }\n  }\n}\n\nfragment Collection on Collection {\n  id\n  traitIds\n  name\n  labels\n  created\n  modified\n  attributes\n  systemAttributes\n  ready\n  public\n  publicList\n  ordering {\n    ...Ordering\n  }\n  categories {\n    ...Category\n  }\n  workflow {\n    ...CollectionWorkflow\n  }\n}\n\nfragment CollectionParents on Collection {\n  parentCollections(offset: 0, limit: 100) {\n    ...ParentCollection\n  }\n}\n\nfragment CollectionPermissions on Collection {\n  permissions {\n    ...Permission\n  }\n}": types.CollectionIdNameFragmentDoc,
     "fragment CollectionDetail on Collection {\n  ...Collection\n  items(offset: 0, limit: 1000) {\n    __typename\n    ... on Collection {\n      ...Collection\n    }\n    ... on Metadata {\n      ...Metadata\n    }\n  }\n}": types.CollectionDetailFragmentDoc,
     "fragment CollectionMetadataRelationship on CollectionMetadataRelationship {\n  metadata {\n    ...MetadataRelationshipMetadata\n  }\n  relationship\n  attributes\n}": types.CollectionMetadataRelationshipFragmentDoc,
+    "fragment CollectionTemplate on CollectionTemplate {\n  configuration\n  defaultAttributes\n  attributes {\n    key\n    name\n    description\n    type\n    supplementaryKey\n    ui\n    list\n    configuration\n    workflows {\n      workflow {\n        ...Workflow\n      }\n      autoRun\n    }\n  }\n}": types.CollectionTemplateFragmentDoc,
     "fragment CollectionWorkflow on CollectionWorkflow {\n  state\n  pending\n}": types.CollectionWorkflowFragmentDoc,
     "fragment Document on Document {\n  templateMetadataId\n  templateMetadataVersion\n  title\n  content\n}": types.DocumentFragmentDoc,
     "fragment DocumentTemplate on DocumentTemplate {\n  configuration\n  schema\n  content\n  defaultAttributes\n  attributes {\n    key\n    name\n    description\n    type\n    supplementaryKey\n    ui\n    list\n    configuration\n    workflows {\n      workflow {\n        ...Workflow\n      }\n      autoRun\n    }\n  }\n}": types.DocumentTemplateFragmentDoc,
@@ -544,6 +548,10 @@ export function graphql(source: "query GetCollectionParents($id: String) {\n  co
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "query GetCollectionPermissions($id: String) {\n  content {\n    collection(id: $id) {\n      permissions {\n        ...Permission\n      }\n    }\n  }\n}"): (typeof documents)["query GetCollectionPermissions($id: String) {\n  content {\n    collection(id: $id) {\n      permissions {\n        ...Permission\n      }\n    }\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "query GetCollectionTemplate($id: String!, $version: Int) {\n  content {\n    metadata(id: $id, version: $version) {\n      collectionTemplate {\n        ...CollectionTemplate\n      }\n    }\n  }\n}"): (typeof documents)["query GetCollectionTemplate($id: String!, $version: Int) {\n  content {\n    metadata(id: $id, version: $version) {\n      collectionTemplate {\n        ...CollectionTemplate\n      }\n    }\n  }\n}"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
@@ -836,6 +844,10 @@ export function graphql(source: "fragment CollectionDetail on Collection {\n  ..
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "fragment CollectionMetadataRelationship on CollectionMetadataRelationship {\n  metadata {\n    ...MetadataRelationshipMetadata\n  }\n  relationship\n  attributes\n}"): (typeof documents)["fragment CollectionMetadataRelationship on CollectionMetadataRelationship {\n  metadata {\n    ...MetadataRelationshipMetadata\n  }\n  relationship\n  attributes\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "fragment CollectionTemplate on CollectionTemplate {\n  configuration\n  defaultAttributes\n  attributes {\n    key\n    name\n    description\n    type\n    supplementaryKey\n    ui\n    list\n    configuration\n    workflows {\n      workflow {\n        ...Workflow\n      }\n      autoRun\n    }\n  }\n}"): (typeof documents)["fragment CollectionTemplate on CollectionTemplate {\n  configuration\n  defaultAttributes\n  attributes {\n    key\n    name\n    description\n    type\n    supplementaryKey\n    ui\n    list\n    configuration\n    workflows {\n      workflow {\n        ...Workflow\n      }\n      autoRun\n    }\n  }\n}"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

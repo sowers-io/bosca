@@ -82,6 +82,7 @@ type Collection {
     ready: DateTime
     slug: String!
     systemAttributes: JSON
+    templateMetadata: Metadata
     traitIds: [String!]!
     type: CollectionType!
     workflow: CollectionWorkflow!
@@ -999,6 +1000,8 @@ input CollectionInput {
     parentCollectionId: String
     slug: String
     state: CollectionWorkflowInput
+    templateMetadataId: String
+    templateMetadataVersion: Int
     traitIds: [String!]
 }
 
@@ -1100,6 +1103,7 @@ input FindAttributes {
 input FindQuery {
     attributes: [FindAttributes!]!
     categoryIds: [String!]
+    collectionType: CollectionType
     contentTypes: [String!]
     extensionFilter: ExtensionFilterType
     limit: Int

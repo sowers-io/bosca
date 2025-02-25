@@ -1,5 +1,6 @@
 use async_graphql::{Enum, InputObject};
 use uuid::Uuid;
+use crate::models::content::collection::CollectionType;
 
 #[derive(Enum, Clone, Copy, Eq, PartialEq, Hash, Debug)]
 pub enum ExtensionFilterType {
@@ -27,6 +28,7 @@ pub struct FindQuery {
     pub content_types: Option<Vec<String>>,
     pub category_ids: Option<Vec<String>>,
     pub extension_filter: Option<ExtensionFilterType>,
+    pub collection_type: Option<CollectionType>,
     pub limit: Option<i64>,
     pub offset: Option<i64>,
 }

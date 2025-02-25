@@ -84,15 +84,30 @@ pub fn build_find_args<'a>(
             q.push_str(format!(" inner join guide_templates gt on ({}.id = gt.metadata_id and {}.version = gt.version) ", alias, alias).as_str());
         }
         Some(ExtensionFilterType::CollectionTemplate) => {
-            q.push_str(format!(" inner join collection_templates ct on ({}.id = c.metadata_id and {}.version = ct.version) ", alias, alias).as_str());
+            q.push_str(format!(" inner join collection_templates ct on ({}.id = ct.metadata_id and {}.version = ct.version) ", alias, alias).as_str());
         }
         _ => {}
     }
 
-    if find_query.attributes.iter().find(|a| !a.attributes.is_empty()).is_some() || (find_query.content_types.is_some() && !find_query.content_types.as_ref().unwrap().is_empty()) {
+    if (base_type == "collection" && find_query.collection_type.is_some()) || find_query.attributes.iter().find(|a| !a.attributes.is_empty()).is_some() || (find_query.content_types.is_some() && !find_query.content_types.as_ref().unwrap().is_empty()) {
         q.push_str(" where ");
     }
+
+    if base_type == "collection" {
+        match &find_query.collection_type {
+            Some(collection_type) => {
+                q.push_str(format!(" {}.type = ${} ", alias, pos).as_str());
+                pos += 1;
+                values.push(collection_type as &(dyn ToSql + Sync));
+            }
+            None => {}
+        }
+    }
+
     if !find_query.attributes.is_empty() {
+        if base_type == "collection" && find_query.collection_type.is_some() && !values.is_empty() {
+            q.push_str(" and ");
+        }
         for i in 0..find_query.attributes.len() {
             let attrs = find_query.attributes.get(i).unwrap();
             if attrs.attributes.is_empty() {
@@ -115,9 +130,10 @@ pub fn build_find_args<'a>(
             q.push_str(" ) ");
         }
     }
+
     if let Some(content_types) = &find_query.content_types {
         if !content_types.is_empty() {
-            if !find_query.attributes.is_empty() && !values.is_empty() {
+            if ((base_type == "collection" && find_query.collection_type.is_some()) || (!find_query.attributes.is_empty() && find_query.attributes.iter().find(|a| !a.attributes.is_empty()).is_some())) && !values.is_empty() {
                 q.push_str(" and ");
             }
             q.push_str(format!(" {}.content_type in (", alias).as_str());
@@ -132,6 +148,7 @@ pub fn build_find_args<'a>(
             q.push_str(") ")
         }
     }
+
     if !count {
         q.push_str(format!(" order by lower({}.name) asc ", alias).as_str()); // TODO: when adding MetadataIndex & CollectionIndex, make this configurable so it is based on an index
         q.push_str(format!(" offset ${}", pos).as_str());

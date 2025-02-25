@@ -1,0 +1,21 @@
+fragment CollectionTemplate on CollectionTemplate {
+    configuration
+    defaultAttributes
+    attributes {
+        key
+        name
+        description
+        type
+        supplementaryKey
+        ui
+        list
+        configuration
+        workflows {
+            workflow {
+                ...Workflow
+            }
+            autoRun
+        }
+    }
+}
+

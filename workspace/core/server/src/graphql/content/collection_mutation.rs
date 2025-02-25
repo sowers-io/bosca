@@ -18,15 +18,16 @@ pub struct CollectionMutationObject {}
 #[Object(name = "CollectionMutation")]
 impl CollectionMutationObject {
     async fn add(&self, ctx: &Context<'_>, collection: CollectionInput, collection_item_attributes: Option<serde_json::Value>) -> Result<CollectionObject, Error> {
-        if collection.name.to_lowercase().starts_with(".system") {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let is_admin = ctx.has_admin_account().await?;
+        if !is_admin && collection.name.to_lowercase().starts_with(".system") {
             return Err(Error::new("invalid collection name"))
         }
         if let Some(collection_type) = collection.collection_type {
-            if collection_type == CollectionType::System || collection_type == CollectionType::Root {
+            if !is_admin && (collection_type == CollectionType::System || collection_type == CollectionType::Root) {
                 return Err(Error::new("invalid collection type"))
             }
         }
-        let ctx = ctx.data::<BoscaContext>()?;
         let mut collections = vec![CollectionChildInput { collection, attributes: collection_item_attributes }];
         let collection_ids = ctx.content.collections.add_all(ctx, &mut collections).await?;
         let collection = ctx.content.collections.get(collection_ids.first().unwrap()).await?;
@@ -34,17 +35,18 @@ impl CollectionMutationObject {
     }
 
     async fn add_bulk(&self, ctx: &Context<'_>, collections: Vec<CollectionChildInput>) -> Result<Vec<CollectionObject>, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let is_admin = ctx.has_admin_account().await?;
         for collection in collections.iter() {
-            if collection.collection.name.to_lowercase().starts_with(".system") {
+            if !is_admin && collection.collection.name.to_lowercase().starts_with(".system") {
                 return Err(Error::new("invalid collection name"))
             }
             if let Some(collection_type) = collection.collection.collection_type {
-                if collection_type == CollectionType::System || collection_type == CollectionType::Root {
+                if !is_admin && (collection_type == CollectionType::System || collection_type == CollectionType::Root) {
                     return Err(Error::new("invalid collection type"))
                 }
             }
         }
-        let ctx = ctx.data::<BoscaContext>()?;
         let mut collections = collections;
         let collection_ids = ctx.content.collections.add_all(ctx, &mut collections).await?;
         let mut collections = Vec::new();

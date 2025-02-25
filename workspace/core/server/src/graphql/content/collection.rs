@@ -125,6 +125,17 @@ impl CollectionObject {
         &self.collection.modified
     }
 
+    async fn template_metadata(&self, ctx: &Context<'_>) -> Result<Option<MetadataObject>, Error> {
+        if let Some(id) = &self.collection.template_metadata_id {
+            if let Some(version) = &self.collection.template_metadata_version {
+                let ctx = ctx.data::<BoscaContext>()?;
+                let metadata = ctx.check_metadata_version_action(&id, *version, PermissionAction::View).await?;
+                return Ok(Some(metadata.into()));
+            }
+        }
+        Ok(None)
+    }
+
     async fn parent_collections(&self, ctx: &Context<'_>, offset: i64, limit: i64) -> Result<Vec<CollectionObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         ctx.check_collection_action(&self.collection.id, PermissionAction::List).await?;
