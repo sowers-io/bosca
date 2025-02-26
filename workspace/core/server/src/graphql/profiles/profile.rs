@@ -16,12 +16,12 @@ impl ProfileObject {
 
 #[Object(name = "Profile")]
 impl ProfileObject {
-    async fn id(&self, ctx: &Context<'_>) -> Result<Option<String>, Error> {
+    async fn id(&self, ctx: &Context<'_>) -> Result<String, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         Ok(if self.profile.principal == Some(ctx.principal.id) || ctx.has_admin_account().await? {
-            Some(self.profile.id.to_string())
+            self.profile.id.to_string()
         } else {
-            None
+            "00000000-0000-0000-0000-000000000000".to_string()
         })
     }
 
@@ -39,7 +39,7 @@ impl ProfileObject {
         )
     }
 
-    async fn name(&self, ctx: &Context<'_>) -> Result<Option<String>, Error> {
+    async fn name(&self, ctx: &Context<'_>) -> Result<String, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         // TODO: Filter things out based on who is looking at the profiles
         Ok(
@@ -47,9 +47,9 @@ impl ProfileObject {
                 || self.profile.visibility == ProfileVisibility::Public
                 || ctx.has_admin_account().await?
             {
-                Some(self.profile.name.clone())
+                self.profile.name.clone()
             } else {
-                None
+                "".to_string()
             },
         )
     }

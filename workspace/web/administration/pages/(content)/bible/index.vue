@@ -5,14 +5,14 @@ const dropZoneRef = ref<HTMLDivElement>()
 const client = useBoscaClient()
 
 const rawBiblesCollections = await client.collections.findCollection(
-  [ { attributes: [ { key: 'collection', value: 'raw-bibles' } ] } ],
+  [ { attributes: [ { key: 'type', value: 'raw-bibles' } ] } ],
   0,
   1,
 )
 const rawBiblesCollectionId = rawBiblesCollections[0].id
 
 const biblesCollections = await client.collections.findCollection(
-    [ { attributes: [ { key: 'collection', value: 'bibles' } ] } ],
+    [ { attributes: [ { key: 'type', value: 'bibles' } ] } ],
   0,
   1,
 )
@@ -82,8 +82,8 @@ onMounted(() => {
 })
 </script>
 <template>
-  <div ref="dropZoneRef" class="h-full w-full flex flex-wrap gap-4">
-    <Card class="min-w-[600px]">
+  <div ref="dropZoneRef" class="h-full w-full flex flex-wrap md:flex-nowrap gap-4">
+    <Card class="w-full min-w-[600px]">
       <CardContent>
         <Table>
           <TableHeader>
@@ -110,7 +110,7 @@ onMounted(() => {
         </Table>
       </CardContent>
     </Card>
-    <Card class="min-w-[300px]">
+    <Card class="min-w-[300px] w-full md:w-auto">
       <CardContent>
         <Table>
           <TableHeader>

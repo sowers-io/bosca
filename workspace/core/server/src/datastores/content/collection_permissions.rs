@@ -33,6 +33,9 @@ impl CollectionPermissionsDataStore {
         principal: &Principal,
         action: PermissionAction,
     ) -> Result<bool, Error> {
+        if collection.deleted {
+            return Ok(false);
+        }
         if action == PermissionAction::View
             && collection.public
             && collection.workflow_state_id == "published"
@@ -56,6 +59,9 @@ impl CollectionPermissionsDataStore {
         principal: &Principal,
         action: PermissionAction,
     ) -> Result<bool, Error> {
+        if collection.deleted {
+            return Ok(false);
+        }
         if action == PermissionAction::View
             && collection.public
             && collection.workflow_state_id == "published"

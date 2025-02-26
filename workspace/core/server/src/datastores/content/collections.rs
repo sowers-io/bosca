@@ -5,6 +5,10 @@ use crate::models::content::category::Category;
 use crate::models::content::collection::{
     Collection, CollectionChild, CollectionChildInput, CollectionInput, CollectionType,
 };
+use crate::models::content::collection_metadata_relationship::{
+    CollectionMetadataRelationship, CollectionMetadataRelationshipInput,
+};
+use crate::models::content::find_query::FindQueryInput;
 use crate::models::content::metadata::Metadata;
 use crate::models::content::search::SearchDocumentInput;
 use crate::models::security::permission::{Permission, PermissionAction};
@@ -17,8 +21,6 @@ use serde_json::Value;
 use std::sync::Arc;
 use tokio_postgres::Statement;
 use uuid::Uuid;
-use crate::models::content::collection_metadata_relationship::{CollectionMetadataRelationship, CollectionMetadataRelationshipInput};
-use crate::models::content::find_query::FindQuery;
 
 #[derive(Clone)]
 pub struct CollectionsDataStore {
@@ -57,10 +59,7 @@ impl CollectionsDataStore {
         Ok(rows.first().unwrap().get("slug"))
     }
 
-    pub async fn find(
-        &self,
-        query: &mut FindQuery,
-    ) -> Result<Vec<Collection>, Error> {
+    pub async fn find(&self, query: &mut FindQueryInput) -> Result<Vec<Collection>, Error> {
         let connection = self.pool.get().await?;
         let category_ids = query.get_category_ids();
         let (query, values) = build_find_args(
@@ -69,11 +68,31 @@ impl CollectionsDataStore {
             "c",
             query,
             &category_ids,
-            false
+            false,
         );
         let stmt = connection.prepare_cached(query.as_str()).await?;
         let rows = connection.query(&stmt, values.as_slice()).await?;
         Ok(rows.iter().map(|r| r.into()).collect())
+    }
+
+    pub async fn find_count(&self, query: &mut FindQueryInput) -> Result<i64, Error> {
+        let connection = self.pool.get().await?;
+        let category_ids = query.get_category_ids();
+        let (query, values) = build_find_args(
+            "collection",
+            "select count(*) as count from collections c ",
+            "c",
+            query,
+            &category_ids,
+            true,
+        );
+        let stmt = connection.prepare_cached(query.as_str()).await?;
+        let rows = connection.query(&stmt, values.as_slice()).await?;
+        if rows.is_empty() {
+            Ok(0)
+        } else {
+            Ok(rows.first().unwrap().get("count"))
+        }
     }
 
     pub async fn get_categories(&self, id: &Uuid) -> Result<Vec<Category>, Error> {
@@ -103,7 +122,7 @@ impl CollectionsDataStore {
     pub async fn get_all(&self, offset: i64, limit: i64) -> Result<Vec<Collection>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
-            .prepare_cached("select * from collections order by name offset $1 limit $2")
+            .prepare_cached("select * from collections where deleted = false order by name offset $1 limit $2")
             .await?;
         let rows = connection.query(&stmt, &[&offset, &limit]).await?;
         Ok(rows.iter().map(|r| r.into()).collect())
@@ -145,7 +164,7 @@ impl CollectionsDataStore {
     ) -> Result<Vec<Collection>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
-            .prepare_cached("select c.* from collections c inner join collection_items ci on (c.id = ci.collection_id) where ci.child_collection_id = $1 offset $2 limit $3")
+            .prepare_cached("select c.* from collections c inner join collection_items ci on (c.id = ci.collection_id and c.deleted = false) where ci.child_collection_id = $1 offset $2 limit $3")
             .await?;
         let rows = connection.query(&stmt, &[id, &offset, &limit]).await?;
         Ok(rows.iter().map(|r| r.into()).collect())
@@ -205,6 +224,15 @@ impl CollectionsDataStore {
         Ok(())
     }
 
+    pub async fn mark_deleted(&self, id: &Uuid) -> Result<(), Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("update collections set deleted = true, modified = now() where id = $1")
+            .await?;
+        connection.execute(&stmt, &[id]).await?;
+        Ok(())
+    }
+
     pub async fn delete(&self, id: &Uuid) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -241,13 +269,12 @@ impl CollectionsDataStore {
             String::new()
         };
         let mut query = "select child_collection_id, child_metadata_id, collection_items.attributes from collection_items ".to_owned();
+        query.push_str(" left join collections on (child_collection_id = collections.id) ");
+        query.push_str(" left join metadata on (child_metadata_id = metadata.id) ");
+        query.push_str(" where collection_id = $1 and (collections.deleted is null or collections.deleted = false) and (metadata.deleted is null or metadata.deleted = false) ");
         if !ordering.is_empty() {
-            query.push_str(" where collection_id = $1 ");
             query.push_str(ordering.as_str());
         } else {
-            query.push_str(" left join collections on (child_collection_id = collections.id) ");
-            query.push_str(" left join metadata on (child_metadata_id = metadata.id) ");
-            query.push_str(" where collection_id = $1");
             query.push_str(" order by lower(collections.name) asc, lower(metadata.name) asc");
         }
         query.push_str(
@@ -276,7 +303,7 @@ impl CollectionsDataStore {
         } else {
             String::new()
         };
-        let mut query = "select c.*, ci.attributes as item_attributes from collections c inner join collection_items ci on (ci.child_collection_id = c.id and ci.collection_id = $1) ".to_owned();
+        let mut query = "select c.*, ci.attributes as item_attributes from collections c inner join collection_items ci on (ci.child_collection_id = c.id and ci.collection_id = $1 and c.deleted = false) ".to_owned();
         if ordering.is_empty() {
             query.push_str("order by name asc");
         } else {
@@ -291,6 +318,17 @@ impl CollectionsDataStore {
         let stmt = connection.prepare_cached(query.as_str()).await?;
         let rows = connection.query(&stmt, values.as_slice()).await?;
         Ok(rows.iter().map(|r| r.into()).collect())
+    }
+
+    pub async fn get_child_collections_count(&self, collection: &Collection) -> Result<i64, Error> {
+        let query = "select count(child_collection_id is not null) from collection_items ci inner join collections c on (ci.child_collection_id = c.id and c.deleted = false) where ci.collection_id = $1 ".to_owned();
+        let connection = self.pool.get().await?;
+        let stmt = connection.prepare_cached(query.as_str()).await?;
+        let rows = connection.query_one(&stmt, &[&collection.id]).await?;
+        if rows.is_empty() {
+            return Ok(0);
+        }
+        Ok(rows.get(0))
     }
 
     pub async fn get_child_metadata(
@@ -308,7 +346,7 @@ impl CollectionsDataStore {
         } else {
             String::new()
         };
-        let mut query = "select m.*, ci.attributes as item_attributes from metadata m inner join collection_items ci on (ci.child_metadata_id = m.id and ci.collection_id = $1) ".to_owned();
+        let mut query = "select m.*, ci.attributes as item_attributes from metadata m inner join collection_items ci on (ci.child_metadata_id = m.id and ci.collection_id = $1 and m.deleted = false) ".to_owned();
         if ordering.is_empty() {
             query.push_str("order by name asc");
         } else {
@@ -323,6 +361,17 @@ impl CollectionsDataStore {
         let stmt = connection.prepare_cached(query.as_str()).await?;
         let rows = connection.query(&stmt, values.as_slice()).await?;
         Ok(rows.iter().map(|r| r.into()).collect())
+    }
+
+    pub async fn get_child_metadata_count(&self, collection: &Collection) -> Result<i64, Error> {
+        let query = "select count(child_metadata_id is not null) from collection_items ci inner join metadata m on (ci.child_metadata_id = m.id and m.deleted = false) where ci.collection_id = $1".to_owned();
+        let connection = self.pool.get().await?;
+        let stmt = connection.prepare_cached(query.as_str()).await?;
+        let rows = connection.query_one(&stmt, &[&collection.id]).await?;
+        if rows.is_empty() {
+            return Ok(0);
+        }
+        Ok(rows.get(0))
     }
 
     pub async fn add(&self, collection: &CollectionInput) -> Result<Uuid, Error> {
@@ -372,15 +421,19 @@ impl CollectionsDataStore {
         let stmt: Statement = if collection.collection_type.unwrap_or(CollectionType::Folder)
             == CollectionType::Root
         {
-            txn.prepare("insert into collections (id, name, description, type, labels, attributes, ordering) values ('00000000-0000-0000-0000-000000000000', $1, $2, $3, $4, $5, $6) returning id").await?
+            txn.prepare("insert into collections (id, name, description, type, labels, attributes, ordering, template_metadata_id, template_metadata_version) values ('00000000-0000-0000-0000-000000000000', $1, $2, $3, $4, $5, $6, $7, $8) returning id").await?
         } else {
-            txn.prepare("insert into collections (name, description, type, labels, attributes, ordering) values ($1, $2, $3, $4, $5, $6) returning id").await?
+            txn.prepare("insert into collections (name, description, type, labels, attributes, ordering, template_metadata_id, template_metadata_version) values ($1, $2, $3, $4, $5, $6, $7, $8) returning id").await?
         };
         let labels = collection.labels.clone().unwrap_or_default();
         let ordering = collection
             .ordering
             .as_ref()
             .map(|ordering| serde_json::to_value(ordering).unwrap());
+        let template_id = collection
+            .template_metadata_id
+            .as_ref()
+            .map(|id| Uuid::parse_str(id).unwrap());
         let rows = txn
             .query(
                 &stmt,
@@ -391,6 +444,8 @@ impl CollectionsDataStore {
                     &labels,
                     &collection.attributes.as_ref().or(Some(&Value::Null)),
                     &ordering,
+                    &template_id,
+                    &collection.template_metadata_version,
                 ],
             )
             .await?;
@@ -476,12 +531,16 @@ impl CollectionsDataStore {
         id: &Uuid,
         collection: &CollectionInput,
     ) -> Result<(), Error> {
-        let stmt = txn.prepare("update collections set name = $1, description = $2, type = $3, labels = $4, attributes = $5, ordering = $6, modified = now() where id = $7").await?;
+        let stmt = txn.prepare("update collections set name = $1, description = $2, type = $3, labels = $4, attributes = $5, ordering = $6, modified = now(), template_metadata_id = $7, template_metadata_version = $8 where id = $9").await?;
         let labels = collection.labels.clone().unwrap_or_default();
         let ordering = collection
             .ordering
             .as_ref()
             .map(|ordering| serde_json::to_value(ordering).unwrap());
+        let template_id = collection
+            .template_metadata_id
+            .as_ref()
+            .map(|id| Uuid::parse_str(id).unwrap());
         txn.execute(
             &stmt,
             &[
@@ -491,6 +550,8 @@ impl CollectionsDataStore {
                 &labels,
                 &collection.attributes.as_ref().or(Some(&Value::Null)),
                 &ordering,
+                &template_id,
+                &collection.template_metadata_version,
                 id,
             ],
         )
@@ -788,16 +849,26 @@ impl CollectionsDataStore {
         Ok(new_collections)
     }
 
-    pub async fn get_metadata_relationships(&self, id: &Uuid) -> Result<Vec<CollectionMetadataRelationship>, Error> {
+    pub async fn get_metadata_relationships(
+        &self,
+        id: &Uuid,
+    ) -> Result<Vec<CollectionMetadataRelationship>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare("select * from collection_metadata_relationships where collection_id = $1")
             .await?;
         let rows = connection.query(&stmt, &[&id]).await?;
-        Ok(rows.iter().map(CollectionMetadataRelationship::from).collect())
+        Ok(rows
+            .iter()
+            .map(CollectionMetadataRelationship::from)
+            .collect())
     }
 
-    pub async fn get_metadata_relationship(&self, id: &Uuid, metadata_id: &Uuid) -> Result<Option<CollectionMetadataRelationship>, Error> {
+    pub async fn get_metadata_relationship(
+        &self,
+        id: &Uuid,
+        metadata_id: &Uuid,
+    ) -> Result<Option<CollectionMetadataRelationship>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare("select * from collection_metadata_relationships where collection_id = $1 and metadata_id = $2")
@@ -840,7 +911,15 @@ impl CollectionsDataStore {
         let connection = self.pool.get().await?;
         let stmt = connection.prepare("update metadata_relationships set relationship = $1, attributes = $2 where collection_id = $3 and metadata_id = $4 and (relationship = $1 or relationship is null or relationship = '')").await?;
         connection
-            .query(&stmt, &[&relationship.relationship, &relationship.attributes, &id, &metadata_id])
+            .query(
+                &stmt,
+                &[
+                    &relationship.relationship,
+                    &relationship.attributes,
+                    &id,
+                    &metadata_id,
+                ],
+            )
             .await?;
         self.on_collection_changed(&id).await?;
         self.on_metadata_changed(&metadata_id).await?;

@@ -28,6 +28,10 @@ fragment Collection on Collection {
     ready
     public
     publicList
+    templateMetadata {
+        id
+        version
+    }
     ordering {
         ...Ordering
     }

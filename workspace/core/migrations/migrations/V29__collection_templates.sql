@@ -1,9 +1,14 @@
+alter table collections add column deleted boolean not null default false;
+alter table metadata add column deleted boolean not null default false;
+
 create table collection_templates
 (
     metadata_id        uuid not null,
     version            int  not null,
     configuration      jsonb,
     default_attributes jsonb,
+    collection_filter  jsonb,
+    metadata_filter    jsonb,
     primary key (metadata_id, version),
     foreign key (metadata_id) references metadata (id) on delete cascade
 );

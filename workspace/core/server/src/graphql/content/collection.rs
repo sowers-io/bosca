@@ -117,6 +117,10 @@ impl CollectionObject {
         &self.collection.ordering
     }
 
+    async fn deleted(&self) -> bool {
+        self.collection.deleted
+    }
+
     async fn created(&self) -> &DateTime<Utc> {
         &self.collection.created
     }
@@ -129,7 +133,7 @@ impl CollectionObject {
         if let Some(id) = &self.collection.template_metadata_id {
             if let Some(version) = &self.collection.template_metadata_version {
                 let ctx = ctx.data::<BoscaContext>()?;
-                let metadata = ctx.check_metadata_version_action(&id, *version, PermissionAction::View).await?;
+                let metadata = ctx.check_metadata_version_action(id, *version, PermissionAction::View).await?;
                 return Ok(Some(metadata.into()));
             }
         }
@@ -191,6 +195,18 @@ impl CollectionObject {
             .collect())
     }
 
+    async fn collections_count(
+        &self,
+        ctx: &Context<'_>,
+    ) -> Result<i64, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        ctx.check_collection_action(&self.collection.id, PermissionAction::List).await?;
+        ctx.content
+            .collections
+            .get_child_collections_count(&self.collection)
+            .await
+    }
+
     async fn metadata(
         &self,
         ctx: &Context<'_>,
@@ -208,6 +224,18 @@ impl CollectionObject {
             .collect())
     }
 
+    async fn metadata_count(
+        &self,
+        ctx: &Context<'_>,
+    ) -> Result<i64, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        ctx.check_collection_action(&self.collection.id, PermissionAction::List).await?;
+        ctx.content
+            .collections
+            .get_child_metadata_count(&self.collection)
+            .await
+    }
+
     async fn workflow(&self) -> CollectionWorkflowObject {
         CollectionWorkflowObject {
             collection: &self.collection,
@@ -221,6 +249,7 @@ impl CollectionObject {
     async fn public(&self) -> bool {
         self.collection.public
     }
+
     async fn public_list(&self) -> bool {
         self.collection.public_list
     }

@@ -249,20 +249,6 @@ async fn initialize_content(ctx: &BoscaContext) {
                 .await
                 .unwrap();
             initialize_collection(ctx, "Root", CollectionType::Root, Value::Null).await;
-            initialize_collection(
-                ctx,
-                "Raw Bibles",
-                CollectionType::System,
-                serde_json::json!({"collection": "raw-bibles"}),
-            )
-            .await;
-            initialize_collection(
-                ctx,
-                "Bibles",
-                CollectionType::System,
-                serde_json::json!({"collection": "bibles"}),
-            )
-            .await;
         }
     }
 }

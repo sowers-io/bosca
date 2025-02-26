@@ -12,7 +12,7 @@ use crate::models::security::permission::PermissionAction;
 use async_graphql::*;
 use std::str::FromStr;
 use uuid::Uuid;
-use crate::models::content::find_query::FindQuery;
+use crate::models::content::find_query::FindQueryInput;
 
 pub struct ContentObject {}
 
@@ -50,10 +50,10 @@ impl ContentObject {
         }
     }
 
-    async fn find_collection(
+    async fn find_collections(
         &self,
         ctx: &Context<'_>,
-        mut query: FindQuery,
+        mut query: FindQueryInput,
     ) -> Result<Vec<CollectionObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         Ok(ctx
@@ -64,6 +64,15 @@ impl ContentObject {
             .into_iter()
             .map(CollectionObject::new)
             .collect())
+    }
+
+    async fn find_collections_count(
+        &self,
+        ctx: &Context<'_>,
+        mut query: FindQueryInput,
+    ) -> Result<i64, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        ctx.content.collections.find_count(&mut query).await
     }
 
     async fn collection(
@@ -87,7 +96,7 @@ impl ContentObject {
     async fn find_metadata(
         &self,
         ctx: &Context<'_>,
-        mut query: FindQuery,
+        mut query: FindQueryInput,
     ) -> Result<Vec<MetadataObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         Ok(ctx
@@ -103,7 +112,7 @@ impl ContentObject {
     async fn find_metadata_count(
         &self,
         ctx: &Context<'_>,
-        mut query: FindQuery,
+        mut query: FindQueryInput,
     ) -> Result<i64, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         ctx.content.metadata.find_count(&mut query).await

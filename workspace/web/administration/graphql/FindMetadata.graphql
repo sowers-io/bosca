@@ -1,4 +1,4 @@
-query FindMetadata($query: FindQuery!) {
+query FindMetadata($query: FindQueryInput!) {
     content {
         findMetadata(query: $query) {
             ...Metadata

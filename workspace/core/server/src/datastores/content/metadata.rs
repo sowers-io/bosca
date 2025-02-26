@@ -3,6 +3,7 @@ use crate::datastores::content::util::build_find_args;
 use crate::datastores::notifier::Notifier;
 use crate::models::content::category::Category;
 use crate::models::content::collection::MetadataChildInput;
+use crate::models::content::find_query::FindQueryInput;
 use crate::models::content::metadata::{Metadata, MetadataInput};
 use crate::models::content::metadata_profile::MetadataProfile;
 use crate::models::content::metadata_relationship::{
@@ -18,7 +19,6 @@ use log::error;
 use serde_json::{Map, Value};
 use std::sync::Arc;
 use uuid::Uuid;
-use crate::models::content::find_query::FindQuery;
 
 #[derive(Clone)]
 pub struct MetadataDataStore {
@@ -64,7 +64,7 @@ impl MetadataDataStore {
         Ok(rows.first().unwrap().get("slug"))
     }
 
-    pub async fn find(&self, query: &mut FindQuery) -> Result<Vec<Metadata>, Error> {
+    pub async fn find(&self, query: &mut FindQueryInput) -> Result<Vec<Metadata>, Error> {
         let connection = self.pool.get().await?;
         let category_ids = query.get_category_ids();
         let (query, values) = build_find_args(
@@ -80,7 +80,7 @@ impl MetadataDataStore {
         Ok(rows.iter().map(|r| r.into()).collect())
     }
 
-    pub async fn find_count(&self, query: &mut FindQuery) -> Result<i64, Error> {
+    pub async fn find_count(&self, query: &mut FindQueryInput) -> Result<i64, Error> {
         let connection = self.pool.get().await?;
         let category_ids = query.get_category_ids();
         let (query, values) = build_find_args(
@@ -115,7 +115,7 @@ impl MetadataDataStore {
     pub async fn get_all(&self, offset: i64, limit: i64) -> Result<Vec<Metadata>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
-            .prepare_cached("select * from metadata order by name offset $1 limit $2")
+            .prepare_cached("select * from metadata where deleted = false order by name offset $1 limit $2")
             .await?;
         let rows = connection.query(&stmt, &[&offset, &limit]).await?;
         Ok(rows.iter().map(|r| r.into()).collect())
@@ -150,7 +150,7 @@ impl MetadataDataStore {
     ) -> Result<Vec<Uuid>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
-            .prepare_cached("select collection_id from collection_items where child_metadata_id = $1 offset $2 limit $3")
+            .prepare_cached("select ci.collection_id from collection_items ci inner join collections c on (ci.collection_id = c.id and c.deleted = false) where ci.child_metadata_id = $1 offset $2 limit $3")
             .await?;
         let rows = connection.query(&stmt, &[id, &offset, &limit]).await?;
         Ok(rows.iter().map(|r| r.get("collection_id")).collect())
@@ -263,6 +263,15 @@ impl MetadataDataStore {
             .await?;
         self.on_metadata_supplementary_changed(metadata_id, &key)
             .await?;
+        Ok(())
+    }
+
+    pub async fn mark_deleted(&self, metadata_id: &Uuid) -> Result<(), Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("update metadata set deleted = true, modified = now() where id = $1")
+            .await?;
+        connection.execute(&stmt, &[metadata_id]).await?;
         Ok(())
     }
 
@@ -679,7 +688,7 @@ impl MetadataDataStore {
 
         if let Some(slug) = metadata.slug.as_ref() {
             let stmt = txn
-                .prepare_cached("update slugs set slug = $1 where metadata_id = $2)")
+                .prepare_cached("update slugs set slug = $1 where metadata_id = $2")
                 .await?;
             txn.execute(&stmt, &[slug, &id]).await?;
         }
@@ -863,7 +872,7 @@ impl MetadataDataStore {
     pub async fn get_relationships(&self, id: &Uuid) -> Result<Vec<MetadataRelationship>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
-            .prepare("select * from metadata_relationships where metadata1_id = $1")
+            .prepare("select r.* from metadata_relationships r inner join metadata m on (r.metadata2_id = m.id and m.deleted = false) where metadata1_id = $1")
             .await?;
         let rows = connection.query(&stmt, &[&id]).await?;
         Ok(rows.iter().map(MetadataRelationship::from).collect())

@@ -4,24 +4,31 @@ import {
   AddCollectionDocument,
   AddMetadataCollectionDocument,
   BeginCollectionTransitionDocument,
-  type CollectionFragment,
-  type CollectionInput,
-  type CollectionMetadataRelationshipFragment, CollectionType,
+  CollectionType,
   DeleteCollectionDocument,
+  EnqueueWorkflowDocument,
   ExtensionFilterType,
-  type FindAttributes,
-  FindCollectionDocument,
+  FindCollectionsDocument,
   GetCollectionDocument,
   GetCollectionListDocument,
   GetCollectionMetadataRelationshipsDocument,
   GetCollectionParentsDocument,
-  type MetadataFragment,
-  type ParentCollectionFragment,
   RemoveCollectionCollectionDocument,
   RemoveMetadataCollectionDocument,
   SetCollectionPublicDocument,
   SetCollectionPublicListDocument,
   SetCollectionReadyDocument,
+  type CollectionFragment,
+  type CollectionInput,
+  type CollectionMetadataRelationshipFragment,
+  type FindAttributes,
+  type MetadataFragment,
+  type ParentCollectionFragment,
+  type WorkflowConfigurationInput,
+  type WorkflowExecutionId,
+  FindCollectionsCountDocument,
+  GetCollectionChildrenCollectionsDocument,
+  GetCollectionChildrenMetadataDocument,
 } from '~/lib/graphql/graphql'
 import type { AsyncData } from '#app/composables/asyncData'
 import { NetworkClient } from '~/lib/bosca/networkclient'
@@ -36,6 +43,57 @@ export interface CollectionAndItems {
 export class ContentCollections<T extends NetworkClient> extends Api<T> {
   constructor(network: T) {
     super(network)
+  }
+
+  async getCollectionChildCollections(
+      id: string,
+      offset: number | Ref<number>,
+      limit: number | Ref<number>,
+  ): Promise<{ collections: Array<CollectionFragment>, count: number }> {
+    const response = await this.network.execute(GetCollectionChildrenCollectionsDocument, {
+      id,
+      offset,
+      limit,
+    })
+    if (response?.content?.collection?.collections) {
+      return {
+        collections: response?.content?.collection?.collections as Array<
+            CollectionFragment
+        >,
+        count: response?.content?.collection?.collectionsCount || 0,
+      }
+    }
+    return { collections: [], count: 0 }
+  }
+
+  async getCollectionChildMetadata(
+      id: string,
+      offset: number | Ref<number>,
+      limit: number | Ref<number>,
+  ): Promise<{ metadata: Array<MetadataFragment>, count: number }> {
+    const response = await this.network.execute(GetCollectionChildrenMetadataDocument, {
+      id,
+      offset,
+      limit,
+    })
+    if (response?.content?.collection?.metadata) {
+      return {
+        metadata: response?.content?.collection?.metadata as Array<MetadataFragment>,
+        count: response?.content?.collection?.metadataCount || 0,
+      }
+    }
+    return { metadata: [], count: 0 }
+  }
+
+  async getCollectionParents(
+      id: string,
+  ): Promise<Array<ParentCollectionFragment> | null> {
+    const response = await this.network.execute(GetCollectionParentsDocument, {
+      id,
+    })
+    return response?.content?.collection?.parentCollections as Array<
+        ParentCollectionFragment
+    >
   }
 
   getCollectionParentAsyncData(
@@ -54,9 +112,9 @@ export class ContentCollections<T extends NetworkClient> extends Api<T> {
 
   findAsyncData(query: {
     attributes?:
-      | Array<FindAttributes>
-      | Ref<Array<FindAttributes>>
-      | null
+        | Array<FindAttributes>
+        | Ref<Array<FindAttributes>>
+        | null
     extension?: ExtensionFilterType | Ref<ExtensionFilterType> | null
     categoryIds?: Array<string> | Ref<Array<string>> | null
     type?: CollectionType | Ref<CollectionType> | null
@@ -76,12 +134,45 @@ export class ContentCollections<T extends NetworkClient> extends Api<T> {
       }
     })
     return this.executeAndTransformAsyncData(
-      FindCollectionDocument,
-      { query: q },
-      (data) => {
-        if (!data) return null
-        return data.content.findCollection as CollectionFragment[]
-      },
+        FindCollectionsDocument,
+        { query: q },
+        (data) => {
+          if (!data) return null
+          return data.content.findCollections as CollectionFragment[]
+        },
+    )
+  }
+
+  findCountAsyncData(query: {
+    attributes?:
+        | Array<FindAttributes>
+        | Ref<Array<FindAttributes>>
+        | null
+    extension?: ExtensionFilterType | Ref<ExtensionFilterType> | null
+    categoryIds?: Array<string> | Ref<Array<string>> | null
+    type?: CollectionType | Ref<CollectionType> | null
+    offset?: number | Ref<number>
+    limit?: number | Ref<number>
+  }): AsyncData<number | null, any> {
+    const q = computed(() => {
+      return {
+        attributes: unref(query.attributes),
+        extension: unref(query.extension),
+        categoryIds: unref(query.categoryIds),
+        // @ts-ignore: this should be fine
+        contentTypes: unref(query.contentTypes),
+        collectionType: unref(query.type),
+        offset: unref(query.offset),
+        limit: unref(query.limit),
+      }
+    })
+    return this.executeAndTransformAsyncData(
+        FindCollectionsCountDocument,
+        { query: q },
+        (data) => {
+          if (!data) return null
+          return data.content.findCollectionsCount || 0
+        },
     )
   }
 
@@ -195,20 +286,21 @@ export class ContentCollections<T extends NetworkClient> extends Api<T> {
     offset: number | Ref<number>,
     limit: number | Ref<number>,
   ): Promise<CollectionFragment[]> {
-    const response = await this.network.execute(FindCollectionDocument, {
+    const response = await this.network.execute(FindCollectionsDocument, {
       query: {
         attributes,
         offset,
         limit,
       }
     })
-    return response!.content!.findCollection as CollectionFragment[]
+    return response!.content!.findCollections as CollectionFragment[]
   }
 
-  async beginTransition(id: string, state: string) {
+  async beginTransition(id: string, state: string, status: string) {
     await this.network.execute(BeginCollectionTransitionDocument, {
       id,
       state,
+      status
     })
   }
 
@@ -259,5 +351,18 @@ export class ContentCollections<T extends NetworkClient> extends Api<T> {
       collectionId,
       id: metadataId,
     })
+  }
+
+  async enqueueCollectionWorkflow(
+      workflowId: string,
+      collectionId: string,
+      configuration: Array<WorkflowConfigurationInput> = [],
+  ): Promise<WorkflowExecutionId> {
+    const response = await this.network.execute(EnqueueWorkflowDocument, {
+      workflowId,
+      collectionId,
+      configuration,
+    })
+    return response!.workflows!.enqueueWorkflow!
   }
 }

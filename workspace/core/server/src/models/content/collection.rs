@@ -5,13 +5,14 @@ use postgres_types::{to_sql_checked, FromSql, IsNull, ToSql, Type};
 use serde_json::Value;
 use std::error::Error;
 use std::fmt::Debug;
+use serde::{Deserialize, Serialize};
 use tokio_postgres::Row;
 use uuid::Uuid;
 use crate::models::content::item::ContentItem;
 use crate::models::content::metadata::MetadataInput;
 use crate::models::content::ordering::{Ordering, OrderingInput};
 
-#[derive(Enum, Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Enum, Debug, Copy, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum CollectionType {
     Root,
     System,
@@ -41,6 +42,7 @@ pub struct Collection {
     pub public_list: bool,
     pub ready: Option<DateTime<Utc>>,
     pub ordering: Option<Vec<Ordering>>,
+    pub deleted: bool,
 }
 
 impl ContentItem for Collection {
@@ -141,6 +143,7 @@ impl From<&Row> for Collection {
             ready: row.get("ready"),
             public: row.get("public"),
             public_list: row.get("public_list"),
+            deleted: row.get("deleted"),
             ordering,
         }
     }

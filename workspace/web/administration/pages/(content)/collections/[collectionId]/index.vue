@@ -11,20 +11,17 @@ const route = useRoute()
 
 const client = useBoscaClient()
 
-const metadata = ref(
-    await client.metadata.get(route.params.metadataId.toString()),
+const collection = ref(
+    await client.collections.get(route.params.collectionId.toString()),
 )
 const relationships = ref(
-    await client.metadata.getRelationships(route.params.metadataId.toString()),
+    await client.collections.getRelationships(route.params.collectionId.toString()),
 )
 const parents = ref(
-    await client.metadata.getParents(route.params.metadataId.toString()),
+    await client.collections.getCollectionParents(route.params.collectionId.toString()),
 )
-const document = ref(
-    await client.metadata.getDocument(route.params.metadataId.toString()),
-)
-const documentCollection = computed(() => {
-  return parents.value?.find((c) => c.attributes['editor.type'] === 'Document') as
+const collectionCollection = computed(() => {
+  return parents.value?.find((c) => c.attributes['editor.type'] === 'Collection') as
       | ParentCollectionFragment
       | undefined
 })
@@ -32,16 +29,16 @@ const parentCollections = computed(() => {
   return parents.value?.filter((c) => c.attributes['editor.type'] !== 'Document') || []
 })
 const template = ref(
-    document.value.templateMetadataId && document.value.templateMetadataVersion
-        ? await client.metadata.getDocumentTemplate(
-            document.value.templateMetadataId,
-            document.value.templateMetadataVersion,
+    collection.value?.templateMetadata?.id && collection.value.templateMetadata?.version
+        ? await client.metadata.getCollectionTemplate(
+            collection.value.templateMetadata.id,
+            collection.value.templateMetadata.version,
         )
         : null,
 )
 const { data: states } = client.workflows.getStatesAsyncData()
 const stateName = computed(() => {
-  return states.value?.find((s) => s.id === metadata.value.workflow.state)?.name
+  return states.value?.find((s) => s.id === collection.value?.workflow.state)?.name
 })
 const hasChanges = ref(false)
 const confirmDelete = ref(false)
@@ -49,7 +46,7 @@ const confirmReset = ref(false)
 const outOfDate = ref(false)
 
 function onSave() {
-  window.dispatchEvent(new Event('save-document'))
+  window.dispatchEvent(new Event('save-collection'))
 }
 
 function reset() {
@@ -59,30 +56,26 @@ function reset() {
 function doReset() {
   outOfDate.value = false
   confirmReset.value = false
-  window.dispatchEvent(new Event('reset-document'))
+  window.dispatchEvent(new Event('reset-collection'))
 }
 
 async function onPublish() {
-  if (metadata.value.workflow.pending) {
+  if (collection.value?.workflow.pending) {
     return
   }
   const states = await client.workflows.getStates() || []
   const published = states.find((s) => s.type === WorkflowStateType.Published)?.id || ''
-  if (metadata.value.workflow.state !== published) {
-    await client.metadata.beginTransition(
-        metadata.value.id,
-        metadata.value.version,
+  if (collection.value!.workflow.state !== published) {
+    await client.collections.beginTransition(
+        collection.value!.id,
         published,
-        'Publishing Document',
+        'Publishing Collection',
     )
   }
-  if (!metadata.value.public) {
-    await client.metadata.setPublic(metadata.value.id, true)
+  if (!collection.value!.public) {
+    await client.metadata.setPublic(collection.value!.id, true)
   }
-  if (!metadata.value.publicContent) {
-    await client.metadata.setContentPublic(metadata.value.id, true)
-  }
-  for (const relationship of relationships.value) {
+  for (const relationship of relationships.value || []) {
     if (relationship.metadata.workflow.pending) {
       continue
     }
@@ -105,11 +98,10 @@ async function onPublish() {
 
 async function onUnpublish() {
   const states = await client.workflows.getStates() || []
-  await client.metadata.beginTransition(
-      metadata.value.id,
-      metadata.value.version,
+  await client.collections.beginTransition(
+      collection.value!.id,
       states.find((s) => s.type === WorkflowStateType.Draft)?.id || '',
-      'Unpublishing Document',
+      'Unpublishing Collection',
   )
 }
 
@@ -123,19 +115,18 @@ function onDelete() {
 
 async function doDelete() {
   confirmDelete.value = false
-  await client.metadata.delete(metadata.value.id)
-  await router.push('/content')
+  await client.metadata.delete(collection.value!.id)
+  await router.push('/collections')
 }
 
-client.listeners.onMetadataChanged(async (id) => {
-  if (id === metadata.value.id) {
+client.listeners.onCollectionChanged(async (id) => {
+  if (id === collection.value?.id) {
     try {
-      document.value = await client.metadata.getDocument(id)
+      collection.value = await client.collections.get(id)
       parents.value = await client.metadata.getParents(id)
-      relationships.value = await client.metadata.getRelationships(id)
-      metadata.value = await client.metadata.get(id)
+      relationships.value = await client.collections.getRelationships(id)
       outOfDate.value = hasChanges.value
-      toast({title: 'Document updated.'})
+      toast({title: 'Collection updated.'})
     } catch (ignore) {
     }
   }
@@ -143,8 +134,8 @@ client.listeners.onMetadataChanged(async (id) => {
 
 onMounted(() => {
   breadcrumbs.set([
-    {title: 'Content', to: '/content'},
-    {title: 'Edit Document'},
+    {title: 'Collections', to: '/collections'},
+    {title: 'Edit Collection'},
   ])
 })
 </script>
@@ -154,7 +145,7 @@ onMounted(() => {
       <div class="flex">
         <div>
           <Badge variant="secondary">{{ stateName }}
-            <span v-if="metadata.workflow.pending">*</span>
+            <span v-if="collection?.workflow?.pending">*</span>
           </Badge>
           <Badge v-if="hasChanges" variant="outline" class="ms-2 text-gray-400">Has Changes</Badge>
           <Badge v-if="outOfDate" variant="destructive" class="ms-2">Out of Date</Badge>
@@ -162,7 +153,7 @@ onMounted(() => {
       </div>
       <div class="grow"></div>
       <div class="flex gap-2">
-        <Tooltip v-if="metadata?.workflow?.state === 'draft'">
+        <Tooltip v-if="collection?.workflow?.state === 'draft'">
           <TooltipTrigger as-child>
             <Button
                 @click="reset"
@@ -177,7 +168,7 @@ onMounted(() => {
             <p>Reset Document</p>
           </TooltipContent>
         </Tooltip>
-        <Tooltip v-if="metadata?.workflow?.state === 'draft'">
+        <Tooltip v-if="collection?.workflow?.state === 'draft'">
           <TooltipTrigger as-child>
             <Button
                 @click="onSave"
@@ -189,7 +180,7 @@ onMounted(() => {
             </Button>
           </TooltipTrigger>
           <TooltipContent>
-            <p>Save Document</p>
+            <p>Save Collection</p>
           </TooltipContent>
         </Tooltip>
         <Tooltip>
@@ -199,7 +190,7 @@ onMounted(() => {
             </Button>
           </TooltipTrigger>
           <TooltipContent>
-            <p>Preview Document</p>
+            <p>Preview Collection</p>
           </TooltipContent>
         </Tooltip>
         <Tooltip>
@@ -209,14 +200,14 @@ onMounted(() => {
             </Button>
           </TooltipTrigger>
           <TooltipContent>
-            <p>Delete Document</p>
+            <p>Delete Collection</p>
           </TooltipContent>
         </Tooltip>
-        <Tooltip v-if="metadata?.workflow?.state === 'draft'">
+        <Tooltip v-if="collection?.workflow?.state === 'draft'">
           <TooltipTrigger as-child>
             <Button
                 @click="onPublish"
-                :disabled="hasChanges || metadata?.workflow?.pending"
+                :disabled="hasChanges || collection?.workflow?.pending"
                 class="flex gap-2"
                 variant="secondary"
             >
@@ -227,11 +218,11 @@ onMounted(() => {
             <p>Publish Document</p>
           </TooltipContent>
         </Tooltip>
-        <Tooltip v-if="metadata?.workflow?.state === 'published'">
+        <Tooltip v-if="collection?.workflow?.state === 'published'">
           <TooltipTrigger as-child>
             <Button
                 @click="onUnpublish"
-                :disabled="metadata?.workflow?.pending"
+                :disabled="collection?.workflow?.pending"
                 class="flex gap-2"
                 variant="secondary"
             >
@@ -246,7 +237,7 @@ onMounted(() => {
           <TooltipTrigger as-child>
             <Button
                 :disabled="hasChanges"
-                @click="router.push('/metadata/edit/' + metadata.id + '?document=true')"
+                @click="router.push('/collections/edit/' + collection!.id + '?collection=true')"
                 class="flex gap-2"
                 variant="secondary"
             >
@@ -260,22 +251,21 @@ onMounted(() => {
       </div>
     </div>
     <div class="border-none p-0 outline-none mt-4">
-      <ContentMetadataEditor
-          :documentCollection="documentCollection"
+      <ContentCollectionsEditor
           :parents="parentCollections"
-          :relationships="relationships"
-          :document="document"
+          :collectionCollection="collectionCollection"
+          :relationships="relationships || []"
           :template="template"
-          v-model:metadata="metadata"
+          v-model:collection="collection"
           v-model:has-changes="hasChanges"
       />
     </div>
     <Dialog v-model:open="confirmDelete">
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Delete Document</DialogTitle>
+          <DialogTitle>Delete Collection</DialogTitle>
           <DialogDescription>
-            Are you sure you want to delete this document?<br/>
+            Are you sure you want to delete this collection?<br/>
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
@@ -283,7 +273,7 @@ onMounted(() => {
             <div class="flex text-sm text-gray-400">This cannot be undone.</div>
             <div class="grow"></div>
             <Button type="button" variant="destructive" @click="doDelete">
-              Delete Document
+              Delete Collection
             </Button>
           </div>
         </DialogFooter>
@@ -292,9 +282,9 @@ onMounted(() => {
     <Dialog v-model:open="confirmReset">
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Reset Document</DialogTitle>
+          <DialogTitle>Reset Collection</DialogTitle>
           <DialogDescription>
-            Are you sure you want to reset this document?<br/>
+            Are you sure you want to reset this collection?<br/>
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
@@ -302,7 +292,7 @@ onMounted(() => {
             <div class="flex text-sm text-gray-400">This cannot be undone.</div>
             <div class="grow"></div>
             <Button type="button" variant="destructive" @click="doReset">
-              Reset Document
+              Reset Collection
             </Button>
           </div>
         </DialogFooter>

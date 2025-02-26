@@ -46,6 +46,7 @@ pub struct Metadata {
     pub public: bool,
     pub public_content: bool,
     pub public_supplementary: bool,
+    pub deleted: bool
 }
 
 impl ContentItem for Metadata {
@@ -135,6 +136,7 @@ impl From<&Row> for Metadata {
             public: row.get("public"),
             public_content: row.get("public_content"),
             public_supplementary: row.get("public_supplementary"),
+            deleted: row.get("deleted")
         }
     }
 }

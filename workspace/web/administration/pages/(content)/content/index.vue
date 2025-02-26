@@ -15,7 +15,7 @@ const offset = ref(0)
 const limit = ref(0)
 
 const { data: collection } = client.collections.findAsyncData({
-  attributes: [ { attributes: [ { key: 'editor.type', value: 'Documents and Guides' } ] } ],
+  attributes: [ { attributes: [ { key: 'editor.type', value: 'DocumentsAndGuides' } ] } ],
   offset: 0,
   limit: 1,
 })
@@ -130,8 +130,8 @@ onMounted(() => {
 
 <template>
   <Tabs
-    v-model:model-value="selectedId"
     class="h-full space-y-6"
+    v-model:model-value="selectedId"
     @update:model-value="updateAttributes"
   >
     <div class="flex">
@@ -155,7 +155,7 @@ onMounted(() => {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Content Name</TableHead>
+            <TableHead>Name</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>

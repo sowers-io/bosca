@@ -1,6 +1,11 @@
 fragment CollectionTemplate on CollectionTemplate {
     configuration
     defaultAttributes
+    collectionFilter {
+        options {
+            ...FindQueryOption
+        }
+    }
     attributes {
         key
         name

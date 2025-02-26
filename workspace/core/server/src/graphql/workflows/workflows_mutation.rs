@@ -16,7 +16,7 @@ use crate::graphql::workflows::activities_mutation::ActivitiesMutationObject;
 use crate::graphql::workflows::storage_systems_mutation::StorageSystemsMutationObject;
 use crate::graphql::workflows::traits_mutation::TraitsMutationObject;
 use crate::graphql::workflows::transitions_mutation::TransitionsMutationObject;
-use crate::models::content::find_query::FindQuery;
+use crate::models::content::find_query::FindQueryInput;
 use crate::models::workflow::transitions::BeginTransitionInput;
 use crate::util::transition::begin_transition;
 
@@ -147,7 +147,7 @@ impl WorkflowsMutationObject {
         &self,
         ctx: &Context<'_>,
         workflow_id: String,
-        mut query: FindQuery,
+        mut query: FindQueryInput,
         configurations: Option<Vec<WorkflowConfigurationInput>>,
     ) -> Result<Vec<WorkflowExecutionIdObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;

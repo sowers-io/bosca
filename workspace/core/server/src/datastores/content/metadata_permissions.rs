@@ -40,6 +40,9 @@ impl MetadataPermissionsDataStore {
         principal: &Principal,
         action: PermissionAction,
     ) -> Result<bool, Error> {
+        if metadata.deleted {
+            return Ok(false);
+        }
         if action == PermissionAction::View
             && metadata.public
             && metadata.workflow_state_id == "published"
@@ -56,6 +59,9 @@ impl MetadataPermissionsDataStore {
         principal: &Principal,
         action: PermissionAction,
     ) -> Result<bool, Error> {
+        if metadata.deleted {
+            return Ok(false);
+        }
         if action == PermissionAction::View
             && metadata.public_content
             && metadata.workflow_state_id == "published"
@@ -72,6 +78,9 @@ impl MetadataPermissionsDataStore {
         principal: &Principal,
         action: PermissionAction,
     ) -> Result<bool, Error> {
+        if metadata.deleted {
+            return Ok(false);
+        }
         let eval = Evaluator::new(self.get_metadata_permissions(&metadata.id).await?);
         Ok(eval.evaluate(principal, &action))
     }

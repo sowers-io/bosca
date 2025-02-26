@@ -1,6 +1,6 @@
 use postgres_types::ToSql;
 use uuid::Uuid;
-use crate::models::content::find_query::{ExtensionFilterType, FindQuery};
+use crate::models::content::find_query::{ExtensionFilterType, FindQueryInput};
 use crate::models::content::ordering::Order::Ascending;
 use crate::models::content::ordering::Ordering;
 
@@ -52,7 +52,7 @@ pub fn build_find_args<'a>(
     base_type: &str,
     query: &str,
     alias: &str,
-    find_query: &'a FindQuery,
+    find_query: &'a FindQueryInput,
     category_ids: &'a Option<Vec<Uuid>>,
     count: bool
 ) -> (String, Vec<&'a (dyn ToSql + Sync)>) {
@@ -89,25 +89,18 @@ pub fn build_find_args<'a>(
         _ => {}
     }
 
-    if (base_type == "collection" && find_query.collection_type.is_some()) || find_query.attributes.iter().find(|a| !a.attributes.is_empty()).is_some() || (find_query.content_types.is_some() && !find_query.content_types.as_ref().unwrap().is_empty()) {
-        q.push_str(" where ");
-    }
+    q.push_str(format!(" where {}.deleted = false ", alias).as_str());
 
     if base_type == "collection" {
-        match &find_query.collection_type {
-            Some(collection_type) => {
-                q.push_str(format!(" {}.type = ${} ", alias, pos).as_str());
-                pos += 1;
-                values.push(collection_type as &(dyn ToSql + Sync));
-            }
-            None => {}
+        if let Some(collection_type) = &find_query.collection_type {
+            q.push_str(format!(" and {}.type = ${} ", alias, pos).as_str());
+            pos += 1;
+            values.push(collection_type as &(dyn ToSql + Sync));
         }
     }
 
-    if !find_query.attributes.is_empty() {
-        if base_type == "collection" && find_query.collection_type.is_some() && !values.is_empty() {
-            q.push_str(" and ");
-        }
+    if !find_query.attributes.is_empty() && find_query.attributes.iter().any(|a| !a.attributes.is_empty()) {
+        q.push_str(" and ");
         for i in 0..find_query.attributes.len() {
             let attrs = find_query.attributes.get(i).unwrap();
             if attrs.attributes.is_empty() {
@@ -133,10 +126,7 @@ pub fn build_find_args<'a>(
 
     if let Some(content_types) = &find_query.content_types {
         if !content_types.is_empty() {
-            if ((base_type == "collection" && find_query.collection_type.is_some()) || (!find_query.attributes.is_empty() && find_query.attributes.iter().find(|a| !a.attributes.is_empty()).is_some())) && !values.is_empty() {
-                q.push_str(" and ");
-            }
-            q.push_str(format!(" {}.content_type in (", alias).as_str());
+            q.push_str(format!(" and {}.content_type in (", alias).as_str());
             for (ix, content_type) in content_types.iter().enumerate() {
                 if ix > 0 {
                     q.push_str(", ");
@@ -151,11 +141,15 @@ pub fn build_find_args<'a>(
 
     if !count {
         q.push_str(format!(" order by lower({}.name) asc ", alias).as_str()); // TODO: when adding MetadataIndex & CollectionIndex, make this configurable so it is based on an index
-        q.push_str(format!(" offset ${}", pos).as_str());
-        pos += 1;
-        values.push(&find_query.offset as &(dyn ToSql + Sync));
-        q.push_str(format!(" limit ${}", pos).as_str());
-        values.push(&find_query.limit as &(dyn ToSql + Sync));
+        if find_query.offset.is_some() {
+            q.push_str(format!(" offset ${}", pos).as_str());
+            values.push(find_query.offset.as_ref().unwrap() as &(dyn ToSql + Sync));
+            pos += 1;
+        }
+        if find_query.limit.is_some() {
+            q.push_str(format!(" limit ${}", pos).as_str());
+            values.push(find_query.limit.as_ref().unwrap() as &(dyn ToSql + Sync));
+        }
     }
     (q.to_string(), values)
 }

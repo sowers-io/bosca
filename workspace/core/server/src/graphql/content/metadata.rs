@@ -130,6 +130,10 @@ impl MetadataObject {
         &self.metadata.ready
     }
 
+    async fn deleted(&self) -> bool {
+        self.metadata.deleted
+    }
+
     async fn workflow(&self) -> MetadataWorkflowObject {
         MetadataWorkflowObject {
             metadata: self.metadata.clone(),

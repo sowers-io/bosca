@@ -81,6 +81,9 @@ pub async fn download(
             .await
             .map_err(|_| (StatusCode::FORBIDDEN, "Forbidden".to_owned()))?
     };
+    if metadata.deleted && !ctx.has_admin_account().await.map_err(|_| (StatusCode::FORBIDDEN, "Forbidden".to_owned()))? {
+        return Err((StatusCode::NOT_FOUND, "Not Found".to_owned()))?;
+    }
     let supplementary = get_supplementary(&ctx, &params, &metadata.id)
         .await
         .map_err(|_| {

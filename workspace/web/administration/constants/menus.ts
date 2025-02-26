@@ -5,11 +5,6 @@ export const navMenu: NavMenu[] = [
     heading: 'Contents',
     items: [
       {
-        title: 'Browse',
-        icon: 'i-lucide-folder-tree',
-        link: '/collections/browse',
-      },
-      {
         title: 'Collections',
         icon: 'i-lucide-folders',
         link: '/collections',

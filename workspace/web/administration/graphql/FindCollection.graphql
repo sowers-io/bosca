@@ -1,7 +1,0 @@
-query FindCollection($query: FindQuery!) {
-    content {
-        findCollection(query: $query) {
-            ...Collection
-        }
-    }
-}

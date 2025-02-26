@@ -64,6 +64,7 @@ type Collection {
     attributes(filter: AttributesFilterInput): JSON
     categories: [Category!]!
     collections(limit: Int!, offset: Int!): [Collection!]!
+    collectionsCount: Int!
     created: DateTime!
     description: String
     id: String!
@@ -71,6 +72,7 @@ type Collection {
     items(limit: Int!, offset: Int!): [CollectionItem!]!
     labels: [String!]!
     metadata(limit: Int!, offset: Int!): [Metadata!]!
+    metadataCount: Int!
     metadataRelationships: [CollectionMetadataRelationship!]!
     modified: DateTime!
     name: String!
@@ -120,9 +122,11 @@ type CollectionMutation {
 
 type CollectionTemplate {
     attributes: [CollectionTemplateAttribute!]!
+    collectionFilter: FindQueries
     configuration: JSON
     defaultAttributes: JSON
     metadata: Metadata
+    metadataFilter: FindQueries
 }
 
 type CollectionTemplateAttribute {
@@ -181,9 +185,10 @@ type Content {
     collection(id: String): Collection
     collectionTemplates: CollectionTemplates!
     documentTemplates: DocumentTemplates!
-    findCollection(query: FindQuery!): [Collection!]!
-    findMetadata(query: FindQuery!): [Metadata!]!
-    findMetadataCount(query: FindQuery!): Int!
+    findCollections(query: FindQueryInput!): [Collection!]!
+    findCollectionsCount(query: FindQueryInput!): Int!
+    findMetadata(query: FindQueryInput!): [Metadata!]!
+    findMetadataCount(query: FindQueryInput!): Int!
     metadata(id: String!, version: Int): Metadata
     metadataSupplementary(id: String!, key: String!, version: Int): MetadataSupplementary
     slug(slug: String!): ContentItem
@@ -232,6 +237,34 @@ type DocumentTemplateAttributeWorkflow {
 
 type DocumentTemplates {
     all: [DocumentTemplate!]!
+}
+
+type FindAttribute {
+    key: String!
+    value: String!
+}
+
+type FindAttributes {
+    attributes: [FindAttribute!]!
+}
+
+type FindQueries {
+    options: [FindQueryOption!]!
+}
+
+type FindQuery {
+    attributes: [FindAttributes!]!
+    categoryIds: [String!]
+    collectionType: CollectionType
+    contentTypes: [String!]
+    extensionFilter: ExtensionFilterType
+    limit: Int
+    offset: Int
+}
+
+type FindQueryOption {
+    name: String!
+    query: FindQuery!
 }
 
 type Group {
@@ -833,7 +866,7 @@ type WorkflowsMutation {
     enqueueChildWorkflows(jobId: WorkflowJobIdInput!, workflowIds: [String!]!): [WorkflowExecutionId!]!
     enqueueWorkflow(collectionId: String, configurations: [WorkflowConfigurationInput!], metadataId: String, version: Int, workflowId: String!): WorkflowExecutionId!
     expireAll: Boolean!
-    findAndEnqueueWorkflow(configurations: [WorkflowConfigurationInput!], query: FindQuery!, workflowId: String!): [WorkflowExecutionId!]!
+    findAndEnqueueWorkflow(configurations: [WorkflowConfigurationInput!], query: FindQueryInput!, workflowId: String!): [WorkflowExecutionId!]!
     models: ModelsMutation!
     prompts: PromptsMutation!
     setExecutionJobContext(context: JSON!, jobId: WorkflowJobIdInput!): Boolean!
@@ -1031,8 +1064,10 @@ input CollectionTemplateAttributeWorkflowInput {
 
 input CollectionTemplateInput {
     attributes: [CollectionTemplateAttributeInput!]!
+    collectionFilter: FindQueriesInput
     configuration: JSON
     defaultAttributes: JSON
+    metadataFilter: FindQueriesInput
 }
 
 input CollectionWorkflowCompleteState {
@@ -1091,23 +1126,32 @@ input DocumentTemplateInput {
     schema: JSON
 }
 
-input FindAttribute {
+input FindAttributeInput {
     key: String!
     value: String!
 }
 
-input FindAttributes {
-    attributes: [FindAttribute!]!
+input FindAttributesInput {
+    attributes: [FindAttributeInput!]!
 }
 
-input FindQuery {
-    attributes: [FindAttributes!]!
+input FindQueriesInput {
+    options: [FindQueryOptionInput!]!
+}
+
+input FindQueryInput {
+    attributes: [FindAttributesInput!]!
     categoryIds: [String!]
     collectionType: CollectionType
     contentTypes: [String!]
     extensionFilter: ExtensionFilterType
     limit: Int
     offset: Int
+}
+
+input FindQueryOptionInput {
+    name: [String!]!
+    query: FindQueryInput!
 }
 
 input MetadataChildInput {

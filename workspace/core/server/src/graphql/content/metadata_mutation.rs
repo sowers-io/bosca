@@ -151,6 +151,14 @@ impl MetadataMutationObject {
         let id = Uuid::parse_str(metadata_id.as_str())?;
         ctx.check_metadata_action(&id, PermissionAction::Delete)
             .await?;
+        ctx.content.metadata.mark_deleted(&id).await?;
+        Ok(true)
+    }
+
+    async fn permanently_delete(&self, ctx: &Context<'_>, metadata_id: String) -> Result<bool, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let id = Uuid::parse_str(metadata_id.as_str())?;
+        ctx.check_has_admin_account().await?;
         ctx.content.metadata.delete(ctx, &id).await?;
         Ok(true)
     }
