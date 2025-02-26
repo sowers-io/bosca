@@ -34,7 +34,7 @@ import {
   type PermissionInput,
   RemoveMetadataPermissionDocument,
   RemoveMetadataRelationshipDocument,
-  RemoveMetadataTraitDocument,
+  RemoveMetadataTraitDocument, SetCollectionAttributesDocument,
   SetJsonContentsDocument,
   SetMetadataAttributesDocument,
   SetMetadataContentPublicDocument,
@@ -353,7 +353,7 @@ export class ContentMetadata<T extends NetworkClient> extends Api<T> {
       | null
     extension?: ExtensionFilterType | Ref<ExtensionFilterType> | null
     categoryIds?: Array<string> | Ref<string[]> | null
-    contentTypes?: Array<string[]> | Ref<string[]> | null
+    contentTypes?: Array<string> | Ref<string[]> | null
     offset?: number | Ref<number>
     limit?: number | Ref<number>
   }): AsyncData<MetadataFragment[] | null, any> {

@@ -1,8 +1,7 @@
 <script lang="ts" setup>
-import {type Range} from '@tiptap/vue-3'
 import {
   AttributeUiType,
-  type CollectionFragment,
+  type CollectionFragment, type CollectionIdNameFragment,
   type CollectionMetadataRelationshipFragment,
   type CollectionTemplateFragment,
   type DocumentTemplateAttribute,
@@ -21,6 +20,8 @@ import {
   PaginationLast, PaginationList, PaginationListItem,
   PaginationNext, PaginationPrev
 } from "~/components/ui/pagination";
+import {toCollectionInput} from "~/lib/collection.ts";
+import slugify from "slugify";
 
 const client = useBoscaClient()
 const uploader = new Uploader(client)
@@ -147,7 +148,6 @@ async function updateAttributes() {
   }
 }
 
-let pendingRange: Range | null | undefined = null
 const mediaDialogOpen = ref(false)
 
 async function onRunWorkflow(attribute: AttributeState) {
@@ -182,11 +182,75 @@ async function onRunWorkflow(attribute: AttributeState) {
 
 function onOpenMediaPicker(event: OpenMediaPickerEvent) {
   hideAll()
-  pendingRange = event.range
   mediaDialogOpen.value = true
 }
 
 async function onSave() {
+  const input = toCollectionInput(props.collection)
+  input.name = title.value
+  input.slug = slugify(input.name).toLocaleLowerCase()
+
+  for (const attribute of props.template?.attributes || []) {
+    const attr = toRaw(attributes.get(attribute.key))
+    if (attr) {
+      switch (attr.ui) {
+        case AttributeUiType.Textarea:
+        case AttributeUiType.Input:
+          if (!input.attributes) input.attributes = {}
+          input.attributes[attr.key] = attr.value
+          break
+      }
+    }
+  }
+
+  await client.collections.edit(props.collection.id, input)
+
+  for (const parent of props.parents || []) {
+    await client.collections.removeCollection(parent.id, props.collection.id)
+  }
+
+  for (const attribute of props.template?.attributes || []) {
+    const attr = attributes.get(attribute.key)
+    if (attr) {
+      switch (attr.ui) {
+        case AttributeUiType.Collection: {
+          if (attr.list) {
+            const collections = attr.value
+            if (!collections) continue
+            for (const collection of collections) {
+              await client.collections.addCollection(collection.id, props.collection.id)
+            }
+          } else if (attr.value) {
+            const collection = attr.value as CollectionIdNameFragment
+            await client.collections.addCollection(collection.id, props.collection.id)
+          }
+          break
+        }
+        case AttributeUiType.Image:
+        case AttributeUiType.File: {
+          const removeRelationshipId = props.relationships.find((r) =>
+              r.relationship === attr.configuration.relationship
+          )?.metadata?.id
+          if (removeRelationshipId) {
+            await client.collections.removeMetadataRelationship(
+                props.collection.id,
+                removeRelationshipId,
+                attr.configuration.relationship,
+            )
+          }
+          if (!attr.value) continue
+          const relationship = toRaw(attr.value)
+          await client.collections.addMetadataRelationship({
+            id: props.collection.id,
+            metadataId: relationship.metadata.id,
+            attributes: {},
+            relationship: attr.configuration.relationship,
+          })
+          break
+        }
+      }
+    }
+  }
   hasChanges.value = false
 }
 

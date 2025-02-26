@@ -43,6 +43,9 @@ client.listeners.onMetadataSupplementaryChanged((id) => {
           <TabsTrigger value="traits">
             Traits
           </TabsTrigger>
+          <TabsTrigger value="attributes">
+            Attributes
+          </TabsTrigger>
           <TabsTrigger value="content" v-if="metadata.uploaded || metadata.content.type === 'bosca/v-document'">
             Content
           </TabsTrigger>
@@ -73,6 +76,9 @@ client.listeners.onMetadataSupplementaryChanged((id) => {
       </TabsContent>
       <TabsContent value="traits" class="border-none p-0 outline-none">
         <ContentTraits class="col-span-2" :content="metadata"/>
+      </TabsContent>
+      <TabsContent value="attributes" class="border-none p-0 outline-none">
+        <ContentAttributes class="col-span-2" :content="metadata"/>
       </TabsContent>
       <TabsContent value="supplementary" class="border-none p-0 outline-none">
         <ContentMetadataSupplementary class="col-span-2" :metadata="metadata"/>

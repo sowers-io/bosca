@@ -52,14 +52,14 @@ impl MetadataDataStore {
         Ok(())
     }
 
-    pub async fn get_slug(&self, id: &Uuid) -> Result<String, Error> {
+    pub async fn get_slug(&self, id: &Uuid) -> Result<Option<String>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached("select slug from slugs where metadata_id = $1")
             .await?;
         let rows = connection.query(&stmt, &[id]).await?;
         if rows.is_empty() {
-            return Err(Error::new("metadata not found"));
+            return Ok(None)
         }
         Ok(rows.first().unwrap().get("slug"))
     }

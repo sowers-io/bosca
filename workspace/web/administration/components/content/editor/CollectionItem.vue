@@ -19,7 +19,7 @@ const imageRelationship = asyncComputed(async () => {
   if (!props.collection) return null
   const id = typeof props.collection === 'string' ? props.collection : props.collection?.id
   if (!id) return null
-  const relationships = await client.collections.getRelationships(id)
+  const relationships = await client.collections.getMetadataRelationships(id)
   return relationships?.find(r => r.relationship === 'image.avatar' || r.relationship === 'image.featured')
 }, null)
 const imageId = computed(() => {

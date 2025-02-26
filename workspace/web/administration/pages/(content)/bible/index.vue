@@ -5,14 +5,14 @@ const dropZoneRef = ref<HTMLDivElement>()
 const client = useBoscaClient()
 
 const rawBiblesCollections = await client.collections.findCollection(
-  [ { attributes: [ { key: 'type', value: 'raw-bibles' } ] } ],
+  [ { attributes: [ { key: 'collection', value: 'raw-bibles' } ] } ],
   0,
   1,
 )
 const rawBiblesCollectionId = rawBiblesCollections[0].id
 
 const biblesCollections = await client.collections.findCollection(
-    [ { attributes: [ { key: 'type', value: 'bibles' } ] } ],
+    [ { attributes: [ { key: 'collection', value: 'bibles' } ] } ],
   0,
   1,
 )

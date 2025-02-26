@@ -10,6 +10,7 @@ import { AttributeUiType } from '~/lib/graphql/graphql.ts'
 import type { BoscaClient } from '~/lib/bosca/client.ts'
 import type { Reactive } from 'vue'
 import { toMetadataInput } from '~/lib/metadata.ts'
+import slugify from "slugify";
 
 export async function save(
   client: BoscaClient<any>,
@@ -33,6 +34,7 @@ export async function save(
   const input = toMetadataInput(toRaw(metadata))
   input.document = newDocument
   input.name = title
+  input.slug = slugify(input.name).toLocaleLowerCase()
 
   for (const attribute of template?.attributes || []) {
     const attr = toRaw(attributes.get(attribute.key))

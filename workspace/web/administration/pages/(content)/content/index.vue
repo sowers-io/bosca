@@ -3,16 +3,15 @@ import type { CollectionItem } from '~/lib/bosca/contentcollection'
 import { computedAsync } from '@vueuse/core'
 import type { MetadataInput } from '~/lib/graphql/graphql'
 import TableFooter from '~/components/ui/table/TableFooter.vue'
+import {toast} from "~/components/ui/toast";
 
 const client = useBoscaClient()
 const router = useRouter()
 
 const selectedId = ref('')
-const categoryIds = ref<string[]>([])
-const contentTypes = ref<string[]>([])
 const selectedType = ref('items')
 const offset = ref(0)
-const limit = ref(0)
+const limit = ref(10)
 
 const { data: collection } = client.collections.findAsyncData({
   attributes: [ { attributes: [ { key: 'editor.type', value: 'DocumentsAndGuides' } ] } ],
@@ -20,50 +19,45 @@ const { data: collection } = client.collections.findAsyncData({
   limit: 1,
 })
 
-const { data: items } = client.metadata.findAsyncData({
-  attributes: [],
-  contentTypes: contentTypes,
-  categoryIds: categoryIds,
-  offset: offset,
-  limit: limit,
-})
-
 const collections = computedAsync<CollectionItem[]>(async () => {
   if (!collection.value) return []
   const items = (await client.collections.list(collection.value[0].id))?.items || []
   if (selectedId.value == '' && items.length > 0) {
     selectedId.value = items[0].id
-    limit.value = 50
   }
   return items
 }, [])
 
-function updateAttributes() {
+const categoryIds = computed(() => {
   for (const collection of collections.value || []) {
     if (collection.id === selectedId.value) {
-      contentTypes.value = [
-        'bosca/v-document-template',
-        'bosca/v-document',
-      ]
-      categoryIds.value = collection.categories.map((c) => c.id)
-      break
+      return collection.categories.map((c) => c.id)
     }
   }
-}
+  return []
+})
+
+const { data: items } = client.metadata.findAsyncData({
+  attributes: [],
+  contentTypes: ['bosca/v-document'],
+  categoryIds: categoryIds,
+  offset: offset,
+  limit: limit,
+})
+
+const { data: templates } = client.metadata.findAsyncData({
+  attributes: [],
+  contentTypes: ['bosca/v-document-template'],
+  categoryIds: categoryIds,
+  offset: 0,
+  limit: 1,
+})
 
 const content = computed(() => {
   return items.value?.filter((i) =>
     i.attributes && !i.attributes['template.type']
   ) || []
 })
-
-const templates = computed(() => {
-  return items.value?.filter((i) =>
-    i.attributes && i.attributes['template.type']
-  ) || []
-})
-
-watch(collections, updateAttributes)
 
 async function onAdd() {
   for (const collection of collections.value || []) {
@@ -77,7 +71,14 @@ async function onAdd() {
       } else {
         attrs['editor.type'] = collection.attributes['editor.type']
       }
-      const template = templates.value[0]
+      const template = templates.value ? templates.value[0] : null
+      if (!template) {
+        toast({
+          title: 'No template found',
+          description: 'Please create a template first'
+        })
+        return
+      }
       const templateDocument = await client.metadata.getDocumentTemplate(
         template.id,
         template.version,
@@ -129,11 +130,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <Tabs
-    class="h-full space-y-6"
-    v-model:model-value="selectedId"
-    @update:model-value="updateAttributes"
-  >
+  <Tabs class="h-full space-y-6" v-model:model-value="selectedId">
     <div class="flex">
       <TabsList>
         <TabsTrigger v-for="collection in collections" :value="collection.id">

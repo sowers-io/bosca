@@ -1,13 +1,7 @@
 <script setup lang="ts">
 import type {CollectionItem} from '~/lib/bosca/contentcollection'
 import {computedAsync} from '@vueuse/core'
-import {
-  type CollectionInput,
-  CollectionType,
-  type FindAttribute,
-  type FindAttributes,
-  type MetadataFragment
-} from '~/lib/graphql/graphql'
+import {type CollectionInput, CollectionType, type FindAttributes, type MetadataFragment} from '~/lib/graphql/graphql'
 import TableFooter from '~/components/ui/table/TableFooter.vue'
 
 import {
@@ -20,13 +14,12 @@ import {
   PaginationNext,
   PaginationPrev,
 } from '@/components/ui/pagination'
+import {toast} from "~/components/ui/toast";
 
 const client = useBoscaClient()
 const router = useRouter()
 
 const selectedId = ref('')
-const attributes = ref<FindAttribute[]>([])
-const categoryIds = ref<string[]>([])
 const currentPage = ref(1)
 const limit = ref(12)
 const offset = computed(() => (currentPage.value - 1) * limit.value)
@@ -37,25 +30,7 @@ const {data: rootCollection} = client.collections.findAsyncData({
   limit: 1,
 })
 
-const findAttributes = computed(() => {
-  return [{ attributes: attributes.value } as FindAttributes]
-})
-
-const {data: collectionItems} = client.collections.findAsyncData({
-  attributes: findAttributes,
-  categoryIds: categoryIds,
-  type: CollectionType.Standard,
-  offset: offset,
-  limit: limit,
-})
-
-const {data: collectionItemsCount} = client.collections.findCountAsyncData({
-  attributes: findAttributes,
-  categoryIds: categoryIds,
-  type: CollectionType.Standard,
-})
-
-const rootCollectionItems = computedAsync<CollectionItem[]>(async () => {
+const collections = computedAsync<CollectionItem[]>(async () => {
   if (!rootCollection.value) return []
   const items = (await client.collections.list(rootCollection.value[0].id))?.items || []
   if (selectedId.value == '' && items.length > 0) {
@@ -64,37 +39,57 @@ const rootCollectionItems = computedAsync<CollectionItem[]>(async () => {
   return items
 }, [])
 
-const rootCollections = computed(() => {
-  return rootCollectionItems.value?.filter((i) =>
-      i.attributes && !i.attributes['template.type']
-  ) || []
-})
-
-const rootTemplates = computed(() => {
-  return rootCollectionItems.value?.filter((i) =>
-      i.attributes && i.attributes['template.type']
-  ) || []
-})
-
-function updateAttributes() {
-  for (const collection of rootCollections.value || []) {
+const categoryIds = computed(() => {
+  for (const collection of collections.value || []) {
     if (collection.id === selectedId.value) {
-      attributes.value = [
-        { key: 'editor.type', value: collection.attributes['editor.type'] }
-      ]
-      categoryIds.value = collection.categories.map((c) => c.id)
-      break
+      return collection.categories.map((c) => c.id)
     }
   }
-}
-watch(rootCollections, updateAttributes)
+  return []
+})
+
+const { data: templates } = client.metadata.findAsyncData({
+  attributes: [],
+  contentTypes: ['bosca/v-collection-template'],
+  categoryIds: categoryIds,
+  offset: 0,
+  limit: 1,
+})
+
+const findAttributes = computed(() => {
+  const editorType = collections.value.find((c) => c.id === selectedId.value)?.attributes['editor.type']
+  return [{ attributes: [
+      { key: 'editor.type', value: editorType }
+    ] } as FindAttributes]
+})
+
+const { data: items } = client.collections.findAsyncData({
+  attributes: findAttributes,
+  categoryIds: categoryIds,
+  type: CollectionType.Standard,
+  offset: offset,
+  limit: limit,
+})
+
+const {data: itemsCount} = client.collections.findCountAsyncData({
+  attributes: findAttributes,
+  categoryIds: categoryIds,
+  type: CollectionType.Standard,
+})
 
 async function onAdd() {
-  for (const collection of rootCollections.value || []) {
+  for (const collection of collections.value || []) {
     if (collection.id === selectedId.value) {
       const attrs: { [key: string]: string } = {}
-      attrs['editor.type'] = collection.attributes['template.type']
-      const template = rootTemplates.value[0]
+      attrs['editor.type'] = collection.attributes['editor.type']
+      const template = templates.value ? templates.value[0] : null
+      if (!template) {
+        toast({
+          title: 'No template found',
+          description: 'Please create a template first'
+        })
+        return
+      }
       const version = (template as MetadataFragment).version
       const collectionTemplate = await client.metadata.getCollectionTemplate(
           template.id,
@@ -108,6 +103,7 @@ async function onAdd() {
       const newCollection: CollectionInput = {
         parentCollectionId: collection.id,
         name: 'New Collection',
+        collectionType: CollectionType.Standard,
         attributes: attrs,
         templateMetadataId: template.id,
         templateMetadataVersion: version,
@@ -129,14 +125,10 @@ onMounted(() => {
 </script>
 
 <template>
-  <Tabs
-      v-model:model-value="selectedId"
-      class="h-full space-y-6"
-      @update:model-value="updateAttributes"
-  >
+  <Tabs v-model:model-value="selectedId" class="h-full space-y-6">
     <div class="flex">
       <TabsList>
-        <TabsTrigger v-for="collection in rootCollections" :value="collection.id">
+        <TabsTrigger v-for="collection in collections" :value="collection.id">
           {{ collection.name }}
         </TabsTrigger>
       </TabsList>
@@ -145,7 +137,7 @@ onMounted(() => {
         <Pagination
             v-slot="{ page }"
             v-model:page="currentPage"
-            :total="collectionItemsCount || 0"
+            :total="itemsCount || 0"
             :items-per-page="limit"
             :sibling-count="1"
             show-edges
@@ -183,7 +175,7 @@ onMounted(() => {
       </div>
     </div>
     <TabsContent
-        v-for="collection in rootCollections"
+        v-for="collection in collections"
         :value="collection.id"
         class="border-none p-0 mt-0 outline-none"
     >
@@ -195,7 +187,7 @@ onMounted(() => {
         </TableHeader>
         <TableBody>
           <TableRow
-              v-for="item in collectionItems"
+              v-for="item in items"
               :key="item.id"
               @click="router.push(`/collections/${item.id}`)"
               class="cursor-pointer"
@@ -208,7 +200,7 @@ onMounted(() => {
           </TableRow>
         </TableBody>
         <TableFooter>
-          <TableRow v-if="!collectionItems || collectionItems.length === 0">
+          <TableRow v-if="!items || items.length === 0">
             <TableCell class="font-medium flex content-center">
               No content found.
             </TableCell>

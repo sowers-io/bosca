@@ -18,8 +18,11 @@ fragment CollectionList on Collection {
 
 fragment Collection on Collection {
     id
+    slug
     traitIds
+    collectionType: type
     name
+    description
     labels
     created
     modified

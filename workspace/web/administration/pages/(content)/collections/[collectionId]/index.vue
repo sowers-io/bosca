@@ -15,7 +15,7 @@ const collection = ref(
     await client.collections.get(route.params.collectionId.toString()),
 )
 const relationships = ref(
-    await client.collections.getRelationships(route.params.collectionId.toString()),
+    await client.collections.getMetadataRelationships(route.params.collectionId.toString()),
 )
 const parents = ref(
     await client.collections.getCollectionParents(route.params.collectionId.toString()),
@@ -115,16 +115,16 @@ function onDelete() {
 
 async function doDelete() {
   confirmDelete.value = false
-  await client.metadata.delete(collection.value!.id)
+  await client.collections.delete(collection.value!.id)
   await router.push('/collections')
 }
 
 client.listeners.onCollectionChanged(async (id) => {
   if (id === collection.value?.id) {
     try {
+      parents.value = await client.collections.getCollectionParents(id)
+      relationships.value = await client.collections.getMetadataRelationships(id)
       collection.value = await client.collections.get(id)
-      parents.value = await client.metadata.getParents(id)
-      relationships.value = await client.collections.getRelationships(id)
       outOfDate.value = hasChanges.value
       toast({title: 'Collection updated.'})
     } catch (ignore) {

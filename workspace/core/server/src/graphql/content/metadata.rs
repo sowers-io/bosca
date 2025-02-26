@@ -47,7 +47,7 @@ impl MetadataObject {
         ctx.content.metadata.get_trait_ids(&self.metadata.id).await
     }
 
-    async fn slug(&self, ctx: &Context<'_>) -> Result<String, Error> {
+    async fn slug(&self, ctx: &Context<'_>) -> Result<Option<String>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         ctx.content.metadata.get_slug(&self.metadata.id).await
     }

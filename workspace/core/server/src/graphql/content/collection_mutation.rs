@@ -223,7 +223,7 @@ impl CollectionMutationObject {
     ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::parse_str(id.as_str())?;
-        ctx.check_metadata_action(&id, PermissionAction::Edit)
+        ctx.check_collection_action(&id, PermissionAction::Edit)
             .await?;
         let metadata_id = Uuid::parse_str(metadata_id.as_str())?;
         ctx.check_metadata_action(&metadata_id, PermissionAction::Edit)

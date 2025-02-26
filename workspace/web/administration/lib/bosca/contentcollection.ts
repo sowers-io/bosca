@@ -29,6 +29,9 @@ import {
   FindCollectionsCountDocument,
   GetCollectionChildrenCollectionsDocument,
   GetCollectionChildrenMetadataDocument,
+  EditCollectionDocument,
+  AddCollectionMetadataRelationshipDocument,
+  CollectionMetadataRelationshipInput, RemoveCollectionMetadataRelationshipDocument, SetCollectionAttributesDocument,
 } from '~/lib/graphql/graphql'
 import type { AsyncData } from '#app/composables/asyncData'
 import { NetworkClient } from '~/lib/bosca/networkclient'
@@ -210,7 +213,7 @@ export class ContentCollections<T extends NetworkClient> extends Api<T> {
     return response?.content.collection as CollectionFragment | null
   }
 
-  async getRelationships(id: string): Promise<CollectionMetadataRelationshipFragment[] | null> {
+  async getMetadataRelationships(id: string): Promise<CollectionMetadataRelationshipFragment[] | null> {
     const response = await this.network.execute(GetCollectionMetadataRelationshipsDocument, {
       id: id,
     })
@@ -249,8 +252,23 @@ export class ContentCollections<T extends NetworkClient> extends Api<T> {
     return response!.content.collection.add.id
   }
 
+  async edit(id: string, collection: CollectionInput): Promise<string> {
+    const response = await this.network.execute(EditCollectionDocument, {
+      id,
+      input: collection,
+    })
+    return response!.content.collection.edit.id
+  }
+
   async delete(id: string): Promise<void> {
     await this.network.execute(DeleteCollectionDocument, { id })
+  }
+
+  async setAttributes(id: string, attributes: any): Promise<void> {
+    await this.network.execute(SetCollectionAttributesDocument, {
+      id,
+      attributes,
+    })
   }
 
   // suspend fun edit(id: String, collection: CollectionInput): String? {
@@ -350,6 +368,20 @@ export class ContentCollections<T extends NetworkClient> extends Api<T> {
     await this.network.execute(RemoveMetadataCollectionDocument, {
       collectionId,
       id: metadataId,
+    })
+  }
+
+  async addMetadataRelationship(relationship: CollectionMetadataRelationshipInput): Promise<void> {
+    await this.network.execute(AddCollectionMetadataRelationshipDocument, {
+      relationship,
+    })
+  }
+
+  async removeMetadataRelationship(id: string, metadataId: string, relationship: string): Promise<void> {
+    await this.network.execute(RemoveCollectionMetadataRelationshipDocument, {
+      id,
+      metadataId,
+      relationship,
     })
   }
 

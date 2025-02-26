@@ -247,10 +247,12 @@ function onOpenMediaPicker(event: OpenMediaPickerEvent) {
 }
 
 async function onSave() {
-  hasDocChanges.value = false
-  hasChanges.value = false
   const e = editor.value
-  if (!e || !props.document) return
+  if (!e || !props.document) {
+    hasDocChanges.value = false
+    hasChanges.value = false
+    return
+  }
   await save(
       client,
       props.document,
@@ -262,6 +264,8 @@ async function onSave() {
       attributes,
       e.state.doc.toJSON(),
   )
+  hasDocChanges.value = false
+  hasChanges.value = false
 }
 
 async function onReset() {

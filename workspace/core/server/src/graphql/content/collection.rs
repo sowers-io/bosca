@@ -39,7 +39,7 @@ impl CollectionObject {
         self.collection.id.to_string()
     }
 
-    async fn slug(&self, ctx: &Context<'_>) -> Result<String, Error> {
+    async fn slug(&self, ctx: &Context<'_>) -> Result<Option<String>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         ctx.content.collections.get_slug(&self.collection.id).await
     }

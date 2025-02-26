@@ -1,0 +1,11 @@
+mutation AddCollectionMetadataRelationship($relationship: CollectionMetadataRelationshipInput!) {
+    content {
+        collection {
+            addMetadataRelationship(relationship: $relationship) {
+                metadata {
+                    id
+                }
+            }
+        }
+    }
+}

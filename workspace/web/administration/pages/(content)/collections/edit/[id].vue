@@ -43,6 +43,9 @@ onMounted(() => {
       <TabsTrigger value="traits">
         Traits
       </TabsTrigger>
+      <TabsTrigger value="attributes">
+        Attributes
+      </TabsTrigger>
       <TabsTrigger value="items">
         Items
       </TabsTrigger>
@@ -63,6 +66,9 @@ onMounted(() => {
     </TabsContent>
     <TabsContent value="traits" class="border-none p-0 outline-none">
       <ContentTraits class="col-span-2" :content="list.collection" />
+    </TabsContent>
+    <TabsContent value="attributes" class="border-none p-0 outline-none">
+      <ContentAttributes class="col-span-2" :content="list.collection"/>
     </TabsContent>
     <TabsContent value="items" class="border-none p-0 outline-none">
       <ContentCollectionsItems

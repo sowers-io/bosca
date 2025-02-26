@@ -47,14 +47,14 @@ impl CollectionsDataStore {
         Ok(())
     }
 
-    pub async fn get_slug(&self, id: &Uuid) -> Result<String, Error> {
+    pub async fn get_slug(&self, id: &Uuid) -> Result<Option<String>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached("select slug from slugs where collection_id = $1")
             .await?;
         let rows = connection.query(&stmt, &[id]).await?;
         if rows.is_empty() {
-            return Err(Error::new("metadata not found"));
+            return Ok(None)
         }
         Ok(rows.first().unwrap().get("slug"))
     }
@@ -559,7 +559,7 @@ impl CollectionsDataStore {
 
         if let Some(slug) = collection.slug.as_ref() {
             let stmt = txn
-                .prepare_cached("update slugs set slug = $1 where collection_id = $2)")
+                .prepare_cached("update slugs set slug = $1 where collection_id = $2")
                 .await?;
             txn.execute(&stmt, &[slug, &id]).await?;
         }
