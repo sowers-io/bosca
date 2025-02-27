@@ -59,7 +59,7 @@ impl MetadataDataStore {
             .await?;
         let rows = connection.query(&stmt, &[id]).await?;
         if rows.is_empty() {
-            return Ok(None)
+            return Ok(None);
         }
         Ok(rows.first().unwrap().get("slug"))
     }
@@ -115,7 +115,9 @@ impl MetadataDataStore {
     pub async fn get_all(&self, offset: i64, limit: i64) -> Result<Vec<Metadata>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
-            .prepare_cached("select * from metadata where deleted = false order by name offset $1 limit $2")
+            .prepare_cached(
+                "select * from metadata where deleted = false order by name offset $1 limit $2",
+            )
             .await?;
         let rows = connection.query(&stmt, &[&offset, &limit]).await?;
         Ok(rows.iter().map(|r| r.into()).collect())
@@ -688,9 +690,12 @@ impl MetadataDataStore {
 
         if let Some(slug) = metadata.slug.as_ref() {
             let stmt = txn
-                .prepare_cached("update slugs set slug = $1 where metadata_id = $2")
+                .prepare_cached("delete from slugs where metadata_id = $1")
                 .await?;
-            txn.execute(&stmt, &[slug, &id]).await?;
+            txn.execute(&stmt, &[id]).await?;
+            let stmt = txn.prepare_cached("insert into slugs (slug, metadata_id) values (case when length($1) > 0 then $1 else slugify($2) end, $3) on conflict (slug) do update set slug = slugify($2) || nextval('duplicate_slug_seq')").await?;
+            txn.execute(&stmt, &[slug, &metadata.name, id])
+                .await?;
         }
 
         if let Some(trait_ids) = &metadata.trait_ids {

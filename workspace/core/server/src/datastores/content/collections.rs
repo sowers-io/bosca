@@ -264,11 +264,11 @@ impl CollectionsDataStore {
         values.push(&collection.id as &(dyn ToSql + Sync));
         let ordering = if let Some(ordering) = &collection.ordering {
             build_ordering_names(ordering, &mut names);
-            build_ordering("attributes", 2, ordering, &mut values, &names)
+            build_ordering("collection_items.attributes", 2, ordering, &mut values, &names)
         } else {
             String::new()
         };
-        let mut query = "select child_collection_id, child_metadata_id, collection_items.attributes from collection_items ".to_owned();
+        let mut query = "select child_collection_id, child_metadata_id, collection_items.attributes as attributes from collection_items ".to_owned();
         query.push_str(" left join collections on (child_collection_id = collections.id) ");
         query.push_str(" left join metadata on (child_metadata_id = metadata.id) ");
         query.push_str(" where collection_id = $1 and (collections.deleted is null or collections.deleted = false) and (metadata.deleted is null or metadata.deleted = false) ");
@@ -558,10 +558,12 @@ impl CollectionsDataStore {
         .await?;
 
         if let Some(slug) = collection.slug.as_ref() {
-            let stmt = txn
-                .prepare_cached("update slugs set slug = $1 where collection_id = $2")
+            let stmt = txn.prepare_cached("delete from slugs where collection_id = $1").await?;
+            txn.execute(&stmt, &[id])
                 .await?;
-            txn.execute(&stmt, &[slug, &id]).await?;
+            let stmt = txn.prepare_cached("insert into slugs (slug, collection_id) values (case when length($1) > 0 then $1 else slugify($2) end, $3) on conflict (slug) do update set slug = slugify($2) || nextval('duplicate_slug_seq')").await?;
+            txn.execute(&stmt, &[slug, &collection.name, id])
+                .await?;
         }
 
         if let Some(trait_ids) = &collection.trait_ids {

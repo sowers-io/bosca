@@ -122,6 +122,10 @@ const breadcrumbs = useBreadcrumbs()
 onMounted(() => {
   breadcrumbs.set([{title: 'Content'}])
 })
+
+watch(selectedId, () => {
+  currentPage.value = 1
+})
 </script>
 
 <template>

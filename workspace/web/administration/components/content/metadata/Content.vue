@@ -16,6 +16,13 @@ const props = defineProps<{
 const client = useBoscaClient()
 const document = props.metadata.content.type === 'bosca/v-document' ? await client.metadata.getDocument(props.metadata.id) : null
 
+const textContent = asyncComputed(async () => {
+  if (props.metadata.content.type.startsWith('text/')) {
+    return await $fetch(props.metadata.content.urls.download.url)
+  }
+  return null
+})
+
 </script>
 
 <template>
@@ -41,6 +48,9 @@ const document = props.metadata.content.type === 'bosca/v-document' ? await clie
       </template>
       <template v-if="document">
         <EditorViewOnly :metadata="metadata" :document="document"/>
+      </template>
+      <template v-if="textContent">
+        {{ textContent }}
       </template>
     </CardContent>
   </Card>
