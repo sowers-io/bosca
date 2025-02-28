@@ -4,14 +4,23 @@ import { computedAsync } from '@vueuse/core'
 import type { MetadataInput } from '~/lib/graphql/graphql'
 import TableFooter from '~/components/ui/table/TableFooter.vue'
 import {toast} from "~/components/ui/toast";
+import {
+  Pagination,
+  PaginationEllipsis, PaginationFirst, PaginationLast,
+  PaginationList,
+  PaginationListItem,
+  PaginationNext,
+  PaginationPrev
+} from "~/components/ui/pagination";
 
 const client = useBoscaClient()
 const router = useRouter()
 
 const selectedId = ref('')
 const selectedType = ref('items')
-const offset = ref(0)
-const limit = ref(10)
+const currentPage = ref(1)
+const limit = ref(12)
+const offset = computed(() => (currentPage.value - 1) * limit.value)
 
 const { data: collection } = client.collections.findAsyncData({
   attributes: [ { attributes: [ { key: 'editor.type', value: 'DocumentsAndGuides' } ] } ],
@@ -38,6 +47,14 @@ const categoryIds = computed(() => {
 })
 
 const { data: items } = client.metadata.findAsyncData({
+  attributes: [],
+  contentTypes: ['bosca/v-document'],
+  categoryIds: categoryIds,
+  offset: offset,
+  limit: limit,
+})
+
+const { data: count } = client.metadata.findCountAsyncData({
   attributes: [],
   contentTypes: ['bosca/v-document'],
   categoryIds: categoryIds,
@@ -138,7 +155,42 @@ onMounted(() => {
         </TabsTrigger>
       </TabsList>
       <div class="grow"></div>
-      <div>
+      <div class="flex items-center mr-4">
+        <Pagination
+            v-slot="{ page }"
+            v-model:page="currentPage"
+            :total="count || 0"
+            :items-per-page="limit"
+            :sibling-count="1"
+            show-edges
+        >
+          <PaginationList v-slot="{ items }" class="flex items-center gap-1">
+            <PaginationFirst />
+            <PaginationPrev />
+
+            <template v-for="(item, index) in items">
+              <PaginationListItem
+                  v-if="item.type === 'page'"
+                  :key="index"
+                  :value="item.value"
+                  as-child
+              >
+                <Button
+                    class="w-10 h-10 p-0"
+                    :variant="item.value === page ? 'default' : 'outline'"
+                >
+                  {{ item.value }}
+                </Button>
+              </PaginationListItem>
+              <PaginationEllipsis v-else :key="item.type" :index="index" />
+            </template>
+
+            <PaginationNext />
+            <PaginationLast />
+          </PaginationList>
+        </Pagination>
+      </div>
+      <div class="flex items-center">
         <Button @click="onAdd">
           <Icon name="i-lucide-plus" />
         </Button>

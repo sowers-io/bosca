@@ -1,22 +1,28 @@
-use crate::graphql::content::collection_mutation::CollectionMutationObject;
-use crate::graphql::content::metadata_mutation::MetadataMutationObject;
-use async_graphql::{Context, Error, Object};
-use log::error;
 use crate::context::BoscaContext;
 use crate::graphql::content::category_mutation::CategoryMutationObject;
+use crate::graphql::content::collection_mutation::CollectionMutationObject;
+use crate::graphql::content::metadata_mutation::MetadataMutationObject;
+use crate::graphql::content::source_mutation::SourceMutationObject;
 use crate::models::content::search::SearchDocumentInput;
 use crate::util::storage::index_documents;
+use async_graphql::{Context, Error, Object};
+use log::error;
 
 pub struct ContentMutationObject {}
 
 #[Object(name = "ContentMutation")]
 impl ContentMutationObject {
-    async fn category(&self) -> CategoryMutationObject { CategoryMutationObject{} }
+    async fn category(&self) -> CategoryMutationObject {
+        CategoryMutationObject {}
+    }
     async fn collection(&self) -> CollectionMutationObject {
         CollectionMutationObject {}
     }
     async fn metadata(&self) -> MetadataMutationObject {
         MetadataMutationObject {}
+    }
+    async fn sources(&self) -> SourceMutationObject {
+        SourceMutationObject {}
     }
 
     async fn reindex(&self, ctx: &Context<'_>) -> async_graphql::Result<bool, Error> {

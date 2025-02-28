@@ -89,6 +89,7 @@ function updateHasChanges() {
           break
         case AttributeUiType.Image:
         case AttributeUiType.File:
+        case AttributeUiType.Metadata:
           const metadataId = toRaw(attr.value)?.metadata?.id
           const relationship = attr.configuration.relationship
           const currId = props.relationships.find((r) =>
@@ -157,6 +158,7 @@ async function updateAttributes() {
           break
         case AttributeUiType.Image:
         case AttributeUiType.File:
+        case AttributeUiType.Metadata:
           const r = props.relationships.find((r) =>
               r.relationship === attr?.configuration.relationship
           )
@@ -417,6 +419,16 @@ const editable = computed(() => props.metadata.workflow.state === 'draft')
 
 .tiptap p {
   @apply mt-4;
+}
+
+.tiptap ol {
+  list-style-type: decimal; /* Show numbers as ordered list style */
+  list-style-position: inside;
+  @apply m-0 p-0 mt-4;
+}
+
+.tiptap ol li {
+  @apply m-0 p-0;
 }
 
 .tiptap.ProseMirror {

@@ -3,9 +3,12 @@ import StarterKit from '@tiptap/starter-kit'
 import { Image } from '~/lib/editor/image.ts'
 import Underline from '@tiptap/extension-underline'
 import TextAlign from '@tiptap/extension-text-align'
+import Link from '@tiptap/extension-link'
 import Placeholder from '@tiptap/extension-placeholder'
 import Commands from '~/lib/editor/commands.ts'
+import Superscript from '@tiptap/extension-superscript'
 import Suggestion from '~/lib/editor/suggestion.ts'
+import { Bible } from '~/lib/editor/bible.ts'
 import { toast } from '~/components/ui/toast'
 import type {
   Document as BoscaDocument,
@@ -52,6 +55,8 @@ export function newEditor(
   const content = document?.content?.document
     ? toRaw(document?.content?.document)
     : null
+
+  console.log(content)
   return useEditor({
     content: content,
     editable: metadata.workflow.state === 'draft' && editable,
@@ -59,7 +64,9 @@ export function newEditor(
       CustomDocument,
       StarterKit.configure({ document: false }),
       Image,
+      Link,
       Underline,
+      Superscript,
       TextAlign.configure({
         types: ['heading', 'paragraph'],
       }),
@@ -75,7 +82,11 @@ export function newEditor(
       Commands.configure({
         suggestion: Suggestion,
       }),
+      Bible,
     ],
+    onContentError: (ev) => {
+      console.error('content error', ev)
+    },
     onUpdate: (ev) => {
       if (onUpdate) {
         onUpdate(ev)

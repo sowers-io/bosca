@@ -1,23 +1,21 @@
 <script setup lang="ts">
 import type {
   CollectionIdNameFragment,
-  MetadataIdNameFragment,
+  MetadataIdNameFragment, ProfileIdNameFragment,
 } from '~/lib/graphql/graphql'
+import {getLink} from "~/lib/link.ts";
 
 const { metaSymbol } = useShortcuts()
 const client = useBoscaClient()
 const openCommand = ref(false)
 const router = useRouter()
-const { data: storageSystems } = await client.workflows
-  .getStorageSystemsAsyncData()
+const { data: storageSystems } = await client.workflows.getStorageSystemsAsyncData()
 
 const search = ref('')
 const offset = ref(0)
 const limit = ref(10)
 const filter = ref<string | null>(null)
-const storageSystemId = ref(
-  storageSystems.value?.find((s) => s.name === 'Default Search')?.id || '',
-)
+const storageSystemId = computed(() => storageSystems.value?.find((s) => s.name === 'Default Search')?.id || '')
 
 watch(search, () => {
   if (search.value.length > 0) {
@@ -44,13 +42,9 @@ defineShortcuts({
 })
 
 function onResultSelected(
-  item: CollectionIdNameFragment | MetadataIdNameFragment,
+  item: CollectionIdNameFragment | MetadataIdNameFragment | ProfileIdNameFragment
 ) {
-  if (item.version) {
-    router.push('/metadata/edit/' + item.id)
-  } else {
-    router.push('/collections/edit/' + item.id)
-  }
+  router.push(getLink(item))
   openCommand.value = false
 }
 </script>
@@ -80,22 +74,19 @@ function onResultSelected(
     <CommandInput placeholder="Type a command or search..." />
     <CommandList>
       <CommandEmpty>No results found.</CommandEmpty>
-      <CommandGroup heading="Suggestions"> </CommandGroup>
+      <CommandGroup heading="Suggestions"></CommandGroup>
       <CommandSeparator />
       <CommandGroup heading="Search Results">
         <CommandItem
           v-for="result in results || []"
-          :key="result.id"
-          :value="result.name"
+          :key="result.id || ''"
+          :value="result.name || ''"
           class="gap-2 cursor-pointer"
-          @select="onResultSelected(result)"
+          @click="onResultSelected(result)"
         >
-          {{ result.name }}
+          <ContentListItem :item="result" />
         </CommandItem>
       </CommandGroup>
     </CommandList>
   </CommandDialog>
 </template>
-
-<style scoped>
-</style>

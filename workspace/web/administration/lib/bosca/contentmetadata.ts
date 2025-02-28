@@ -5,13 +5,13 @@ import {
   AddMetadataPermissionDocument,
   AddMetadataRelationshipDocument,
   AddMetadataTraitDocument,
-  BeginMetadataTransitionDocument, type CollectionTemplateFragment,
+  BeginMetadataTransitionDocument, type CollectionTemplateFragment, CollectionType,
   DeleteMetadataDocument,
   type DocumentFragment,
   type DocumentTemplateFragment,
   EditMetadataDocument,
   ExtensionFilterType,
-  type FindAttributes,
+  type FindAttributes, FindCollectionsCountDocument,
   FindMetadataCountDocument,
   FindMetadataDocument, GetCollectionTemplateDocument,
   GetMetadataDocument,
@@ -377,6 +377,38 @@ export class ContentMetadata<T extends NetworkClient> extends Api<T> {
         if (!data) return null
         return data.content.findMetadata as MetadataFragment[]
       },
+    )
+  }
+
+  findCountAsyncData(query: {
+    attributes?:
+        | Array<FindAttributes>
+        | Ref<Array<FindAttributes>>
+        | null
+    extension?: ExtensionFilterType | Ref<ExtensionFilterType> | null
+    contentTypes?: Array<string> | Ref<string[]> | null
+    categoryIds?: Array<string> | Ref<Array<string>> | null
+    offset?: number | Ref<number>
+    limit?: number | Ref<number>
+  }): AsyncData<number | null, any> {
+    const q = computed(() => {
+      return {
+        attributes: unref(query.attributes),
+        extension: unref(query.extension),
+        categoryIds: unref(query.categoryIds),
+        // @ts-ignore: this should be fine
+        contentTypes: unref(query.contentTypes),
+        offset: unref(query.offset),
+        limit: unref(query.limit),
+      }
+    })
+    return this.executeAndTransformAsyncData(
+        FindMetadataCountDocument,
+        { query: q },
+        (data) => {
+          if (!data) return null
+          return data.content.findMetadataCount || 0
+        },
     )
   }
 

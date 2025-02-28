@@ -7,13 +7,13 @@ use crate::datastores::content::metadata_permissions::MetadataPermissionsDataSto
 use crate::datastores::content::metadata_workflows::MetadataWorkflowsDataStore;
 use crate::datastores::notifier::Notifier;
 use crate::models::content::slug::{Slug, SlugType};
-use crate::models::content::source::Source;
 use async_graphql::Error;
 use deadpool_postgres::Pool;
 use std::sync::Arc;
 use uuid::Uuid;
 use crate::datastores::content::categories::CategoriesDataStore;
 use crate::datastores::content::collection_templates::CollectionTemplatesDataStore;
+use crate::datastores::content::sources::SourcesDataStore;
 
 #[derive(Clone)]
 pub struct ContentDataStore {
@@ -28,6 +28,7 @@ pub struct ContentDataStore {
     pub metadata_permissions: MetadataPermissionsDataStore,
     pub metadata_workflows: MetadataWorkflowsDataStore,
     pub documents: DocumentsDataStore,
+    pub sources: SourcesDataStore
 }
 
 impl ContentDataStore {
@@ -57,41 +58,9 @@ impl ContentDataStore {
                 Arc::clone(&notifier),
             ),
             documents: DocumentsDataStore::new(Arc::clone(&pool), Arc::clone(&notifier)),
+            sources: SourcesDataStore::new(Arc::clone(&pool)),
             pool,
         }
-    }
-
-    pub async fn get_sources(&self) -> async_graphql::Result<Vec<Source>, Error> {
-        let connection = self.pool.get().await?;
-        let stmt = connection
-            .prepare_cached("select * from sources order by name asc")
-            .await?;
-        let rows = connection.query(&stmt, &[]).await?;
-        Ok(rows.iter().map(|r| r.into()).collect())
-    }
-
-    pub async fn get_source_by_id(
-        &self,
-        id: &Uuid,
-    ) -> async_graphql::Result<Option<Source>, Error> {
-        let connection = self.pool.get().await?;
-        let stmt = connection
-            .prepare_cached("select * from sources where id = $1")
-            .await?;
-        let rows = connection.query(&stmt, &[id]).await?;
-        Ok(rows.first().map(|r| r.into()))
-    }
-
-    pub async fn get_source_by_name(
-        &self,
-        name: &String,
-    ) -> async_graphql::Result<Option<Source>, Error> {
-        let connection = self.pool.get().await?;
-        let stmt = connection
-            .prepare_cached("select * from sources where name = $1")
-            .await?;
-        let rows = connection.query(&stmt, &[name]).await?;
-        Ok(rows.first().map(|r| r.into()))
     }
 
     pub async fn get_slug(&self, slug: &str) -> async_graphql::Result<Option<Slug>, Error> {

@@ -8,7 +8,7 @@ pub struct MetadataRelationship {
     pub id1: Uuid,
     pub id2: Uuid,
     pub relationship: String,
-    pub attributes: Value,
+    pub attributes: Option<Value>,
 }
 
 #[derive(InputObject)]

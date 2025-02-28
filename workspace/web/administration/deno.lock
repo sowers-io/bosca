@@ -17,7 +17,9 @@
     "npm:@tiptap/extension-document@^2.11.5": "2.11.5_@tiptap+core@2.11.5__@tiptap+pm@2.11.5___prosemirror-model@1.24.1___prosemirror-state@1.4.3___prosemirror-view@1.37.2_@tiptap+pm@2.11.5__prosemirror-model@1.24.1__prosemirror-state@1.4.3__prosemirror-view@1.37.2",
     "npm:@tiptap/extension-history@^2.11.5": "2.11.5_@tiptap+core@2.11.5__@tiptap+pm@2.11.5___prosemirror-model@1.24.1___prosemirror-state@1.4.3___prosemirror-view@1.37.2_@tiptap+pm@2.11.5__prosemirror-model@1.24.1__prosemirror-state@1.4.3__prosemirror-view@1.37.2",
     "npm:@tiptap/extension-image@^2.11.5": "2.11.5_@tiptap+core@2.11.5__@tiptap+pm@2.11.5___prosemirror-model@1.24.1___prosemirror-state@1.4.3___prosemirror-view@1.37.2_@tiptap+pm@2.11.5__prosemirror-model@1.24.1__prosemirror-state@1.4.3__prosemirror-view@1.37.2",
+    "npm:@tiptap/extension-link@^2.11.5": "2.11.5_@tiptap+core@2.11.5__@tiptap+pm@2.11.5___prosemirror-model@1.24.1___prosemirror-state@1.4.3___prosemirror-view@1.37.2_@tiptap+pm@2.11.5__prosemirror-model@1.24.1__prosemirror-state@1.4.3__prosemirror-view@1.37.2",
     "npm:@tiptap/extension-placeholder@^2.11.5": "2.11.5_@tiptap+core@2.11.5__@tiptap+pm@2.11.5___prosemirror-model@1.24.1___prosemirror-state@1.4.3___prosemirror-view@1.37.2_@tiptap+pm@2.11.5__prosemirror-model@1.24.1__prosemirror-state@1.4.3__prosemirror-view@1.37.2",
+    "npm:@tiptap/extension-superscript@^2.11.5": "2.11.5_@tiptap+core@2.11.5__@tiptap+pm@2.11.5___prosemirror-model@1.24.1___prosemirror-state@1.4.3___prosemirror-view@1.37.2_@tiptap+pm@2.11.5__prosemirror-model@1.24.1__prosemirror-state@1.4.3__prosemirror-view@1.37.2",
     "npm:@tiptap/extension-text-align@^2.11.5": "2.11.5_@tiptap+core@2.11.5__@tiptap+pm@2.11.5___prosemirror-model@1.24.1___prosemirror-state@1.4.3___prosemirror-view@1.37.2_@tiptap+pm@2.11.5__prosemirror-model@1.24.1__prosemirror-state@1.4.3__prosemirror-view@1.37.2",
     "npm:@tiptap/extension-underline@^2.11.5": "2.11.5_@tiptap+core@2.11.5__@tiptap+pm@2.11.5___prosemirror-model@1.24.1___prosemirror-state@1.4.3___prosemirror-view@1.37.2_@tiptap+pm@2.11.5__prosemirror-model@1.24.1__prosemirror-state@1.4.3__prosemirror-view@1.37.2",
     "npm:@tiptap/pm@^2.11.5": "2.11.5_prosemirror-model@1.24.1_prosemirror-state@1.4.3_prosemirror-view@1.37.2",
@@ -2409,6 +2411,14 @@
         "@tiptap/core"
       ]
     },
+    "@tiptap/extension-link@2.11.5_@tiptap+core@2.11.5__@tiptap+pm@2.11.5___prosemirror-model@1.24.1___prosemirror-state@1.4.3___prosemirror-view@1.37.2_@tiptap+pm@2.11.5__prosemirror-model@1.24.1__prosemirror-state@1.4.3__prosemirror-view@1.37.2": {
+      "integrity": "sha512-4Iu/aPzevbYpe50xDI0ZkqRa6nkZ9eF270Ue2qaF3Ab47nehj+9Jl78XXzo8+LTyFMnrETI73TAs1aC/IGySeQ==",
+      "dependencies": [
+        "@tiptap/core",
+        "@tiptap/pm",
+        "linkifyjs"
+      ]
+    },
     "@tiptap/extension-list-item@2.11.5_@tiptap+core@2.11.5__@tiptap+pm@2.11.5___prosemirror-model@1.24.1___prosemirror-state@1.4.3___prosemirror-view@1.37.2_@tiptap+pm@2.11.5__prosemirror-model@1.24.1__prosemirror-state@1.4.3__prosemirror-view@1.37.2": {
       "integrity": "sha512-Mp5RD/pbkfW1vdc6xMVxXYcta73FOwLmblQlFNn/l/E5/X1DUSA4iGhgDDH4EWO3swbs03x2f7Zka/Xoj3+WLg==",
       "dependencies": [
@@ -2436,6 +2446,12 @@
     },
     "@tiptap/extension-strike@2.11.5_@tiptap+core@2.11.5__@tiptap+pm@2.11.5___prosemirror-model@1.24.1___prosemirror-state@1.4.3___prosemirror-view@1.37.2_@tiptap+pm@2.11.5__prosemirror-model@1.24.1__prosemirror-state@1.4.3__prosemirror-view@1.37.2": {
       "integrity": "sha512-PVfUiCqrjvsLpbIoVlegSY8RlkR64F1Rr2RYmiybQfGbg+AkSZXDeO0eIrc03//4gua7D9DfIozHmAKv1KN3ow==",
+      "dependencies": [
+        "@tiptap/core"
+      ]
+    },
+    "@tiptap/extension-superscript@2.11.5_@tiptap+core@2.11.5__@tiptap+pm@2.11.5___prosemirror-model@1.24.1___prosemirror-state@1.4.3___prosemirror-view@1.37.2_@tiptap+pm@2.11.5__prosemirror-model@1.24.1__prosemirror-state@1.4.3__prosemirror-view@1.37.2": {
+      "integrity": "sha512-sK6v2G0zFfGW+j9CmYp2e+tyZ3FTa3dP0xY4kJzefgZcHhMJLlLnjxBRwHCSi/jj5ie6WdZT4KoEooxnPs1Vzw==",
       "dependencies": [
         "@tiptap/core"
       ]
@@ -5863,6 +5879,9 @@
         "uc.micro"
       ]
     },
+    "linkifyjs@4.2.0": {
+      "integrity": "sha512-pCj3PrQyATaoTYKHrgWRF3SJwsm61udVh+vuls/Rl6SptiDhgE7ziUIudAedRY9QEfynmM7/RmLEfPUyw1HPCw=="
+    },
     "listhen@1.9.0": {
       "integrity": "sha512-I8oW2+QL5KJo8zXNWX046M134WchxsXC7SawLPvRQpogCbkyQIaFxPE89A2HiwR7vAK2Dm2ERBAmyjTYGYEpBg==",
       "dependencies": [
@@ -8813,7 +8832,9 @@
         "npm:@tiptap/extension-document@^2.11.5",
         "npm:@tiptap/extension-history@^2.11.5",
         "npm:@tiptap/extension-image@^2.11.5",
+        "npm:@tiptap/extension-link@^2.11.5",
         "npm:@tiptap/extension-placeholder@^2.11.5",
+        "npm:@tiptap/extension-superscript@^2.11.5",
         "npm:@tiptap/extension-text-align@^2.11.5",
         "npm:@tiptap/extension-underline@^2.11.5",
         "npm:@tiptap/pm@^2.11.5",

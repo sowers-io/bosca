@@ -17,10 +17,16 @@ const props = defineProps<{
 }>()
 
 const $player = ref<MediaPlayerElement>()
-const $src = ref('/content/file?id=' + props.metadata?.id)
+const $src = ref(
+    props.metadata?.content?.type === 'bosca/x-youtube-video' ?
+    'youtube/' + props.metadata?.attributes['youtube.id'] :
+    '/content/file?id=' + props.metadata?.id
+)
 
 function updateSource() {
-  let url = '/content/file?id=' + props.metadata?.id
+  let url = props.metadata?.content?.type === 'bosca/x-youtube-video' ?
+      'youtube/' + props.metadata?.attributes['youtube.id'] :
+      '/content/file?id=' + props.metadata?.id
   if (url && url != $player.value!.src) {
     $src.value = url
   }

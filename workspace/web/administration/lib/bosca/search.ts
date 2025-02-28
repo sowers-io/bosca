@@ -4,7 +4,7 @@ import {
   type CollectionIdNameFragment,
   ExecuteSearchDocument,
   type MetadataIdNameFragment,
-  ProfileIdNameFragment,
+  type ProfileIdNameFragment,
 } from '~/lib/graphql/graphql'
 import type { AsyncData } from '#app/composables/asyncData'
 

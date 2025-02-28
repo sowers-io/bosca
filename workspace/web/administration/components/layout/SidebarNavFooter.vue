@@ -57,10 +57,6 @@ const fallbackName = computed(() =>
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
           <DropdownMenuGroup>
-            <DropdownMenuItem>
-              <Icon name="i-lucide-badge-check" />
-              Account
-            </DropdownMenuItem>
             <DropdownMenuItem as-child>
               <NuxtLink
                 to="/settings"
@@ -68,15 +64,6 @@ const fallbackName = computed(() =>
               >
                 <Icon name="i-lucide-settings" />
                 Settings
-              </NuxtLink>
-            </DropdownMenuItem>
-            <DropdownMenuItem>
-              <NuxtLink
-                to="/settings/notifications"
-                @click="setOpenMobile(false)"
-              >
-                <Icon name="i-lucide-bell" />
-                Notifications
               </NuxtLink>
             </DropdownMenuItem>
           </DropdownMenuGroup>

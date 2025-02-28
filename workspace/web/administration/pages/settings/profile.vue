@@ -6,6 +6,3 @@
     <SettingsProfileForm />
   </SettingsLayout>
 </template>
-
-<style scoped>
-</style>

@@ -4,7 +4,7 @@ import type {
   DocumentInput,
   DocumentTemplateFragment,
   MetadataFragment,
-  MetadataRelationshipFragment,
+  MetadataRelationshipFragment, ParentCollectionFragment,
 } from '~/lib/graphql/graphql.ts'
 import { AttributeUiType } from '~/lib/graphql/graphql.ts'
 import type { BoscaClient } from '~/lib/bosca/client.ts'
@@ -17,7 +17,7 @@ export async function save(
   document: Document,
   metadata: MetadataFragment,
   template: DocumentTemplateFragment | null,
-  parents: CollectionIdNameFragment[],
+  parents: ParentCollectionFragment[],
   title: string,
   relationships: MetadataRelationshipFragment[],
   attributes: Reactive<Map<string, AttributeState>>,
@@ -82,7 +82,8 @@ export async function save(
           break
         }
         case AttributeUiType.Image:
-        case AttributeUiType.File: {
+        case AttributeUiType.File:
+        case AttributeUiType.Metadata: {
           const removeRelationshipId = relationships.find((r) =>
             r.relationship === attr.configuration.relationship
           )?.metadata?.id

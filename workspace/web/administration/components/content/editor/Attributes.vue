@@ -1,10 +1,10 @@
 <script lang="ts" setup>
-import {AttributeUiType, type CollectionIdNameFragment} from "~/lib/graphql/graphql.ts";
+import {AttributeUiType, type ParentCollectionFragment} from "~/lib/graphql/graphql.ts";
 import type {AttributeState} from "~/lib/attribute.ts";
 import type {Reactive} from "vue";
 
 defineProps<{
-  parents: CollectionIdNameFragment[] | null
+  parents: ParentCollectionFragment[] | null
   attributes: Reactive<Map<string, AttributeState>>
   uploader: Uploader
   editable: boolean
@@ -56,7 +56,7 @@ defineProps<{
           :uploader="uploader"
       />
     </template>
-    <template v-if="attr.ui === AttributeUiType.File">
+    <template v-if="attr.ui === AttributeUiType.File || attr.ui === AttributeUiType.Metadata">
       <ContentEditorFileAttribute
           :attribute="attr as AttributeState"
           :editable="editable"

@@ -30,7 +30,7 @@ impl MetadataRelationshipObject {
     async fn relationship(&self) -> &String {
         &self.relationship.relationship
     }
-    async fn attributes(&self) -> &Value {
+    async fn attributes(&self) -> &Option<Value> {
         &self.relationship.attributes
     }
 }

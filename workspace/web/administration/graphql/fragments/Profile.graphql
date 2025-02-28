@@ -1,9 +1,11 @@
 fragment ProfileIdName on Profile {
+    __typename
     id
     name
 }
 
 fragment Profile on Profile {
+    __typename
     id
     slug
     name

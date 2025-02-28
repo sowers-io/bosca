@@ -74,7 +74,8 @@ async function onMetadataSelected(id: string) {
       <template
         v-if="
           metadata.content.type.startsWith('audio/') ||
-          metadata.content.type.startsWith('video/')
+          metadata.content.type.startsWith('video/') ||
+          metadata.content.type == 'bosca/x-youtube-video'
         "
       >
         <MediaPlayer :metadata="metadata" />

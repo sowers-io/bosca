@@ -11,6 +11,7 @@ pub mod metadata_relationship;
 pub mod permission;
 pub mod signed_url;
 pub mod source;
+pub mod source_mutation;
 pub mod storage;
 pub mod supplementary;
 pub mod metadata_workflow;

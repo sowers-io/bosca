@@ -5,6 +5,7 @@ use crate::graphql::content::permission::PermissionObject;
 use crate::graphql::content::supplementary::MetadataSupplementaryObject;
 use crate::graphql::workflows::workflow_execution_plan::WorkflowExecutionPlanObject;
 use crate::models::content::collection::MetadataChildInput;
+use crate::models::content::document::DocumentInput;
 use crate::models::content::metadata::MetadataInput;
 use crate::models::content::metadata_relationship::MetadataRelationshipInput;
 use crate::models::content::metadata_workflow_state::{
@@ -155,7 +156,11 @@ impl MetadataMutationObject {
         Ok(true)
     }
 
-    async fn permanently_delete(&self, ctx: &Context<'_>, metadata_id: String) -> Result<bool, Error> {
+    async fn permanently_delete(
+        &self,
+        ctx: &Context<'_>,
+        metadata_id: String,
+    ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::parse_str(metadata_id.as_str())?;
         ctx.check_has_admin_account().await?;
@@ -746,11 +751,15 @@ impl MetadataMutationObject {
             .metadata
             .set_uploaded(&metadata_id, &None, &content_type, len)
             .await?;
-        if ready.is_some() && ready.unwrap() && metadata.ready.is_none() && !ctx
+        if ready.is_some()
+            && ready.unwrap()
+            && metadata.ready.is_none()
+            && !ctx
                 .content
                 .metadata_workflows
                 .set_metadata_ready_and_enqueue(ctx, &metadata, configurations)
-                .await? {
+                .await?
+        {
             return Ok(false);
         }
         Ok(true)
@@ -770,10 +779,28 @@ impl MetadataMutationObject {
         if metadata.ready.is_some() {
             return Ok(false);
         }
-        ctx
-            .content
+        ctx.content
             .metadata_workflows
             .set_metadata_ready_and_enqueue(ctx, &metadata, configurations)
             .await
+    }
+
+    async fn set_metadata_document(
+        &self,
+        ctx: &Context<'_>,
+        id: String,
+        version: i32,
+        document: DocumentInput,
+    ) -> Result<bool, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let metadata_id = Uuid::parse_str(id.as_str())?;
+        let metadata = ctx
+            .check_metadata_version_action(&metadata_id, version, PermissionAction::Edit)
+            .await?;
+        ctx.content
+            .documents
+            .edit_document(&metadata.id, metadata.version, &document)
+            .await?;
+        Ok(true)
     }
 }
