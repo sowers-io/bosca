@@ -221,6 +221,7 @@ impl MetadataObject {
     async fn relationships(
         &self,
         ctx: &Context<'_>,
+        filter: Option<Vec<String>>,
     ) -> Result<Vec<MetadataRelationshipObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         Ok(ctx
@@ -229,6 +230,13 @@ impl MetadataObject {
             .get_relationships(&self.metadata.id)
             .await?
             .into_iter()
+            .filter(|r| {
+                if filter.is_none() {
+                    true
+                } else {
+                    filter.as_ref().unwrap().contains(&r.relationship)
+                }
+            })
             .map(|s| s.into())
             .collect())
     }

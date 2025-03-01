@@ -11,6 +11,7 @@ mod schema;
 mod security;
 mod util;
 mod worklfow;
+mod slugs;
 
 use crate::files::{download, upload};
 use crate::graphql::content::storage::{ObjectStorage, ObjectStorageInterface};
@@ -85,6 +86,7 @@ use bosca_database::build_pool;
 use tokio::time::sleep;
 use crate::datastores::configurations::ConfigurationDataStore;
 use crate::datastores::content::content::ContentDataStore;
+use crate::slugs::slug;
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
@@ -489,9 +491,14 @@ async fn main() {
         .route("/download", get(download))
         .with_state(ctx.clone());
 
+    let content = Router::new()
+        .route("/:slug", get(slug))
+        .with_state(ctx.clone());
+
     let app = Router::new()
         .route("/", get(graphiql))
         .nest("/files", files)
+        .nest("/content", content)
         .route("/graphql", post(graphql_handler))
         .route("/graphql", get(graphql_handler))
         .route_service("/ws", AuthGraphQLSubscription::new(schema.clone(), ctx))

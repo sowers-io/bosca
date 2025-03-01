@@ -288,6 +288,20 @@ impl CollectionsDataStore {
         Ok(rows.iter().map(|r| r.into()).collect())
     }
 
+    pub async fn get_children_count(
+        &self,
+        collection: &Collection,
+    ) -> Result<i64, Error> {
+        let mut query = "select count(*) as count from collection_items ".to_owned();
+        query.push_str(" left join collections on (child_collection_id = collections.id) ");
+        query.push_str(" left join metadata on (child_metadata_id = metadata.id) ");
+        query.push_str(" where collection_id = $1 and (collections.deleted is null or collections.deleted = false) and (metadata.deleted is null or metadata.deleted = false) ");
+        let connection = self.pool.get().await?;
+        let stmt = connection.prepare_cached(query.as_str()).await?;
+        let rows = connection.query_one(&stmt, &[&collection.id]).await?;
+        Ok(rows.get(0))
+    }
+
     pub async fn get_child_collections(
         &self,
         collection: &Collection,

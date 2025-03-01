@@ -178,6 +178,15 @@ impl CollectionObject {
         Ok(content)
     }
 
+    async fn items_count(
+        &self,
+        ctx: &Context<'_>,
+    ) -> Result<i64, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        ctx.check_collection_action(&self.collection.id, PermissionAction::List).await?;
+        ctx.content.collections.get_children_count(&self.collection).await
+    }
+
     async fn collections(
         &self,
         ctx: &Context<'_>,
