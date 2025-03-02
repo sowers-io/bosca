@@ -9,9 +9,9 @@ mod queries;
 mod redis;
 mod schema;
 mod security;
+mod slugs;
 mod util;
 mod worklfow;
-mod slugs;
 
 use crate::files::{download, upload};
 use crate::graphql::content::storage::{ObjectStorage, ObjectStorageInterface};
@@ -73,6 +73,9 @@ use mimalloc::MiMalloc;
 use tower_http::cors::CorsLayer;
 
 use crate::authed_subscription::AuthGraphQLSubscription;
+use crate::datastores::configurations::ConfigurationDataStore;
+use crate::datastores::content::content::ContentDataStore;
+use crate::datastores::content::workflow_schedules::WorkflowScheduleDataStore;
 use crate::datastores::notifier::Notifier;
 use crate::datastores::profile::ProfileDataStore;
 use crate::graphql::subscription::SubscriptionObject;
@@ -81,12 +84,10 @@ use crate::models::profiles::profile::ProfileInput;
 use crate::models::profiles::profile_visibility::ProfileVisibility;
 use crate::redis::RedisClient;
 use crate::schema::BoscaSchema;
+use crate::slugs::slug;
 use crate::util::profile::add_password_principal;
 use bosca_database::build_pool;
 use tokio::time::sleep;
-use crate::datastores::configurations::ConfigurationDataStore;
-use crate::datastores::content::content::ContentDataStore;
-use crate::slugs::slug;
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
@@ -215,16 +216,10 @@ async fn initialize_security(ctx: &BoscaContext) {
                 visibility: ProfileVisibility::Public,
                 attributes: vec![],
             };
-            let principal = add_password_principal(
-                ctx,
-                &identifier,
-                &password,
-                &profile,
-                true,
-                false,
-            )
-            .await
-            .unwrap();
+            let principal =
+                add_password_principal(ctx, &identifier, &password, &profile, true, false)
+                    .await
+                    .unwrap();
 
             let group = ctx.security.get_administrators_group().await.unwrap();
             ctx.security
@@ -307,6 +302,7 @@ async fn initialize_collection(
             &principal,
             &collection,
             "published",
+            None,
             "initializing collections",
             true,
             true,
@@ -384,9 +380,7 @@ async fn main() {
     let configuration_secret_key = match env::var("CONFIGURATION_SECRET_KEY") {
         Ok(url_secret_key) => url_secret_key,
         _ => {
-            println!(
-                "Environment variable CONFIGURATION_SECRET_KEY could not be read"
-            );
+            println!("Environment variable CONFIGURATION_SECRET_KEY could not be read");
             exit(1);
         }
     };
@@ -410,7 +404,15 @@ async fn main() {
             Arc::clone(&notifier),
             Arc::clone(&search),
         ),
-        configuration: ConfigurationDataStore::new(Arc::clone(&bosca_pool), configuration_secret_key, Arc::clone(&notifier)),
+        workflow_schedule: WorkflowScheduleDataStore::new(
+            Arc::clone(&bosca_pool),
+            Arc::clone(&notifier),
+        ),
+        configuration: ConfigurationDataStore::new(
+            Arc::clone(&bosca_pool),
+            configuration_secret_key,
+            Arc::clone(&notifier),
+        ),
         profile: ProfileDataStore::new(Arc::clone(&bosca_pool)),
         queries: PersistedQueriesDataStore::new(Arc::clone(&bosca_pool)).await,
         content: ContentDataStore::new(bosca_pool, Arc::clone(&notifier)),

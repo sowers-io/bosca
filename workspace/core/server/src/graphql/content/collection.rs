@@ -7,11 +7,10 @@ use serde_json::Value;
 use crate::context::BoscaContext;
 use crate::graphql::content::category::CategoryObject;
 use crate::graphql::content::collection_metadata_relationship::CollectionMetadataRelationshipObject;
-use crate::graphql::workflows::workflow_execution_plan::WorkflowExecutionPlanObject;
+use crate::graphql::content::collection_workflow::CollectionWorkflowObject;
 use crate::models::content::attributes_filter::AttributesFilterInput;
 use crate::models::content::ordering::Ordering;
 use crate::models::security::permission::PermissionAction;
-use crate::models::workflow::execution_plan::WorkflowExecutionId;
 
 #[derive(Union)]
 enum CollectionItem {
@@ -21,10 +20,6 @@ enum CollectionItem {
 
 pub struct CollectionObject {
     collection: Collection,
-}
-
-pub struct CollectionWorkflowObject<'a> {
-    collection: &'a Collection,
 }
 
 impl CollectionObject {
@@ -275,38 +270,6 @@ impl CollectionObject {
     }
 }
 
-#[Object(name = "CollectionWorkflow")]
-impl CollectionWorkflowObject<'_> {
-    async fn state(&self) -> &String {
-        &self.collection.workflow_state_id
-    }
-
-    async fn pending(&self) -> &Option<String> {
-        &self.collection.workflow_state_pending_id
-    }
-
-    async fn delete_workflow(&self) -> &Option<String> {
-        &self.collection.delete_workflow_id
-    }
-
-    async fn plans(&self, ctx: &Context<'_>) -> Result<Vec<WorkflowExecutionPlanObject>, Error> {
-        let ctx = ctx.data::<BoscaContext>()?;
-        let plans_ids = ctx.content.collection_workflows.get_plans(&self.collection.id).await?;
-        let mut plans = Vec::<WorkflowExecutionPlanObject>::new();
-        for (plan_id, queue) in plans_ids {
-            let id = WorkflowExecutionId {
-                id: plan_id,
-                queue,
-            };
-            let plan = ctx.workflow.get_execution_plan(&id).await?;
-            if plan.is_none() {
-                continue;
-            }
-            plans.push(plan.unwrap().into());
-        }
-        Ok(plans)
-    }
-}
 
 impl From<Collection> for CollectionObject {
     fn from(collection: Collection) -> Self {

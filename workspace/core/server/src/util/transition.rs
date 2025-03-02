@@ -1,4 +1,5 @@
 use async_graphql::Error;
+use chrono::{DateTime, Utc};
 use uuid::Uuid;
 use crate::context::BoscaContext;
 use crate::graphql::content::metadata_mutation::WorkflowConfigurationInput;
@@ -32,14 +33,14 @@ pub async fn begin_transition(ctx: &BoscaContext, request: &BeginTransitionInput
                 return Err(Error::new("metadata is already in this state"));
             }
             verify_transition_exists(ctx, &metadata.workflow_state_id, &request.state_id).await?;
-            transition(ctx, TransitionType::Exit, &metadata, &request.state_id, None, Some(false)).await?;
-            transition(ctx, TransitionType::Enter, &metadata, &request.state_id, None, Some(false)).await?;
-            ctx.content.metadata_workflows.set_metadata_workflow_state(&ctx.principal, &metadata, &request.state_id, "User Request", true, false).await?;
-            if transition(ctx, TransitionType::Default, &metadata, &request.state_id, None, request.wait_for_completion).await?.is_none() {
-                ctx.content.metadata_workflows.set_metadata_workflow_state(&ctx.principal, &metadata, &request.state_id, "User Request", true, true).await?;
+            transition(ctx, TransitionType::Exit, &metadata, &request.state_id, None, Some(true), None).await?;
+            transition(ctx, TransitionType::Enter, &metadata, &request.state_id, None, Some(true), None).await?;
+            ctx.content.metadata_workflows.set_metadata_workflow_state(&ctx.principal, &metadata, &request.state_id, request.state_valid, &request.status, true, false).await?;
+            if transition(ctx, TransitionType::Default, &metadata, &request.state_id, None, request.wait_for_completion, request.state_valid).await?.is_none() {
+                ctx.content.metadata_workflows.set_metadata_workflow_state(&ctx.principal, &metadata, &request.state_id, request.state_valid, &request.status, true, true).await?;
             }
         } else {
-            return Err(Error::new("a version is required"));
+            return Err(Error::new("a metadata version is required"));
         }
     } else if let Some(collection_id) = &request.collection_id {
         let id = Uuid::parse_str(collection_id.as_str())?;
@@ -48,11 +49,11 @@ pub async fn begin_transition(ctx: &BoscaContext, request: &BeginTransitionInput
             return Err(Error::new("collection is already in this state"));
         }
         verify_transition_exists(ctx, &collection.workflow_state_id, &request.state_id).await?;
-        transition(ctx, TransitionType::Exit, &collection, &request.state_id, configurations, Some(false)).await?;
-        transition(ctx, TransitionType::Enter, &collection, &request.state_id, configurations, Some(false)).await?;
-        ctx.content.collection_workflows.set_state(&ctx.principal, &collection, &request.state_id, "User Request", true, false).await?;
-        if transition(ctx, TransitionType::Default, &collection, &request.state_id, configurations, request.wait_for_completion).await?.is_none() {
-            ctx.content.collection_workflows.set_state(&ctx.principal, &collection, &request.state_id, "User Request", true, true).await?;
+        transition(ctx, TransitionType::Exit, &collection, &request.state_id, configurations, Some(true), None).await?;
+        transition(ctx, TransitionType::Enter, &collection, &request.state_id, configurations, Some(true), None).await?;
+        ctx.content.collection_workflows.set_state(&ctx.principal, &collection, &request.state_id, request.state_valid, &request.status, true, false).await?;
+        if transition(ctx, TransitionType::Default, &collection, &request.state_id, configurations, request.wait_for_completion, request.state_valid).await?.is_none() {
+            ctx.content.collection_workflows.set_state(&ctx.principal, &collection, &request.state_id, request.state_valid, &request.status, true, true).await?;
         }
     } else {
         return Err(Error::new("you must provide either a collection_id or a metadata_id"));
@@ -60,7 +61,7 @@ pub async fn begin_transition(ctx: &BoscaContext, request: &BeginTransitionInput
     Ok(())
 }
 
-pub async fn transition(ctx: &BoscaContext, transition_type: TransitionType, item: &impl ContentItem, next_state_id: &str, configurations: Option<&Vec<WorkflowConfigurationInput>>, wait_for_completion: Option<bool>) -> Result<Option<WorkflowExecutionPlan>, Error> {
+pub async fn transition(ctx: &BoscaContext, transition_type: TransitionType, item: &impl ContentItem, next_state_id: &str, configurations: Option<&Vec<WorkflowConfigurationInput>>, wait_for_completion: Option<bool>, delay_until: Option<DateTime<Utc>>) -> Result<Option<WorkflowExecutionPlan>, Error> {
     if let Some(state) = ctx.workflow.get_state(item.workflow_state_id()).await? {
         if state.state_type == WorkflowStateType::Pending {
             return Err(Error::new("manual transition to processing isn't allowed, please mark as ready instead and wait for the item to be transitioned to draft"));
@@ -89,6 +90,7 @@ pub async fn transition(ctx: &BoscaContext, transition_type: TransitionType, ite
                     &version,
                     configurations,
                     wait_for_completion,
+                    delay_until,
                 ).await?
             } else {
                 ctx.workflow.enqueue_collection_workflow(
@@ -96,6 +98,7 @@ pub async fn transition(ctx: &BoscaContext, transition_type: TransitionType, ite
                     item.id(),
                     configurations,
                     wait_for_completion,
+                    delay_until,
                 ).await?
             })
         } else {

@@ -7,6 +7,7 @@ use async_graphql::*;
 use deadpool_postgres::{GenericClient, Pool};
 use log::error;
 use std::sync::Arc;
+use chrono::{DateTime, Utc};
 use uuid::Uuid;
 
 #[derive(Clone)]
@@ -43,11 +44,13 @@ impl CollectionWorkflowsDataStore {
             .collect())
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn set_state(
         &self,
         principal: &Principal,
         collection: &Collection,
         to_state_id: &str,
+        valid: Option<DateTime<Utc>>,
         status: &str,
         success: bool,
         complete: bool,
@@ -72,17 +75,17 @@ impl CollectionWorkflowsDataStore {
         .await?;
         if !success {
             let stmt = txn
-                .prepare("update collections set workflow_state_pending_id = null where id = $1")
+                .prepare("update collections set workflow_state_pending_id = null, workflow_state_valid = null where id = $1")
                 .await?;
             txn.execute(&stmt, &[&collection.id]).await?;
         } else if complete {
-            let stmt = txn.prepare("update collections set workflow_state_id = $1, workflow_state_pending_id = null where id = $2").await?;
+            let stmt = txn.prepare("update collections set workflow_state_id = $1, workflow_state_valid = null, workflow_state_pending_id = null where id = $2").await?;
             txn.execute(&stmt, &[&state, &collection.id]).await?;
         } else {
             let stmt = txn
-                .prepare("update collections set workflow_state_pending_id = $1 where id = $2")
+                .prepare("update collections set workflow_state_pending_id = $1, workflow_state_valid = $2 where id = $3")
                 .await?;
-            txn.execute(&stmt, &[&state, &collection.id]).await?;
+            txn.execute(&stmt, &[&state, &valid, &collection.id]).await?;
         }
         txn.commit().await?;
         self.on_collection_changed(&collection.id).await?;
@@ -114,13 +117,14 @@ impl CollectionWorkflowsDataStore {
             principal,
             collection,
             "draft",
+            None,
             "move to draft during set to ready",
             true,
             false,
         )
         .await?;
         workflow
-            .enqueue_collection_workflow(&process_id, &collection.id, configurations.as_ref(), None)
+            .enqueue_collection_workflow(&process_id, &collection.id, configurations.as_ref(), None, None)
             .await?;
         self.set_ready(&collection.id).await?;
         self.on_collection_changed(&collection.id).await?;

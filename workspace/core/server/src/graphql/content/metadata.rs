@@ -231,10 +231,10 @@ impl MetadataObject {
             .await?
             .into_iter()
             .filter(|r| {
-                if filter.is_none() {
-                    true
+                if let Some(filter) = &filter {
+                    filter.contains(&r.relationship)
                 } else {
-                    filter.as_ref().unwrap().contains(&r.relationship)
+                    true
                 }
             })
             .map(|s| s.into())

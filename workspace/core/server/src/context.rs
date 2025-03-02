@@ -5,6 +5,7 @@ use meilisearch_sdk::client::Client;
 use uuid::Uuid;
 use crate::datastores::configurations::ConfigurationDataStore;
 use crate::datastores::content::content::ContentDataStore;
+use crate::datastores::content::workflow_schedules::WorkflowScheduleDataStore;
 use crate::datastores::persisted_queries::PersistedQueriesDataStore;
 use crate::datastores::security::SecurityDataStore;
 use crate::datastores::workflow::WorkflowDataStore;
@@ -26,6 +27,7 @@ pub struct BoscaContext {
     pub security: SecurityDataStore,
     pub storage: ObjectStorage,
     pub workflow: WorkflowDataStore,
+    pub workflow_schedule: WorkflowScheduleDataStore,
     pub queries: PersistedQueriesDataStore,
     pub configuration: ConfigurationDataStore,
     pub notifier: Arc<Notifier>,

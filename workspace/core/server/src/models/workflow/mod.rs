@@ -8,3 +8,4 @@ pub mod storage_systems;
 pub mod traits;
 pub mod transitions;
 pub mod workflows;
+pub mod workflow_schedule;

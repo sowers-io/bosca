@@ -64,6 +64,15 @@ impl RedisTransaction {
                     let key = JobQueues::queue_job_key(&op.queue, &op.id, op.index);
                     invocation.key(&queue_key).key(&key);
                 }
+                RedisTransactionOp::QueueJobLater(op, timeout) => {
+                    let queue_key = JobQueues::running_job_queue_key(&op.queue);
+                    let key = JobQueues::queue_job_key(&op.queue, &op.id, op.index);
+                    invocation
+                        .key(queue_key)
+                        .key(key)
+                        .arg(Utc::now().timestamp())
+                        .arg(timeout);
+                }
                 RedisTransactionOp::RemovePlanRunning(op) => {
                     let queue_key = JobQueues::running_plan_queue_key(&op.queue);
                     let key = JobQueues::queue_plan_key(&op.queue, &op.id);
@@ -92,15 +101,6 @@ impl RedisTransaction {
                         .arg(Utc::now().timestamp())
                         .arg(1800);
                 }
-                RedisTransactionOp::QueueJobLater(op, timeout) => {
-                    let queue_key = JobQueues::running_job_queue_key(&op.queue);
-                    let key = JobQueues::queue_job_key(&op.queue, &op.id, op.index);
-                    invocation
-                        .key(queue_key)
-                        .key(key)
-                        .arg(Utc::now().timestamp())
-                        .arg(timeout);
-                }
             }
         }
         let connection = redis.get().await?;
@@ -125,7 +125,7 @@ pub enum RedisTransactionOp {
     PlanCheckin(WorkflowExecutionId),
     JobCheckin(WorkflowJobId),
     QueueJob(WorkflowJobId),
-    QueueJobLater(WorkflowJobId, i32),
+    QueueJobLater(WorkflowJobId, i64),
     RemovePlanRunning(WorkflowExecutionId),
     RemoveJobRunning(WorkflowJobId),
 }

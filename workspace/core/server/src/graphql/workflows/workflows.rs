@@ -15,6 +15,7 @@ use crate::models::workflow::execution_plan::WorkflowExecutionId;
 use crate::security::util::check_has_group;
 use async_graphql::{Context, Error, Object, Union};
 use uuid::Uuid;
+use crate::graphql::workflows::workflow_schedules::WorkflowSchedulesObject;
 
 pub(crate) struct WorkflowsObject {}
 
@@ -46,6 +47,10 @@ impl WorkflowsObject {
         let ctx = ctx.data::<BoscaContext>()?;
         let workflow = ctx.workflow.get_workflow_activity(&id).await?;
         Ok(workflow.map(|a| WorkflowActivityObject::new(None, &a)))
+    }
+
+    async fn schedules(&self) -> WorkflowSchedulesObject {
+        WorkflowSchedulesObject {}
     }
 
     async fn activities(&self) -> ActivitiesObject {

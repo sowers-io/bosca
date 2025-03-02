@@ -204,7 +204,7 @@ pub async fn upload(
                 let process_id = "metadata.process".to_string();
                 let workflow = ctx.workflow;
                 workflow
-                    .enqueue_metadata_workflow(&process_id, &id, &metadata.version, None, None)
+                    .enqueue_metadata_workflow(&process_id, &id, &metadata.version, None, None, None)
                     .await
                     .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Server Error".to_owned()))?;
             }

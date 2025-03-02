@@ -1,24 +1,26 @@
-use crate::datastores::security::WORKFLOW_MANAGERS_GROUP;
-use crate::graphql::workflows::models_mutation::ModelsMutationObject;
-use crate::graphql::workflows::states_mutation::WorkflowStatesMutationObject;
-use crate::graphql::workflows::prompts_mutation::PromptsMutationObject;
-use crate::graphql::workflows::workflow::WorkflowObject;
-use crate::graphql::workflows::workflow_execution_id::WorkflowExecutionIdObject;
-use crate::models::workflow::execution_plan::{WorkflowExecutionIdInput, WorkflowJobIdInput};
-use crate::models::workflow::workflows::WorkflowInput;
-use crate::security::util::check_has_group;
-use async_graphql::{Context, Error, Object};
-use serde_json::Value;
-use uuid::Uuid;
 use crate::context::BoscaContext;
+use crate::datastores::security::WORKFLOW_MANAGERS_GROUP;
 use crate::graphql::content::metadata_mutation::WorkflowConfigurationInput;
 use crate::graphql::workflows::activities_mutation::ActivitiesMutationObject;
+use crate::graphql::workflows::models_mutation::ModelsMutationObject;
+use crate::graphql::workflows::prompts_mutation::PromptsMutationObject;
+use crate::graphql::workflows::states_mutation::WorkflowStatesMutationObject;
 use crate::graphql::workflows::storage_systems_mutation::StorageSystemsMutationObject;
 use crate::graphql::workflows::traits_mutation::TraitsMutationObject;
 use crate::graphql::workflows::transitions_mutation::TransitionsMutationObject;
+use crate::graphql::workflows::workflow::WorkflowObject;
+use crate::graphql::workflows::workflow_execution_id::WorkflowExecutionIdObject;
 use crate::models::content::find_query::FindQueryInput;
+use crate::models::workflow::execution_plan::{WorkflowExecutionIdInput, WorkflowJobIdInput};
 use crate::models::workflow::transitions::BeginTransitionInput;
+use crate::models::workflow::workflows::WorkflowInput;
+use crate::security::util::check_has_group;
 use crate::util::transition::begin_transition;
+use async_graphql::{Context, Error, Object};
+use chrono::{DateTime, Utc};
+use serde_json::Value;
+use uuid::Uuid;
+use crate::graphql::workflows::workflow_schedules_mutation::WorkflowSchedulesMutationObject;
 
 pub(crate) struct WorkflowsMutationObject {}
 
@@ -32,7 +34,8 @@ impl WorkflowsMutationObject {
         check_has_group(ctx, WORKFLOW_MANAGERS_GROUP).await?;
         let ctx = ctx.data::<BoscaContext>()?;
         ctx.workflow.add_workflow(&workflow).await?;
-        if let Some(workflow) = ctx.workflow
+        if let Some(workflow) = ctx
+            .workflow
             .get_workflow(&workflow.id)
             .await?
             .map(WorkflowObject::new)
@@ -50,7 +53,8 @@ impl WorkflowsMutationObject {
         check_has_group(ctx, WORKFLOW_MANAGERS_GROUP).await?;
         let ctx = ctx.data::<BoscaContext>()?;
         ctx.workflow.edit_workflow(&workflow).await?;
-        if let Some(workflow) = ctx.workflow
+        if let Some(workflow) = ctx
+            .workflow
             .get_workflow(&workflow.id)
             .await?
             .map(WorkflowObject::new)
@@ -60,11 +64,7 @@ impl WorkflowsMutationObject {
         Err(Error::new("missing workflow"))
     }
 
-    async fn delete(
-        &self,
-        ctx: &Context<'_>,
-        id: String,
-    ) -> Result<bool, Error> {
+    async fn delete(&self, ctx: &Context<'_>, id: String) -> Result<bool, Error> {
         check_has_group(ctx, WORKFLOW_MANAGERS_GROUP).await?;
         let ctx = ctx.data::<BoscaContext>()?;
         ctx.workflow.delete_workflow(&id).await?;
@@ -95,7 +95,13 @@ impl WorkflowsMutationObject {
         PromptsMutationObject {}
     }
 
-    async fn storage_systems(&self) -> StorageSystemsMutationObject { StorageSystemsMutationObject {} }
+    async fn storage_systems(&self) -> StorageSystemsMutationObject {
+        StorageSystemsMutationObject {}
+    }
+
+    async fn schedules(&self) -> WorkflowSchedulesMutationObject {
+        WorkflowSchedulesMutationObject {}
+    }
 
     async fn expire_all(&self, ctx: &Context<'_>) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
@@ -120,11 +126,13 @@ impl WorkflowsMutationObject {
         ctx: &Context<'_>,
         job_id: WorkflowJobIdInput,
         workflow_ids: Vec<String>,
+        delay_until: Option<DateTime<Utc>>,
     ) -> Result<Vec<WorkflowExecutionIdObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         ctx.check_has_service_account().await?;
-        Ok(ctx.workflow
-            .enqueue_job_child_workflows(&job_id.into(), &workflow_ids)
+        Ok(ctx
+            .workflow
+            .enqueue_job_child_workflows(&job_id.into(), &workflow_ids, delay_until)
             .await?
             .into_iter()
             .map(WorkflowExecutionIdObject::new)
@@ -137,10 +145,20 @@ impl WorkflowsMutationObject {
         job_id: WorkflowJobIdInput,
         workflow_id: String,
         configurations: Option<Vec<WorkflowConfigurationInput>>,
+        delay_until: Option<DateTime<Utc>>,
     ) -> Result<WorkflowExecutionIdObject, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         ctx.check_has_service_account().await?;
-        Ok(WorkflowExecutionIdObject::new(ctx.workflow.enqueue_job_child_workflow(&job_id.into(), &workflow_id, configurations.as_ref()).await?))
+        Ok(WorkflowExecutionIdObject::new(
+            ctx.workflow
+                .enqueue_job_child_workflow(
+                    &job_id.into(),
+                    &workflow_id,
+                    configurations.as_ref(),
+                    delay_until,
+                )
+                .await?,
+        ))
     }
 
     async fn find_and_enqueue_workflow(
@@ -149,26 +167,46 @@ impl WorkflowsMutationObject {
         workflow_id: String,
         mut query: FindQueryInput,
         configurations: Option<Vec<WorkflowConfigurationInput>>,
+        delay_until: Option<DateTime<Utc>>,
     ) -> Result<Vec<WorkflowExecutionIdObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         ctx.check_has_service_account().await?;
         let mut ids = Vec::new();
         // TODO: page through items
         for metadata in ctx.content.metadata.find(&mut query).await? {
-            let id = ctx.workflow
-                .enqueue_metadata_workflow(&workflow_id, &metadata.id, &metadata.version, configurations.as_ref(), None)
+            let id = ctx
+                .workflow
+                .enqueue_metadata_workflow(
+                    &workflow_id,
+                    &metadata.id,
+                    &metadata.version,
+                    configurations.as_ref(),
+                    None,
+                    delay_until,
+                )
                 .await?;
             ids.push(id);
         }
         for collection in ctx.content.collections.find(&mut query).await? {
-            let id = ctx.workflow
-                .enqueue_collection_workflow(&workflow_id, &collection.id, configurations.as_ref(), None)
+            let id = ctx
+                .workflow
+                .enqueue_collection_workflow(
+                    &workflow_id,
+                    &collection.id,
+                    configurations.as_ref(),
+                    None,
+                    delay_until,
+                )
                 .await?;
             ids.push(id);
         }
-        Ok(ids.into_iter().map(|plan| WorkflowExecutionIdObject::new(plan.id.clone())).collect())
+        Ok(ids
+            .into_iter()
+            .map(|plan| WorkflowExecutionIdObject::new(plan.id.clone()))
+            .collect())
     }
 
+    #[allow(clippy::too_many_arguments)]
     async fn enqueue_workflow(
         &self,
         ctx: &Context<'_>,
@@ -177,6 +215,7 @@ impl WorkflowsMutationObject {
         metadata_id: Option<String>,
         version: Option<i32>,
         configurations: Option<Vec<WorkflowConfigurationInput>>,
+        delay_until: Option<DateTime<Utc>>,
     ) -> Result<WorkflowExecutionIdObject, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         ctx.check_has_service_account().await?;
@@ -185,18 +224,27 @@ impl WorkflowsMutationObject {
             if version.is_none() {
                 return Err(Error::new("a version is required"));
             }
-            
+
             ctx.workflow
-                .enqueue_metadata_workflow(&workflow_id, &id, version.as_ref().unwrap(), configurations.as_ref(), None)
+                .enqueue_metadata_workflow(
+                    &workflow_id,
+                    &id,
+                    version.as_ref().unwrap(),
+                    configurations.as_ref(),
+                    None,
+                    delay_until,
+                )
                 .await?
         } else if let Some(collection_id) = collection_id {
             let id = Uuid::parse_str(collection_id.as_str())?;
-            
+
             ctx.workflow
-                .enqueue_collection_workflow(&workflow_id, &id, configurations.as_ref(), None)
+                .enqueue_collection_workflow(&workflow_id, &id, configurations.as_ref(), None, delay_until)
                 .await?
         } else {
-            return Err(Error::new("you must provide either a collection_id or a metadata_id"));
+            return Err(Error::new(
+                "you must provide either a collection_id or a metadata_id",
+            ));
         };
         Ok(WorkflowExecutionIdObject::new(workflow.id.clone()))
     }
@@ -215,7 +263,7 @@ impl WorkflowsMutationObject {
         Ok(true)
     }
 
-    async fn set_execution_job_context(
+    async fn set_execution_plan_job_context(
         &self,
         ctx: &Context<'_>,
         job_id: WorkflowJobIdInput,
@@ -224,7 +272,7 @@ impl WorkflowsMutationObject {
         let ctx = ctx.data::<BoscaContext>()?;
         ctx.check_has_service_account().await?;
         ctx.workflow
-            .set_execution_job_context(&job_id.into(), &context)
+            .set_execution_plan_job_context(&job_id.into(), &context)
             .await?;
         Ok(true)
     }
@@ -238,6 +286,20 @@ impl WorkflowsMutationObject {
         ctx.check_has_service_account().await?;
         ctx.workflow
             .set_execution_plan_job_checkin(&job_id.into())
+            .await?;
+        Ok(true)
+    }
+
+    async fn set_execution_plan_job_delayed(
+        &self,
+        ctx: &Context<'_>,
+        job_id: WorkflowJobIdInput,
+        delayed_until: DateTime<Utc>,
+    ) -> Result<bool, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        ctx.check_has_service_account().await?;
+        ctx.workflow
+            .set_execution_plan_job_delayed(&job_id.into(), delayed_until)
             .await?;
         Ok(true)
     }

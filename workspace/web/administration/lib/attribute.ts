@@ -17,6 +17,8 @@ export class AttributeState {
 
   private _loading = false
   private _value: any
+  private _invalidValue: boolean = false
+  private _valueWarning: string | null = null
 
   constructor(
     key: string,
@@ -39,12 +41,52 @@ export class AttributeState {
     this._value = null
   }
 
+  get invalidValue(): boolean {
+    return this._invalidValue
+  }
+
+  get valueWarning(): string | null {
+    return this._valueWarning
+  }
+
   get loading(): boolean {
     return this._loading
   }
 
   set loading(loading: boolean) {
     this._loading = loading
+  }
+
+  get dateTimeValue(): string {
+    if (typeof this._value === 'number') {
+      return new Date(this._value).toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      }).replace(',', '')
+    }
+    return this._value?.toString() || ''
+  }
+
+  set dateTimeValue(value: string) {
+    try {
+      const date = new Date(Date.parse(value))
+      if (isNaN(date.getTime())) throw new Error('invalid date')
+      this._value = date.getTime()
+      this._invalidValue = false
+      if (this._value < new Date().getTime()) {
+        this._valueWarning = 'Date is in the past.'
+      } else {
+        this._valueWarning = null
+      }
+    } catch (e) {
+      this._invalidValue = true
+      this._valueWarning = null
+    }
+    this._value = value
   }
 
   get value(): any {

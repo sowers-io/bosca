@@ -7,17 +7,26 @@ defineProps<{
   workflowsEnabled: boolean
   onRunWorkflow: (attribute: AttributeState) => void
 }>()
+
 </script>
 
 <template>
   <div v-if="attribute">
     <label class="block font-bold mt-4 mb-2">{{ attribute.name }}</label>
     <div class="flex items-center justify-center">
-      <Input
-        class="w-full border rounded-md p-2"
-        v-model:model-value="attribute.value"
-        :disabled="!editable"
-      />
+      <div class="w-full">
+        <Input
+          class="w-full border rounded-md p-2"
+          v-model:model-value="attribute.dateTimeValue"
+          :disabled="!editable"
+        />
+        <div class="text-xs text-red py-2 ps-0.5" v-if="attribute.invalidValue">
+          Invalid Date/Time
+        </div>
+        <div class="text-xs text-orange py-2 ps-0.5" v-if="attribute.valueWarning">
+          {{ attribute.valueWarning }}
+        </div>
+      </div>
       <Tooltip v-if="editable && attribute.hasWorkflows">
         <TooltipTrigger as-child>
           <Button

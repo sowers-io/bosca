@@ -7,6 +7,7 @@ use async_graphql::*;
 use deadpool_postgres::{GenericClient, Pool};
 use log::error;
 use std::sync::Arc;
+use chrono::DateTime;
 use uuid::Uuid;
 
 #[derive(Clone)]
@@ -43,11 +44,13 @@ impl MetadataWorkflowsDataStore {
             .collect())
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn set_metadata_workflow_state(
         &self,
         principal: &Principal,
         metadata: &Metadata,
         to_state_id: &str,
+        valid: Option<DateTime<chrono::Utc>>,
         status: &str,
         success: bool,
         complete: bool,
@@ -72,17 +75,17 @@ impl MetadataWorkflowsDataStore {
         .await?;
         if !success {
             let stmt = txn
-                .prepare("update metadata set workflow_state_pending_id = null where id = $1")
+                .prepare("update metadata set workflow_state_pending_id = null, workflow_state_valid = null where id = $1")
                 .await?;
             txn.execute(&stmt, &[&metadata.id]).await?;
         } else if complete {
-            let stmt = txn.prepare("update metadata set workflow_state_id = $1, workflow_state_pending_id = null where id = $2").await?;
+            let stmt = txn.prepare("update metadata set workflow_state_id = $1, workflow_state_pending_id = null, workflow_state_valid = null where id = $2").await?;
             txn.execute(&stmt, &[&state, &metadata.id]).await?;
         } else {
             let stmt = txn
-                .prepare("update metadata set workflow_state_pending_id = $1 where id = $2")
+                .prepare("update metadata set workflow_state_pending_id = $1, workflow_state_valid = $2 where id = $3")
                 .await?;
-            txn.execute(&stmt, &[&state, &metadata.id]).await?;
+            txn.execute(&stmt, &[&state, &valid, &metadata.id]).await?;
         }
         txn.commit().await?;
         self.on_metadata_changed(&metadata.id).await?;
@@ -146,15 +149,14 @@ impl MetadataWorkflowsDataStore {
         if metadata.ready.is_some() {
             return Ok(false);
         }
-
         self.validate(ctx, &metadata.id, metadata.version).await?;
-
         let workflow = &ctx.workflow;
         let process_id = "metadata.process".to_owned();
         self.set_metadata_workflow_state(
             &ctx.principal,
             metadata,
             "draft",
+            None,
             "move to draft during set to ready",
             true,
             false,
@@ -167,6 +169,7 @@ impl MetadataWorkflowsDataStore {
                 &metadata.id,
                 &metadata.version,
                 configurations.as_ref(),
+                None,
                 None,
             )
             .await?;

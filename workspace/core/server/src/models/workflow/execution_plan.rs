@@ -81,6 +81,7 @@ pub struct WorkflowExecutionPlan {
     pub parent: Option<WorkflowJobId>,
     pub id: WorkflowExecutionId,
     pub enqueued: DateTime<Utc>,
+    pub delay_until: Option<DateTime<Utc>>,
     pub finished: Option<DateTime<Utc>>,
     pub workflow: Workflow,
     pub jobs: Vec<WorkflowJob>,
@@ -171,7 +172,18 @@ impl WorkflowExecutionPlan {
             if !self.complete.contains(&job_index) {
                 let job = self.jobs.get(job_index as usize).unwrap();
                 self.active.insert(job_index);
-                redis_txn.add_op(RedisTransactionOp::QueueJob(job.id.clone()));
+
+                if let Some(delay_until) = &self.delay_until {
+                    let now = Utc::now();
+                    if now > *delay_until {
+                        let diff = delay_until.timestamp() - now.timestamp();
+                        redis_txn.add_op(RedisTransactionOp::QueueJobLater(job.id.clone(), diff));
+                    } else {
+                        redis_txn.add_op(RedisTransactionOp::QueueJob(job.id.clone()));
+                    }
+                } else {
+                    redis_txn.add_op(RedisTransactionOp::QueueJob(job.id.clone()));
+                }
             }
         }
         queues.set_plan(db_txn, self, next_execution_group == 1).await?;
@@ -239,6 +251,27 @@ impl WorkflowExecutionPlan {
         Ok(result)
     }
 
+    pub async fn set_job_delayed_until(
+        &mut self,
+        job_id: &WorkflowJobId,
+        db_txn: &Transaction<'_>,
+        redis_txn: &mut RedisTransaction,
+        queues: &JobQueues,
+        delayed_until: DateTime<Utc>,
+    ) -> Result<(), Error> {
+        let now = Utc::now();
+        let diff = delayed_until.timestamp() - now.timestamp();
+        if diff < 0 {
+            return Err(Error::new("can't delay job in the past"));
+        }
+        self.delay_until = Some(delayed_until);
+        queues.set_plan(db_txn, self, false).await?;
+        redis_txn.add_op(RedisTransactionOp::RemoveJobRunning(job_id.clone()));
+        redis_txn.add_op(RedisTransactionOp::QueueJobLater(job_id.clone(), diff));
+        redis_txn.add_op(RedisTransactionOp::PlanCheckin(self.id.clone()));
+        Ok(())
+    }
+
     pub async fn set_job_failed(
         &mut self,
         job_id: &WorkflowJobId,
@@ -254,9 +287,9 @@ impl WorkflowExecutionPlan {
         let failure_count = job.failures + 1;
         job.failures = failure_count;
         info!("job failures: {} {} {}", self.id, job_id, failure_count);
-        let timeout = failure_count * 30;
+        let timeout: i64 = (failure_count * 30) as i64;
         queues.set_plan(db_txn, self, false).await?;
-        // TODO: setup exponential back-off and limit to failures
+        // TODO: setup limit to failures
         redis_txn.add_op(RedisTransactionOp::RemoveJobRunning(job_id.clone()));
         redis_txn.add_op(RedisTransactionOp::QueueJobLater(job_id.clone(), timeout));
         redis_txn.add_op(RedisTransactionOp::PlanCheckin(self.id.clone()));

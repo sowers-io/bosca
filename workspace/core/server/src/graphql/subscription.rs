@@ -65,6 +65,14 @@ impl SubscriptionObject {
         ctx.notifier.listen_workflow_changes().await
     }
 
+    async fn workflow_schedule(&self, ctx: &Context<'_>) -> Result<impl Stream<Item = String>> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        if ctx.principal.anonymous {
+            return Err(Error::new("Unauthorized"));
+        }
+        ctx.notifier.listen_workflow_schedule_changes().await
+    }
+
     async fn activity(&self, ctx: &Context<'_>) -> Result<impl Stream<Item = String>> {
         let ctx = ctx.data::<BoscaContext>()?;
         if ctx.principal.anonymous {

@@ -37,6 +37,7 @@ pub struct Metadata {
     pub modified: DateTime<Utc>,
     pub workflow_state_id: String,
     pub workflow_state_pending_id: Option<String>,
+    pub workflow_state_valid: Option<DateTime<Utc>>,
     pub source_id: Option<Uuid>,
     pub source_identifier: Option<String>,
     pub source_url: Option<String>,
@@ -61,7 +62,6 @@ impl ContentItem for Metadata {
     fn workflow_state_id(&self) -> &str {
         &self.workflow_state_id
     }
-
     fn workflow_state_pending_id(&self) -> &Option<String> {
         &self.workflow_state_pending_id
     }
@@ -127,6 +127,7 @@ impl From<&Row> for Metadata {
             modified: row.get("modified"),
             workflow_state_id: row.get("workflow_state_id"),
             workflow_state_pending_id: row.get("workflow_state_pending_id"),
+            workflow_state_valid: row.get("workflow_state_valid"),
             source_id: row.get("source_id"),
             source_identifier: row.get("source_identifier"),
             source_url: row.get("source_url"),

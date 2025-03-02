@@ -138,6 +138,17 @@ impl Notifier {
             }))
     }
 
+    pub async fn listen_workflow_schedule_changes(&self) -> Result<impl Stream<Item=String>, Error> {
+        let connection = self.redis.get().await?;
+        let mut pubsub = connection.get_pubsub().await?;
+        pubsub.subscribe("workflow_schedule_changes").await?;
+        Ok(pubsub
+            .into_on_message()
+            .filter_map(|msg| async move {
+                msg.get_payload().ok()
+            }))
+    }
+
     pub async fn listen_activity_changes(&self) -> Result<impl Stream<Item=String>, Error> {
         let connection = self.redis.get().await?;
         let mut pubsub = connection.get_pubsub().await?;
@@ -264,6 +275,15 @@ impl Notifier {
         let mut conn = connection.get_connection().await?;
         let id = id.to_string();
         conn.publish::<&str, String, ()>("workflow_changes", id)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn workflow_schedule_changed(&self, id: &Uuid) -> async_graphql::Result<(), Error> {
+        let connection = self.redis.get().await?;
+        let mut conn = connection.get_connection().await?;
+        let id = id.to_string();
+        conn.publish::<&str, String, ()>("workflow_schedule_changes", id)
             .await?;
         Ok(())
     }

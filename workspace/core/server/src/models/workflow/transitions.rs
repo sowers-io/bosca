@@ -1,4 +1,5 @@
 use async_graphql::*;
+use chrono::{DateTime, Utc};
 use tokio_postgres::Row;
 use yaml_rust2::Yaml;
 
@@ -21,6 +22,7 @@ pub struct BeginTransitionInput {
     pub metadata_id: Option<String>,
     pub version: Option<i32>,
     pub state_id: String,
+    pub state_valid: Option<DateTime<Utc>>,
     pub status: String,
     pub supplementary_id: Option<String>,
     pub wait_for_completion: Option<bool>

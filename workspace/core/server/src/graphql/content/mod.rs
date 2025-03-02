@@ -32,3 +32,4 @@ pub mod collection_template;
 pub mod collection_attribute_object;
 pub mod collection_attribute_workflow_object;
 pub mod collection_templates;
+mod collection_workflow;

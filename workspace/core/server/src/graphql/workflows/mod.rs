@@ -25,8 +25,11 @@ pub mod workflow_execution_id;
 pub mod workflow_execution_plan;
 pub mod workflow_job;
 pub mod workflow_job_id;
+pub mod workflow_schedules;
+pub mod workflow_schedules_mutation;
 #[allow(clippy::module_inception)]
 pub mod workflows;
+pub mod workflow_schedule;
 pub mod workflows_mutation;
 pub mod traits;
 pub mod traits_mutation;

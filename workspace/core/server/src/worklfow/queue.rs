@@ -7,7 +7,7 @@ use crate::redis::RedisClient;
 use crate::worklfow::transaction::RedisTransactionOp::JobCheckin;
 use crate::worklfow::transaction::{RedisTransaction, RedisTransactionOp};
 use async_graphql::Error;
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use deadpool_postgres::{GenericClient, Pool, Transaction};
 use log::{debug, error};
 use redis::{AsyncCommands, Script};
@@ -390,7 +390,7 @@ impl JobQueues {
         Ok(())
     }
 
-    pub async fn set_execution_job_context(
+    pub async fn set_execution_plan_job_context(
         &self,
         job_id: &WorkflowJobId,
         context: &Value,
@@ -409,6 +409,24 @@ impl JobQueues {
         transaction.commit().await?;
         self.incr("queue::context::job::set::count").await?;
         Ok(())
+    }
+
+    pub async fn set_execution_plan_job_delayed(
+        &self,
+        job_id: &WorkflowJobId,
+        delayed_until: DateTime<Utc>,
+    ) -> Result<WorkflowExecutionPlan, Error> {
+        let mut connection = self.pool.get().await?;
+        let db_txn = connection.transaction().await?;
+        let Some(mut plan) = self.get_plan_and_lock_by_job(&db_txn, job_id).await? else {
+            return Err(Error::new("can't set job context, missing plan"));
+        };
+        let mut redis_txn = RedisTransaction::new();
+        plan.set_job_delayed_until(job_id, &db_txn, &mut redis_txn, self, delayed_until).await?;
+        db_txn.commit().await?;
+        redis_txn.execute(&self.redis).await?;
+        self.incr("queue::job::delayed").await?;
+        Ok(plan)
     }
 
     pub async fn set_execution_plan_job_failed(

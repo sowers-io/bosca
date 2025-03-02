@@ -27,7 +27,7 @@ pub fn build_ordering<'a>(
         if i > 0 {
             buf.push_str(", ");
         }
-        buf.push_str("(");
+        buf.push('(');
         buf.push_str(attributes_column);
         for _ in attr.path.iter() {
             let name = names.get(n).unwrap();
