@@ -2,6 +2,7 @@ fragment MetadataIdName on Metadata {
     __typename
     id
     version
+    slug
     name
     content {
         type
@@ -12,6 +13,7 @@ fragment Metadata on Metadata {
     __typename
     id
     version
+    slug
     name
     labels
     languageTag

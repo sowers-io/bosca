@@ -23,6 +23,14 @@ defineProps<{
     <CardContent class="grid gap-6">
       <div class="flex flex-col">
         <Label class="flex flex-col space-y-1">
+          <span>Slug</span>
+          <span class="font-normal leading-snug text-muted-foreground">
+            {{ metadata.slug || '--' }}
+          </span>
+        </Label>
+      </div>
+      <div class="flex flex-col">
+        <Label class="flex flex-col space-y-1">
           <span>Content Type</span>
           <span class="font-normal leading-snug text-muted-foreground">
             {{ metadata.content.type }}
