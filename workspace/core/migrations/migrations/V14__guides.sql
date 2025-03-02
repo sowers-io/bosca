@@ -1,133 +1,147 @@
 create type guide_type as enum ('linear', 'linear_progress', 'calendar', 'calendar_progress');
-create type guide_step_module_type as enum ('text', 'richtext', 'video', 'audio', 'image', 'supplementary');
-create type guide_metadata_attribute_type as enum ('string', 'int', 'float', 'date', 'datetime');
+
+create type attribute_type as enum ('string', 'int', 'float', 'date', 'datetime', 'profile', 'metadata', 'collection');
+create type attribute_ui_type as enum ('input', 'textarea', 'image', 'profile', 'file', 'metadata', 'collection');
 
 create table guide_templates
 (
-    id           bigserial  not null,
-    name         varchar    not null,
-    description  varchar    not null,
-    rrule        varchar,
-    type         guide_type not null,
-    created      timestamp with time zone default now(),
-    modified     timestamp with time zone default now(),
-    has_progress boolean    not null      default false,
-    primary key (id)
+    metadata_id        uuid       not null,
+    version            int        not null,
+    rrule              varchar,
+    type               guide_type not null,
+    default_attributes jsonb,
+    primary key (metadata_id, version),
+    foreign key (metadata_id) references metadata (id) on delete cascade
 );
 
-create table guide_template_metadata_attributes
+create table guide_template_attributes
 (
-    id          bigint                        not null,
-    key         varchar                       not null,
-    name        varchar                       not null,
-    description varchar                       not null,
-    type        guide_metadata_attribute_type not null,
-    primary key (id, key),
-    foreign key (id) references guide_templates on delete cascade
+    metadata_id       uuid              not null,
+    version           int               not null,
+    key               varchar           not null,
+    name              varchar           not null,
+    description       varchar           not null,
+    supplementary_key varchar,
+    configuration     jsonb,
+    type              attribute_type    not null,
+    ui                attribute_ui_type not null,
+    list              boolean           not null,
+    sort              int               not null,
+    primary key (metadata_id, version, key),
+    foreign key (metadata_id, version) references guide_templates (metadata_id, version) on delete cascade
 );
 
-create table guide_template_metadata_attribute_workflow_ids
+create table guide_template_attribute_workflow_ids
 (
-    id          bigint  not null,
+    metadata_id uuid    not null,
+    version     int     not null,
     key         varchar not null,
     workflow_id varchar not null,
     auto_run    bool    not null default false,
-    primary key (id, key, workflow_id),
-    foreign key (id, key) references guide_template_metadata_attributes (id, key) on delete cascade
+    primary key (metadata_id, version, key, workflow_id),
+    foreign key (metadata_id, version, key) references guide_template_attributes (metadata_id, version, key) on delete cascade,
+    foreign key (workflow_id) references workflows (id)
 );
 
 create table guide_template_steps
 (
-    template_id bigint    not null,
+    metadata_id uuid      not null,
+    version     int       not null,
     id          bigserial not null,
     name        varchar   not null,
     description varchar   not null,
     sort        int       not null,
-    primary key (template_id, id),
-    foreign key (template_id) references guide_templates (id) on delete cascade
+    primary key (metadata_id, version, id),
+    foreign key (metadata_id, version) references guide_templates (metadata_id, version) on delete cascade
 );
 
-create table guide_template_step_metadata_attributes
+create table guide_template_step_attributes
 (
-    template_id bigint                        not null,
-    id          bigint                        not null,
-    key         varchar                       not null,
-    name        varchar                       not null,
-    description varchar                       not null,
-    type        guide_metadata_attribute_type not null,
-    primary key (template_id, id, key),
-    foreign key (template_id, id) references guide_template_steps on delete cascade
+    metadata_id       uuid              not null,
+    version           int               not null,
+    step              bigint            not null,
+    key               varchar           not null,
+    name              varchar           not null,
+    description       varchar           not null,
+    supplementary_key varchar,
+    configuration     jsonb,
+    type              attribute_type    not null,
+    ui                attribute_ui_type not null,
+    list              boolean           not null,
+    sort              int               not null,
+    primary key (metadata_id, version, step, key),
+    foreign key (metadata_id, version, step) references guide_template_steps (metadata_id, version, id) on delete cascade
 );
 
-create table guide_template_step_metadata_attribute_workflow_ids
+create table guide_template_step_attribute_workflow_ids
 (
-    template_id bigint  not null,
-    id          bigint  not null,
+    metadata_id uuid    not null,
+    version     int     not null,
+    step        bigint  not null,
     key         varchar not null,
     workflow_id varchar not null,
     auto_run    bool    not null default false,
-    primary key (template_id, id, key, workflow_id),
-    foreign key (template_id, id, key) references guide_template_step_metadata_attributes (template_id, id, key) on delete cascade
+    primary key (metadata_id, version, step, key, workflow_id),
+    foreign key (metadata_id, version, step, key) references guide_template_step_attributes (metadata_id, version, step, key) on delete cascade,
+    foreign key (workflow_id) references workflows (id)
 );
 
 create table guide_template_step_modules
 (
-    template_id      bigint                 not null,
-    template_step_id bigint                 not null,
-    id               bigserial              not null,
-    type             guide_step_module_type not null,
-    sort             int                    not null,
-    text             varchar,
-    richtext         jsonb,
-    primary key (template_id, template_step_id, id)
+    metadata_id               uuid      not null,
+    version                   int       not null,
+    step                      bigint    not null,
+    id                        bigserial not null,
+    template_metadata_id      uuid      not null,
+    template_metadata_version int       not null,
+    sort                      int       not null,
+    primary key (metadata_id, version, step, id),
+    foreign key (metadata_id, version, step) references guide_template_steps (metadata_id, version, id) on delete cascade,
+    foreign key (template_metadata_id) references metadata (id)
 );
 
 create table guides
 (
-    metadata_id  uuid       not null,
-    version      int        not null,
-    rrule        varchar,
-    type         guide_type not null,
-    template_id  bigint,
-    title        varchar    not null,
-    has_progress boolean    not null default false,
+    metadata_id               uuid       not null,
+    version                   int        not null,
+    template_metadata_id      uuid,
+    template_metadata_version int,
+    rrule                     varchar,
+    type                      guide_type not null,
     primary key (metadata_id, version),
     foreign key (metadata_id) references metadata (id) on delete cascade,
-    foreign key (template_id) references guide_templates (id)
+    foreign key (template_metadata_id, template_metadata_version) references guide_templates (metadata_id, version)
 );
 
 create table guide_steps
 (
-    metadata_id      uuid      not null,
-    version          int       not null,
-    template_id      bigint,
-    template_step_id bigint,
-    id               bigserial not null,
-    step_metadata_id uuid      not null,
-    sort             int       not null,
-    text             varchar,
-    richtext         jsonb,
+    metadata_id               uuid      not null,
+    version                   int       not null,
+    id                        bigserial not null,
+    template_metadata_id      uuid,
+    template_metadata_version int,
+    template_step             int,
+    sort                      int       not null,
     primary key (metadata_id, version, id),
     foreign key (metadata_id, version) references guides (metadata_id, version) on delete cascade,
-    foreign key (step_metadata_id) references metadata (id),
-    foreign key (template_id, template_step_id) references guide_template_steps (template_id, id)
+    foreign key (template_metadata_id, template_metadata_version, template_step) references guide_template_steps (metadata_id, version, id)
 );
 
 create table guide_step_modules
 (
-    metadata_id        uuid                   not null,
-    version            int                    not null,
-    template_id        bigint,
-    template_step_id   bigint,
-    template_module_id bigint,
-    id                 bigserial              not null,
-    type               guide_step_module_type not null,
-    sort               int                    not null,
-    text               varchar,
-    richtext           jsonb,
-    primary key (metadata_id, version, id),
-    foreign key (metadata_id, version) references guides (metadata_id, version) on delete cascade,
-    foreign key (template_id, template_step_id, template_module_id) references guide_template_step_modules (template_id, template_step_id, id)
+    metadata_id          uuid   not null,
+    version              int    not null,
+    step                 bigint not null,
+    id                   bigint not null,
+    template_metadata_id uuid   not null,
+    template_version     int    not null,
+    template_step        bigint not null,
+    template_module      bigint not null,
+    sort                 int    not null,
+    primary key (metadata_id, version, step, id),
+    foreign key (metadata_id, version, step) references guide_steps (metadata_id, version, id) on delete cascade,
+    foreign key (template_metadata_id, template_version, template_step,
+                 template_module) references guide_template_step_modules (metadata_id, version, step, id)
 );
 
 create table profile_guide_progress
@@ -147,12 +161,13 @@ create table profile_guide_progress
 
 create table profile_guide_history
 (
-    profile_id  uuid not null,
-    metadata_id uuid not null,
-    version     int  not null,
+    id          bigserial not null,
+    profile_id  uuid      not null,
+    metadata_id uuid      not null,
+    version     int       not null,
     attributes  jsonb,
     completed   timestamp with time zone,
-    primary key (profile_id, metadata_id, version),
+    primary key (id),
     foreign key (profile_id) references profiles (id),
     foreign key (metadata_id) references metadata (id)
 );

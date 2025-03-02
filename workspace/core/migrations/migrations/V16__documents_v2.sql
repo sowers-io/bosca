@@ -9,9 +9,6 @@ drop table document_templates;
 drop type document_block_type;
 drop type document_metadata_attribute_type;
 
-create type attribute_type as enum ('string', 'int', 'float', 'date', 'datetime', 'profile', 'metadata', 'collection');
-create type attribute_ui_type as enum ('input', 'textarea', 'image', 'profile', 'file', 'metadata', 'collection');
-
 create table document_templates
 (
     metadata_id        uuid  not null,
