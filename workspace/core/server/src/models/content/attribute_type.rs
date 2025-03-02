@@ -2,8 +2,9 @@ use std::error::Error;
 use async_graphql::Enum;
 use bytes::{BufMut, BytesMut};
 use postgres_types::{to_sql_checked, FromSql, IsNull, ToSql, Type};
+use serde::{Deserialize, Serialize};
 
-#[derive(Enum, Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Enum, Debug, Copy, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum AttributeType {
     String,
     Int,

@@ -4,6 +4,10 @@ import { vite as vidstack } from 'vidstack/plugins'
 export default defineNuxtConfig({
   devtools: { enabled: false },
 
+  devServer: {
+    port: 3001
+  },
+
   modules: [
     '@unocss/nuxt',
     'shadcn-nuxt',

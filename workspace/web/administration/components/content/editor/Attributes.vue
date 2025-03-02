@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import {AttributeUiType, type ParentCollectionFragment} from "~/lib/graphql/graphql.ts";
+import {AttributeType, AttributeUiType, type ParentCollectionFragment} from "~/lib/graphql/graphql.ts";
 import type {AttributeState} from "~/lib/attribute.ts";
 import type {Reactive} from "vue";
 
@@ -34,12 +34,22 @@ defineProps<{
       />
     </template>
     <template v-if="attr.ui === AttributeUiType.Input">
-      <ContentEditorInputAttribute
-          :attribute="attr as AttributeState"
-          :editable="editable"
-          :workflows-enabled="workflowsEnabled"
-          :on-run-workflow="onRunWorkflow"
-      />
+      <template v-if="attr.type === AttributeType.DateTime">
+        <ContentEditorDateTimeInputAttribute
+            :attribute="attr as AttributeState"
+            :editable="editable"
+            :workflows-enabled="workflowsEnabled"
+            :on-run-workflow="onRunWorkflow"
+        />
+      </template>
+      <template v-else>
+        <ContentEditorInputAttribute
+            :attribute="attr as AttributeState"
+            :editable="editable"
+            :workflows-enabled="workflowsEnabled"
+            :on-run-workflow="onRunWorkflow"
+        />
+      </template>
     </template>
     <template v-if="attr.ui === AttributeUiType.Textarea">
       <ContentEditorTextAreaAttribute

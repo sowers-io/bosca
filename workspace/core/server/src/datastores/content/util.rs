@@ -1,5 +1,6 @@
 use postgres_types::ToSql;
 use uuid::Uuid;
+use crate::models::content::attribute_type::AttributeType;
 use crate::models::content::find_query::{ExtensionFilterType, FindQueryInput};
 use crate::models::content::ordering::Order::Ascending;
 use crate::models::content::ordering::Ordering;
@@ -26,13 +27,25 @@ pub fn build_ordering<'a>(
         if i > 0 {
             buf.push_str(", ");
         }
+        buf.push_str("(");
         buf.push_str(attributes_column);
         for _ in attr.path.iter() {
             let name = names.get(n).unwrap();
             n += 1;
             values.push(name as &(dyn ToSql + Sync));
-            buf.push_str(format!("->${}", index).as_str());
+            buf.push_str(format!("->>${}", index).as_str());
             index += 1;
+        }
+        buf.push_str(")::");
+        match attr.attribute_type {
+            AttributeType::String => buf.push_str("varchar"),
+            AttributeType::Int => buf.push_str("bigint"),
+            AttributeType::Float => buf.push_str("double precision"),
+            AttributeType::Date => buf.push_str("int"),
+            AttributeType::DateTime => buf.push_str("bigint"),
+            AttributeType::Profile => buf.push_str("uuid"),
+            AttributeType::Metadata => buf.push_str("uuid"),
+            AttributeType::Collection => buf.push_str("uuid"),
         }
         buf.push(' ');
         buf.push_str(if attr.order == Ascending {

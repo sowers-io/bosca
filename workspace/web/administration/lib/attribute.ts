@@ -1,13 +1,14 @@
 import {
+  AttributeType,
   AttributeUiType,
   type DocumentTemplateAttribute,
 } from '~/lib/graphql/graphql.ts'
-import { toast } from '~/components/ui/toast'
 import type { BoscaClient } from '~/lib/bosca/client.ts'
 
 export class AttributeState {
   readonly key: string
   readonly ui: AttributeUiType
+  readonly type: AttributeType
   readonly list: boolean
   readonly name: string
   readonly description: string
@@ -20,6 +21,7 @@ export class AttributeState {
   constructor(
     key: string,
     ui: AttributeUiType,
+    type: AttributeType,
     list: boolean,
     name: string,
     description: string,
@@ -28,6 +30,7 @@ export class AttributeState {
   ) {
     this.key = key
     this.ui = ui
+    this.type = type
     this.list = list
     this.name = name
     this.description = description
@@ -97,6 +100,7 @@ export function newAttributeState(
   return new AttributeState(
     attribute.key,
     attribute.ui,
+    attribute.type,
     attribute.list,
     attribute.name,
     attribute.description,
