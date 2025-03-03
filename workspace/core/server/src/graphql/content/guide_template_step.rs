@@ -1,9 +1,9 @@
 use crate::context::BoscaContext;
 use crate::graphql::content::guide_template_step_module::GuideTemplateStepModuleObject;
+use crate::graphql::content::metadata::MetadataObject;
+use crate::graphql::content::template_attribute_object::TemplateAttributeObject;
 use crate::models::content::guide_template_step::GuideTemplateStep;
 use async_graphql::{Context, Error, Object};
-use serde_json::Value;
-use crate::graphql::content::template_attribute_object::TemplateAttributeObject;
 
 pub struct GuideTemplateStepObject {
     pub step: GuideTemplateStep,
@@ -17,16 +17,15 @@ impl GuideTemplateStepObject {
 
 #[Object(name = "GuideTemplateStep")]
 impl GuideTemplateStepObject {
-    pub async fn name(&self) -> &String {
-        &self.step.name
-    }
-
-    pub async fn description(&self) -> &String {
-        &self.step.description
-    }
-
-    pub async fn configuration(&self) -> &Option<Value> {
-        &self.step.configuration
+    pub async fn metadata(&self, ctx: &Context<'_>) -> Result<Option<MetadataObject>, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        if let Some(id) = &self.step.template_metadata_id {
+            if let Some(version) = &self.step.template_metadata_version {
+                let metadata = ctx.content.metadata.get_by_version(id, *version).await?;
+                return Ok(metadata.map(MetadataObject::new));
+            }
+        }
+        Ok(None)
     }
 
     pub async fn attributes(
@@ -66,6 +65,9 @@ impl GuideTemplateStepObject {
             .guides
             .get_template_step_modules(&self.step.metadata_id, self.step.version, self.step.id)
             .await?;
-        Ok(modules.into_iter().map(|m| GuideTemplateStepModuleObject::new(m)).collect())
+        Ok(modules
+            .into_iter()
+            .map(GuideTemplateStepModuleObject::new)
+            .collect())
     }
 }

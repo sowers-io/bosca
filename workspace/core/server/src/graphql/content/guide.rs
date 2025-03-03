@@ -23,7 +23,7 @@ impl GuideObject {
         if let Some(id) = &self.guide.template_metadata_id {
             if let Some(version) = &self.guide.template_metadata_version {
                 let metadata = ctx.check_metadata_version_action(
-                    &id,
+                    id,
                     *version,
                     PermissionAction::View,
                 ).await?;
@@ -45,6 +45,6 @@ impl GuideObject {
     pub async fn steps(&self, ctx: &Context<'_>) -> Result<Vec<GuideStepObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let steps = ctx.content.guides.get_guide_steps(&self.guide.metadata_id, self.guide.version).await?;
-        Ok(steps.into_iter().map(|s| GuideStepObject::new(s)).collect())
+        Ok(steps.into_iter().map(GuideStepObject::new).collect())
     }
 }

@@ -22,7 +22,7 @@ impl DocumentObject {
         if let Some(id) = &self.document.template_metadata_id {
             if let Some(version) = &self.document.template_metadata_version {
                 let metadata = ctx.check_metadata_version_action(
-                    &id,
+                    id,
                     *version,
                     PermissionAction::View,
                 )

@@ -1,7 +1,10 @@
 use crate::datastores::notifier::Notifier;
 use crate::models::content::guide::{Guide, GuideInput};
 use crate::models::content::guide_step::GuideStep;
+use crate::models::content::guide_step_module::GuideStepModule;
 use crate::models::content::guide_template::{GuideTemplate, GuideTemplateInput};
+use crate::models::content::guide_template_step::GuideTemplateStep;
+use crate::models::content::guide_template_step_module::GuideTemplateStepModule;
 use crate::models::content::template_attribute::TemplateAttribute;
 use crate::models::content::template_attribute_workflow::TemplateAttributeWorkflow;
 use async_graphql::*;
@@ -10,9 +13,6 @@ use log::error;
 use rrule::RRuleSet;
 use std::sync::Arc;
 use uuid::Uuid;
-use crate::models::content::guide_step_module::GuideStepModule;
-use crate::models::content::guide_template_step::GuideTemplateStep;
-use crate::models::content::guide_template_step_module::GuideTemplateStepModule;
 
 #[derive(Clone)]
 pub struct GuidesDataStore {
@@ -102,7 +102,9 @@ impl GuidesDataStore {
         let stmt = connection
             .prepare_cached("select * from guide_template_step_attributes where metadata_id = $1 and version = $2 and step = $3 order by sort asc")
             .await?;
-        let rows = connection.query(&stmt, &[metadata_id, &version, &step_id]).await?;
+        let rows = connection
+            .query(&stmt, &[metadata_id, &version, &step_id])
+            .await?;
         Ok(rows.iter().map(|r| r.into()).collect())
     }
 
@@ -132,7 +134,9 @@ impl GuidesDataStore {
         let stmt = connection
             .prepare_cached("select * from guide_template_step_modules where metadata_id = $1 and version = $2 and step = $3 order by sort asc")
             .await?;
-        let rows = connection.query(&stmt, &[metadata_id, &version, &step_id]).await?;
+        let rows = connection
+            .query(&stmt, &[metadata_id, &version, &step_id])
+            .await?;
         Ok(rows.iter().map(|r| r.into()).collect())
     }
 
@@ -242,7 +246,7 @@ impl GuidesDataStore {
                 .await?;
             }
         }
-        let stmt_steps = txn.prepare_cached("insert into guide_template_steps (metadata_id, version, name, description, configuration, sort) values ($1, $2, $3, $4, $5, $6) returning id").await?;
+        let stmt_steps = txn.prepare_cached("insert into guide_template_steps (metadata_id, version, template_metadata_id, template_metadata_version, sort) values ($1, $2, $3, $4, $5) returning id").await?;
         let stmt_step_attrs = txn.prepare_cached("insert into guide_template_step_attributes (metadata_id, version, step, key, name, description, configuration, type, ui, list, sort, supplementary_key) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)").await?;
         let stmt_step_attr_wid = txn.prepare_cached("insert into guide_template_step_attribute_workflow_ids (metadata_id, version, step, key, workflow_id, auto_run) values ($1, $2, $3, $4, $5, $6)").await?;
         let stmt_step_modules = txn.prepare_cached("insert into guide_template_step_modules (metadata_id, version, step, template_metadata_id, template_metadata_version, sort) values ($1, $2, $3, $4, $5, $6)").await?;
@@ -254,9 +258,8 @@ impl GuidesDataStore {
                     &[
                         metadata_id,
                         &version,
-                        &step.name,
-                        &step.description,
-                        &step.configuration,
+                        &step.template_metadata_id,
+                        &step.template_metadata_version,
                         &sort,
                     ],
                 )
@@ -374,7 +377,7 @@ impl GuidesDataStore {
             .as_ref()
             .map(|id| Uuid::parse_str(id.as_str()).unwrap());
         let rrule: Option<RRuleSet> = guide.rrule.as_ref().map(|r| r.parse().unwrap());
-        let rrule = rrule.map(|r| r.to_string()).unwrap_or_else(|| "".to_string());
+        let rrule = rrule.map(|r| r.to_string()).unwrap_or_default();
         txn.execute(
             &stmt,
             &[
@@ -387,7 +390,8 @@ impl GuidesDataStore {
             ],
         )
         .await?;
-        self.edit_guide_txn(&txn, metadata_id, version, guide).await?;
+        self.edit_guide_txn(&txn, metadata_id, version, guide)
+            .await?;
         txn.commit().await?;
         self.on_metadata_changed(metadata_id).await?;
         Ok(())
@@ -407,7 +411,7 @@ impl GuidesDataStore {
             .as_ref()
             .map(|id| Uuid::parse_str(id.as_str()).unwrap());
         let rrule: Option<RRuleSet> = guide.rrule.as_ref().map(|r| r.parse().unwrap());
-        let rrule = rrule.map(|r| r.to_string()).unwrap_or_else(|| "".to_string());
+        let rrule = rrule.map(|r| r.to_string()).unwrap_or_default();
         txn.execute(
             &stmt,
             &[
@@ -425,7 +429,8 @@ impl GuidesDataStore {
             &[metadata_id, &version],
         )
         .await?;
-        self.edit_guide_txn(&txn, metadata_id, version, guide).await?;
+        self.edit_guide_txn(&txn, metadata_id, version, guide)
+            .await?;
         txn.commit().await?;
         self.on_metadata_changed(metadata_id).await?;
         Ok(())
@@ -438,11 +443,15 @@ impl GuidesDataStore {
         version: i32,
         guide: &GuideInput,
     ) -> Result<(), Error> {
-        let stmt = txn.prepare_cached("insert into guide_steps (metadata_id, version, template_metadata_id, template_metadata_version, template_step, sort) values ($1, $2, $3, $4, $5, $6) returning id").await?;
-        let stmt_module = txn.prepare_cached("insert into guide_step_modules (metadata_id, version, step, template_metadata_id, template_metadata_version, template_step, template_module, sort) values ($1, $2, $3, $4, $5, $6, $7, $8) returning id").await?;
+        let template_metadata_id = guide
+            .template_metadata_id
+            .as_ref()
+            .map(|id| Uuid::parse_str(id.as_str()).unwrap());
+        let stmt = txn.prepare_cached("insert into guide_steps (metadata_id, version, template_metadata_id, template_metadata_version, template_step, step_metadata_id, step_metadata_version, sort) values ($1, $2, $3, $4, $5, $6, $7, $8) returning id").await?;
+        let stmt_module = txn.prepare_cached("insert into guide_step_modules (metadata_id, version, step, template_metadata_id, template_metadata_version, template_step, template_module, module_metadata_id, module_metadata_version, sort) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) returning id").await?;
         for (index, step) in guide.steps.iter().enumerate() {
-            let template_metadata_id = guide
-                .template_metadata_id
+            let step_metadata_id = step
+                .step_metadata_id
                 .as_ref()
                 .map(|id| Uuid::parse_str(id.as_str()).unwrap());
             let sort = index as i32;
@@ -455,6 +464,8 @@ impl GuidesDataStore {
                         &template_metadata_id,
                         &step.template_metadata_version,
                         &step.template_step_id,
+                        &step_metadata_id,
+                        &step.step_metadata_version,
                         &sort,
                     ],
                 )
@@ -466,6 +477,7 @@ impl GuidesDataStore {
                     .template_metadata_id
                     .as_ref()
                     .map(|id| Uuid::parse_str(id.as_str()).unwrap());
+                let module_metadata_id = Uuid::parse_str(&module.module_metadata_id)?;
                 txn.execute(
                     &stmt_module,
                     &[
@@ -476,6 +488,8 @@ impl GuidesDataStore {
                         &module.template_metadata_version,
                         &module.template_step_id,
                         &module.template_module_id,
+                        &module_metadata_id,
+                        &module.module_metadata_version,
                         &sort,
                     ],
                 )

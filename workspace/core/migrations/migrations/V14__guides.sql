@@ -45,14 +45,17 @@ create table guide_template_attribute_workflow_ids
 
 create table guide_template_steps
 (
-    metadata_id uuid      not null,
-    version     int       not null,
-    id          bigserial not null,
-    name        varchar   not null,
-    description varchar   not null,
-    sort        int       not null,
+    metadata_id               uuid      not null,
+    version                   int       not null,
+    id                        bigserial not null,
+
+    template_metadata_id      uuid      not null,
+    template_metadata_version int       not null,
+
+    sort                      int       not null,
     primary key (metadata_id, version, id),
-    foreign key (metadata_id, version) references guide_templates (metadata_id, version) on delete cascade
+    foreign key (metadata_id, version) references guide_templates (metadata_id, version) on delete cascade,
+    foreign key (template_metadata_id) references metadata (id) on delete cascade
 );
 
 create table guide_template_step_attributes
@@ -92,8 +95,10 @@ create table guide_template_step_modules
     version                   int       not null,
     step                      bigint    not null,
     id                        bigserial not null,
+
     template_metadata_id      uuid      not null,
     template_metadata_version int       not null,
+
     sort                      int       not null,
     primary key (metadata_id, version, step, id),
     foreign key (metadata_id, version, step) references guide_template_steps (metadata_id, version, id) on delete cascade,
@@ -104,10 +109,12 @@ create table guides
 (
     metadata_id               uuid       not null,
     version                   int        not null,
-    template_metadata_id      uuid,
-    template_metadata_version int,
     rrule                     varchar,
     type                      guide_type not null,
+
+    template_metadata_id      uuid,
+    template_metadata_version int,
+
     primary key (metadata_id, version),
     foreign key (metadata_id) references metadata (id) on delete cascade,
     foreign key (template_metadata_id, template_metadata_version) references guide_templates (metadata_id, version)
@@ -118,32 +125,41 @@ create table guide_steps
     metadata_id               uuid      not null,
     version                   int       not null,
     id                        bigserial not null,
+
     template_metadata_id      uuid,
     template_metadata_version int,
     template_step             int,
+
+    step_metadata_id          uuid      not null,
+    step_metadata_version     int       not null,
+
     sort                      int       not null,
     primary key (metadata_id, version, id),
     foreign key (metadata_id, version) references guides (metadata_id, version) on delete cascade,
+    foreign key (step_metadata_id) references metadata (id) on delete cascade,
     foreign key (template_metadata_id, template_metadata_version, template_step) references guide_template_steps (metadata_id, version, id)
 );
 
 create table guide_step_modules
 (
-    metadata_id             uuid   not null,
-    version                 int    not null,
-    step                    bigint not null,
-    id                      bigint not null,
-    template_metadata_id    uuid,
-    template_version        int,
-    template_step           bigint,
-    template_module         bigint,
-    module_metadata_id      uuid   not null,
-    module_metadata_version int    not null,
-    sort                    int    not null,
+    metadata_id               uuid   not null,
+    version                   int    not null,
+    step                      bigint not null,
+    id                        bigint not null,
+
+    template_metadata_id      uuid,
+    template_metadata_version int,
+    template_step             bigint,
+    template_module           bigint,
+
+    module_metadata_id        uuid   not null,
+    module_metadata_version   int    not null,
+
+    sort                      int    not null,
     primary key (metadata_id, version, step, id),
     foreign key (metadata_id) references metadata (id),
     foreign key (metadata_id, version, step) references guide_steps (metadata_id, version, id) on delete cascade,
-    foreign key (template_metadata_id, template_version, template_step,
+    foreign key (template_metadata_id, template_metadata_version, template_step,
                  template_module) references guide_template_step_modules (metadata_id, version, step, id)
 );
 
