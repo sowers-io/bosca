@@ -13,6 +13,7 @@ use std::sync::Arc;
 use uuid::Uuid;
 use crate::datastores::content::categories::CategoriesDataStore;
 use crate::datastores::content::collection_templates::CollectionTemplatesDataStore;
+use crate::datastores::content::guides::GuidesDataStore;
 use crate::datastores::content::sources::SourcesDataStore;
 
 #[derive(Clone)]
@@ -28,6 +29,7 @@ pub struct ContentDataStore {
     pub metadata_permissions: MetadataPermissionsDataStore,
     pub metadata_workflows: MetadataWorkflowsDataStore,
     pub documents: DocumentsDataStore,
+    pub guides: GuidesDataStore,
     pub sources: SourcesDataStore
 }
 
@@ -58,6 +60,7 @@ impl ContentDataStore {
                 Arc::clone(&notifier),
             ),
             documents: DocumentsDataStore::new(Arc::clone(&pool), Arc::clone(&notifier)),
+            guides: GuidesDataStore::new(Arc::clone(&pool), Arc::clone(&notifier)),
             sources: SourcesDataStore::new(Arc::clone(&pool)),
             pool,
         }

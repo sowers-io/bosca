@@ -5,16 +5,16 @@ use async_graphql::{Context, Error, Object};
 use serde_json::Value;
 use uuid::Uuid;
 use crate::graphql::content::collection_attribute_workflow_object::CollectionTemplateAttributeWorkflowObject;
-use crate::models::content::collection_template_attributes::CollectionTemplateAttribute;
+use crate::models::content::template_attribute::TemplateAttribute;
 
 pub struct CollectionTemplateAttributeObject {
     pub metadata_id: Uuid,
     pub version: i32,
-    pub attribute: CollectionTemplateAttribute,
+    pub attribute: TemplateAttribute,
 }
 
 impl CollectionTemplateAttributeObject {
-    pub fn new(metadata_id: Uuid, version: i32, attribute: CollectionTemplateAttribute) -> Self {
+    pub fn new(metadata_id: Uuid, version: i32, attribute: TemplateAttribute) -> Self {
         Self {
             metadata_id,
             version,

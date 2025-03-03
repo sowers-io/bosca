@@ -12,6 +12,8 @@ use std::fmt::Debug;
 use tokio_postgres::Row;
 use uuid::Uuid;
 use crate::models::content::collection_template::CollectionTemplateInput;
+use crate::models::content::guide::GuideInput;
+use crate::models::content::guide_template::GuideTemplateInput;
 
 #[derive(Enum, Debug, Copy, Clone, Eq, PartialEq)]
 pub enum MetadataType {
@@ -62,6 +64,7 @@ impl ContentItem for Metadata {
     fn workflow_state_id(&self) -> &str {
         &self.workflow_state_id
     }
+
     fn workflow_state_pending_id(&self) -> &Option<String> {
         &self.workflow_state_pending_id
     }
@@ -100,8 +103,10 @@ pub struct MetadataInput {
     pub category_ids: Option<Vec<String>>,
     pub attributes: Option<Value>,
     pub document: Option<DocumentInput>,
+    pub guide: Option<GuideInput>,
     pub document_template: Option<DocumentTemplateInput>,
     pub collection_template: Option<CollectionTemplateInput>,
+    pub guide_template: Option<GuideTemplateInput>,
     pub state: Option<MetadataWorkflowInput>,
     pub source: Option<MetadataSourceInput>,
     pub profiles: Option<Vec<MetadataProfileInput>>,

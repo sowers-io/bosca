@@ -68,6 +68,18 @@ impl MetadataMutationObject {
                 .add_template(&new_metadata.id, new_metadata.version, document_template)
                 .await?;
         }
+        if let Some(guide) = &metadata.guide {
+            ctx.content
+                .guides
+                .add_guide(&new_metadata.id, new_metadata.version, guide)
+                .await?;
+        }
+        if let Some(guide_template) = &metadata.guide_template {
+            ctx.content
+                .guides
+                .add_template(&new_metadata.id, new_metadata.version, guide_template)
+                .await?;
+        }
         if let Some(collection_template) = &metadata.collection_template {
             ctx.content
                 .collection_templates
@@ -109,6 +121,18 @@ impl MetadataMutationObject {
             ctx.content
                 .documents
                 .edit_template(&id, version, document_template)
+                .await?;
+        }
+        if let Some(guide) = &metadata.guide {
+            ctx.content
+                .guides
+                .edit_guide(&id, version, guide)
+                .await?;
+        }
+        if let Some(guide_template) = &metadata.guide_template {
+            ctx.content
+                .guides
+                .edit_template(&id, version, guide_template)
                 .await?;
         }
         if let Some(collection_template) = &metadata.collection_template {

@@ -2,7 +2,7 @@ use async_graphql::InputObject;
 use serde_json::Value;
 use tokio_postgres::Row;
 use uuid::Uuid;
-use crate::models::content::collection_template_attributes::CollectionTemplateAttributeInput;
+use crate::models::content::template_attribute::TemplateAttributeInput;
 use crate::models::content::find_query::{FindQueries, FindQueriesInput};
 
 #[derive(Clone)]
@@ -17,7 +17,7 @@ pub struct CollectionTemplate {
 
 #[derive(InputObject, Clone)]
 pub struct CollectionTemplateInput {
-    pub attributes: Vec<CollectionTemplateAttributeInput>,
+    pub attributes: Vec<TemplateAttributeInput>,
     pub default_attributes: Option<Value>,
     pub metadata_filter: Option<FindQueriesInput>,
     pub collection_filter: Option<FindQueriesInput>,

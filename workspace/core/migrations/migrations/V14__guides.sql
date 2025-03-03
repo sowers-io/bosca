@@ -129,16 +129,19 @@ create table guide_steps
 
 create table guide_step_modules
 (
-    metadata_id          uuid   not null,
-    version              int    not null,
-    step                 bigint not null,
-    id                   bigint not null,
-    template_metadata_id uuid   not null,
-    template_version     int    not null,
-    template_step        bigint not null,
-    template_module      bigint not null,
-    sort                 int    not null,
+    metadata_id             uuid   not null,
+    version                 int    not null,
+    step                    bigint not null,
+    id                      bigint not null,
+    template_metadata_id    uuid,
+    template_version        int,
+    template_step           bigint,
+    template_module         bigint,
+    module_metadata_id      uuid   not null,
+    module_metadata_version int    not null,
+    sort                    int    not null,
     primary key (metadata_id, version, step, id),
+    foreign key (metadata_id) references metadata (id),
     foreign key (metadata_id, version, step) references guide_steps (metadata_id, version, id) on delete cascade,
     foreign key (template_metadata_id, template_version, template_step,
                  template_module) references guide_template_step_modules (metadata_id, version, step, id)

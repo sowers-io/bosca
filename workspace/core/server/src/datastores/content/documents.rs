@@ -1,13 +1,13 @@
 use crate::datastores::notifier::Notifier;
 use crate::models::content::document::{Document, DocumentInput};
 use crate::models::content::document_template::{DocumentTemplate, DocumentTemplateInput};
-use crate::models::content::document_template_attribute_workflow::DocumentTemplateAttributeWorkflow;
-use crate::models::content::document_template_attributes::DocumentTemplateAttribute;
 use async_graphql::*;
 use deadpool_postgres::{GenericClient, Pool, Transaction};
 use log::error;
 use std::sync::Arc;
 use uuid::Uuid;
+use crate::models::content::template_attribute::TemplateAttribute;
+use crate::models::content::template_attribute_workflow::TemplateAttributeWorkflow;
 
 #[derive(Clone)]
 pub struct DocumentsDataStore {
@@ -57,7 +57,7 @@ impl DocumentsDataStore {
         &self,
         metadata_id: &Uuid,
         version: i32,
-    ) -> Result<Vec<DocumentTemplateAttribute>, Error> {
+    ) -> Result<Vec<TemplateAttribute>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection.prepare_cached("select * from document_template_attributes where metadata_id = $1 and version = $2 order by sort asc").await?;
         let results = connection.query(&stmt, &[metadata_id, &version]).await?;
@@ -69,7 +69,7 @@ impl DocumentsDataStore {
         metadata_id: &Uuid,
         version: i32,
         key: &String,
-    ) -> Result<Vec<DocumentTemplateAttributeWorkflow>, Error> {
+    ) -> Result<Vec<TemplateAttributeWorkflow>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection.prepare_cached("select * from document_template_attribute_workflow_ids where metadata_id = $1 and version = $2 and key = $3").await?;
         let results = connection

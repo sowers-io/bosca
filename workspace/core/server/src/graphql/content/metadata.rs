@@ -17,6 +17,8 @@ use async_graphql::{Context, Error, Object};
 use chrono::{DateTime, Utc};
 use serde_json::Value;
 use crate::graphql::content::collection_template::CollectionTemplateObject;
+use crate::graphql::content::guide::GuideObject;
+use crate::graphql::content::guide_template::GuideTemplateObject;
 
 pub struct MetadataObject {
     metadata: Metadata,
@@ -191,6 +193,26 @@ impl MetadataObject {
             .get_template(&self.metadata.id, self.metadata.version)
             .await?;
         Ok(document.map(DocumentTemplateObject::new))
+    }
+
+    async fn guide(&self, ctx: &Context<'_>) -> Result<Option<GuideObject>, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let guide = ctx
+            .content
+            .guides
+            .get_guide(&self.metadata.id, self.metadata.version)
+            .await?;
+        Ok(guide.map(GuideObject::new))
+    }
+
+    async fn guide_template(&self, ctx: &Context<'_>) -> Result<Option<GuideTemplateObject>, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let guide = ctx
+            .content
+            .guides
+            .get_template(&self.metadata.id, self.metadata.version)
+            .await?;
+        Ok(guide.map(GuideTemplateObject::new))
     }
 
     async fn collection_template(

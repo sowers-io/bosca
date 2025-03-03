@@ -5,8 +5,8 @@ use log::error;
 use std::sync::Arc;
 use uuid::Uuid;
 use crate::models::content::collection_template::{CollectionTemplate, CollectionTemplateInput};
-use crate::models::content::collection_template_attribute_workflow::CollectionTemplateAttributeWorkflow;
-use crate::models::content::collection_template_attributes::CollectionTemplateAttribute;
+use crate::models::content::template_attribute::TemplateAttribute;
+use crate::models::content::template_attribute_workflow::TemplateAttributeWorkflow;
 
 #[derive(Clone)]
 pub struct CollectionTemplatesDataStore {
@@ -56,7 +56,7 @@ impl CollectionTemplatesDataStore {
         &self,
         metadata_id: &Uuid,
         version: i32,
-    ) -> Result<Vec<CollectionTemplateAttribute>, Error> {
+    ) -> Result<Vec<TemplateAttribute>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection.prepare_cached("select * from collection_template_attributes where metadata_id = $1 and version = $2 order by sort asc").await?;
         let results = connection.query(&stmt, &[metadata_id, &version]).await?;
@@ -68,7 +68,7 @@ impl CollectionTemplatesDataStore {
         metadata_id: &Uuid,
         version: i32,
         key: &String,
-    ) -> Result<Vec<CollectionTemplateAttributeWorkflow>, Error> {
+    ) -> Result<Vec<TemplateAttributeWorkflow>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection.prepare_cached("select * from collection_template_attribute_workflow_ids where metadata_id = $1 and version = $2 and key = $3").await?;
         let results = connection

@@ -1,22 +1,24 @@
 use crate::context::BoscaContext;
+use crate::graphql::content::guide_template_step::GuideTemplateStepObject;
 use crate::graphql::content::metadata::MetadataObject;
-use crate::models::content::document_template::DocumentTemplate;
+use crate::graphql::content::template_attribute_object::TemplateAttributeObject;
+use crate::models::content::guide_template::GuideTemplate;
+use crate::models::content::guide_type::GuideType;
 use async_graphql::{Context, Error, Object};
 use serde_json::Value;
-use crate::graphql::content::template_attribute_object::TemplateAttributeObject;
 
-pub struct DocumentTemplateObject {
-    pub template: DocumentTemplate,
+pub struct GuideTemplateObject {
+    pub template: GuideTemplate,
 }
 
-impl DocumentTemplateObject {
-    pub fn new(template: DocumentTemplate) -> Self {
+impl GuideTemplateObject {
+    pub fn new(template: GuideTemplate) -> Self {
         Self { template }
     }
 }
 
-#[Object(name = "DocumentTemplate")]
-impl DocumentTemplateObject {
+#[Object(name = "GuideTemplate")]
+impl GuideTemplateObject {
     pub async fn metadata(&self, ctx: &Context<'_>) -> Result<Option<MetadataObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let metadata = ctx
@@ -27,16 +29,13 @@ impl DocumentTemplateObject {
         Ok(metadata.map(MetadataObject::new))
     }
 
-    pub async fn configuration(&self) -> &Option<Value> {
-        &self.template.configuration
+    pub async fn rrule(&self) -> Option<String> {
+        self.template.rrule.as_ref().map(|r| r.to_string())
     }
 
-    pub async fn schema(&self) -> &Option<Value> {
-        &self.template.schema
-    }
-
-    pub async fn content(&self) -> &Value {
-        &self.template.content
+    #[graphql(name = "type")]
+    pub async fn guide_type(&self) -> GuideType {
+        self.template.guide_type
     }
 
     pub async fn default_attributes(&self) -> &Option<Value> {
@@ -51,13 +50,13 @@ impl DocumentTemplateObject {
         let mut attributes = Vec::new();
         for attribute in ctx
             .content
-            .documents
+            .guides
             .get_template_attributes(&self.template.metadata_id, self.template.version)
             .await?
         {
             let workflows = ctx
                 .content
-                .documents
+                .guides
                 .get_template_attribute_workflows(
                     &self.template.metadata_id,
                     self.template.version,
@@ -67,5 +66,21 @@ impl DocumentTemplateObject {
             attributes.push(TemplateAttributeObject::new(attribute, workflows));
         }
         Ok(attributes)
+    }
+
+    pub async fn steps(
+        &self,
+        ctx: &Context<'_>,
+    ) -> Result<Vec<GuideTemplateStepObject>, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let steps = ctx
+            .content
+            .guides
+            .get_template_steps(&self.template.metadata_id, self.template.version)
+            .await?;
+        Ok(steps
+            .into_iter()
+            .map(GuideTemplateStepObject::new)
+            .collect())
     }
 }

@@ -1,14 +1,14 @@
 use crate::context::BoscaContext;
 use crate::graphql::workflows::workflow::WorkflowObject;
 use async_graphql::{Context, Error, Object};
-use crate::models::content::collection_template_attribute_workflow::CollectionTemplateAttributeWorkflow;
+use crate::models::content::template_attribute_workflow::TemplateAttributeWorkflow;
 
 pub struct CollectionTemplateAttributeWorkflowObject {
-    pub workflow: CollectionTemplateAttributeWorkflow,
+    pub workflow: TemplateAttributeWorkflow,
 }
 
 impl CollectionTemplateAttributeWorkflowObject {
-    pub fn new(workflow: CollectionTemplateAttributeWorkflow) -> Self {
+    pub fn new(workflow: TemplateAttributeWorkflow) -> Self {
         Self { workflow }
     }
 }

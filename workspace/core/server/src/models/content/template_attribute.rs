@@ -2,10 +2,10 @@ use async_graphql::*;
 use tokio_postgres::Row;
 use crate::models::content::attribute_type::AttributeType;
 use crate::models::content::attribute_ui_type::AttributeUiType;
-use crate::models::content::document_template_attribute_workflow::DocumentTemplateAttributeWorkflowInput;
+use crate::models::content::template_attribute_workflow::TemplateAttributeWorkflowInput;
 
 #[derive(Clone)]
-pub struct DocumentTemplateAttribute {
+pub struct TemplateAttribute {
     pub key: String,
     pub name: String,
     pub description: String,
@@ -17,7 +17,7 @@ pub struct DocumentTemplateAttribute {
 }
 
 #[derive(InputObject, Clone)]
-pub struct DocumentTemplateAttributeInput {
+pub struct TemplateAttributeInput {
     pub key: String,
     pub name: String,
     pub description: String,
@@ -27,11 +27,11 @@ pub struct DocumentTemplateAttributeInput {
     pub supplementary_key: Option<String>,
     pub ui: AttributeUiType,
     pub list: bool,
-    pub workflow_ids: Vec<DocumentTemplateAttributeWorkflowInput>
+    pub workflow_ids: Vec<TemplateAttributeWorkflowInput>
 }
 
 
-impl From<&Row> for DocumentTemplateAttribute {
+impl From<&Row> for TemplateAttribute {
     fn from(row: &Row) -> Self {
         Self {
             key: row.get("key"),
