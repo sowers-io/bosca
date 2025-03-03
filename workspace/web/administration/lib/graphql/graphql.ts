@@ -126,6 +126,7 @@ export type BeginTransitionInput = {
   collectionId?: InputMaybe<Scalars['String']['input']>;
   metadataId?: InputMaybe<Scalars['String']['input']>;
   stateId: Scalars['String']['input'];
+  stateValid?: InputMaybe<Scalars['DateTime']['input']>;
   status: Scalars['String']['input'];
   supplementaryId?: InputMaybe<Scalars['String']['input']>;
   version?: InputMaybe<Scalars['Int']['input']>;
@@ -177,10 +178,12 @@ export type Collection = {
   collections: Array<Collection>;
   collectionsCount: Scalars['Int']['output'];
   created: Scalars['DateTime']['output'];
+  deleted: Scalars['Boolean']['output'];
   description?: Maybe<Scalars['String']['output']>;
   id: Scalars['String']['output'];
   itemAttributes?: Maybe<Scalars['JSON']['output']>;
   items: Array<CollectionItem>;
+  itemsCount: Scalars['Int']['output'];
   labels: Array<Scalars['String']['output']>;
   metadata: Array<Metadata>;
   metadataCount: Scalars['Int']['output'];
@@ -193,7 +196,7 @@ export type Collection = {
   public: Scalars['Boolean']['output'];
   publicList: Scalars['Boolean']['output'];
   ready?: Maybe<Scalars['DateTime']['output']>;
-  slug: Scalars['String']['output'];
+  slug?: Maybe<Scalars['String']['output']>;
   systemAttributes?: Maybe<Scalars['JSON']['output']>;
   templateMetadata?: Maybe<Metadata>;
   traitIds: Array<Scalars['String']['output']>;
@@ -283,6 +286,7 @@ export type CollectionMutation = {
   deletePermission: Permission;
   edit: Collection;
   editMetadataRelationship: Scalars['Boolean']['output'];
+  permanentlyDelete: Scalars['Boolean']['output'];
   removeChildCollection: Collection;
   removeChildMetadata: Collection;
   setChildItemAttributes: Collection;
@@ -357,6 +361,12 @@ export type CollectionMutationEditArgs = {
 
 export type CollectionMutationEditMetadataRelationshipArgs = {
   relationship: CollectionMetadataRelationshipInput;
+};
+
+
+export type CollectionMutationPermanentlyDeleteArgs = {
+  collectionId: Scalars['String']['input'];
+  recursive?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
 
@@ -441,31 +451,14 @@ export type CollectionTemplateAttribute = {
   workflows: Array<CollectionTemplateAttributeWorkflow>;
 };
 
-export type CollectionTemplateAttributeInput = {
-  configuration?: InputMaybe<Scalars['JSON']['input']>;
-  description: Scalars['String']['input'];
-  key: Scalars['String']['input'];
-  list: Scalars['Boolean']['input'];
-  name: Scalars['String']['input'];
-  supplementaryKey?: InputMaybe<Scalars['String']['input']>;
-  type: AttributeType;
-  ui: AttributeUiType;
-  workflowIds: Array<CollectionTemplateAttributeWorkflowInput>;
-};
-
 export type CollectionTemplateAttributeWorkflow = {
   __typename?: 'CollectionTemplateAttributeWorkflow';
   autoRun: Scalars['Boolean']['output'];
   workflow?: Maybe<Workflow>;
 };
 
-export type CollectionTemplateAttributeWorkflowInput = {
-  autoRun: Scalars['Boolean']['input'];
-  workflowId: Scalars['String']['input'];
-};
-
 export type CollectionTemplateInput = {
-  attributes: Array<CollectionTemplateAttributeInput>;
+  attributes: Array<TemplateAttributeInput>;
   collectionFilter?: InputMaybe<FindQueriesInput>;
   configuration?: InputMaybe<Scalars['JSON']['input']>;
   defaultAttributes?: InputMaybe<Scalars['JSON']['input']>;
@@ -491,6 +484,7 @@ export type CollectionWorkflow = {
   pending?: Maybe<Scalars['String']['output']>;
   plans: Array<WorkflowExecutionPlan>;
   state: Scalars['String']['output'];
+  stateValid?: Maybe<Scalars['DateTime']['output']>;
 };
 
 export type CollectionWorkflowCompleteState = {
@@ -626,13 +620,13 @@ export type ContentMutation = {
   collection: CollectionMutation;
   metadata: MetadataMutation;
   reindex: Scalars['Boolean']['output'];
+  sources: SourceMutation;
 };
 
 export type Document = {
   __typename?: 'Document';
   content: Scalars['JSON']['output'];
-  templateMetadataId?: Maybe<Scalars['String']['output']>;
-  templateMetadataVersion?: Maybe<Scalars['Int']['output']>;
+  template?: Maybe<Metadata>;
   title: Scalars['String']['output'];
 };
 
@@ -645,7 +639,7 @@ export type DocumentInput = {
 
 export type DocumentTemplate = {
   __typename?: 'DocumentTemplate';
-  attributes: Array<DocumentTemplateAttribute>;
+  attributes: Array<TemplateAttribute>;
   configuration?: Maybe<Scalars['JSON']['output']>;
   content: Scalars['JSON']['output'];
   defaultAttributes?: Maybe<Scalars['JSON']['output']>;
@@ -653,44 +647,8 @@ export type DocumentTemplate = {
   schema?: Maybe<Scalars['JSON']['output']>;
 };
 
-export type DocumentTemplateAttribute = {
-  __typename?: 'DocumentTemplateAttribute';
-  configuration?: Maybe<Scalars['JSON']['output']>;
-  description: Scalars['String']['output'];
-  key: Scalars['String']['output'];
-  list: Scalars['Boolean']['output'];
-  name: Scalars['String']['output'];
-  supplementaryKey?: Maybe<Scalars['String']['output']>;
-  type: AttributeType;
-  ui: AttributeUiType;
-  workflows: Array<DocumentTemplateAttributeWorkflow>;
-};
-
-export type DocumentTemplateAttributeInput = {
-  configuration?: InputMaybe<Scalars['JSON']['input']>;
-  description: Scalars['String']['input'];
-  key: Scalars['String']['input'];
-  list: Scalars['Boolean']['input'];
-  name: Scalars['String']['input'];
-  supplementaryKey?: InputMaybe<Scalars['String']['input']>;
-  type: AttributeType;
-  ui: AttributeUiType;
-  workflowIds: Array<DocumentTemplateAttributeWorkflowInput>;
-};
-
-export type DocumentTemplateAttributeWorkflow = {
-  __typename?: 'DocumentTemplateAttributeWorkflow';
-  autoRun: Scalars['Boolean']['output'];
-  workflow?: Maybe<Workflow>;
-};
-
-export type DocumentTemplateAttributeWorkflowInput = {
-  autoRun: Scalars['Boolean']['input'];
-  workflowId: Scalars['String']['input'];
-};
-
 export type DocumentTemplateInput = {
-  attributes: Array<DocumentTemplateAttributeInput>;
+  attributes: Array<TemplateAttributeInput>;
   configuration?: InputMaybe<Scalars['JSON']['input']>;
   content: Scalars['JSON']['input'];
   defaultAttributes?: InputMaybe<Scalars['JSON']['input']>;
@@ -767,7 +725,7 @@ export type FindQueryOption = {
 };
 
 export type FindQueryOptionInput = {
-  name: Array<Scalars['String']['input']>;
+  name: Scalars['String']['input'];
   query: FindQueryInput;
 };
 
@@ -787,6 +745,101 @@ export type GroupsAllArgs = {
   limit: Scalars['Int']['input'];
   offset: Scalars['Int']['input'];
 };
+
+export type Guide = {
+  __typename?: 'Guide';
+  rrule?: Maybe<Scalars['String']['output']>;
+  steps: Array<GuideStep>;
+  template?: Maybe<Metadata>;
+  type: GuideType;
+};
+
+export type GuideInput = {
+  guideType: GuideType;
+  rrule?: InputMaybe<Scalars['String']['input']>;
+  steps?: InputMaybe<GuideStepInput>;
+  templateMetadataId?: InputMaybe<Scalars['String']['input']>;
+  templateMetadataVersion?: InputMaybe<Scalars['Int']['input']>;
+};
+
+export type GuideStep = {
+  __typename?: 'GuideStep';
+  metadata?: Maybe<Metadata>;
+  modules: Array<GuideStepModule>;
+};
+
+export type GuideStepInput = {
+  modules: Array<GuideStepModuleInput>;
+  stepMetadataId?: InputMaybe<Scalars['String']['input']>;
+  stepMetadataVersion?: InputMaybe<Scalars['Int']['input']>;
+  templateMetadataId?: InputMaybe<Scalars['String']['input']>;
+  templateMetadataVersion?: InputMaybe<Scalars['Int']['input']>;
+  templateStepId?: InputMaybe<Scalars['Int']['input']>;
+};
+
+export type GuideStepModule = {
+  __typename?: 'GuideStepModule';
+  metadata?: Maybe<Metadata>;
+};
+
+export type GuideStepModuleInput = {
+  moduleMetadataId: Scalars['String']['input'];
+  moduleMetadataVersion: Scalars['Int']['input'];
+  templateMetadataId?: InputMaybe<Scalars['String']['input']>;
+  templateMetadataVersion?: InputMaybe<Scalars['Int']['input']>;
+  templateModuleId?: InputMaybe<Scalars['Int']['input']>;
+  templateStepId?: InputMaybe<Scalars['Int']['input']>;
+};
+
+export type GuideTemplate = {
+  __typename?: 'GuideTemplate';
+  attributes: Array<TemplateAttribute>;
+  defaultAttributes?: Maybe<Scalars['JSON']['output']>;
+  metadata?: Maybe<Metadata>;
+  rrule?: Maybe<Scalars['String']['output']>;
+  steps: Array<GuideTemplateStep>;
+  type: GuideType;
+};
+
+export type GuideTemplateInput = {
+  attributes: Array<TemplateAttributeInput>;
+  defaultAttributes?: InputMaybe<Scalars['JSON']['input']>;
+  rrule: Scalars['String']['input'];
+  steps: Array<GuideTemplateStepInput>;
+  type: GuideType;
+};
+
+export type GuideTemplateStep = {
+  __typename?: 'GuideTemplateStep';
+  attributes: Array<TemplateAttribute>;
+  metadata?: Maybe<Metadata>;
+  modules: Array<GuideTemplateStepModule>;
+};
+
+export type GuideTemplateStepInput = {
+  attributes: Array<TemplateAttributeInput>;
+  modules: Array<GuideTemplateStepModuleInput>;
+  templateMetadataId?: InputMaybe<Scalars['String']['input']>;
+  templateMetadataVersion?: InputMaybe<Scalars['Int']['input']>;
+};
+
+export type GuideTemplateStepModule = {
+  __typename?: 'GuideTemplateStepModule';
+  metadata?: Maybe<Metadata>;
+};
+
+export type GuideTemplateStepModuleInput = {
+  configuration?: InputMaybe<Scalars['JSON']['input']>;
+  templateMetadataId: Scalars['String']['input'];
+  templateMetadataVersion: Scalars['Int']['input'];
+};
+
+export enum GuideType {
+  Calendar = 'CALENDAR',
+  CalendarProgress = 'CALENDAR_PROGRESS',
+  Linear = 'LINEAR',
+  LinearProgress = 'LINEAR_PROGRESS'
+}
 
 export type Login = {
   __typename?: 'Login';
@@ -831,8 +884,11 @@ export type Metadata = {
   collectionTemplate?: Maybe<CollectionTemplate>;
   content: MetadataContent;
   created: Scalars['DateTime']['output'];
+  deleted: Scalars['Boolean']['output'];
   document?: Maybe<Document>;
   documentTemplate?: Maybe<DocumentTemplate>;
+  guide?: Maybe<Guide>;
+  guideTemplate?: Maybe<GuideTemplate>;
   id: Scalars['String']['output'];
   itemAttributes?: Maybe<Scalars['JSON']['output']>;
   labels: Array<Scalars['String']['output']>;
@@ -848,7 +904,7 @@ export type Metadata = {
   publicSupplementary: Scalars['Boolean']['output'];
   ready?: Maybe<Scalars['DateTime']['output']>;
   relationships: Array<MetadataRelationship>;
-  slug: Scalars['String']['output'];
+  slug?: Maybe<Scalars['String']['output']>;
   source: MetadataSource;
   supplementary: Array<MetadataSupplementary>;
   systemAttributes?: Maybe<Scalars['JSON']['output']>;
@@ -868,6 +924,11 @@ export type MetadataAttributesArgs = {
 export type MetadataParentCollectionsArgs = {
   limit: Scalars['Int']['input'];
   offset: Scalars['Int']['input'];
+};
+
+
+export type MetadataRelationshipsArgs = {
+  filter?: InputMaybe<Array<Scalars['String']['input']>>;
 };
 
 
@@ -903,6 +964,8 @@ export type MetadataInput = {
   contentType: Scalars['String']['input'];
   document?: InputMaybe<DocumentInput>;
   documentTemplate?: InputMaybe<DocumentTemplateInput>;
+  guide?: InputMaybe<GuideInput>;
+  guideTemplate?: InputMaybe<GuideTemplateInput>;
   index?: InputMaybe<Scalars['Boolean']['input']>;
   labels?: InputMaybe<Array<Scalars['String']['input']>>;
   languageTag: Scalars['String']['input'];
@@ -937,8 +1000,10 @@ export type MetadataMutation = {
   deleteTrait?: Maybe<WorkflowExecutionPlan>;
   edit: Metadata;
   editRelationship: Scalars['Boolean']['output'];
+  permanentlyDelete: Scalars['Boolean']['output'];
   setMetadataAttributes: Scalars['Boolean']['output'];
   setMetadataContents: Scalars['Boolean']['output'];
+  setMetadataDocument: Scalars['Boolean']['output'];
   setMetadataJsonContents: Scalars['Boolean']['output'];
   setMetadataReady: Scalars['Boolean']['output'];
   setMetadataSystemAttributes: Scalars['Boolean']['output'];
@@ -1050,6 +1115,11 @@ export type MetadataMutationEditRelationshipArgs = {
 };
 
 
+export type MetadataMutationPermanentlyDeleteArgs = {
+  metadataId: Scalars['String']['input'];
+};
+
+
 export type MetadataMutationSetMetadataAttributesArgs = {
   attributes: Scalars['JSON']['input'];
   id: Scalars['String']['input'];
@@ -1060,6 +1130,13 @@ export type MetadataMutationSetMetadataContentsArgs = {
   contentType?: InputMaybe<Scalars['String']['input']>;
   file: Scalars['Upload']['input'];
   id: Scalars['String']['input'];
+};
+
+
+export type MetadataMutationSetMetadataDocumentArgs = {
+  document: DocumentInput;
+  id: Scalars['String']['input'];
+  version: Scalars['Int']['input'];
 };
 
 
@@ -1162,7 +1239,7 @@ export type MetadataProfileInput = {
 
 export type MetadataRelationship = {
   __typename?: 'MetadataRelationship';
-  attributes: Scalars['JSON']['output'];
+  attributes?: Maybe<Scalars['JSON']['output']>;
   id: Scalars['String']['output'];
   metadata: Metadata;
   relationship: Scalars['String']['output'];
@@ -1250,6 +1327,7 @@ export type MetadataWorkflow = {
   pending?: Maybe<Scalars['String']['output']>;
   plans: Array<WorkflowExecutionPlan>;
   state: Scalars['String']['output'];
+  stateValid?: Maybe<Scalars['DateTime']['output']>;
 };
 
 export type MetadataWorkflowCompleteState = {
@@ -1338,11 +1416,13 @@ export type Ordering = {
   __typename?: 'Ordering';
   order: Order;
   path: Array<Scalars['String']['output']>;
+  type: AttributeType;
 };
 
 export type OrderingInput = {
   order: Order;
   path: Array<Scalars['String']['input']>;
+  type: AttributeType;
 };
 
 export type Permission = {
@@ -1440,8 +1520,8 @@ export type PrincipalsAllArgs = {
 export type Profile = {
   __typename?: 'Profile';
   attributes: Array<ProfileAttribute>;
-  id?: Maybe<Scalars['String']['output']>;
-  name?: Maybe<Scalars['String']['output']>;
+  id: Scalars['String']['output'];
+  name: Scalars['String']['output'];
   slug?: Maybe<Scalars['String']['output']>;
   visibility: ProfileVisibility;
 };
@@ -1723,10 +1803,26 @@ export type Source = {
   name: Scalars['String']['output'];
 };
 
+export type SourceInput = {
+  configuration: Scalars['JSON']['input'];
+  description: Scalars['String']['input'];
+  name: Scalars['String']['input'];
+};
+
+export type SourceMutation = {
+  __typename?: 'SourceMutation';
+  add?: Maybe<Source>;
+};
+
+
+export type SourceMutationAddArgs = {
+  source: SourceInput;
+};
+
 export type Sources = {
   __typename?: 'Sources';
+  all: Array<Source>;
   source?: Maybe<Source>;
-  sources: Array<Source>;
 };
 
 
@@ -1821,6 +1917,43 @@ export type Subscription = {
   workflow: Scalars['String']['output'];
   workflowPlanFailed: WorkflowExecutionId;
   workflowPlanFinished: WorkflowExecutionId;
+  workflowSchedule: Scalars['String']['output'];
+};
+
+export type TemplateAttribute = {
+  __typename?: 'TemplateAttribute';
+  configuration?: Maybe<Scalars['JSON']['output']>;
+  description: Scalars['String']['output'];
+  key: Scalars['String']['output'];
+  list: Scalars['Boolean']['output'];
+  name: Scalars['String']['output'];
+  supplementaryKey?: Maybe<Scalars['String']['output']>;
+  type: AttributeType;
+  ui: AttributeUiType;
+  workflows: Array<TemplateAttributeWorkflow>;
+};
+
+export type TemplateAttributeInput = {
+  configuration?: InputMaybe<Scalars['JSON']['input']>;
+  description: Scalars['String']['input'];
+  key: Scalars['String']['input'];
+  list: Scalars['Boolean']['input'];
+  name: Scalars['String']['input'];
+  supplementaryKey?: InputMaybe<Scalars['String']['input']>;
+  type: AttributeType;
+  ui: AttributeUiType;
+  workflowIds: Array<TemplateAttributeWorkflowInput>;
+};
+
+export type TemplateAttributeWorkflow = {
+  __typename?: 'TemplateAttributeWorkflow';
+  autoRun: Scalars['Boolean']['output'];
+  workflow?: Maybe<Workflow>;
+};
+
+export type TemplateAttributeWorkflowInput = {
+  autoRun: Scalars['Boolean']['input'];
+  workflowId: Scalars['String']['input'];
 };
 
 export type Token = {
@@ -2098,6 +2231,55 @@ export type WorkflowJobIdInput = {
   queue: Scalars['String']['input'];
 };
 
+export type WorkflowSchedule = {
+  __typename?: 'WorkflowSchedule';
+  attributes?: Maybe<Scalars['JSON']['output']>;
+  collection?: Maybe<Collection>;
+  configuration?: Maybe<Scalars['JSON']['output']>;
+  enabled: Scalars['Boolean']['output'];
+  ends?: Maybe<Scalars['DateTime']['output']>;
+  id: Scalars['String']['output'];
+  lastRun?: Maybe<Scalars['DateTime']['output']>;
+  lastScheduled?: Maybe<Scalars['DateTime']['output']>;
+  metadata?: Maybe<Metadata>;
+  nextRun?: Maybe<Scalars['DateTime']['output']>;
+  rrule: Scalars['String']['output'];
+  starts: Scalars['DateTime']['output'];
+  workflow?: Maybe<Workflow>;
+};
+
+export type WorkflowScheduleInput = {
+  attributes?: InputMaybe<Scalars['JSON']['input']>;
+  configuration?: InputMaybe<Scalars['JSON']['input']>;
+  enabled: Scalars['Boolean']['input'];
+  ends?: InputMaybe<Scalars['DateTime']['input']>;
+  rrule: Scalars['String']['input'];
+  workflowId: Scalars['String']['input'];
+};
+
+export type WorkflowSchedules = {
+  __typename?: 'WorkflowSchedules';
+  all: Array<WorkflowSchedule>;
+};
+
+export type WorkflowSchedulesMutation = {
+  __typename?: 'WorkflowSchedulesMutation';
+  add?: Maybe<WorkflowSchedule>;
+  delete: Scalars['Boolean']['output'];
+};
+
+
+export type WorkflowSchedulesMutationAddArgs = {
+  collectionId?: InputMaybe<Scalars['String']['input']>;
+  metadataId?: InputMaybe<Scalars['String']['input']>;
+  schedule: WorkflowScheduleInput;
+};
+
+
+export type WorkflowSchedulesMutationDeleteArgs = {
+  id: Scalars['String']['input'];
+};
+
 export type WorkflowState = {
   __typename?: 'WorkflowState';
   configuration?: Maybe<Scalars['JSON']['output']>;
@@ -2173,6 +2355,7 @@ export type Workflows = {
   models: Models;
   nextJob?: Maybe<WorkflowJob>;
   prompts: Prompts;
+  schedules: WorkflowSchedules;
   states: WorkflowStates;
   storageSystems: StorageSystems;
   traits: Traits;
@@ -2223,10 +2406,12 @@ export type WorkflowsMutation = {
   findAndEnqueueWorkflow: Array<WorkflowExecutionId>;
   models: ModelsMutation;
   prompts: PromptsMutation;
-  setExecutionJobContext: Scalars['Boolean']['output'];
+  schedules: WorkflowSchedulesMutation;
   setExecutionPlanContext: Scalars['Boolean']['output'];
   setExecutionPlanJobCheckin: Scalars['Boolean']['output'];
   setExecutionPlanJobComplete: Scalars['Boolean']['output'];
+  setExecutionPlanJobContext: Scalars['Boolean']['output'];
+  setExecutionPlanJobDelayed: Scalars['Boolean']['output'];
   setExecutionPlanJobFailed: Scalars['Boolean']['output'];
   states: WorkflowStatesMutation;
   storageSystems: StorageSystemsMutation;
@@ -2258,12 +2443,14 @@ export type WorkflowsMutationEditArgs = {
 
 export type WorkflowsMutationEnqueueChildWorkflowArgs = {
   configurations?: InputMaybe<Array<WorkflowConfigurationInput>>;
+  delayUntil?: InputMaybe<Scalars['DateTime']['input']>;
   jobId: WorkflowJobIdInput;
   workflowId: Scalars['String']['input'];
 };
 
 
 export type WorkflowsMutationEnqueueChildWorkflowsArgs = {
+  delayUntil?: InputMaybe<Scalars['DateTime']['input']>;
   jobId: WorkflowJobIdInput;
   workflowIds: Array<Scalars['String']['input']>;
 };
@@ -2272,6 +2459,7 @@ export type WorkflowsMutationEnqueueChildWorkflowsArgs = {
 export type WorkflowsMutationEnqueueWorkflowArgs = {
   collectionId?: InputMaybe<Scalars['String']['input']>;
   configurations?: InputMaybe<Array<WorkflowConfigurationInput>>;
+  delayUntil?: InputMaybe<Scalars['DateTime']['input']>;
   metadataId?: InputMaybe<Scalars['String']['input']>;
   version?: InputMaybe<Scalars['Int']['input']>;
   workflowId: Scalars['String']['input'];
@@ -2280,14 +2468,9 @@ export type WorkflowsMutationEnqueueWorkflowArgs = {
 
 export type WorkflowsMutationFindAndEnqueueWorkflowArgs = {
   configurations?: InputMaybe<Array<WorkflowConfigurationInput>>;
+  delayUntil?: InputMaybe<Scalars['DateTime']['input']>;
   query: FindQueryInput;
   workflowId: Scalars['String']['input'];
-};
-
-
-export type WorkflowsMutationSetExecutionJobContextArgs = {
-  context: Scalars['JSON']['input'];
-  jobId: WorkflowJobIdInput;
 };
 
 
@@ -2303,6 +2486,18 @@ export type WorkflowsMutationSetExecutionPlanJobCheckinArgs = {
 
 
 export type WorkflowsMutationSetExecutionPlanJobCompleteArgs = {
+  jobId: WorkflowJobIdInput;
+};
+
+
+export type WorkflowsMutationSetExecutionPlanJobContextArgs = {
+  context: Scalars['JSON']['input'];
+  jobId: WorkflowJobIdInput;
+};
+
+
+export type WorkflowsMutationSetExecutionPlanJobDelayedArgs = {
+  delayedUntil: Scalars['DateTime']['input'];
   jobId: WorkflowJobIdInput;
 };
 
@@ -2627,14 +2822,14 @@ export type ExecuteSearchQueryVariables = Exact<{
 }>;
 
 
-export type ExecuteSearchQuery = { __typename?: 'Query', search: { __typename?: 'SearchResultObject', documents: Array<{ __typename?: 'SearchDocument', collection?: { __typename: 'Collection', id: string, name: string } | null, metadata?: { __typename: 'Metadata', id: string, version: number, slug: string, name: string, content: { __typename?: 'MetadataContent', type: string } } | null, profile?: { __typename: 'Profile', id?: string | null, name?: string | null } | null }> } };
+export type ExecuteSearchQuery = { __typename?: 'Query', search: { __typename?: 'SearchResultObject', documents: Array<{ __typename?: 'SearchDocument', collection?: { __typename: 'Collection', id: string, name: string } | null, metadata?: { __typename: 'Metadata', id: string, version: number, slug?: string | null, name: string, content: { __typename?: 'MetadataContent', type: string } } | null, profile?: { __typename: 'Profile', id: string, name: string } | null }> } };
 
 export type FindCollectionsQueryVariables = Exact<{
   query: FindQueryInput;
 }>;
 
 
-export type FindCollectionsQuery = { __typename?: 'Query', content: { __typename?: 'Content', findCollections: Array<{ __typename: 'Collection', id: string, slug: string, traitIds: Array<string>, name: string, description?: string | null, labels: Array<string>, created: any, modified: any, attributes?: any | null, systemAttributes?: any | null, ready?: any | null, public: boolean, publicList: boolean, collectionType: CollectionType, templateMetadata?: { __typename?: 'Metadata', id: string, version: number } | null, ordering?: Array<{ __typename?: 'Ordering', path: Array<string>, order: Order }> | null, categories: Array<{ __typename?: 'Category', id: string, name: string }>, workflow: { __typename?: 'CollectionWorkflow', state: string, pending?: string | null } }> } };
+export type FindCollectionsQuery = { __typename?: 'Query', content: { __typename?: 'Content', findCollections: Array<{ __typename: 'Collection', id: string, slug?: string | null, traitIds: Array<string>, name: string, description?: string | null, labels: Array<string>, created: any, modified: any, attributes?: any | null, systemAttributes?: any | null, ready?: any | null, public: boolean, publicList: boolean, collectionType: CollectionType, templateMetadata?: { __typename?: 'Metadata', id: string, version: number } | null, ordering?: Array<{ __typename?: 'Ordering', path: Array<string>, order: Order }> | null, categories: Array<{ __typename?: 'Category', id: string, name: string }>, workflow: { __typename?: 'CollectionWorkflow', state: string, pending?: string | null } }> } };
 
 export type FindCollectionsCountQueryVariables = Exact<{
   query: FindQueryInput;
@@ -2648,7 +2843,7 @@ export type FindMetadataQueryVariables = Exact<{
 }>;
 
 
-export type FindMetadataQuery = { __typename?: 'Query', content: { __typename?: 'Content', findMetadata: Array<{ __typename: 'Metadata', id: string, version: number, slug: string, name: string, labels: Array<string>, languageTag: string, public: boolean, publicContent: boolean, publicSupplementary: boolean, parentId?: string | null, type: MetadataType, created: any, modified: any, uploaded?: any | null, ready?: any | null, attributes?: any | null, systemAttributes?: any | null, traitIds: Array<string>, source: { __typename?: 'MetadataSource', id?: string | null, identifier?: string | null }, categories: Array<{ __typename?: 'Category', id: string, name: string }>, content: { __typename?: 'MetadataContent', type: string, length?: number | null, urls: { __typename?: 'MetadataContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } }, workflow: { __typename?: 'MetadataWorkflow', state: string, pending?: string | null }, supplementary: Array<{ __typename?: 'MetadataSupplementary', key: string, name: string, uploaded?: string | null, attributes?: any | null, content: { __typename?: 'MetadataSupplementaryContent', type: string, length?: number | null, urls: { __typename?: 'MetadataSupplementaryContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } }, source: { __typename?: 'MetadataSupplementarySource', id: string, identifier?: string | null } }>, profiles: Array<{ __typename?: 'MetadataProfile', relationship: string, profile?: { __typename: 'Profile', id?: string | null, slug?: string | null, name?: string | null, visibility: ProfileVisibility, attributes: Array<{ __typename?: 'ProfileAttribute', id: string, typeId: string, visibility: ProfileVisibility, attributes?: any | null, metadata?: { __typename?: 'Metadata', id: string, content: { __typename?: 'MetadataContent', urls: { __typename?: 'MetadataContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } } } | null }> } | null }> }> } };
+export type FindMetadataQuery = { __typename?: 'Query', content: { __typename?: 'Content', findMetadata: Array<{ __typename: 'Metadata', id: string, version: number, slug?: string | null, name: string, labels: Array<string>, languageTag: string, public: boolean, publicContent: boolean, publicSupplementary: boolean, parentId?: string | null, type: MetadataType, created: any, modified: any, uploaded?: any | null, ready?: any | null, attributes?: any | null, systemAttributes?: any | null, traitIds: Array<string>, source: { __typename?: 'MetadataSource', id?: string | null, identifier?: string | null }, categories: Array<{ __typename?: 'Category', id: string, name: string }>, content: { __typename?: 'MetadataContent', type: string, length?: number | null, urls: { __typename?: 'MetadataContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } }, workflow: { __typename?: 'MetadataWorkflow', state: string, pending?: string | null }, supplementary: Array<{ __typename?: 'MetadataSupplementary', key: string, name: string, uploaded?: string | null, attributes?: any | null, content: { __typename?: 'MetadataSupplementaryContent', type: string, length?: number | null, urls: { __typename?: 'MetadataSupplementaryContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } }, source: { __typename?: 'MetadataSupplementarySource', id: string, identifier?: string | null } }>, profiles: Array<{ __typename?: 'MetadataProfile', relationship: string, profile?: { __typename: 'Profile', id: string, slug?: string | null, name: string, visibility: ProfileVisibility, attributes: Array<{ __typename?: 'ProfileAttribute', id: string, typeId: string, visibility: ProfileVisibility, attributes?: any | null, metadata?: { __typename?: 'Metadata', id: string, content: { __typename?: 'MetadataContent', urls: { __typename?: 'MetadataContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } } } | null }> } | null }> }> } };
 
 export type FindMetadataCountQueryVariables = Exact<{
   query: FindQueryInput;
@@ -2674,7 +2869,7 @@ export type GetCollectionQueryVariables = Exact<{
 }>;
 
 
-export type GetCollectionQuery = { __typename?: 'Query', content: { __typename?: 'Content', collection?: { __typename: 'Collection', id: string, slug: string, traitIds: Array<string>, name: string, description?: string | null, labels: Array<string>, created: any, modified: any, attributes?: any | null, systemAttributes?: any | null, ready?: any | null, public: boolean, publicList: boolean, collectionType: CollectionType, templateMetadata?: { __typename?: 'Metadata', id: string, version: number } | null, ordering?: Array<{ __typename?: 'Ordering', path: Array<string>, order: Order }> | null, categories: Array<{ __typename?: 'Category', id: string, name: string }>, workflow: { __typename?: 'CollectionWorkflow', state: string, pending?: string | null } } | null } };
+export type GetCollectionQuery = { __typename?: 'Query', content: { __typename?: 'Content', collection?: { __typename: 'Collection', id: string, slug?: string | null, traitIds: Array<string>, name: string, description?: string | null, labels: Array<string>, created: any, modified: any, attributes?: any | null, systemAttributes?: any | null, ready?: any | null, public: boolean, publicList: boolean, collectionType: CollectionType, templateMetadata?: { __typename?: 'Metadata', id: string, version: number } | null, ordering?: Array<{ __typename?: 'Ordering', path: Array<string>, order: Order }> | null, categories: Array<{ __typename?: 'Category', id: string, name: string }>, workflow: { __typename?: 'CollectionWorkflow', state: string, pending?: string | null } } | null } };
 
 export type GetCollectionChildrenCollectionsQueryVariables = Exact<{
   id: Scalars['String']['input'];
@@ -2683,7 +2878,7 @@ export type GetCollectionChildrenCollectionsQueryVariables = Exact<{
 }>;
 
 
-export type GetCollectionChildrenCollectionsQuery = { __typename?: 'Query', content: { __typename?: 'Content', collection?: { __typename?: 'Collection', collectionsCount: number, collections: Array<{ __typename: 'Collection', id: string, slug: string, traitIds: Array<string>, name: string, description?: string | null, labels: Array<string>, created: any, modified: any, attributes?: any | null, systemAttributes?: any | null, ready?: any | null, public: boolean, publicList: boolean, collectionType: CollectionType, templateMetadata?: { __typename?: 'Metadata', id: string, version: number } | null, ordering?: Array<{ __typename?: 'Ordering', path: Array<string>, order: Order }> | null, categories: Array<{ __typename?: 'Category', id: string, name: string }>, workflow: { __typename?: 'CollectionWorkflow', state: string, pending?: string | null } }> } | null } };
+export type GetCollectionChildrenCollectionsQuery = { __typename?: 'Query', content: { __typename?: 'Content', collection?: { __typename?: 'Collection', collectionsCount: number, collections: Array<{ __typename: 'Collection', id: string, slug?: string | null, traitIds: Array<string>, name: string, description?: string | null, labels: Array<string>, created: any, modified: any, attributes?: any | null, systemAttributes?: any | null, ready?: any | null, public: boolean, publicList: boolean, collectionType: CollectionType, templateMetadata?: { __typename?: 'Metadata', id: string, version: number } | null, ordering?: Array<{ __typename?: 'Ordering', path: Array<string>, order: Order }> | null, categories: Array<{ __typename?: 'Category', id: string, name: string }>, workflow: { __typename?: 'CollectionWorkflow', state: string, pending?: string | null } }> } | null } };
 
 export type GetCollectionChildrenMetadataQueryVariables = Exact<{
   id: Scalars['String']['input'];
@@ -2692,14 +2887,14 @@ export type GetCollectionChildrenMetadataQueryVariables = Exact<{
 }>;
 
 
-export type GetCollectionChildrenMetadataQuery = { __typename?: 'Query', content: { __typename?: 'Content', collection?: { __typename?: 'Collection', metadataCount: number, metadata: Array<{ __typename: 'Metadata', id: string, version: number, slug: string, name: string, labels: Array<string>, languageTag: string, public: boolean, publicContent: boolean, publicSupplementary: boolean, parentId?: string | null, type: MetadataType, created: any, modified: any, uploaded?: any | null, ready?: any | null, attributes?: any | null, systemAttributes?: any | null, traitIds: Array<string>, source: { __typename?: 'MetadataSource', id?: string | null, identifier?: string | null }, categories: Array<{ __typename?: 'Category', id: string, name: string }>, content: { __typename?: 'MetadataContent', type: string, length?: number | null, urls: { __typename?: 'MetadataContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } }, workflow: { __typename?: 'MetadataWorkflow', state: string, pending?: string | null }, supplementary: Array<{ __typename?: 'MetadataSupplementary', key: string, name: string, uploaded?: string | null, attributes?: any | null, content: { __typename?: 'MetadataSupplementaryContent', type: string, length?: number | null, urls: { __typename?: 'MetadataSupplementaryContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } }, source: { __typename?: 'MetadataSupplementarySource', id: string, identifier?: string | null } }>, profiles: Array<{ __typename?: 'MetadataProfile', relationship: string, profile?: { __typename: 'Profile', id?: string | null, slug?: string | null, name?: string | null, visibility: ProfileVisibility, attributes: Array<{ __typename?: 'ProfileAttribute', id: string, typeId: string, visibility: ProfileVisibility, attributes?: any | null, metadata?: { __typename?: 'Metadata', id: string, content: { __typename?: 'MetadataContent', urls: { __typename?: 'MetadataContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } } } | null }> } | null }> }> } | null } };
+export type GetCollectionChildrenMetadataQuery = { __typename?: 'Query', content: { __typename?: 'Content', collection?: { __typename?: 'Collection', metadataCount: number, metadata: Array<{ __typename: 'Metadata', id: string, version: number, slug?: string | null, name: string, labels: Array<string>, languageTag: string, public: boolean, publicContent: boolean, publicSupplementary: boolean, parentId?: string | null, type: MetadataType, created: any, modified: any, uploaded?: any | null, ready?: any | null, attributes?: any | null, systemAttributes?: any | null, traitIds: Array<string>, source: { __typename?: 'MetadataSource', id?: string | null, identifier?: string | null }, categories: Array<{ __typename?: 'Category', id: string, name: string }>, content: { __typename?: 'MetadataContent', type: string, length?: number | null, urls: { __typename?: 'MetadataContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } }, workflow: { __typename?: 'MetadataWorkflow', state: string, pending?: string | null }, supplementary: Array<{ __typename?: 'MetadataSupplementary', key: string, name: string, uploaded?: string | null, attributes?: any | null, content: { __typename?: 'MetadataSupplementaryContent', type: string, length?: number | null, urls: { __typename?: 'MetadataSupplementaryContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } }, source: { __typename?: 'MetadataSupplementarySource', id: string, identifier?: string | null } }>, profiles: Array<{ __typename?: 'MetadataProfile', relationship: string, profile?: { __typename: 'Profile', id: string, slug?: string | null, name: string, visibility: ProfileVisibility, attributes: Array<{ __typename?: 'ProfileAttribute', id: string, typeId: string, visibility: ProfileVisibility, attributes?: any | null, metadata?: { __typename?: 'Metadata', id: string, content: { __typename?: 'MetadataContent', urls: { __typename?: 'MetadataContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } } } | null }> } | null }> }> } | null } };
 
 export type GetCollectionListQueryVariables = Exact<{
   id?: InputMaybe<Scalars['String']['input']>;
 }>;
 
 
-export type GetCollectionListQuery = { __typename?: 'Query', content: { __typename?: 'Content', collection?: { __typename: 'Collection', id: string, slug: string, traitIds: Array<string>, name: string, description?: string | null, labels: Array<string>, created: any, modified: any, attributes?: any | null, systemAttributes?: any | null, ready?: any | null, public: boolean, publicList: boolean, collectionType: CollectionType, items: Array<{ __typename: 'Collection', id: string, slug: string, traitIds: Array<string>, name: string, description?: string | null, labels: Array<string>, created: any, modified: any, attributes?: any | null, systemAttributes?: any | null, ready?: any | null, public: boolean, publicList: boolean, collectionType: CollectionType, templateMetadata?: { __typename?: 'Metadata', id: string, version: number } | null, ordering?: Array<{ __typename?: 'Ordering', path: Array<string>, order: Order }> | null, categories: Array<{ __typename?: 'Category', id: string, name: string }>, workflow: { __typename?: 'CollectionWorkflow', state: string, pending?: string | null } } | { __typename: 'Metadata', id: string, version: number, slug: string, name: string, labels: Array<string>, languageTag: string, public: boolean, publicContent: boolean, publicSupplementary: boolean, parentId?: string | null, type: MetadataType, created: any, modified: any, uploaded?: any | null, ready?: any | null, attributes?: any | null, systemAttributes?: any | null, traitIds: Array<string>, source: { __typename?: 'MetadataSource', id?: string | null, identifier?: string | null }, categories: Array<{ __typename?: 'Category', id: string, name: string }>, content: { __typename?: 'MetadataContent', type: string, length?: number | null, urls: { __typename?: 'MetadataContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } }, workflow: { __typename?: 'MetadataWorkflow', state: string, pending?: string | null }, supplementary: Array<{ __typename?: 'MetadataSupplementary', key: string, name: string, uploaded?: string | null, attributes?: any | null, content: { __typename?: 'MetadataSupplementaryContent', type: string, length?: number | null, urls: { __typename?: 'MetadataSupplementaryContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } }, source: { __typename?: 'MetadataSupplementarySource', id: string, identifier?: string | null } }>, profiles: Array<{ __typename?: 'MetadataProfile', relationship: string, profile?: { __typename: 'Profile', id?: string | null, slug?: string | null, name?: string | null, visibility: ProfileVisibility, attributes: Array<{ __typename?: 'ProfileAttribute', id: string, typeId: string, visibility: ProfileVisibility, attributes?: any | null, metadata?: { __typename?: 'Metadata', id: string, content: { __typename?: 'MetadataContent', urls: { __typename?: 'MetadataContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } } } | null }> } | null }> }>, templateMetadata?: { __typename?: 'Metadata', id: string, version: number } | null, ordering?: Array<{ __typename?: 'Ordering', path: Array<string>, order: Order }> | null, categories: Array<{ __typename?: 'Category', id: string, name: string }>, workflow: { __typename?: 'CollectionWorkflow', state: string, pending?: string | null } } | null } };
+export type GetCollectionListQuery = { __typename?: 'Query', content: { __typename?: 'Content', collection?: { __typename: 'Collection', id: string, slug?: string | null, traitIds: Array<string>, name: string, description?: string | null, labels: Array<string>, created: any, modified: any, attributes?: any | null, systemAttributes?: any | null, ready?: any | null, public: boolean, publicList: boolean, collectionType: CollectionType, items: Array<{ __typename: 'Collection', id: string, slug?: string | null, traitIds: Array<string>, name: string, description?: string | null, labels: Array<string>, created: any, modified: any, attributes?: any | null, systemAttributes?: any | null, ready?: any | null, public: boolean, publicList: boolean, collectionType: CollectionType, templateMetadata?: { __typename?: 'Metadata', id: string, version: number } | null, ordering?: Array<{ __typename?: 'Ordering', path: Array<string>, order: Order }> | null, categories: Array<{ __typename?: 'Category', id: string, name: string }>, workflow: { __typename?: 'CollectionWorkflow', state: string, pending?: string | null } } | { __typename: 'Metadata', id: string, version: number, slug?: string | null, name: string, labels: Array<string>, languageTag: string, public: boolean, publicContent: boolean, publicSupplementary: boolean, parentId?: string | null, type: MetadataType, created: any, modified: any, uploaded?: any | null, ready?: any | null, attributes?: any | null, systemAttributes?: any | null, traitIds: Array<string>, source: { __typename?: 'MetadataSource', id?: string | null, identifier?: string | null }, categories: Array<{ __typename?: 'Category', id: string, name: string }>, content: { __typename?: 'MetadataContent', type: string, length?: number | null, urls: { __typename?: 'MetadataContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } }, workflow: { __typename?: 'MetadataWorkflow', state: string, pending?: string | null }, supplementary: Array<{ __typename?: 'MetadataSupplementary', key: string, name: string, uploaded?: string | null, attributes?: any | null, content: { __typename?: 'MetadataSupplementaryContent', type: string, length?: number | null, urls: { __typename?: 'MetadataSupplementaryContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } }, source: { __typename?: 'MetadataSupplementarySource', id: string, identifier?: string | null } }>, profiles: Array<{ __typename?: 'MetadataProfile', relationship: string, profile?: { __typename: 'Profile', id: string, slug?: string | null, name: string, visibility: ProfileVisibility, attributes: Array<{ __typename?: 'ProfileAttribute', id: string, typeId: string, visibility: ProfileVisibility, attributes?: any | null, metadata?: { __typename?: 'Metadata', id: string, content: { __typename?: 'MetadataContent', urls: { __typename?: 'MetadataContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } } } | null }> } | null }> }>, templateMetadata?: { __typename?: 'Metadata', id: string, version: number } | null, ordering?: Array<{ __typename?: 'Ordering', path: Array<string>, order: Order }> | null, categories: Array<{ __typename?: 'Category', id: string, name: string }>, workflow: { __typename?: 'CollectionWorkflow', state: string, pending?: string | null } } | null } };
 
 export type GetCollectionMetadataRelationshipsQueryVariables = Exact<{
   id: Scalars['String']['input'];
@@ -2740,7 +2935,7 @@ export type GetCollectionWorkflowPlansQuery = { __typename?: 'Query', content: {
 export type GetCurrentProfileQueryVariables = Exact<{ [key: string]: never; }>;
 
 
-export type GetCurrentProfileQuery = { __typename?: 'Query', profiles: { __typename?: 'Profiles', current?: { __typename: 'Profile', id?: string | null, slug?: string | null, name?: string | null, visibility: ProfileVisibility, attributes: Array<{ __typename?: 'ProfileAttribute', id: string, typeId: string, visibility: ProfileVisibility, attributes?: any | null, metadata?: { __typename?: 'Metadata', id: string, content: { __typename?: 'MetadataContent', urls: { __typename?: 'MetadataContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } } } | null }> } | null } };
+export type GetCurrentProfileQuery = { __typename?: 'Query', profiles: { __typename?: 'Profiles', current?: { __typename: 'Profile', id: string, slug?: string | null, name: string, visibility: ProfileVisibility, attributes: Array<{ __typename?: 'ProfileAttribute', id: string, typeId: string, visibility: ProfileVisibility, attributes?: any | null, metadata?: { __typename?: 'Metadata', id: string, content: { __typename?: 'MetadataContent', urls: { __typename?: 'MetadataContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } } } | null }> } | null } };
 
 export type GetGroupsQueryVariables = Exact<{
   offset: Scalars['Int']['input'];
@@ -2756,7 +2951,7 @@ export type GetMetadataQueryVariables = Exact<{
 }>;
 
 
-export type GetMetadataQuery = { __typename?: 'Query', content: { __typename?: 'Content', metadata?: { __typename: 'Metadata', id: string, version: number, slug: string, name: string, labels: Array<string>, languageTag: string, public: boolean, publicContent: boolean, publicSupplementary: boolean, parentId?: string | null, type: MetadataType, created: any, modified: any, uploaded?: any | null, ready?: any | null, attributes?: any | null, systemAttributes?: any | null, traitIds: Array<string>, source: { __typename?: 'MetadataSource', id?: string | null, identifier?: string | null }, categories: Array<{ __typename?: 'Category', id: string, name: string }>, content: { __typename?: 'MetadataContent', type: string, length?: number | null, urls: { __typename?: 'MetadataContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } }, workflow: { __typename?: 'MetadataWorkflow', state: string, pending?: string | null }, supplementary: Array<{ __typename?: 'MetadataSupplementary', key: string, name: string, uploaded?: string | null, attributes?: any | null, content: { __typename?: 'MetadataSupplementaryContent', type: string, length?: number | null, urls: { __typename?: 'MetadataSupplementaryContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } }, source: { __typename?: 'MetadataSupplementarySource', id: string, identifier?: string | null } }>, profiles: Array<{ __typename?: 'MetadataProfile', relationship: string, profile?: { __typename: 'Profile', id?: string | null, slug?: string | null, name?: string | null, visibility: ProfileVisibility, attributes: Array<{ __typename?: 'ProfileAttribute', id: string, typeId: string, visibility: ProfileVisibility, attributes?: any | null, metadata?: { __typename?: 'Metadata', id: string, content: { __typename?: 'MetadataContent', urls: { __typename?: 'MetadataContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } } } | null }> } | null }> } | null } };
+export type GetMetadataQuery = { __typename?: 'Query', content: { __typename?: 'Content', metadata?: { __typename: 'Metadata', id: string, version: number, slug?: string | null, name: string, labels: Array<string>, languageTag: string, public: boolean, publicContent: boolean, publicSupplementary: boolean, parentId?: string | null, type: MetadataType, created: any, modified: any, uploaded?: any | null, ready?: any | null, attributes?: any | null, systemAttributes?: any | null, traitIds: Array<string>, source: { __typename?: 'MetadataSource', id?: string | null, identifier?: string | null }, categories: Array<{ __typename?: 'Category', id: string, name: string }>, content: { __typename?: 'MetadataContent', type: string, length?: number | null, urls: { __typename?: 'MetadataContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } }, workflow: { __typename?: 'MetadataWorkflow', state: string, pending?: string | null }, supplementary: Array<{ __typename?: 'MetadataSupplementary', key: string, name: string, uploaded?: string | null, attributes?: any | null, content: { __typename?: 'MetadataSupplementaryContent', type: string, length?: number | null, urls: { __typename?: 'MetadataSupplementaryContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } }, source: { __typename?: 'MetadataSupplementarySource', id: string, identifier?: string | null } }>, profiles: Array<{ __typename?: 'MetadataProfile', relationship: string, profile?: { __typename: 'Profile', id: string, slug?: string | null, name: string, visibility: ProfileVisibility, attributes: Array<{ __typename?: 'ProfileAttribute', id: string, typeId: string, visibility: ProfileVisibility, attributes?: any | null, metadata?: { __typename?: 'Metadata', id: string, content: { __typename?: 'MetadataContent', urls: { __typename?: 'MetadataContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } } } | null }> } | null }> } | null } };
 
 export type GetMetadataUploadQueryVariables = Exact<{
   id: Scalars['String']['input'];
@@ -2770,7 +2965,7 @@ export type GetMetadataDocumentQueryVariables = Exact<{
 }>;
 
 
-export type GetMetadataDocumentQuery = { __typename?: 'Query', content: { __typename?: 'Content', metadata?: { __typename?: 'Metadata', document?: { __typename?: 'Document', templateMetadataId?: string | null, templateMetadataVersion?: number | null, title: string, content: any } | null } | null } };
+export type GetMetadataDocumentQuery = { __typename?: 'Query', content: { __typename?: 'Content', metadata?: { __typename?: 'Metadata', document?: { __typename?: 'Document', title: string, content: any, template?: { __typename?: 'Metadata', id: string, version: number } | null } | null } | null } };
 
 export type GetMetadataDocumentTemplateQueryVariables = Exact<{
   id: Scalars['String']['input'];
@@ -2778,7 +2973,7 @@ export type GetMetadataDocumentTemplateQueryVariables = Exact<{
 }>;
 
 
-export type GetMetadataDocumentTemplateQuery = { __typename?: 'Query', content: { __typename?: 'Content', metadata?: { __typename?: 'Metadata', documentTemplate?: { __typename?: 'DocumentTemplate', configuration?: any | null, schema?: any | null, content: any, defaultAttributes?: any | null, attributes: Array<{ __typename?: 'DocumentTemplateAttribute', key: string, name: string, description: string, type: AttributeType, supplementaryKey?: string | null, ui: AttributeUiType, list: boolean, configuration?: any | null, workflows: Array<{ __typename?: 'DocumentTemplateAttributeWorkflow', autoRun: boolean, workflow?: { __typename?: 'Workflow', id: string, queue: string, name: string, description: string, configuration: any } | null }> }> } | null } | null } };
+export type GetMetadataDocumentTemplateQuery = { __typename?: 'Query', content: { __typename?: 'Content', metadata?: { __typename?: 'Metadata', documentTemplate?: { __typename?: 'DocumentTemplate', configuration?: any | null, schema?: any | null, content: any, defaultAttributes?: any | null, attributes: Array<{ __typename?: 'TemplateAttribute', key: string, name: string, description: string, type: AttributeType, supplementaryKey?: string | null, ui: AttributeUiType, list: boolean, configuration?: any | null, workflows: Array<{ __typename?: 'TemplateAttributeWorkflow', autoRun: boolean, workflow?: { __typename?: 'Workflow', id: string, queue: string, name: string, description: string, configuration: any } | null }> }> } | null } | null } };
 
 export type GetMetadataParentsQueryVariables = Exact<{
   id: Scalars['String']['input'];
@@ -2799,7 +2994,7 @@ export type GetMetadataRelationshipsQueryVariables = Exact<{
 }>;
 
 
-export type GetMetadataRelationshipsQuery = { __typename?: 'Query', content: { __typename?: 'Content', metadata?: { __typename?: 'Metadata', relationships: Array<{ __typename?: 'MetadataRelationship', relationship: string, attributes: any, metadata: { __typename?: 'Metadata', id: string, version: number, name: string, public: boolean, publicContent: boolean, workflow: { __typename?: 'MetadataWorkflow', pending?: string | null, state: string } } }> } | null } };
+export type GetMetadataRelationshipsQuery = { __typename?: 'Query', content: { __typename?: 'Content', metadata?: { __typename?: 'Metadata', relationships: Array<{ __typename?: 'MetadataRelationship', relationship: string, attributes?: any | null, metadata: { __typename?: 'Metadata', id: string, version: number, name: string, public: boolean, publicContent: boolean, workflow: { __typename?: 'MetadataWorkflow', pending?: string | null, state: string } } }> } | null } };
 
 export type GetMetadataSupplementaryQueryVariables = Exact<{
   id: Scalars['String']['input'];
@@ -2862,7 +3057,7 @@ export type GetProfileQueryVariables = Exact<{
 }>;
 
 
-export type GetProfileQuery = { __typename?: 'Query', profiles: { __typename?: 'Profiles', profile?: { __typename: 'Profile', id?: string | null, slug?: string | null, name?: string | null, visibility: ProfileVisibility, attributes: Array<{ __typename?: 'ProfileAttribute', id: string, typeId: string, visibility: ProfileVisibility, attributes?: any | null, metadata?: { __typename?: 'Metadata', id: string, content: { __typename?: 'MetadataContent', urls: { __typename?: 'MetadataContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } } } | null }> } | null } };
+export type GetProfileQuery = { __typename?: 'Query', profiles: { __typename?: 'Profiles', profile?: { __typename: 'Profile', id: string, slug?: string | null, name: string, visibility: ProfileVisibility, attributes: Array<{ __typename?: 'ProfileAttribute', id: string, typeId: string, visibility: ProfileVisibility, attributes?: any | null, metadata?: { __typename?: 'Metadata', id: string, content: { __typename?: 'MetadataContent', urls: { __typename?: 'MetadataContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } } } | null }> } | null } };
 
 export type GetProfilesQueryVariables = Exact<{
   offset: Scalars['Int']['input'];
@@ -2870,7 +3065,7 @@ export type GetProfilesQueryVariables = Exact<{
 }>;
 
 
-export type GetProfilesQuery = { __typename?: 'Query', profiles: { __typename?: 'Profiles', all: Array<{ __typename: 'Profile', id?: string | null, slug?: string | null, name?: string | null, visibility: ProfileVisibility, attributes: Array<{ __typename?: 'ProfileAttribute', id: string, typeId: string, visibility: ProfileVisibility, attributes?: any | null, metadata?: { __typename?: 'Metadata', id: string, content: { __typename?: 'MetadataContent', urls: { __typename?: 'MetadataContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } } } | null }> }> } };
+export type GetProfilesQuery = { __typename?: 'Query', profiles: { __typename?: 'Profiles', all: Array<{ __typename: 'Profile', id: string, slug?: string | null, name: string, visibility: ProfileVisibility, attributes: Array<{ __typename?: 'ProfileAttribute', id: string, typeId: string, visibility: ProfileVisibility, attributes?: any | null, metadata?: { __typename?: 'Metadata', id: string, content: { __typename?: 'MetadataContent', urls: { __typename?: 'MetadataContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } } } | null }> }> } };
 
 export type GetPromptQueryVariables = Exact<{
   id: Scalars['String']['input'];
@@ -2980,14 +3175,14 @@ export type LoginMutationVariables = Exact<{
 }>;
 
 
-export type LoginMutation = { __typename?: 'Mutation', security: { __typename?: 'SecurityMutation', login: { __typename?: 'LoginMutation', password: { __typename?: 'LoginResponse', profile?: { __typename: 'Profile', id?: string | null, slug?: string | null, name?: string | null, visibility: ProfileVisibility, attributes: Array<{ __typename?: 'ProfileAttribute', id: string, typeId: string, visibility: ProfileVisibility, attributes?: any | null, metadata?: { __typename?: 'Metadata', id: string, content: { __typename?: 'MetadataContent', urls: { __typename?: 'MetadataContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } } } | null }> } | null, principal: { __typename?: 'Principal', id: string, groups: Array<{ __typename?: 'Group', id: string, name: string }> }, token: { __typename?: 'Token', token: string } } } } };
+export type LoginMutation = { __typename?: 'Mutation', security: { __typename?: 'SecurityMutation', login: { __typename?: 'LoginMutation', password: { __typename?: 'LoginResponse', profile?: { __typename: 'Profile', id: string, slug?: string | null, name: string, visibility: ProfileVisibility, attributes: Array<{ __typename?: 'ProfileAttribute', id: string, typeId: string, visibility: ProfileVisibility, attributes?: any | null, metadata?: { __typename?: 'Metadata', id: string, content: { __typename?: 'MetadataContent', urls: { __typename?: 'MetadataContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } } } | null }> } | null, principal: { __typename?: 'Principal', id: string, groups: Array<{ __typename?: 'Group', id: string, name: string }> }, token: { __typename?: 'Token', token: string } } } } };
 
 export type NextJobQueryVariables = Exact<{
   queue: Scalars['String']['input'];
 }>;
 
 
-export type NextJobQuery = { __typename?: 'Query', workflows: { __typename?: 'Workflows', nextJob?: { __typename?: 'WorkflowJob', context?: any | null, planId: { __typename?: 'WorkflowExecutionId', id: string, queue: string }, id: { __typename?: 'WorkflowJobId', id: string, index: number, queue: string }, collection?: { __typename: 'Collection', id: string, slug: string, traitIds: Array<string>, name: string, description?: string | null, labels: Array<string>, created: any, modified: any, attributes?: any | null, systemAttributes?: any | null, ready?: any | null, public: boolean, publicList: boolean, collectionType: CollectionType, templateMetadata?: { __typename?: 'Metadata', id: string, version: number } | null, ordering?: Array<{ __typename?: 'Ordering', path: Array<string>, order: Order }> | null, categories: Array<{ __typename?: 'Category', id: string, name: string }>, workflow: { __typename?: 'CollectionWorkflow', state: string, pending?: string | null } } | null, metadata?: { __typename: 'Metadata', id: string, version: number, slug: string, name: string, labels: Array<string>, languageTag: string, public: boolean, publicContent: boolean, publicSupplementary: boolean, parentId?: string | null, type: MetadataType, created: any, modified: any, uploaded?: any | null, ready?: any | null, attributes?: any | null, systemAttributes?: any | null, traitIds: Array<string>, source: { __typename?: 'MetadataSource', id?: string | null, identifier?: string | null }, categories: Array<{ __typename?: 'Category', id: string, name: string }>, content: { __typename?: 'MetadataContent', type: string, length?: number | null, urls: { __typename?: 'MetadataContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } }, workflow: { __typename?: 'MetadataWorkflow', state: string, pending?: string | null }, supplementary: Array<{ __typename?: 'MetadataSupplementary', key: string, name: string, uploaded?: string | null, attributes?: any | null, content: { __typename?: 'MetadataSupplementaryContent', type: string, length?: number | null, urls: { __typename?: 'MetadataSupplementaryContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } }, source: { __typename?: 'MetadataSupplementarySource', id: string, identifier?: string | null } }>, profiles: Array<{ __typename?: 'MetadataProfile', relationship: string, profile?: { __typename: 'Profile', id?: string | null, slug?: string | null, name?: string | null, visibility: ProfileVisibility, attributes: Array<{ __typename?: 'ProfileAttribute', id: string, typeId: string, visibility: ProfileVisibility, attributes?: any | null, metadata?: { __typename?: 'Metadata', id: string, content: { __typename?: 'MetadataContent', urls: { __typename?: 'MetadataContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } } } | null }> } | null }> } | null, activity: { __typename?: 'Activity', childWorkflowId?: string | null, configuration?: any | null, description: string, id: string, name: string, inputs: Array<{ __typename?: 'ActivityParameter', name: string, type: ActivityParameterType }>, outputs: Array<{ __typename?: 'ActivityParameter', name: string, type: ActivityParameterType }> }, workflowActivity: { __typename?: 'WorkflowActivity', id: number, activityId: string, queue: string, executionGroup: number, configuration?: any | null, inputs: Array<{ __typename?: 'WorkflowActivityParameter', name: string, value: string }>, outputs: Array<{ __typename?: 'WorkflowActivityParameter', name: string, value: string }>, storageSystems: Array<{ __typename?: 'WorkflowActivityStorageSystem', configuration?: any | null, system: { __typename?: 'StorageSystem', id: string } }>, models: Array<{ __typename?: 'WorkflowActivityModel', configuration?: any | null, model: { __typename?: 'Model', id: string } }>, prompts: Array<{ __typename?: 'WorkflowActivityPrompt', configuration?: any | null, prompt: { __typename?: 'Prompt', id: string } }> }, storageSystems: Array<{ __typename?: 'WorkflowActivityStorageSystem', configuration?: any | null, system: { __typename?: 'StorageSystem', id: string, name: string, type: StorageSystemType, description: string, configuration?: any | null, models: Array<{ __typename?: 'StorageSystemModel', modelId: string, configuration: any }> } }>, prompts: Array<{ __typename?: 'WorkflowActivityPrompt', configuration?: any | null, prompt: { __typename?: 'Prompt', id: string, name: string, description: string, inputType: string, outputType: string, systemPrompt: string, userPrompt: string } }>, models: Array<{ __typename?: 'WorkflowActivityModel', configuration?: any | null, model: { __typename?: 'Model', id: string, name: string, type: string, description: string, configuration: any } }> } | null } };
+export type NextJobQuery = { __typename?: 'Query', workflows: { __typename?: 'Workflows', nextJob?: { __typename?: 'WorkflowJob', context?: any | null, planId: { __typename?: 'WorkflowExecutionId', id: string, queue: string }, id: { __typename?: 'WorkflowJobId', id: string, index: number, queue: string }, collection?: { __typename: 'Collection', id: string, slug?: string | null, traitIds: Array<string>, name: string, description?: string | null, labels: Array<string>, created: any, modified: any, attributes?: any | null, systemAttributes?: any | null, ready?: any | null, public: boolean, publicList: boolean, collectionType: CollectionType, templateMetadata?: { __typename?: 'Metadata', id: string, version: number } | null, ordering?: Array<{ __typename?: 'Ordering', path: Array<string>, order: Order }> | null, categories: Array<{ __typename?: 'Category', id: string, name: string }>, workflow: { __typename?: 'CollectionWorkflow', state: string, pending?: string | null } } | null, metadata?: { __typename: 'Metadata', id: string, version: number, slug?: string | null, name: string, labels: Array<string>, languageTag: string, public: boolean, publicContent: boolean, publicSupplementary: boolean, parentId?: string | null, type: MetadataType, created: any, modified: any, uploaded?: any | null, ready?: any | null, attributes?: any | null, systemAttributes?: any | null, traitIds: Array<string>, source: { __typename?: 'MetadataSource', id?: string | null, identifier?: string | null }, categories: Array<{ __typename?: 'Category', id: string, name: string }>, content: { __typename?: 'MetadataContent', type: string, length?: number | null, urls: { __typename?: 'MetadataContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } }, workflow: { __typename?: 'MetadataWorkflow', state: string, pending?: string | null }, supplementary: Array<{ __typename?: 'MetadataSupplementary', key: string, name: string, uploaded?: string | null, attributes?: any | null, content: { __typename?: 'MetadataSupplementaryContent', type: string, length?: number | null, urls: { __typename?: 'MetadataSupplementaryContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } }, source: { __typename?: 'MetadataSupplementarySource', id: string, identifier?: string | null } }>, profiles: Array<{ __typename?: 'MetadataProfile', relationship: string, profile?: { __typename: 'Profile', id: string, slug?: string | null, name: string, visibility: ProfileVisibility, attributes: Array<{ __typename?: 'ProfileAttribute', id: string, typeId: string, visibility: ProfileVisibility, attributes?: any | null, metadata?: { __typename?: 'Metadata', id: string, content: { __typename?: 'MetadataContent', urls: { __typename?: 'MetadataContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } } } | null }> } | null }> } | null, activity: { __typename?: 'Activity', childWorkflowId?: string | null, configuration?: any | null, description: string, id: string, name: string, inputs: Array<{ __typename?: 'ActivityParameter', name: string, type: ActivityParameterType }>, outputs: Array<{ __typename?: 'ActivityParameter', name: string, type: ActivityParameterType }> }, workflowActivity: { __typename?: 'WorkflowActivity', id: number, activityId: string, queue: string, executionGroup: number, configuration?: any | null, inputs: Array<{ __typename?: 'WorkflowActivityParameter', name: string, value: string }>, outputs: Array<{ __typename?: 'WorkflowActivityParameter', name: string, value: string }>, storageSystems: Array<{ __typename?: 'WorkflowActivityStorageSystem', configuration?: any | null, system: { __typename?: 'StorageSystem', id: string } }>, models: Array<{ __typename?: 'WorkflowActivityModel', configuration?: any | null, model: { __typename?: 'Model', id: string } }>, prompts: Array<{ __typename?: 'WorkflowActivityPrompt', configuration?: any | null, prompt: { __typename?: 'Prompt', id: string } }> }, storageSystems: Array<{ __typename?: 'WorkflowActivityStorageSystem', configuration?: any | null, system: { __typename?: 'StorageSystem', id: string, name: string, type: StorageSystemType, description: string, configuration?: any | null, models: Array<{ __typename?: 'StorageSystemModel', modelId: string, configuration: any }> } }>, prompts: Array<{ __typename?: 'WorkflowActivityPrompt', configuration?: any | null, prompt: { __typename?: 'Prompt', id: string, name: string, description: string, inputType: string, outputType: string, systemPrompt: string, userPrompt: string } }>, models: Array<{ __typename?: 'WorkflowActivityModel', configuration?: any | null, model: { __typename?: 'Model', id: string, name: string, type: string, description: string, configuration: any } }> } | null } };
 
 export type OnActivityChangedSubscriptionVariables = Exact<{ [key: string]: never; }>;
 
@@ -3216,15 +3411,15 @@ export type CategoryFragment = { __typename?: 'Category', id: string, name: stri
 
 export type CollectionIdNameFragment = { __typename: 'Collection', id: string, name: string };
 
-export type CollectionListFragment = { __typename: 'Collection', id: string, slug: string, traitIds: Array<string>, name: string, description?: string | null, labels: Array<string>, created: any, modified: any, attributes?: any | null, systemAttributes?: any | null, ready?: any | null, public: boolean, publicList: boolean, collectionType: CollectionType, items: Array<{ __typename: 'Collection', id: string, slug: string, traitIds: Array<string>, name: string, description?: string | null, labels: Array<string>, created: any, modified: any, attributes?: any | null, systemAttributes?: any | null, ready?: any | null, public: boolean, publicList: boolean, collectionType: CollectionType, templateMetadata?: { __typename?: 'Metadata', id: string, version: number } | null, ordering?: Array<{ __typename?: 'Ordering', path: Array<string>, order: Order }> | null, categories: Array<{ __typename?: 'Category', id: string, name: string }>, workflow: { __typename?: 'CollectionWorkflow', state: string, pending?: string | null } } | { __typename: 'Metadata', id: string, version: number, slug: string, name: string, labels: Array<string>, languageTag: string, public: boolean, publicContent: boolean, publicSupplementary: boolean, parentId?: string | null, type: MetadataType, created: any, modified: any, uploaded?: any | null, ready?: any | null, attributes?: any | null, systemAttributes?: any | null, traitIds: Array<string>, source: { __typename?: 'MetadataSource', id?: string | null, identifier?: string | null }, categories: Array<{ __typename?: 'Category', id: string, name: string }>, content: { __typename?: 'MetadataContent', type: string, length?: number | null, urls: { __typename?: 'MetadataContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } }, workflow: { __typename?: 'MetadataWorkflow', state: string, pending?: string | null }, supplementary: Array<{ __typename?: 'MetadataSupplementary', key: string, name: string, uploaded?: string | null, attributes?: any | null, content: { __typename?: 'MetadataSupplementaryContent', type: string, length?: number | null, urls: { __typename?: 'MetadataSupplementaryContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } }, source: { __typename?: 'MetadataSupplementarySource', id: string, identifier?: string | null } }>, profiles: Array<{ __typename?: 'MetadataProfile', relationship: string, profile?: { __typename: 'Profile', id?: string | null, slug?: string | null, name?: string | null, visibility: ProfileVisibility, attributes: Array<{ __typename?: 'ProfileAttribute', id: string, typeId: string, visibility: ProfileVisibility, attributes?: any | null, metadata?: { __typename?: 'Metadata', id: string, content: { __typename?: 'MetadataContent', urls: { __typename?: 'MetadataContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } } } | null }> } | null }> }>, templateMetadata?: { __typename?: 'Metadata', id: string, version: number } | null, ordering?: Array<{ __typename?: 'Ordering', path: Array<string>, order: Order }> | null, categories: Array<{ __typename?: 'Category', id: string, name: string }>, workflow: { __typename?: 'CollectionWorkflow', state: string, pending?: string | null } };
+export type CollectionListFragment = { __typename: 'Collection', id: string, slug?: string | null, traitIds: Array<string>, name: string, description?: string | null, labels: Array<string>, created: any, modified: any, attributes?: any | null, systemAttributes?: any | null, ready?: any | null, public: boolean, publicList: boolean, collectionType: CollectionType, items: Array<{ __typename: 'Collection', id: string, slug?: string | null, traitIds: Array<string>, name: string, description?: string | null, labels: Array<string>, created: any, modified: any, attributes?: any | null, systemAttributes?: any | null, ready?: any | null, public: boolean, publicList: boolean, collectionType: CollectionType, templateMetadata?: { __typename?: 'Metadata', id: string, version: number } | null, ordering?: Array<{ __typename?: 'Ordering', path: Array<string>, order: Order }> | null, categories: Array<{ __typename?: 'Category', id: string, name: string }>, workflow: { __typename?: 'CollectionWorkflow', state: string, pending?: string | null } } | { __typename: 'Metadata', id: string, version: number, slug?: string | null, name: string, labels: Array<string>, languageTag: string, public: boolean, publicContent: boolean, publicSupplementary: boolean, parentId?: string | null, type: MetadataType, created: any, modified: any, uploaded?: any | null, ready?: any | null, attributes?: any | null, systemAttributes?: any | null, traitIds: Array<string>, source: { __typename?: 'MetadataSource', id?: string | null, identifier?: string | null }, categories: Array<{ __typename?: 'Category', id: string, name: string }>, content: { __typename?: 'MetadataContent', type: string, length?: number | null, urls: { __typename?: 'MetadataContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } }, workflow: { __typename?: 'MetadataWorkflow', state: string, pending?: string | null }, supplementary: Array<{ __typename?: 'MetadataSupplementary', key: string, name: string, uploaded?: string | null, attributes?: any | null, content: { __typename?: 'MetadataSupplementaryContent', type: string, length?: number | null, urls: { __typename?: 'MetadataSupplementaryContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } }, source: { __typename?: 'MetadataSupplementarySource', id: string, identifier?: string | null } }>, profiles: Array<{ __typename?: 'MetadataProfile', relationship: string, profile?: { __typename: 'Profile', id: string, slug?: string | null, name: string, visibility: ProfileVisibility, attributes: Array<{ __typename?: 'ProfileAttribute', id: string, typeId: string, visibility: ProfileVisibility, attributes?: any | null, metadata?: { __typename?: 'Metadata', id: string, content: { __typename?: 'MetadataContent', urls: { __typename?: 'MetadataContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } } } | null }> } | null }> }>, templateMetadata?: { __typename?: 'Metadata', id: string, version: number } | null, ordering?: Array<{ __typename?: 'Ordering', path: Array<string>, order: Order }> | null, categories: Array<{ __typename?: 'Category', id: string, name: string }>, workflow: { __typename?: 'CollectionWorkflow', state: string, pending?: string | null } };
 
-export type CollectionFragment = { __typename: 'Collection', id: string, slug: string, traitIds: Array<string>, name: string, description?: string | null, labels: Array<string>, created: any, modified: any, attributes?: any | null, systemAttributes?: any | null, ready?: any | null, public: boolean, publicList: boolean, collectionType: CollectionType, templateMetadata?: { __typename?: 'Metadata', id: string, version: number } | null, ordering?: Array<{ __typename?: 'Ordering', path: Array<string>, order: Order }> | null, categories: Array<{ __typename?: 'Category', id: string, name: string }>, workflow: { __typename?: 'CollectionWorkflow', state: string, pending?: string | null } };
+export type CollectionFragment = { __typename: 'Collection', id: string, slug?: string | null, traitIds: Array<string>, name: string, description?: string | null, labels: Array<string>, created: any, modified: any, attributes?: any | null, systemAttributes?: any | null, ready?: any | null, public: boolean, publicList: boolean, collectionType: CollectionType, templateMetadata?: { __typename?: 'Metadata', id: string, version: number } | null, ordering?: Array<{ __typename?: 'Ordering', path: Array<string>, order: Order }> | null, categories: Array<{ __typename?: 'Category', id: string, name: string }>, workflow: { __typename?: 'CollectionWorkflow', state: string, pending?: string | null } };
 
 export type CollectionParentsFragment = { __typename?: 'Collection', parentCollections: Array<{ __typename?: 'Collection', id: string, name: string, attributes?: any | null }> };
 
 export type CollectionPermissionsFragment = { __typename?: 'Collection', permissions: Array<{ __typename?: 'Permission', action: PermissionAction, group: { __typename?: 'Group', id: string, name: string } }> };
 
-export type CollectionDetailFragment = { __typename: 'Collection', id: string, slug: string, traitIds: Array<string>, name: string, description?: string | null, labels: Array<string>, created: any, modified: any, attributes?: any | null, systemAttributes?: any | null, ready?: any | null, public: boolean, publicList: boolean, collectionType: CollectionType, items: Array<{ __typename: 'Collection', id: string, slug: string, traitIds: Array<string>, name: string, description?: string | null, labels: Array<string>, created: any, modified: any, attributes?: any | null, systemAttributes?: any | null, ready?: any | null, public: boolean, publicList: boolean, collectionType: CollectionType, templateMetadata?: { __typename?: 'Metadata', id: string, version: number } | null, ordering?: Array<{ __typename?: 'Ordering', path: Array<string>, order: Order }> | null, categories: Array<{ __typename?: 'Category', id: string, name: string }>, workflow: { __typename?: 'CollectionWorkflow', state: string, pending?: string | null } } | { __typename: 'Metadata', id: string, version: number, slug: string, name: string, labels: Array<string>, languageTag: string, public: boolean, publicContent: boolean, publicSupplementary: boolean, parentId?: string | null, type: MetadataType, created: any, modified: any, uploaded?: any | null, ready?: any | null, attributes?: any | null, systemAttributes?: any | null, traitIds: Array<string>, source: { __typename?: 'MetadataSource', id?: string | null, identifier?: string | null }, categories: Array<{ __typename?: 'Category', id: string, name: string }>, content: { __typename?: 'MetadataContent', type: string, length?: number | null, urls: { __typename?: 'MetadataContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } }, workflow: { __typename?: 'MetadataWorkflow', state: string, pending?: string | null }, supplementary: Array<{ __typename?: 'MetadataSupplementary', key: string, name: string, uploaded?: string | null, attributes?: any | null, content: { __typename?: 'MetadataSupplementaryContent', type: string, length?: number | null, urls: { __typename?: 'MetadataSupplementaryContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } }, source: { __typename?: 'MetadataSupplementarySource', id: string, identifier?: string | null } }>, profiles: Array<{ __typename?: 'MetadataProfile', relationship: string, profile?: { __typename: 'Profile', id?: string | null, slug?: string | null, name?: string | null, visibility: ProfileVisibility, attributes: Array<{ __typename?: 'ProfileAttribute', id: string, typeId: string, visibility: ProfileVisibility, attributes?: any | null, metadata?: { __typename?: 'Metadata', id: string, content: { __typename?: 'MetadataContent', urls: { __typename?: 'MetadataContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } } } | null }> } | null }> }>, templateMetadata?: { __typename?: 'Metadata', id: string, version: number } | null, ordering?: Array<{ __typename?: 'Ordering', path: Array<string>, order: Order }> | null, categories: Array<{ __typename?: 'Category', id: string, name: string }>, workflow: { __typename?: 'CollectionWorkflow', state: string, pending?: string | null } };
+export type CollectionDetailFragment = { __typename: 'Collection', id: string, slug?: string | null, traitIds: Array<string>, name: string, description?: string | null, labels: Array<string>, created: any, modified: any, attributes?: any | null, systemAttributes?: any | null, ready?: any | null, public: boolean, publicList: boolean, collectionType: CollectionType, items: Array<{ __typename: 'Collection', id: string, slug?: string | null, traitIds: Array<string>, name: string, description?: string | null, labels: Array<string>, created: any, modified: any, attributes?: any | null, systemAttributes?: any | null, ready?: any | null, public: boolean, publicList: boolean, collectionType: CollectionType, templateMetadata?: { __typename?: 'Metadata', id: string, version: number } | null, ordering?: Array<{ __typename?: 'Ordering', path: Array<string>, order: Order }> | null, categories: Array<{ __typename?: 'Category', id: string, name: string }>, workflow: { __typename?: 'CollectionWorkflow', state: string, pending?: string | null } } | { __typename: 'Metadata', id: string, version: number, slug?: string | null, name: string, labels: Array<string>, languageTag: string, public: boolean, publicContent: boolean, publicSupplementary: boolean, parentId?: string | null, type: MetadataType, created: any, modified: any, uploaded?: any | null, ready?: any | null, attributes?: any | null, systemAttributes?: any | null, traitIds: Array<string>, source: { __typename?: 'MetadataSource', id?: string | null, identifier?: string | null }, categories: Array<{ __typename?: 'Category', id: string, name: string }>, content: { __typename?: 'MetadataContent', type: string, length?: number | null, urls: { __typename?: 'MetadataContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } }, workflow: { __typename?: 'MetadataWorkflow', state: string, pending?: string | null }, supplementary: Array<{ __typename?: 'MetadataSupplementary', key: string, name: string, uploaded?: string | null, attributes?: any | null, content: { __typename?: 'MetadataSupplementaryContent', type: string, length?: number | null, urls: { __typename?: 'MetadataSupplementaryContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } }, source: { __typename?: 'MetadataSupplementarySource', id: string, identifier?: string | null } }>, profiles: Array<{ __typename?: 'MetadataProfile', relationship: string, profile?: { __typename: 'Profile', id: string, slug?: string | null, name: string, visibility: ProfileVisibility, attributes: Array<{ __typename?: 'ProfileAttribute', id: string, typeId: string, visibility: ProfileVisibility, attributes?: any | null, metadata?: { __typename?: 'Metadata', id: string, content: { __typename?: 'MetadataContent', urls: { __typename?: 'MetadataContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } } } | null }> } | null }> }>, templateMetadata?: { __typename?: 'Metadata', id: string, version: number } | null, ordering?: Array<{ __typename?: 'Ordering', path: Array<string>, order: Order }> | null, categories: Array<{ __typename?: 'Category', id: string, name: string }>, workflow: { __typename?: 'CollectionWorkflow', state: string, pending?: string | null } };
 
 export type CollectionMetadataRelationshipFragment = { __typename?: 'CollectionMetadataRelationship', relationship?: string | null, attributes?: any | null, metadata: { __typename?: 'Metadata', id: string, version: number, name: string, public: boolean, publicContent: boolean, workflow: { __typename?: 'MetadataWorkflow', pending?: string | null, state: string } } };
 
@@ -3232,9 +3427,9 @@ export type CollectionTemplateFragment = { __typename?: 'CollectionTemplate', co
 
 export type CollectionWorkflowFragment = { __typename?: 'CollectionWorkflow', state: string, pending?: string | null };
 
-export type DocumentFragment = { __typename?: 'Document', templateMetadataId?: string | null, templateMetadataVersion?: number | null, title: string, content: any };
+export type DocumentFragment = { __typename?: 'Document', title: string, content: any, template?: { __typename?: 'Metadata', id: string, version: number } | null };
 
-export type DocumentTemplateFragment = { __typename?: 'DocumentTemplate', configuration?: any | null, schema?: any | null, content: any, defaultAttributes?: any | null, attributes: Array<{ __typename?: 'DocumentTemplateAttribute', key: string, name: string, description: string, type: AttributeType, supplementaryKey?: string | null, ui: AttributeUiType, list: boolean, configuration?: any | null, workflows: Array<{ __typename?: 'DocumentTemplateAttributeWorkflow', autoRun: boolean, workflow?: { __typename?: 'Workflow', id: string, queue: string, name: string, description: string, configuration: any } | null }> }> };
+export type DocumentTemplateFragment = { __typename?: 'DocumentTemplate', configuration?: any | null, schema?: any | null, content: any, defaultAttributes?: any | null, attributes: Array<{ __typename?: 'TemplateAttribute', key: string, name: string, description: string, type: AttributeType, supplementaryKey?: string | null, ui: AttributeUiType, list: boolean, configuration?: any | null, workflows: Array<{ __typename?: 'TemplateAttributeWorkflow', autoRun: boolean, workflow?: { __typename?: 'Workflow', id: string, queue: string, name: string, description: string, configuration: any } | null }> }> };
 
 export type FindAttributesFragment = { __typename?: 'FindAttributes', attributes: Array<{ __typename?: 'FindAttribute', key: string, value: string }> };
 
@@ -3246,19 +3441,19 @@ export type FindQueryOptionFragment = { __typename?: 'FindQueryOption', name: st
 
 export type GroupFragment = { __typename?: 'Group', id: string, name: string };
 
-export type MetadataIdNameFragment = { __typename: 'Metadata', id: string, version: number, slug: string, name: string, content: { __typename?: 'MetadataContent', type: string } };
+export type MetadataIdNameFragment = { __typename: 'Metadata', id: string, version: number, slug?: string | null, name: string, content: { __typename?: 'MetadataContent', type: string } };
 
-export type MetadataFragment = { __typename: 'Metadata', id: string, version: number, slug: string, name: string, labels: Array<string>, languageTag: string, public: boolean, publicContent: boolean, publicSupplementary: boolean, parentId?: string | null, type: MetadataType, created: any, modified: any, uploaded?: any | null, ready?: any | null, attributes?: any | null, systemAttributes?: any | null, traitIds: Array<string>, source: { __typename?: 'MetadataSource', id?: string | null, identifier?: string | null }, categories: Array<{ __typename?: 'Category', id: string, name: string }>, content: { __typename?: 'MetadataContent', type: string, length?: number | null, urls: { __typename?: 'MetadataContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } }, workflow: { __typename?: 'MetadataWorkflow', state: string, pending?: string | null }, supplementary: Array<{ __typename?: 'MetadataSupplementary', key: string, name: string, uploaded?: string | null, attributes?: any | null, content: { __typename?: 'MetadataSupplementaryContent', type: string, length?: number | null, urls: { __typename?: 'MetadataSupplementaryContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } }, source: { __typename?: 'MetadataSupplementarySource', id: string, identifier?: string | null } }>, profiles: Array<{ __typename?: 'MetadataProfile', relationship: string, profile?: { __typename: 'Profile', id?: string | null, slug?: string | null, name?: string | null, visibility: ProfileVisibility, attributes: Array<{ __typename?: 'ProfileAttribute', id: string, typeId: string, visibility: ProfileVisibility, attributes?: any | null, metadata?: { __typename?: 'Metadata', id: string, content: { __typename?: 'MetadataContent', urls: { __typename?: 'MetadataContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } } } | null }> } | null }> };
+export type MetadataFragment = { __typename: 'Metadata', id: string, version: number, slug?: string | null, name: string, labels: Array<string>, languageTag: string, public: boolean, publicContent: boolean, publicSupplementary: boolean, parentId?: string | null, type: MetadataType, created: any, modified: any, uploaded?: any | null, ready?: any | null, attributes?: any | null, systemAttributes?: any | null, traitIds: Array<string>, source: { __typename?: 'MetadataSource', id?: string | null, identifier?: string | null }, categories: Array<{ __typename?: 'Category', id: string, name: string }>, content: { __typename?: 'MetadataContent', type: string, length?: number | null, urls: { __typename?: 'MetadataContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } }, workflow: { __typename?: 'MetadataWorkflow', state: string, pending?: string | null }, supplementary: Array<{ __typename?: 'MetadataSupplementary', key: string, name: string, uploaded?: string | null, attributes?: any | null, content: { __typename?: 'MetadataSupplementaryContent', type: string, length?: number | null, urls: { __typename?: 'MetadataSupplementaryContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } }, source: { __typename?: 'MetadataSupplementarySource', id: string, identifier?: string | null } }>, profiles: Array<{ __typename?: 'MetadataProfile', relationship: string, profile?: { __typename: 'Profile', id: string, slug?: string | null, name: string, visibility: ProfileVisibility, attributes: Array<{ __typename?: 'ProfileAttribute', id: string, typeId: string, visibility: ProfileVisibility, attributes?: any | null, metadata?: { __typename?: 'Metadata', id: string, content: { __typename?: 'MetadataContent', urls: { __typename?: 'MetadataContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } } } | null }> } | null }> };
 
 export type MetadataContentFragment = { __typename?: 'MetadataContent', type: string, length?: number | null, urls: { __typename?: 'MetadataContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } };
 
 export type MetadataContentUploadFragment = { __typename?: 'MetadataContent', urls: { __typename?: 'MetadataContentUrls', upload: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } };
 
-export type MetadataProfileFragment = { __typename?: 'MetadataProfile', relationship: string, profile?: { __typename: 'Profile', id?: string | null, slug?: string | null, name?: string | null, visibility: ProfileVisibility, attributes: Array<{ __typename?: 'ProfileAttribute', id: string, typeId: string, visibility: ProfileVisibility, attributes?: any | null, metadata?: { __typename?: 'Metadata', id: string, content: { __typename?: 'MetadataContent', urls: { __typename?: 'MetadataContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } } } | null }> } | null };
+export type MetadataProfileFragment = { __typename?: 'MetadataProfile', relationship: string, profile?: { __typename: 'Profile', id: string, slug?: string | null, name: string, visibility: ProfileVisibility, attributes: Array<{ __typename?: 'ProfileAttribute', id: string, typeId: string, visibility: ProfileVisibility, attributes?: any | null, metadata?: { __typename?: 'Metadata', id: string, content: { __typename?: 'MetadataContent', urls: { __typename?: 'MetadataContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } } } | null }> } | null };
 
 export type MetadataRelationshipMetadataFragment = { __typename?: 'Metadata', id: string, version: number, name: string, public: boolean, publicContent: boolean, workflow: { __typename?: 'MetadataWorkflow', pending?: string | null, state: string } };
 
-export type MetadataRelationshipFragment = { __typename?: 'MetadataRelationship', relationship: string, attributes: any, metadata: { __typename?: 'Metadata', id: string, version: number, name: string, public: boolean, publicContent: boolean, workflow: { __typename?: 'MetadataWorkflow', pending?: string | null, state: string } } };
+export type MetadataRelationshipFragment = { __typename?: 'MetadataRelationship', relationship: string, attributes?: any | null, metadata: { __typename?: 'Metadata', id: string, version: number, name: string, public: boolean, publicContent: boolean, workflow: { __typename?: 'MetadataWorkflow', pending?: string | null, state: string } } };
 
 export type MetadataSupplementaryFragment = { __typename?: 'MetadataSupplementary', key: string, name: string, uploaded?: string | null, attributes?: any | null, content: { __typename?: 'MetadataSupplementaryContent', type: string, length?: number | null, urls: { __typename?: 'MetadataSupplementaryContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } }, source: { __typename?: 'MetadataSupplementarySource', id: string, identifier?: string | null } };
 
@@ -3278,9 +3473,9 @@ export type PlanWorkflowFragment = { __typename?: 'Workflow', id: string, name: 
 
 export type PrincipalFragment = { __typename?: 'Principal', id: string, verified: boolean, groups: Array<{ __typename?: 'Group', id: string, name: string }> };
 
-export type ProfileIdNameFragment = { __typename: 'Profile', id?: string | null, name?: string | null };
+export type ProfileIdNameFragment = { __typename: 'Profile', id: string, name: string };
 
-export type ProfileFragment = { __typename: 'Profile', id?: string | null, slug?: string | null, name?: string | null, visibility: ProfileVisibility, attributes: Array<{ __typename?: 'ProfileAttribute', id: string, typeId: string, visibility: ProfileVisibility, attributes?: any | null, metadata?: { __typename?: 'Metadata', id: string, content: { __typename?: 'MetadataContent', urls: { __typename?: 'MetadataContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } } } | null }> };
+export type ProfileFragment = { __typename: 'Profile', id: string, slug?: string | null, name: string, visibility: ProfileVisibility, attributes: Array<{ __typename?: 'ProfileAttribute', id: string, typeId: string, visibility: ProfileVisibility, attributes?: any | null, metadata?: { __typename?: 'Metadata', id: string, content: { __typename?: 'MetadataContent', urls: { __typename?: 'MetadataContentUrls', download: { __typename?: 'SignedUrl', url: string, headers: Array<{ __typename?: 'SignedUrlHeader', name: string, value: string }> } } } } | null }> };
 
 export type PromptFragment = { __typename?: 'Prompt', id: string, name: string, description: string, inputType: string, outputType: string, systemPrompt: string, userPrompt: string };
 
@@ -3337,7 +3532,7 @@ export const FindQueryFragmentDoc = {"kind":"Document","definitions":[{"kind":"F
 export const FindQueryOptionFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"FindQueryOption"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"FindQueryOption"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"query"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"FindQuery"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"FindAttribute"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"FindAttribute"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"key"}},{"kind":"Field","name":{"kind":"Name","value":"value"}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"FindAttributes"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"FindAttributes"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"attributes"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"FindAttribute"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"FindQuery"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"FindQuery"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"attributes"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"FindAttributes"}}]}},{"kind":"Field","name":{"kind":"Name","value":"categoryIds"}},{"kind":"Field","name":{"kind":"Name","value":"collectionType"}},{"kind":"Field","name":{"kind":"Name","value":"contentTypes"}},{"kind":"Field","name":{"kind":"Name","value":"extensionFilter"}},{"kind":"Field","name":{"kind":"Name","value":"offset"}},{"kind":"Field","name":{"kind":"Name","value":"limit"}}]}}]} as unknown as DocumentNode<FindQueryOptionFragment, unknown>;
 export const WorkflowFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Workflow"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Workflow"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"queue"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"configuration"}}]}}]} as unknown as DocumentNode<WorkflowFragment, unknown>;
 export const CollectionTemplateFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"CollectionTemplate"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"CollectionTemplate"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"configuration"}},{"kind":"Field","name":{"kind":"Name","value":"defaultAttributes"}},{"kind":"Field","name":{"kind":"Name","value":"collectionFilter"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"options"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"FindQueryOption"}}]}}]}},{"kind":"Field","name":{"kind":"Name","value":"attributes"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"key"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"supplementaryKey"}},{"kind":"Field","name":{"kind":"Name","value":"ui"}},{"kind":"Field","name":{"kind":"Name","value":"list"}},{"kind":"Field","name":{"kind":"Name","value":"configuration"}},{"kind":"Field","name":{"kind":"Name","value":"workflows"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"workflow"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Workflow"}}]}},{"kind":"Field","name":{"kind":"Name","value":"autoRun"}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"FindAttribute"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"FindAttribute"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"key"}},{"kind":"Field","name":{"kind":"Name","value":"value"}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"FindAttributes"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"FindAttributes"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"attributes"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"FindAttribute"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"FindQuery"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"FindQuery"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"attributes"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"FindAttributes"}}]}},{"kind":"Field","name":{"kind":"Name","value":"categoryIds"}},{"kind":"Field","name":{"kind":"Name","value":"collectionType"}},{"kind":"Field","name":{"kind":"Name","value":"contentTypes"}},{"kind":"Field","name":{"kind":"Name","value":"extensionFilter"}},{"kind":"Field","name":{"kind":"Name","value":"offset"}},{"kind":"Field","name":{"kind":"Name","value":"limit"}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"FindQueryOption"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"FindQueryOption"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"query"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"FindQuery"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Workflow"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Workflow"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"queue"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"configuration"}}]}}]} as unknown as DocumentNode<CollectionTemplateFragment, unknown>;
-export const DocumentFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Document"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Document"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"templateMetadataId"}},{"kind":"Field","name":{"kind":"Name","value":"templateMetadataVersion"}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"content"}}]}}]} as unknown as DocumentNode<DocumentFragment, unknown>;
+export const DocumentFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Document"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Document"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"template"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"version"}}]}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"content"}}]}}]} as unknown as DocumentNode<DocumentFragment, unknown>;
 export const DocumentTemplateFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"DocumentTemplate"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"DocumentTemplate"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"configuration"}},{"kind":"Field","name":{"kind":"Name","value":"schema"}},{"kind":"Field","name":{"kind":"Name","value":"content"}},{"kind":"Field","name":{"kind":"Name","value":"defaultAttributes"}},{"kind":"Field","name":{"kind":"Name","value":"attributes"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"key"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"supplementaryKey"}},{"kind":"Field","name":{"kind":"Name","value":"ui"}},{"kind":"Field","name":{"kind":"Name","value":"list"}},{"kind":"Field","name":{"kind":"Name","value":"configuration"}},{"kind":"Field","name":{"kind":"Name","value":"workflows"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"workflow"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Workflow"}}]}},{"kind":"Field","name":{"kind":"Name","value":"autoRun"}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Workflow"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Workflow"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"queue"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"configuration"}}]}}]} as unknown as DocumentNode<DocumentTemplateFragment, unknown>;
 export const MetadataIdNameFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"MetadataIdName"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Metadata"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"version"}},{"kind":"Field","name":{"kind":"Name","value":"slug"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"content"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"type"}}]}}]}}]} as unknown as DocumentNode<MetadataIdNameFragment, unknown>;
 export const MetadataContentUploadFragmentDoc = {"kind":"Document","definitions":[{"kind":"FragmentDefinition","name":{"kind":"Name","value":"MetadataContentUpload"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"MetadataContent"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"urls"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"upload"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"url"}},{"kind":"Field","name":{"kind":"Name","value":"headers"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"value"}}]}}]}}]}}]}}]} as unknown as DocumentNode<MetadataContentUploadFragment, unknown>;
@@ -3419,7 +3614,7 @@ export const GetCurrentProfileDocument = {"__meta__":{"hash":"a9f0a96719ffeb0161
 export const GetGroupsDocument = {"__meta__":{"hash":"a3e9f23f3d4f5a07d0ec411b610718b02a39efb5"},"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetGroups"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"offset"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"limit"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"security"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"groups"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"all"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"offset"},"value":{"kind":"Variable","name":{"kind":"Name","value":"offset"}}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"Variable","name":{"kind":"Name","value":"limit"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Group"}}]}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Group"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Group"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}}]}}]} as unknown as DocumentNode<GetGroupsQuery, GetGroupsQueryVariables>;
 export const GetMetadataDocument = {"__meta__":{"hash":"5461f0d06e1e14ab8ab69b640ccd8320257323dc"},"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetMetadata"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"version"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"content"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"metadata"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}},{"kind":"Argument","name":{"kind":"Name","value":"version"},"value":{"kind":"Variable","name":{"kind":"Name","value":"version"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Metadata"}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Category"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Category"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"MetadataContent"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"MetadataContent"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"length"}},{"kind":"Field","name":{"kind":"Name","value":"urls"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"download"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"url"}},{"kind":"Field","name":{"kind":"Name","value":"headers"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"value"}}]}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"MetadataWorkflow"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"MetadataWorkflow"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"state"}},{"kind":"Field","name":{"kind":"Name","value":"pending"}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"MetadataSupplementaryContent"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"MetadataSupplementaryContent"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"length"}},{"kind":"Field","name":{"kind":"Name","value":"urls"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"download"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"url"}},{"kind":"Field","name":{"kind":"Name","value":"headers"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"value"}}]}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"MetadataSupplementary"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"MetadataSupplementary"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"key"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"uploaded"}},{"kind":"Field","name":{"kind":"Name","value":"attributes"}},{"kind":"Field","name":{"kind":"Name","value":"content"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"MetadataSupplementaryContent"}}]}},{"kind":"Field","name":{"kind":"Name","value":"source"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"identifier"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Profile"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Profile"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"slug"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"visibility"}},{"kind":"Field","name":{"kind":"Name","value":"attributes"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"typeId"}},{"kind":"Field","name":{"kind":"Name","value":"visibility"}},{"kind":"Field","name":{"kind":"Name","value":"attributes"}},{"kind":"Field","name":{"kind":"Name","value":"metadata"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"content"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"urls"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"download"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"url"}},{"kind":"Field","name":{"kind":"Name","value":"headers"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"value"}}]}}]}}]}}]}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"MetadataProfile"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"MetadataProfile"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"relationship"}},{"kind":"Field","name":{"kind":"Name","value":"profile"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Profile"}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Metadata"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Metadata"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"__typename"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"version"}},{"kind":"Field","name":{"kind":"Name","value":"slug"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"labels"}},{"kind":"Field","name":{"kind":"Name","value":"languageTag"}},{"kind":"Field","name":{"kind":"Name","value":"public"}},{"kind":"Field","name":{"kind":"Name","value":"publicContent"}},{"kind":"Field","name":{"kind":"Name","value":"publicSupplementary"}},{"kind":"Field","name":{"kind":"Name","value":"parentId"}},{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"source"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"identifier"}}]}},{"kind":"Field","name":{"kind":"Name","value":"categories"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Category"}}]}},{"kind":"Field","name":{"kind":"Name","value":"content"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"MetadataContent"}}]}},{"kind":"Field","name":{"kind":"Name","value":"created"}},{"kind":"Field","name":{"kind":"Name","value":"modified"}},{"kind":"Field","name":{"kind":"Name","value":"uploaded"}},{"kind":"Field","name":{"kind":"Name","value":"ready"}},{"kind":"Field","name":{"kind":"Name","value":"attributes"}},{"kind":"Field","name":{"kind":"Name","value":"systemAttributes"}},{"kind":"Field","name":{"kind":"Name","value":"traitIds"}},{"kind":"Field","name":{"kind":"Name","value":"workflow"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"MetadataWorkflow"}}]}},{"kind":"Field","name":{"kind":"Name","value":"supplementary"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"MetadataSupplementary"}}]}},{"kind":"Field","name":{"kind":"Name","value":"profiles"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"MetadataProfile"}}]}}]}}]} as unknown as DocumentNode<GetMetadataQuery, GetMetadataQueryVariables>;
 export const GetMetadataUploadDocument = {"__meta__":{"hash":"cf42fe53c4f84c3b488f8dff31af556f34c07abe"},"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetMetadataUpload"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"content"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"metadata"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"content"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"MetadataContentUpload"}}]}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"MetadataContentUpload"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"MetadataContent"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"urls"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"upload"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"url"}},{"kind":"Field","name":{"kind":"Name","value":"headers"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"value"}}]}}]}}]}}]}}]} as unknown as DocumentNode<GetMetadataUploadQuery, GetMetadataUploadQueryVariables>;
-export const GetMetadataDocumentDocument = {"__meta__":{"hash":"9e32feedd63a85c3b593081ee9dfb0beb446f4f4"},"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetMetadataDocument"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"content"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"metadata"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"document"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Document"}}]}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Document"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Document"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"templateMetadataId"}},{"kind":"Field","name":{"kind":"Name","value":"templateMetadataVersion"}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"content"}}]}}]} as unknown as DocumentNode<GetMetadataDocumentQuery, GetMetadataDocumentQueryVariables>;
+export const GetMetadataDocumentDocument = {"__meta__":{"hash":"401c5469619c3e64ec4fb7c1e8fb6708620f2724"},"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetMetadataDocument"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"content"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"metadata"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"document"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Document"}}]}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Document"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Document"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"template"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"version"}}]}},{"kind":"Field","name":{"kind":"Name","value":"title"}},{"kind":"Field","name":{"kind":"Name","value":"content"}}]}}]} as unknown as DocumentNode<GetMetadataDocumentQuery, GetMetadataDocumentQueryVariables>;
 export const GetMetadataDocumentTemplateDocument = {"__meta__":{"hash":"67692619ec7913bf0b1db0fa5337341de450d8d4"},"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetMetadataDocumentTemplate"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}},{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"version"}},"type":{"kind":"NamedType","name":{"kind":"Name","value":"Int"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"content"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"metadata"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}},{"kind":"Argument","name":{"kind":"Name","value":"version"},"value":{"kind":"Variable","name":{"kind":"Name","value":"version"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"documentTemplate"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"DocumentTemplate"}}]}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Workflow"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Workflow"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"queue"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"configuration"}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"DocumentTemplate"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"DocumentTemplate"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"configuration"}},{"kind":"Field","name":{"kind":"Name","value":"schema"}},{"kind":"Field","name":{"kind":"Name","value":"content"}},{"kind":"Field","name":{"kind":"Name","value":"defaultAttributes"}},{"kind":"Field","name":{"kind":"Name","value":"attributes"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"key"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"description"}},{"kind":"Field","name":{"kind":"Name","value":"type"}},{"kind":"Field","name":{"kind":"Name","value":"supplementaryKey"}},{"kind":"Field","name":{"kind":"Name","value":"ui"}},{"kind":"Field","name":{"kind":"Name","value":"list"}},{"kind":"Field","name":{"kind":"Name","value":"configuration"}},{"kind":"Field","name":{"kind":"Name","value":"workflows"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"workflow"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Workflow"}}]}},{"kind":"Field","name":{"kind":"Name","value":"autoRun"}}]}}]}}]}}]} as unknown as DocumentNode<GetMetadataDocumentTemplateQuery, GetMetadataDocumentTemplateQueryVariables>;
 export const GetMetadataParentsDocument = {"__meta__":{"hash":"a20fe65084f0d33d17cfd1e32caa0f95dc0f49aa"},"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetMetadataParents"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"content"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"metadata"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"parentCollections"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"offset"},"value":{"kind":"IntValue","value":"0"}},{"kind":"Argument","name":{"kind":"Name","value":"limit"},"value":{"kind":"IntValue","value":"100"}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"ParentCollection"}}]}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"ParentCollection"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Collection"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}},{"kind":"Field","name":{"kind":"Name","value":"attributes"}}]}}]} as unknown as DocumentNode<GetMetadataParentsQuery, GetMetadataParentsQueryVariables>;
 export const GetMetadataPermissionsDocument = {"__meta__":{"hash":"087c894104439f01e4d053438228673f4b884c4d"},"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"query","name":{"kind":"Name","value":"GetMetadataPermissions"},"variableDefinitions":[{"kind":"VariableDefinition","variable":{"kind":"Variable","name":{"kind":"Name","value":"id"}},"type":{"kind":"NonNullType","type":{"kind":"NamedType","name":{"kind":"Name","value":"String"}}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"content"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"metadata"},"arguments":[{"kind":"Argument","name":{"kind":"Name","value":"id"},"value":{"kind":"Variable","name":{"kind":"Name","value":"id"}}}],"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"permissions"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Permission"}}]}}]}}]}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Group"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Group"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"name"}}]}},{"kind":"FragmentDefinition","name":{"kind":"Name","value":"Permission"},"typeCondition":{"kind":"NamedType","name":{"kind":"Name","value":"Permission"}},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"action"}},{"kind":"Field","name":{"kind":"Name","value":"group"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"FragmentSpread","name":{"kind":"Name","value":"Group"}}]}}]}}]} as unknown as DocumentNode<GetMetadataPermissionsQuery, GetMetadataPermissionsQueryVariables>;

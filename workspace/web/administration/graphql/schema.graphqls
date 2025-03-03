@@ -66,10 +66,12 @@ type Collection {
     collections(limit: Int!, offset: Int!): [Collection!]!
     collectionsCount: Int!
     created: DateTime!
+    deleted: Boolean!
     description: String
     id: String!
     itemAttributes: JSON
     items(limit: Int!, offset: Int!): [CollectionItem!]!
+    itemsCount: Int!
     labels: [String!]!
     metadata(limit: Int!, offset: Int!): [Metadata!]!
     metadataCount: Int!
@@ -82,7 +84,7 @@ type Collection {
     public: Boolean!
     publicList: Boolean!
     ready: DateTime
-    slug: String!
+    slug: String
     systemAttributes: JSON
     templateMetadata: Metadata
     traitIds: [String!]!
@@ -108,6 +110,7 @@ type CollectionMutation {
     deletePermission(permission: PermissionInput!): Permission!
     edit(collection: CollectionInput!, id: String!): Collection!
     editMetadataRelationship(relationship: CollectionMetadataRelationshipInput!): Boolean!
+    permanentlyDelete(collectionId: String!, recursive: Boolean): Boolean!
     removeChildCollection(collectionId: String!, id: String!): Collection!
     removeChildMetadata(id: String!, metadataId: String!): Collection!
     setChildItemAttributes(attributes: JSON, childCollectionId: String, childMetadataId: String, id: String!): Collection!
@@ -155,6 +158,7 @@ type CollectionWorkflow {
     pending: String
     plans: [WorkflowExecutionPlan!]!
     state: String!
+    stateValid: DateTime
 }
 
 type Configuration {
@@ -200,39 +204,22 @@ type ContentMutation {
     collection: CollectionMutation!
     metadata: MetadataMutation!
     reindex: Boolean!
+    sources: SourceMutation!
 }
 
 type Document {
     content: JSON!
-    templateMetadataId: String
-    templateMetadataVersion: Int
+    template: Metadata
     title: String!
 }
 
 type DocumentTemplate {
-    attributes: [DocumentTemplateAttribute!]!
+    attributes: [TemplateAttribute!]!
     configuration: JSON
     content: JSON!
     defaultAttributes: JSON
     metadata: Metadata
     schema: JSON
-}
-
-type DocumentTemplateAttribute {
-    configuration: JSON
-    description: String!
-    key: String!
-    list: Boolean!
-    name: String!
-    supplementaryKey: String
-    type: AttributeType!
-    ui: AttributeUiType!
-    workflows: [DocumentTemplateAttributeWorkflow!]!
-}
-
-type DocumentTemplateAttributeWorkflow {
-    autoRun: Boolean!
-    workflow: Workflow
 }
 
 type DocumentTemplates {
@@ -276,6 +263,41 @@ type Groups {
     all(limit: Int!, offset: Int!): [Group!]!
 }
 
+type Guide {
+    rrule: String
+    steps: [GuideStep!]!
+    template: Metadata
+    type: GuideType!
+}
+
+type GuideStep {
+    metadata: Metadata
+    modules: [GuideStepModule!]!
+}
+
+type GuideStepModule {
+    metadata: Metadata
+}
+
+type GuideTemplate {
+    attributes: [TemplateAttribute!]!
+    defaultAttributes: JSON
+    metadata: Metadata
+    rrule: String
+    steps: [GuideTemplateStep!]!
+    type: GuideType!
+}
+
+type GuideTemplateStep {
+    attributes: [TemplateAttribute!]!
+    metadata: Metadata
+    modules: [GuideTemplateStepModule!]!
+}
+
+type GuideTemplateStepModule {
+    metadata: Metadata
+}
+
 type Login {
     password(identifier: String!, password: String!): LoginResponse!
 }
@@ -298,8 +320,11 @@ type Metadata {
     collectionTemplate: CollectionTemplate
     content: MetadataContent!
     created: DateTime!
+    deleted: Boolean!
     document: Document
     documentTemplate: DocumentTemplate
+    guide: Guide
+    guideTemplate: GuideTemplate
     id: String!
     itemAttributes: JSON
     labels: [String!]!
@@ -314,8 +339,8 @@ type Metadata {
     publicContent: Boolean!
     publicSupplementary: Boolean!
     ready: DateTime
-    relationships: [MetadataRelationship!]!
-    slug: String!
+    relationships(filter: [String!]): [MetadataRelationship!]!
+    slug: String
     source: MetadataSource!
     supplementary(key: String): [MetadataSupplementary!]!
     systemAttributes: JSON
@@ -357,8 +382,10 @@ type MetadataMutation {
     deleteTrait(metadataId: String!, traitId: String!): WorkflowExecutionPlan
     edit(id: String!, metadata: MetadataInput!): Metadata!
     editRelationship(relationship: MetadataRelationshipInput!): Boolean!
+    permanentlyDelete(metadataId: String!): Boolean!
     setMetadataAttributes(attributes: JSON!, id: String!): Boolean!
     setMetadataContents(contentType: String, file: Upload!, id: String!): Boolean!
+    setMetadataDocument(document: DocumentInput!, id: String!, version: Int!): Boolean!
     setMetadataJsonContents(content: JSON!, contentType: String, id: String!): Boolean!
     setMetadataReady(configurations: [WorkflowConfigurationInput!], id: String!): Boolean!
     setMetadataSystemAttributes(attributes: JSON!, id: String!): Boolean!
@@ -380,7 +407,7 @@ type MetadataProfile {
 }
 
 type MetadataRelationship {
-    attributes: JSON!
+    attributes: JSON
     id: String!
     metadata: Metadata!
     relationship: String!
@@ -432,6 +459,7 @@ type MetadataWorkflow {
     pending: String
     plans: [WorkflowExecutionPlan!]!
     state: String!
+    stateValid: DateTime
 }
 
 type Model {
@@ -465,6 +493,7 @@ type Mutation {
 type Ordering {
     order: Order!
     path: [String!]!
+    type: AttributeType!
 }
 
 type Permission {
@@ -504,8 +533,8 @@ type Principals {
 
 type Profile {
     attributes: [ProfileAttribute!]!
-    id: String
-    name: String
+    id: String!
+    name: String!
     slug: String
     visibility: ProfileVisibility!
 }
@@ -629,9 +658,13 @@ type Source {
     name: String!
 }
 
+type SourceMutation {
+    add(source: SourceInput!): Source
+}
+
 type Sources {
+    all: [Source!]!
     source(id: String!): Source
-    sources: [Source!]!
 }
 
 type StorageSystem {
@@ -676,6 +709,24 @@ type Subscription {
     workflow: String!
     workflowPlanFailed: WorkflowExecutionId!
     workflowPlanFinished: WorkflowExecutionId!
+    workflowSchedule: String!
+}
+
+type TemplateAttribute {
+    configuration: JSON
+    description: String!
+    key: String!
+    list: Boolean!
+    name: String!
+    supplementaryKey: String
+    type: AttributeType!
+    ui: AttributeUiType!
+    workflows: [TemplateAttributeWorkflow!]!
+}
+
+type TemplateAttributeWorkflow {
+    autoRun: Boolean!
+    workflow: Workflow
 }
 
 type Token {
@@ -818,6 +869,31 @@ type WorkflowJobId {
     queue: String!
 }
 
+type WorkflowSchedule {
+    attributes: JSON
+    collection: Collection
+    configuration: JSON
+    enabled: Boolean!
+    ends: DateTime
+    id: String!
+    lastRun: DateTime
+    lastScheduled: DateTime
+    metadata: Metadata
+    nextRun: DateTime
+    rrule: String!
+    starts: DateTime!
+    workflow: Workflow
+}
+
+type WorkflowSchedules {
+    all: [WorkflowSchedule!]!
+}
+
+type WorkflowSchedulesMutation {
+    add(collectionId: String, metadataId: String, schedule: WorkflowScheduleInput!): WorkflowSchedule
+    delete(id: String!): Boolean!
+}
+
 type WorkflowState {
     configuration: JSON
     description: String!
@@ -848,6 +924,7 @@ type Workflows {
     models: Models!
     nextJob(queue: String!): WorkflowJob
     prompts: Prompts!
+    schedules: WorkflowSchedules!
     states: WorkflowStates!
     storageSystems: StorageSystems!
     traits: Traits!
@@ -862,17 +939,19 @@ type WorkflowsMutation {
     beginTransition(configurations: [WorkflowConfigurationInput!], request: BeginTransitionInput!): Boolean!
     delete(id: String!): Boolean!
     edit(workflow: WorkflowInput!): Workflow!
-    enqueueChildWorkflow(configurations: [WorkflowConfigurationInput!], jobId: WorkflowJobIdInput!, workflowId: String!): WorkflowExecutionId!
-    enqueueChildWorkflows(jobId: WorkflowJobIdInput!, workflowIds: [String!]!): [WorkflowExecutionId!]!
-    enqueueWorkflow(collectionId: String, configurations: [WorkflowConfigurationInput!], metadataId: String, version: Int, workflowId: String!): WorkflowExecutionId!
+    enqueueChildWorkflow(configurations: [WorkflowConfigurationInput!], delayUntil: DateTime, jobId: WorkflowJobIdInput!, workflowId: String!): WorkflowExecutionId!
+    enqueueChildWorkflows(delayUntil: DateTime, jobId: WorkflowJobIdInput!, workflowIds: [String!]!): [WorkflowExecutionId!]!
+    enqueueWorkflow(collectionId: String, configurations: [WorkflowConfigurationInput!], delayUntil: DateTime, metadataId: String, version: Int, workflowId: String!): WorkflowExecutionId!
     expireAll: Boolean!
-    findAndEnqueueWorkflow(configurations: [WorkflowConfigurationInput!], query: FindQueryInput!, workflowId: String!): [WorkflowExecutionId!]!
+    findAndEnqueueWorkflow(configurations: [WorkflowConfigurationInput!], delayUntil: DateTime, query: FindQueryInput!, workflowId: String!): [WorkflowExecutionId!]!
     models: ModelsMutation!
     prompts: PromptsMutation!
-    setExecutionJobContext(context: JSON!, jobId: WorkflowJobIdInput!): Boolean!
+    schedules: WorkflowSchedulesMutation!
     setExecutionPlanContext(context: JSON!, planId: WorkflowExecutionIdInput!): Boolean!
     setExecutionPlanJobCheckin(jobId: WorkflowJobIdInput!): Boolean!
     setExecutionPlanJobComplete(jobId: WorkflowJobIdInput!): Boolean!
+    setExecutionPlanJobContext(context: JSON!, jobId: WorkflowJobIdInput!): Boolean!
+    setExecutionPlanJobDelayed(delayedUntil: DateTime!, jobId: WorkflowJobIdInput!): Boolean!
     setExecutionPlanJobFailed(error: String!, jobId: WorkflowJobIdInput!): Boolean!
     states: WorkflowStatesMutation!
     storageSystems: StorageSystemsMutation!
@@ -921,6 +1000,13 @@ enum ExtensionFilterType {
     DOCUMENT_TEMPLATE
     GUIDE
     GUIDE_TEMPLATE
+}
+
+enum GuideType {
+    CALENDAR
+    CALENDAR_PROGRESS
+    LINEAR
+    LINEAR_PROGRESS
 }
 
 enum MetadataType {
@@ -1004,6 +1090,7 @@ input BeginTransitionInput {
     collectionId: String
     metadataId: String
     stateId: String!
+    stateValid: DateTime
     status: String!
     supplementaryId: String
     version: Int
@@ -1045,25 +1132,8 @@ input CollectionMetadataRelationshipInput {
     relationship: String
 }
 
-input CollectionTemplateAttributeInput {
-    configuration: JSON
-    description: String!
-    key: String!
-    list: Boolean!
-    name: String!
-    supplementaryKey: String
-    type: AttributeType!
-    ui: AttributeUiType!
-    workflowIds: [CollectionTemplateAttributeWorkflowInput!]!
-}
-
-input CollectionTemplateAttributeWorkflowInput {
-    autoRun: Boolean!
-    workflowId: String!
-}
-
 input CollectionTemplateInput {
-    attributes: [CollectionTemplateAttributeInput!]!
+    attributes: [TemplateAttributeInput!]!
     collectionFilter: FindQueriesInput
     configuration: JSON
     defaultAttributes: JSON
@@ -1101,25 +1171,8 @@ input DocumentInput {
     title: String!
 }
 
-input DocumentTemplateAttributeInput {
-    configuration: JSON
-    description: String!
-    key: String!
-    list: Boolean!
-    name: String!
-    supplementaryKey: String
-    type: AttributeType!
-    ui: AttributeUiType!
-    workflowIds: [DocumentTemplateAttributeWorkflowInput!]!
-}
-
-input DocumentTemplateAttributeWorkflowInput {
-    autoRun: Boolean!
-    workflowId: String!
-}
-
 input DocumentTemplateInput {
-    attributes: [DocumentTemplateAttributeInput!]!
+    attributes: [TemplateAttributeInput!]!
     configuration: JSON
     content: JSON!
     defaultAttributes: JSON
@@ -1150,8 +1203,55 @@ input FindQueryInput {
 }
 
 input FindQueryOptionInput {
-    name: [String!]!
+    name: String!
     query: FindQueryInput!
+}
+
+input GuideInput {
+    guideType: GuideType!
+    rrule: String
+    steps: GuideStepInput
+    templateMetadataId: String
+    templateMetadataVersion: Int
+}
+
+input GuideStepInput {
+    modules: [GuideStepModuleInput!]!
+    stepMetadataId: String
+    stepMetadataVersion: Int
+    templateMetadataId: String
+    templateMetadataVersion: Int
+    templateStepId: Int
+}
+
+input GuideStepModuleInput {
+    moduleMetadataId: String!
+    moduleMetadataVersion: Int!
+    templateMetadataId: String
+    templateMetadataVersion: Int
+    templateModuleId: Int
+    templateStepId: Int
+}
+
+input GuideTemplateInput {
+    attributes: [TemplateAttributeInput!]!
+    defaultAttributes: JSON
+    rrule: String!
+    steps: [GuideTemplateStepInput!]!
+    type: GuideType!
+}
+
+input GuideTemplateStepInput {
+    attributes: [TemplateAttributeInput!]!
+    modules: [GuideTemplateStepModuleInput!]!
+    templateMetadataId: String
+    templateMetadataVersion: Int
+}
+
+input GuideTemplateStepModuleInput {
+    configuration: JSON
+    templateMetadataId: String!
+    templateMetadataVersion: Int!
 }
 
 input MetadataChildInput {
@@ -1167,6 +1267,8 @@ input MetadataInput {
     contentType: String!
     document: DocumentInput
     documentTemplate: DocumentTemplateInput
+    guide: GuideInput
+    guideTemplate: GuideTemplateInput
     index: Boolean
     labels: [String!]
     languageTag: String!
@@ -1238,6 +1340,7 @@ input ModelInput {
 input OrderingInput {
     order: Order!
     path: [String!]!
+    type: AttributeType!
 }
 
 input PermissionInput {
@@ -1303,6 +1406,12 @@ input SearchQuery {
     storageSystemId: String!
 }
 
+input SourceInput {
+    configuration: JSON!
+    description: String!
+    name: String!
+}
+
 input StorageSystemInput {
     configuration: JSON
     description: String!
@@ -1314,6 +1423,23 @@ input StorageSystemInput {
 input StorageSystemModelInput {
     configuration: JSON!
     modelId: String!
+}
+
+input TemplateAttributeInput {
+    configuration: JSON
+    description: String!
+    key: String!
+    list: Boolean!
+    name: String!
+    supplementaryKey: String
+    type: AttributeType!
+    ui: AttributeUiType!
+    workflowIds: [TemplateAttributeWorkflowInput!]!
+}
+
+input TemplateAttributeWorkflowInput {
+    autoRun: Boolean!
+    workflowId: String!
 }
 
 input TraitInput {
@@ -1387,6 +1513,15 @@ input WorkflowJobIdInput {
     id: String!
     index: Int!
     queue: String!
+}
+
+input WorkflowScheduleInput {
+    attributes: JSON
+    configuration: JSON
+    enabled: Boolean!
+    ends: DateTime
+    rrule: String!
+    workflowId: String!
 }
 
 input WorkflowStateInput {

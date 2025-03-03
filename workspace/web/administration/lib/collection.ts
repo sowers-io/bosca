@@ -1,6 +1,6 @@
 import type {
     CollectionFragment,
-    CollectionInput
+    CollectionInput, OrderingInput
 } from '~/lib/graphql/graphql.ts'
 
 export function toCollectionInput(collection: CollectionFragment): CollectionInput {
@@ -11,7 +11,7 @@ export function toCollectionInput(collection: CollectionFragment): CollectionInp
         description: collection.description,
         labels: collection.labels,
         name: collection.name,
-        ordering: collection.ordering,
+        ordering: collection.ordering as Array<OrderingInput>,
         slug: collection.slug,
         templateMetadataId: collection.templateMetadata?.id,
         templateMetadataVersion: collection.templateMetadata?.version,

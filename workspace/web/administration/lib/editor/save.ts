@@ -24,8 +24,8 @@ export async function save(
   content: any,
 ) {
   const newDocument: DocumentInput = {
-    templateMetadataId: document.templateMetadataId,
-    templateMetadataVersion: document.templateMetadataVersion,
+    templateMetadataId: document.template?.id,
+    templateMetadataVersion: document.template?.version,
     title: title,
     content: {
       document: content,

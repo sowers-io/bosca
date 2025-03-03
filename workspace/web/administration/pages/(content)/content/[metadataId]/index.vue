@@ -32,10 +32,10 @@ const parentCollections = computed(() => {
   return parents.value?.filter((c) => c.attributes['editor.type'] !== 'Document') || []
 })
 const template = ref(
-    document.value.templateMetadataId && document.value.templateMetadataVersion
+    document.value.template?.id && document.value.template?.version
         ? await client.metadata.getDocumentTemplate(
-            document.value.templateMetadataId,
-            document.value.templateMetadataVersion,
+            document.value.template?.id,
+            document.value.template?.version,
         )
         : null,
 )

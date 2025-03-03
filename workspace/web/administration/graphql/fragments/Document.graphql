@@ -1,6 +1,8 @@
 fragment Document on Document {
-    templateMetadataId
-    templateMetadataVersion
+    template {
+        id
+        version
+    }
     title
     content
 }
