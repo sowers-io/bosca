@@ -1,0 +1,13 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="install admin queries" type="js.build_tools.npm">
+    <package-json value="$PROJECT_DIR$/workspace/web/administration/package.json" />
+    <command value="run" />
+    <scripts>
+      <script value="install-queries" />
+    </scripts>
+    <node-interpreter value="$USER_HOME$/.deno/bin/deno" />
+    <package-manager value="$USER_HOME$/.deno/bin/deno" />
+    <envs />
+    <method v="2" />
+  </configuration>
+</component>

@@ -113,8 +113,10 @@ async function onUnpublish() {
   )
 }
 
-function onPreview() {
-  toast({ title: 'Preview not implemented yet.' })
+async function onPreview() {
+  const configuration = await client.configurations.getConfiguration('preview.url')
+  if (!configuration || !metadata.value?.slug) return
+  window.open(configuration.value.value + '?slug=' + metadata.value!.slug, '_blank')
 }
 
 function onDelete() {

@@ -421,6 +421,10 @@ const editable = computed(() => props.metadata.workflow.state === 'draft')
   @apply mt-4;
 }
 
+.tiptap li > p {
+  @apply m-0 inline;
+}
+
 .tiptap ol {
   list-style-type: decimal; /* Show numbers as ordered list style */
   list-style-position: inside;

@@ -89,6 +89,10 @@ impl ConfigurationDataStore {
         txn.execute(&stmt, &[&id, &value, &nonce]).await?;
         txn.commit().await?;
         let id_str = id.to_string();
+        {
+            let mut cache = self.cache.write().await;
+            cache.remove(&configuration.key);
+        }
         self.notifier.configuration_changed(&id_str).await?;
         Ok(id)
     }
@@ -96,12 +100,16 @@ impl ConfigurationDataStore {
     pub async fn delete_configuration(&self, id: &Uuid) -> Result<(), Error> {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
-        let stmt = txn.prepare_cached("delete configurations where id = $1 returning id").await?;
+        let stmt = txn.prepare_cached("delete configurations where id = $1 returning key").await?;
         let result = txn.query_one(&stmt, &[&id]).await?;
         if result.is_empty() {
             return Ok(())
         }
-        let id: Uuid = result.get("id");
+        let key: String = result.get("key");
+        {
+            let mut cache = self.cache.write().await;
+            cache.remove(&key);
+        }
         let id = id.to_string();
         self.notifier.configuration_changed(&id).await?;
         Ok(())

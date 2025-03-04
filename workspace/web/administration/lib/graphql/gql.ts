@@ -36,6 +36,7 @@ type Documents = {
     "mutation BeginMetadataTransition($id: String!, $version: Int!, $state: String!, $status: String!) {\n  workflows {\n    beginTransition(\n      request: {metadataId: $id, version: $version, stateId: $state, status: $status, waitForCompletion: true}\n    )\n  }\n}": typeof types.BeginMetadataTransitionDocument,
     "mutation DeleteActivity($id: String!) {\n  workflows {\n    activities {\n      delete(activityId: $id)\n    }\n  }\n}": typeof types.DeleteActivityDocument,
     "mutation DeleteCollection($id: String!) {\n  content {\n    collection {\n      delete(id: $id, recursive: true)\n    }\n  }\n}": typeof types.DeleteCollectionDocument,
+    "mutation DeleteConfiguration($key: String!) {\n  configurations {\n    deleteConfiguration(key: $key)\n  }\n}": typeof types.DeleteConfigurationDocument,
     "mutation DeleteMetadata($id: String!) {\n  content {\n    metadata {\n      delete(metadataId: $id)\n    }\n  }\n}": typeof types.DeleteMetadataDocument,
     "mutation DeleteModel($id: String!) {\n  workflows {\n    models {\n      delete(id: $id)\n    }\n  }\n}": typeof types.DeleteModelDocument,
     "mutation DeletePrompt($id: String!) {\n  workflows {\n    prompts {\n      delete(id: $id)\n    }\n  }\n}": typeof types.DeletePromptDocument,
@@ -71,6 +72,8 @@ type Documents = {
     "query GetCollectionPermissions($id: String) {\n  content {\n    collection(id: $id) {\n      permissions {\n        ...Permission\n      }\n    }\n  }\n}": typeof types.GetCollectionPermissionsDocument,
     "query GetCollectionTemplate($id: String!, $version: Int) {\n  content {\n    metadata(id: $id, version: $version) {\n      collectionTemplate {\n        ...CollectionTemplate\n      }\n    }\n  }\n}": typeof types.GetCollectionTemplateDocument,
     "query GetCollectionWorkflowPlans($id: String) {\n  content {\n    collection(id: $id) {\n      workflow {\n        plans {\n          ...WorkflowPlan\n        }\n      }\n    }\n  }\n}": typeof types.GetCollectionWorkflowPlansDocument,
+    "query GetConfiguration($key: String!) {\n  configurations {\n    configuration(key: $key) {\n      ...Configuration\n    }\n  }\n}": typeof types.GetConfigurationDocument,
+    "query GetConfigurations {\n  configurations {\n    all {\n      ...Configuration\n    }\n  }\n}": typeof types.GetConfigurationsDocument,
     "query GetCurrentProfile {\n  profiles {\n    current {\n      ...Profile\n    }\n  }\n}": typeof types.GetCurrentProfileDocument,
     "query GetGroups($offset: Int!, $limit: Int!) {\n  security {\n    groups {\n      all(offset: $offset, limit: $limit) {\n        ...Group\n      }\n    }\n  }\n}": typeof types.GetGroupsDocument,
     "query GetMetadata($id: String!, $version: Int) {\n  content {\n    metadata(id: $id, version: $version) {\n      ...Metadata\n    }\n  }\n}\n\nquery GetMetadataUpload($id: String!) {\n  content {\n    metadata(id: $id) {\n      content {\n        ...MetadataContentUpload\n      }\n    }\n  }\n}": typeof types.GetMetadataDocument,
@@ -128,6 +131,7 @@ type Documents = {
     "mutation SetCollectionPublic($id: String!, $public: Boolean!) {\n  content {\n    collection {\n      setPublic(id: $id, public: $public) {\n        id\n      }\n    }\n  }\n}": typeof types.SetCollectionPublicDocument,
     "mutation SetCollectionPublicList($id: String!, $public: Boolean!) {\n  content {\n    collection {\n      setPublicList(id: $id, public: $public) {\n        id\n      }\n    }\n  }\n}": typeof types.SetCollectionPublicListDocument,
     "mutation SetCollectionReady($id: String!) {\n  content {\n    collection {\n      setReady(id: $id)\n    }\n  }\n}": typeof types.SetCollectionReadyDocument,
+    "mutation SetConfiguration($configuration: ConfigurationInput!) {\n  configurations {\n    setConfiguration(configuration: $configuration) {\n      ...Configuration\n    }\n  }\n}": typeof types.SetConfigurationDocument,
     "mutation SetContents($id: String!, $contentType: String, $file: Upload!) {\n  content {\n    metadata {\n      setMetadataContents(id: $id, contentType: $contentType, file: $file)\n    }\n  }\n}": typeof types.SetContentsDocument,
     "mutation SetJsonContents($id: String!, $contentType: String!, $content: JSON!) {\n  content {\n    metadata {\n      setMetadataJsonContents(id: $id, contentType: $contentType, content: $content)\n    }\n  }\n}": typeof types.SetJsonContentsDocument,
     "mutation SetMetadataAttributes($id: String!, $attributes: JSON!) {\n  content {\n    metadata {\n      setMetadataAttributes(id: $id, attributes: $attributes)\n    }\n  }\n}": typeof types.SetMetadataAttributesDocument,
@@ -146,6 +150,7 @@ type Documents = {
     "fragment CollectionMetadataRelationship on CollectionMetadataRelationship {\n  metadata {\n    ...MetadataRelationshipMetadata\n  }\n  relationship\n  attributes\n}": typeof types.CollectionMetadataRelationshipFragmentDoc,
     "fragment CollectionTemplate on CollectionTemplate {\n  configuration\n  defaultAttributes\n  collectionFilter {\n    options {\n      ...FindQueryOption\n    }\n  }\n  attributes {\n    key\n    name\n    description\n    type\n    supplementaryKey\n    ui\n    list\n    configuration\n    workflows {\n      workflow {\n        ...Workflow\n      }\n      autoRun\n    }\n  }\n}": typeof types.CollectionTemplateFragmentDoc,
     "fragment CollectionWorkflow on CollectionWorkflow {\n  state\n  pending\n}": typeof types.CollectionWorkflowFragmentDoc,
+    "fragment Configuration on Configuration {\n  id\n  key\n  description\n  value\n  permissions {\n    action\n    group {\n      id\n      name\n    }\n  }\n}": typeof types.ConfigurationFragmentDoc,
     "fragment Document on Document {\n  template {\n    id\n    version\n  }\n  title\n  content\n}": typeof types.DocumentFragmentDoc,
     "fragment DocumentTemplate on DocumentTemplate {\n  configuration\n  schema\n  content\n  defaultAttributes\n  attributes {\n    key\n    name\n    description\n    type\n    supplementaryKey\n    ui\n    list\n    configuration\n    workflows {\n      workflow {\n        ...Workflow\n      }\n      autoRun\n    }\n  }\n}": typeof types.DocumentTemplateFragmentDoc,
     "fragment FindAttributes on FindAttributes {\n  attributes {\n    ...FindAttribute\n  }\n}\n\nfragment FindAttribute on FindAttribute {\n  key\n  value\n}\n\nfragment FindQuery on FindQuery {\n  attributes {\n    ...FindAttributes\n  }\n  categoryIds\n  collectionType\n  contentTypes\n  extensionFilter\n  offset\n  limit\n}\n\nfragment FindQueryOption on FindQueryOption {\n  name\n  query {\n    ...FindQuery\n  }\n}": typeof types.FindAttributesFragmentDoc,
@@ -200,6 +205,7 @@ const documents: Documents = {
     "mutation BeginMetadataTransition($id: String!, $version: Int!, $state: String!, $status: String!) {\n  workflows {\n    beginTransition(\n      request: {metadataId: $id, version: $version, stateId: $state, status: $status, waitForCompletion: true}\n    )\n  }\n}": types.BeginMetadataTransitionDocument,
     "mutation DeleteActivity($id: String!) {\n  workflows {\n    activities {\n      delete(activityId: $id)\n    }\n  }\n}": types.DeleteActivityDocument,
     "mutation DeleteCollection($id: String!) {\n  content {\n    collection {\n      delete(id: $id, recursive: true)\n    }\n  }\n}": types.DeleteCollectionDocument,
+    "mutation DeleteConfiguration($key: String!) {\n  configurations {\n    deleteConfiguration(key: $key)\n  }\n}": types.DeleteConfigurationDocument,
     "mutation DeleteMetadata($id: String!) {\n  content {\n    metadata {\n      delete(metadataId: $id)\n    }\n  }\n}": types.DeleteMetadataDocument,
     "mutation DeleteModel($id: String!) {\n  workflows {\n    models {\n      delete(id: $id)\n    }\n  }\n}": types.DeleteModelDocument,
     "mutation DeletePrompt($id: String!) {\n  workflows {\n    prompts {\n      delete(id: $id)\n    }\n  }\n}": types.DeletePromptDocument,
@@ -235,6 +241,8 @@ const documents: Documents = {
     "query GetCollectionPermissions($id: String) {\n  content {\n    collection(id: $id) {\n      permissions {\n        ...Permission\n      }\n    }\n  }\n}": types.GetCollectionPermissionsDocument,
     "query GetCollectionTemplate($id: String!, $version: Int) {\n  content {\n    metadata(id: $id, version: $version) {\n      collectionTemplate {\n        ...CollectionTemplate\n      }\n    }\n  }\n}": types.GetCollectionTemplateDocument,
     "query GetCollectionWorkflowPlans($id: String) {\n  content {\n    collection(id: $id) {\n      workflow {\n        plans {\n          ...WorkflowPlan\n        }\n      }\n    }\n  }\n}": types.GetCollectionWorkflowPlansDocument,
+    "query GetConfiguration($key: String!) {\n  configurations {\n    configuration(key: $key) {\n      ...Configuration\n    }\n  }\n}": types.GetConfigurationDocument,
+    "query GetConfigurations {\n  configurations {\n    all {\n      ...Configuration\n    }\n  }\n}": types.GetConfigurationsDocument,
     "query GetCurrentProfile {\n  profiles {\n    current {\n      ...Profile\n    }\n  }\n}": types.GetCurrentProfileDocument,
     "query GetGroups($offset: Int!, $limit: Int!) {\n  security {\n    groups {\n      all(offset: $offset, limit: $limit) {\n        ...Group\n      }\n    }\n  }\n}": types.GetGroupsDocument,
     "query GetMetadata($id: String!, $version: Int) {\n  content {\n    metadata(id: $id, version: $version) {\n      ...Metadata\n    }\n  }\n}\n\nquery GetMetadataUpload($id: String!) {\n  content {\n    metadata(id: $id) {\n      content {\n        ...MetadataContentUpload\n      }\n    }\n  }\n}": types.GetMetadataDocument,
@@ -292,6 +300,7 @@ const documents: Documents = {
     "mutation SetCollectionPublic($id: String!, $public: Boolean!) {\n  content {\n    collection {\n      setPublic(id: $id, public: $public) {\n        id\n      }\n    }\n  }\n}": types.SetCollectionPublicDocument,
     "mutation SetCollectionPublicList($id: String!, $public: Boolean!) {\n  content {\n    collection {\n      setPublicList(id: $id, public: $public) {\n        id\n      }\n    }\n  }\n}": types.SetCollectionPublicListDocument,
     "mutation SetCollectionReady($id: String!) {\n  content {\n    collection {\n      setReady(id: $id)\n    }\n  }\n}": types.SetCollectionReadyDocument,
+    "mutation SetConfiguration($configuration: ConfigurationInput!) {\n  configurations {\n    setConfiguration(configuration: $configuration) {\n      ...Configuration\n    }\n  }\n}": types.SetConfigurationDocument,
     "mutation SetContents($id: String!, $contentType: String, $file: Upload!) {\n  content {\n    metadata {\n      setMetadataContents(id: $id, contentType: $contentType, file: $file)\n    }\n  }\n}": types.SetContentsDocument,
     "mutation SetJsonContents($id: String!, $contentType: String!, $content: JSON!) {\n  content {\n    metadata {\n      setMetadataJsonContents(id: $id, contentType: $contentType, content: $content)\n    }\n  }\n}": types.SetJsonContentsDocument,
     "mutation SetMetadataAttributes($id: String!, $attributes: JSON!) {\n  content {\n    metadata {\n      setMetadataAttributes(id: $id, attributes: $attributes)\n    }\n  }\n}": types.SetMetadataAttributesDocument,
@@ -310,6 +319,7 @@ const documents: Documents = {
     "fragment CollectionMetadataRelationship on CollectionMetadataRelationship {\n  metadata {\n    ...MetadataRelationshipMetadata\n  }\n  relationship\n  attributes\n}": types.CollectionMetadataRelationshipFragmentDoc,
     "fragment CollectionTemplate on CollectionTemplate {\n  configuration\n  defaultAttributes\n  collectionFilter {\n    options {\n      ...FindQueryOption\n    }\n  }\n  attributes {\n    key\n    name\n    description\n    type\n    supplementaryKey\n    ui\n    list\n    configuration\n    workflows {\n      workflow {\n        ...Workflow\n      }\n      autoRun\n    }\n  }\n}": types.CollectionTemplateFragmentDoc,
     "fragment CollectionWorkflow on CollectionWorkflow {\n  state\n  pending\n}": types.CollectionWorkflowFragmentDoc,
+    "fragment Configuration on Configuration {\n  id\n  key\n  description\n  value\n  permissions {\n    action\n    group {\n      id\n      name\n    }\n  }\n}": types.ConfigurationFragmentDoc,
     "fragment Document on Document {\n  template {\n    id\n    version\n  }\n  title\n  content\n}": types.DocumentFragmentDoc,
     "fragment DocumentTemplate on DocumentTemplate {\n  configuration\n  schema\n  content\n  defaultAttributes\n  attributes {\n    key\n    name\n    description\n    type\n    supplementaryKey\n    ui\n    list\n    configuration\n    workflows {\n      workflow {\n        ...Workflow\n      }\n      autoRun\n    }\n  }\n}": types.DocumentTemplateFragmentDoc,
     "fragment FindAttributes on FindAttributes {\n  attributes {\n    ...FindAttribute\n  }\n}\n\nfragment FindAttribute on FindAttribute {\n  key\n  value\n}\n\nfragment FindQuery on FindQuery {\n  attributes {\n    ...FindAttributes\n  }\n  categoryIds\n  collectionType\n  contentTypes\n  extensionFilter\n  offset\n  limit\n}\n\nfragment FindQueryOption on FindQueryOption {\n  name\n  query {\n    ...FindQuery\n  }\n}": types.FindAttributesFragmentDoc,
@@ -444,6 +454,10 @@ export function graphql(source: "mutation DeleteActivity($id: String!) {\n  work
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "mutation DeleteCollection($id: String!) {\n  content {\n    collection {\n      delete(id: $id, recursive: true)\n    }\n  }\n}"): (typeof documents)["mutation DeleteCollection($id: String!) {\n  content {\n    collection {\n      delete(id: $id, recursive: true)\n    }\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "mutation DeleteConfiguration($key: String!) {\n  configurations {\n    deleteConfiguration(key: $key)\n  }\n}"): (typeof documents)["mutation DeleteConfiguration($key: String!) {\n  configurations {\n    deleteConfiguration(key: $key)\n  }\n}"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
@@ -584,6 +598,14 @@ export function graphql(source: "query GetCollectionTemplate($id: String!, $vers
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "query GetCollectionWorkflowPlans($id: String) {\n  content {\n    collection(id: $id) {\n      workflow {\n        plans {\n          ...WorkflowPlan\n        }\n      }\n    }\n  }\n}"): (typeof documents)["query GetCollectionWorkflowPlans($id: String) {\n  content {\n    collection(id: $id) {\n      workflow {\n        plans {\n          ...WorkflowPlan\n        }\n      }\n    }\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "query GetConfiguration($key: String!) {\n  configurations {\n    configuration(key: $key) {\n      ...Configuration\n    }\n  }\n}"): (typeof documents)["query GetConfiguration($key: String!) {\n  configurations {\n    configuration(key: $key) {\n      ...Configuration\n    }\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "query GetConfigurations {\n  configurations {\n    all {\n      ...Configuration\n    }\n  }\n}"): (typeof documents)["query GetConfigurations {\n  configurations {\n    all {\n      ...Configuration\n    }\n  }\n}"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
@@ -815,6 +837,10 @@ export function graphql(source: "mutation SetCollectionReady($id: String!) {\n  
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
+export function graphql(source: "mutation SetConfiguration($configuration: ConfigurationInput!) {\n  configurations {\n    setConfiguration(configuration: $configuration) {\n      ...Configuration\n    }\n  }\n}"): (typeof documents)["mutation SetConfiguration($configuration: ConfigurationInput!) {\n  configurations {\n    setConfiguration(configuration: $configuration) {\n      ...Configuration\n    }\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
 export function graphql(source: "mutation SetContents($id: String!, $contentType: String, $file: Upload!) {\n  content {\n    metadata {\n      setMetadataContents(id: $id, contentType: $contentType, file: $file)\n    }\n  }\n}"): (typeof documents)["mutation SetContents($id: String!, $contentType: String, $file: Upload!) {\n  content {\n    metadata {\n      setMetadataContents(id: $id, contentType: $contentType, file: $file)\n    }\n  }\n}"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
@@ -884,6 +910,10 @@ export function graphql(source: "fragment CollectionTemplate on CollectionTempla
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "fragment CollectionWorkflow on CollectionWorkflow {\n  state\n  pending\n}"): (typeof documents)["fragment CollectionWorkflow on CollectionWorkflow {\n  state\n  pending\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "fragment Configuration on Configuration {\n  id\n  key\n  description\n  value\n  permissions {\n    action\n    group {\n      id\n      name\n    }\n  }\n}"): (typeof documents)["fragment Configuration on Configuration {\n  id\n  key\n  description\n  value\n  permissions {\n    action\n    group {\n      id\n      name\n    }\n  }\n}"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

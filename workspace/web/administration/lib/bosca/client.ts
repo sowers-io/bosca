@@ -6,6 +6,7 @@ import { Listeners } from '~/lib/bosca/listeners'
 import { Workflows } from '~/lib/bosca/workflows'
 import { Search } from '~/lib/bosca/search'
 import { Profiles } from '~/lib/bosca/profiles'
+import { Configurations } from '~/lib/bosca/configurations'
 
 export class BoscaClient<T extends NetworkClient> {
   readonly security: Security<T>
@@ -15,6 +16,7 @@ export class BoscaClient<T extends NetworkClient> {
   readonly search: Search<T>
   readonly profiles: Profiles<T>
   readonly listeners: Listeners<T>
+  readonly configurations: Configurations<T>
 
   constructor(network: T) {
     this.profiles = new Profiles<T>(network)
@@ -24,5 +26,6 @@ export class BoscaClient<T extends NetworkClient> {
     this.workflows = new Workflows<T>(network)
     this.search = new Search<T>(network)
     this.listeners = new Listeners<T>(network)
+    this.configurations = new Configurations<T>(network)
   }
 }
