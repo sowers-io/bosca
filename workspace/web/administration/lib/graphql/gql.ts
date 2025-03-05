@@ -152,8 +152,8 @@ type Documents = {
     "fragment CollectionWorkflow on CollectionWorkflow {\n  state\n  pending\n}": typeof types.CollectionWorkflowFragmentDoc,
     "fragment Configuration on Configuration {\n  id\n  key\n  description\n  value\n  permissions {\n    action\n    group {\n      id\n      name\n    }\n  }\n}": typeof types.ConfigurationFragmentDoc,
     "fragment Document on Document {\n  template {\n    id\n    version\n  }\n  title\n  content\n}": typeof types.DocumentFragmentDoc,
-    "fragment DocumentTemplate on DocumentTemplate {\n  configuration\n  schema\n  content\n  defaultAttributes\n  containers {\n    ...DocumentTemplateContainer\n  }\n  attributes {\n    key\n    name\n    description\n    type\n    supplementaryKey\n    ui\n    list\n    configuration\n    workflows {\n      workflow {\n        ...Workflow\n      }\n      autoRun\n    }\n  }\n}": typeof types.DocumentTemplateFragmentDoc,
-    "fragment DocumentTemplateContainer on DocumentTemplateContainer {\n  id\n  name\n  description\n}": typeof types.DocumentTemplateContainerFragmentDoc,
+    "fragment DocumentTemplate on DocumentTemplate {\n  configuration\n  schema\n  content\n  defaultAttributes\n  containers {\n    ...DocumentTemplateContainer\n  }\n  attributes {\n    ...TemplateAttribute\n  }\n}": typeof types.DocumentTemplateFragmentDoc,
+    "fragment DocumentTemplateContainer on DocumentTemplateContainer {\n  id\n  name\n  description\n  workflows {\n    ...TemplateWorkflow\n  }\n}": typeof types.DocumentTemplateContainerFragmentDoc,
     "fragment FindAttributes on FindAttributes {\n  attributes {\n    ...FindAttribute\n  }\n}\n\nfragment FindAttribute on FindAttribute {\n  key\n  value\n}\n\nfragment FindQuery on FindQuery {\n  attributes {\n    ...FindAttributes\n  }\n  categoryIds\n  collectionType\n  contentTypes\n  extensionFilter\n  offset\n  limit\n}\n\nfragment FindQueryOption on FindQueryOption {\n  name\n  query {\n    ...FindQuery\n  }\n}": typeof types.FindAttributesFragmentDoc,
     "fragment Group on Group {\n  id\n  name\n}": typeof types.GroupFragmentDoc,
     "fragment MetadataIdName on Metadata {\n  __typename\n  id\n  version\n  slug\n  name\n  content {\n    type\n  }\n}\n\nfragment Metadata on Metadata {\n  __typename\n  id\n  version\n  slug\n  name\n  labels\n  languageTag\n  public\n  publicContent\n  publicSupplementary\n  parentId\n  type\n  source {\n    id\n    identifier\n  }\n  categories {\n    ...Category\n  }\n  content {\n    ...MetadataContent\n  }\n  created\n  modified\n  uploaded\n  ready\n  attributes\n  systemAttributes\n  traitIds\n  workflow {\n    ...MetadataWorkflow\n  }\n  supplementary {\n    ...MetadataSupplementary\n  }\n  profiles {\n    ...MetadataProfile\n  }\n}": typeof types.MetadataIdNameFragmentDoc,
@@ -171,6 +171,8 @@ type Documents = {
     "fragment ProfileIdName on Profile {\n  __typename\n  id\n  name\n}\n\nfragment Profile on Profile {\n  __typename\n  id\n  slug\n  name\n  visibility\n  attributes {\n    id\n    typeId\n    visibility\n    attributes\n    metadata {\n      id\n      content {\n        urls {\n          download {\n            url\n            headers {\n              name\n              value\n            }\n          }\n        }\n      }\n    }\n  }\n}": typeof types.ProfileIdNameFragmentDoc,
     "fragment Prompt on Prompt {\n  id\n  name\n  description\n  inputType\n  outputType\n  systemPrompt\n  userPrompt\n}": typeof types.PromptFragmentDoc,
     "fragment StorageSystem on StorageSystem {\n  id\n  name\n  type\n  description\n  configuration\n  models {\n    modelId\n    configuration\n  }\n}": typeof types.StorageSystemFragmentDoc,
+    "fragment TemplateAttribute on TemplateAttribute {\n  key\n  name\n  description\n  type\n  supplementaryKey\n  ui\n  list\n  configuration\n  workflows {\n    ...TemplateWorkflow\n  }\n}": typeof types.TemplateAttributeFragmentDoc,
+    "fragment TemplateWorkflow on TemplateWorkflow {\n  autoRun\n  workflow {\n    id\n  }\n}": typeof types.TemplateWorkflowFragmentDoc,
     "fragment Trait on Trait {\n  id\n  name\n  description\n  contentTypes\n  workflowIds\n  deleteWorkflowId\n}": typeof types.TraitFragmentDoc,
     "fragment Transition on Transition {\n  fromStateId\n  toStateId\n  description\n}": typeof types.TransitionFragmentDoc,
     "fragment Workflow on Workflow {\n  id\n  queue\n  name\n  description\n  configuration\n}": typeof types.WorkflowFragmentDoc,
@@ -322,8 +324,8 @@ const documents: Documents = {
     "fragment CollectionWorkflow on CollectionWorkflow {\n  state\n  pending\n}": types.CollectionWorkflowFragmentDoc,
     "fragment Configuration on Configuration {\n  id\n  key\n  description\n  value\n  permissions {\n    action\n    group {\n      id\n      name\n    }\n  }\n}": types.ConfigurationFragmentDoc,
     "fragment Document on Document {\n  template {\n    id\n    version\n  }\n  title\n  content\n}": types.DocumentFragmentDoc,
-    "fragment DocumentTemplate on DocumentTemplate {\n  configuration\n  schema\n  content\n  defaultAttributes\n  containers {\n    ...DocumentTemplateContainer\n  }\n  attributes {\n    key\n    name\n    description\n    type\n    supplementaryKey\n    ui\n    list\n    configuration\n    workflows {\n      workflow {\n        ...Workflow\n      }\n      autoRun\n    }\n  }\n}": types.DocumentTemplateFragmentDoc,
-    "fragment DocumentTemplateContainer on DocumentTemplateContainer {\n  id\n  name\n  description\n}": types.DocumentTemplateContainerFragmentDoc,
+    "fragment DocumentTemplate on DocumentTemplate {\n  configuration\n  schema\n  content\n  defaultAttributes\n  containers {\n    ...DocumentTemplateContainer\n  }\n  attributes {\n    ...TemplateAttribute\n  }\n}": types.DocumentTemplateFragmentDoc,
+    "fragment DocumentTemplateContainer on DocumentTemplateContainer {\n  id\n  name\n  description\n  workflows {\n    ...TemplateWorkflow\n  }\n}": types.DocumentTemplateContainerFragmentDoc,
     "fragment FindAttributes on FindAttributes {\n  attributes {\n    ...FindAttribute\n  }\n}\n\nfragment FindAttribute on FindAttribute {\n  key\n  value\n}\n\nfragment FindQuery on FindQuery {\n  attributes {\n    ...FindAttributes\n  }\n  categoryIds\n  collectionType\n  contentTypes\n  extensionFilter\n  offset\n  limit\n}\n\nfragment FindQueryOption on FindQueryOption {\n  name\n  query {\n    ...FindQuery\n  }\n}": types.FindAttributesFragmentDoc,
     "fragment Group on Group {\n  id\n  name\n}": types.GroupFragmentDoc,
     "fragment MetadataIdName on Metadata {\n  __typename\n  id\n  version\n  slug\n  name\n  content {\n    type\n  }\n}\n\nfragment Metadata on Metadata {\n  __typename\n  id\n  version\n  slug\n  name\n  labels\n  languageTag\n  public\n  publicContent\n  publicSupplementary\n  parentId\n  type\n  source {\n    id\n    identifier\n  }\n  categories {\n    ...Category\n  }\n  content {\n    ...MetadataContent\n  }\n  created\n  modified\n  uploaded\n  ready\n  attributes\n  systemAttributes\n  traitIds\n  workflow {\n    ...MetadataWorkflow\n  }\n  supplementary {\n    ...MetadataSupplementary\n  }\n  profiles {\n    ...MetadataProfile\n  }\n}": types.MetadataIdNameFragmentDoc,
@@ -341,6 +343,8 @@ const documents: Documents = {
     "fragment ProfileIdName on Profile {\n  __typename\n  id\n  name\n}\n\nfragment Profile on Profile {\n  __typename\n  id\n  slug\n  name\n  visibility\n  attributes {\n    id\n    typeId\n    visibility\n    attributes\n    metadata {\n      id\n      content {\n        urls {\n          download {\n            url\n            headers {\n              name\n              value\n            }\n          }\n        }\n      }\n    }\n  }\n}": types.ProfileIdNameFragmentDoc,
     "fragment Prompt on Prompt {\n  id\n  name\n  description\n  inputType\n  outputType\n  systemPrompt\n  userPrompt\n}": types.PromptFragmentDoc,
     "fragment StorageSystem on StorageSystem {\n  id\n  name\n  type\n  description\n  configuration\n  models {\n    modelId\n    configuration\n  }\n}": types.StorageSystemFragmentDoc,
+    "fragment TemplateAttribute on TemplateAttribute {\n  key\n  name\n  description\n  type\n  supplementaryKey\n  ui\n  list\n  configuration\n  workflows {\n    ...TemplateWorkflow\n  }\n}": types.TemplateAttributeFragmentDoc,
+    "fragment TemplateWorkflow on TemplateWorkflow {\n  autoRun\n  workflow {\n    id\n  }\n}": types.TemplateWorkflowFragmentDoc,
     "fragment Trait on Trait {\n  id\n  name\n  description\n  contentTypes\n  workflowIds\n  deleteWorkflowId\n}": types.TraitFragmentDoc,
     "fragment Transition on Transition {\n  fromStateId\n  toStateId\n  description\n}": types.TransitionFragmentDoc,
     "fragment Workflow on Workflow {\n  id\n  queue\n  name\n  description\n  configuration\n}": types.WorkflowFragmentDoc,
@@ -923,11 +927,11 @@ export function graphql(source: "fragment Document on Document {\n  template {\n
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "fragment DocumentTemplate on DocumentTemplate {\n  configuration\n  schema\n  content\n  defaultAttributes\n  containers {\n    ...DocumentTemplateContainer\n  }\n  attributes {\n    key\n    name\n    description\n    type\n    supplementaryKey\n    ui\n    list\n    configuration\n    workflows {\n      workflow {\n        ...Workflow\n      }\n      autoRun\n    }\n  }\n}"): (typeof documents)["fragment DocumentTemplate on DocumentTemplate {\n  configuration\n  schema\n  content\n  defaultAttributes\n  containers {\n    ...DocumentTemplateContainer\n  }\n  attributes {\n    key\n    name\n    description\n    type\n    supplementaryKey\n    ui\n    list\n    configuration\n    workflows {\n      workflow {\n        ...Workflow\n      }\n      autoRun\n    }\n  }\n}"];
+export function graphql(source: "fragment DocumentTemplate on DocumentTemplate {\n  configuration\n  schema\n  content\n  defaultAttributes\n  containers {\n    ...DocumentTemplateContainer\n  }\n  attributes {\n    ...TemplateAttribute\n  }\n}"): (typeof documents)["fragment DocumentTemplate on DocumentTemplate {\n  configuration\n  schema\n  content\n  defaultAttributes\n  containers {\n    ...DocumentTemplateContainer\n  }\n  attributes {\n    ...TemplateAttribute\n  }\n}"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "fragment DocumentTemplateContainer on DocumentTemplateContainer {\n  id\n  name\n  description\n}"): (typeof documents)["fragment DocumentTemplateContainer on DocumentTemplateContainer {\n  id\n  name\n  description\n}"];
+export function graphql(source: "fragment DocumentTemplateContainer on DocumentTemplateContainer {\n  id\n  name\n  description\n  workflows {\n    ...TemplateWorkflow\n  }\n}"): (typeof documents)["fragment DocumentTemplateContainer on DocumentTemplateContainer {\n  id\n  name\n  description\n  workflows {\n    ...TemplateWorkflow\n  }\n}"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
@@ -996,6 +1000,14 @@ export function graphql(source: "fragment Prompt on Prompt {\n  id\n  name\n  de
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "fragment StorageSystem on StorageSystem {\n  id\n  name\n  type\n  description\n  configuration\n  models {\n    modelId\n    configuration\n  }\n}"): (typeof documents)["fragment StorageSystem on StorageSystem {\n  id\n  name\n  type\n  description\n  configuration\n  models {\n    modelId\n    configuration\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "fragment TemplateAttribute on TemplateAttribute {\n  key\n  name\n  description\n  type\n  supplementaryKey\n  ui\n  list\n  configuration\n  workflows {\n    ...TemplateWorkflow\n  }\n}"): (typeof documents)["fragment TemplateAttribute on TemplateAttribute {\n  key\n  name\n  description\n  type\n  supplementaryKey\n  ui\n  list\n  configuration\n  workflows {\n    ...TemplateWorkflow\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "fragment TemplateWorkflow on TemplateWorkflow {\n  autoRun\n  workflow {\n    id\n  }\n}"): (typeof documents)["fragment TemplateWorkflow on TemplateWorkflow {\n  autoRun\n  workflow {\n    id\n  }\n}"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

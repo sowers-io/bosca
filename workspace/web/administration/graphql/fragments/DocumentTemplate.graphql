@@ -7,20 +7,7 @@ fragment DocumentTemplate on DocumentTemplate {
         ...DocumentTemplateContainer
     }
     attributes {
-        key
-        name
-        description
-        type
-        supplementaryKey
-        ui
-        list
-        configuration
-        workflows {
-            workflow {
-                ...Workflow
-            }
-            autoRun
-        }
+        ...TemplateAttribute
     }
 }
 

@@ -124,29 +124,12 @@ type CollectionMutation {
 }
 
 type CollectionTemplate {
-    attributes: [CollectionTemplateAttribute!]!
+    attributes: [TemplateAttribute!]!
     collectionFilter: FindQueries
     configuration: JSON
     defaultAttributes: JSON
     metadata: Metadata
     metadataFilter: FindQueries
-}
-
-type CollectionTemplateAttribute {
-    configuration: JSON
-    description: String!
-    key: String!
-    list: Boolean!
-    name: String!
-    supplementaryKey: String
-    type: AttributeType!
-    ui: AttributeUiType!
-    workflows: [CollectionTemplateAttributeWorkflow!]!
-}
-
-type CollectionTemplateAttributeWorkflow {
-    autoRun: Boolean!
-    workflow: Workflow
 }
 
 type CollectionTemplates {
@@ -227,6 +210,7 @@ type DocumentTemplateContainer {
     description: String!
     id: String!
     name: String!
+    workflows: [TemplateWorkflow!]!
 }
 
 type DocumentTemplates {
@@ -728,10 +712,10 @@ type TemplateAttribute {
     supplementaryKey: String
     type: AttributeType!
     ui: AttributeUiType!
-    workflows: [TemplateAttributeWorkflow!]!
+    workflows: [TemplateWorkflow!]!
 }
 
-type TemplateAttributeWorkflow {
+type TemplateWorkflow {
     autoRun: Boolean!
     workflow: Workflow
 }
@@ -1182,6 +1166,7 @@ input DocumentTemplateContainerInput {
     description: String!
     id: String!
     name: String!
+    workflows: [TemplateWorkflowInput!]!
 }
 
 input DocumentTemplateInput {
@@ -1448,10 +1433,10 @@ input TemplateAttributeInput {
     supplementaryKey: String
     type: AttributeType!
     ui: AttributeUiType!
-    workflowIds: [TemplateAttributeWorkflowInput!]!
+    workflows: [TemplateWorkflowInput!]!
 }
 
-input TemplateAttributeWorkflowInput {
+input TemplateWorkflowInput {
     autoRun: Boolean!
     workflowId: String!
 }
