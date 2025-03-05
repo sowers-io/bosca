@@ -7,6 +7,7 @@ pub struct DocumentTemplateContainer {
     pub id: String,
     pub name: String,
     pub description: String,
+    pub supplementary_key: Option<String>,
 }
 
 #[derive(InputObject, Clone)]
@@ -14,6 +15,7 @@ pub struct DocumentTemplateContainerInput {
     pub id: String,
     pub name: String,
     pub description: String,
+    pub supplementary_key: Option<String>,
     pub workflows: Vec<TemplateWorkflowInput>
 }
 
@@ -23,6 +25,7 @@ impl From<&Row> for DocumentTemplateContainer {
             id: row.get("id"),
             name: row.get("name"),
             description: row.get("description"),
+            supplementary_key: row.get("supplementary_key"),
         }
     }
 }

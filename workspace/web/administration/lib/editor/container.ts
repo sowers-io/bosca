@@ -2,10 +2,12 @@ import {
     Node,
     mergeAttributes,
 } from '@tiptap/core'
-import type {DocumentTemplateContainer} from "~/lib/graphql/graphql.ts";
+import type {DocumentTemplateContainer, MetadataFragment} from "~/lib/graphql/graphql.ts";
+import {VueNodeViewRenderer} from "@tiptap/vue-3";
+import ContainerNode from "~/components/content/editor/ContainerNode.vue";
 
 export interface ContainerOptions {
-    name: string;
+    metadata: MetadataFragment;
     containers: Array<DocumentTemplateContainer>;
     HTMLAttributes: Record<string, any>,
 }
@@ -28,7 +30,7 @@ export const Container = Node.create<ContainerOptions>({
 
     addOptions() {
         return {
-            name: '',
+            metadata: {} as MetadataFragment,
             containers: [],
             HTMLAttributes: {},
         }
@@ -37,7 +39,7 @@ export const Container = Node.create<ContainerOptions>({
     addAttributes() {
         return {
             name: {
-                default: this.options.name,
+                default: null,
                 isRequired: true,
             },
         };
@@ -48,17 +50,12 @@ export const Container = Node.create<ContainerOptions>({
     },
 
     renderHTML({HTMLAttributes}) {
-        if (HTMLAttributes.name) {
-            const container = this.options.containers.find(c => c.id === HTMLAttributes.name)
-            return [
-                'div', {class: 'container'},
-                ['div', {class: 'container-name'}, container?.name || HTMLAttributes.name],
-                ['div', {class: 'container-content'},
-                    ['div', mergeAttributes(this.options.HTMLAttributes, HTMLAttributes), 0],
-                ]
-            ]
-        }
         return ['span', mergeAttributes(this.options.HTMLAttributes, HTMLAttributes), 0]
+    },
+
+    addNodeView() {
+        // @ts-ignore: this is fine
+        return VueNodeViewRenderer(ContainerNode, { draggable: true });
     },
 
     addCommands() {

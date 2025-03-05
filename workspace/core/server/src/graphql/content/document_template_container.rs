@@ -38,6 +38,10 @@ impl DocumentTemplateContainerObject {
         &self.container.description
     }
 
+    pub async fn supplementary_key(&self) -> &Option<String> {
+        &self.container.supplementary_key
+    }
+
     pub async fn workflows(&self, ctx: &Context<'_>) -> Result<Vec<TemplateWorkflowObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         Ok(ctx

@@ -62,7 +62,7 @@ export function newEditor(
     extensions: [
       CustomDocument,
       StarterKit.configure({ document: false }),
-      Container.configure({ containers: template?.containers || [] }),
+      Container.configure({ metadata: metadata, containers: template?.containers || [] }),
       Image,
       Link,
       Underline,

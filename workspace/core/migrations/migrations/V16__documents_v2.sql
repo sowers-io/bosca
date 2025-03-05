@@ -23,12 +23,13 @@ create table document_templates
 
 create table document_template_containers
 (
-    metadata_id uuid    not null,
-    version     int     not null,
-    id          varchar not null,
-    name        varchar not null,
-    description varchar not null,
-    sort        int     not null,
+    metadata_id       uuid    not null,
+    version           int     not null,
+    id                varchar not null,
+    name              varchar not null,
+    description       varchar not null,
+    supplementary_key varchar,
+    sort              int     not null,
     primary key (metadata_id, version, id),
     foreign key (metadata_id, version) references document_templates (metadata_id, version) on delete cascade
 );

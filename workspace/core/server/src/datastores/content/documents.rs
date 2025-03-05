@@ -83,7 +83,7 @@ impl DocumentsDataStore {
         id: &String,
     ) -> Result<Vec<TemplateWorkflow>, Error> {
         let connection = self.pool.get().await?;
-        let stmt = connection.prepare_cached("select * from document_template_container_workflows where metadata_id = $1 and version = $2 and id = $3 order by sort asc").await?;
+        let stmt = connection.prepare_cached("select * from document_template_container_workflows where metadata_id = $1 and version = $2 and id = $3").await?;
         let results = connection.query(&stmt, &[metadata_id, &version, id]).await?;
         Ok(results.iter().map(|r| r.into()).collect())
     }
@@ -216,7 +216,7 @@ impl DocumentsDataStore {
             }
         }
         if let Some(containers) = &template.containers {
-            let stmt = txn.prepare_cached("insert into document_template_containers (metadata_id, version, id, name, description, sort) values ($1, $2, $3, $4, $5, $6)").await?;
+            let stmt = txn.prepare_cached("insert into document_template_containers (metadata_id, version, id, name, description, supplementary_key, sort) values ($1, $2, $3, $4, $5, $6, $7)").await?;
             let stmt_wid = txn.prepare_cached("insert into document_template_container_workflows (metadata_id, version, id, workflow_id, auto_run) values ($1, $2, $3, $4, $5)").await?;
             for (index, container) in containers.iter().enumerate() {
                 let sort = index as i32;
@@ -226,6 +226,7 @@ impl DocumentsDataStore {
                     &container.id,
                     &container.name,
                     &container.description,
+                    &container.supplementary_key,
                     &sort
                 ]).await?;
                 for wid in &container.workflows {
