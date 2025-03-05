@@ -1,26 +1,30 @@
 <script setup lang="ts">
 import type {
   CollectionIdNameFragment,
-  MetadataIdNameFragment, ProfileIdNameFragment,
+  MetadataIdNameFragment,
+  ProfileIdNameFragment,
 } from '~/lib/graphql/graphql'
-import {getLink} from "~/lib/link.ts";
-import {toast} from "~/components/ui/toast";
+import { getLink } from '~/lib/link.ts'
+import { toast } from '~/components/ui/toast'
 
 const { metaSymbol } = useShortcuts()
 const client = useBoscaClient()
 const openCommand = ref(false)
 const router = useRouter()
-const { data: storageSystems } = await client.workflows.getStorageSystemsAsyncData()
+const { data: storageSystems } = await client.workflows
+  .getStorageSystemsAsyncData()
 
 const search = ref('')
 const offset = ref(0)
 const limit = ref(10)
 const filter = ref<string | null>(null)
-const storageSystemId = computed(() => storageSystems.value?.find((s) => s.name === 'Default Search')?.id || '')
+const storageSystemId = computed(() =>
+  storageSystems.value?.find((s) => s.name === 'Default Search')?.id || ''
+)
 
 watch(search, () => {
   if (!storageSystemId.value) {
-    toast({title: 'No default storage system found.'})
+    toast({ title: 'No default storage system found.' })
   }
   if (search.value.length > 0) {
     if (limit.value == 10) {
@@ -46,7 +50,10 @@ defineShortcuts({
 })
 
 function onResultSelected(
-  item: CollectionIdNameFragment | MetadataIdNameFragment | ProfileIdNameFragment
+  item:
+    | CollectionIdNameFragment
+    | MetadataIdNameFragment
+    | ProfileIdNameFragment,
 ) {
   router.push(getLink(item))
   openCommand.value = false

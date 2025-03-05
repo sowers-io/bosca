@@ -5,15 +5,19 @@ import {
   AddMetadataPermissionDocument,
   AddMetadataRelationshipDocument,
   AddMetadataTraitDocument,
-  BeginMetadataTransitionDocument, type CollectionTemplateFragment, CollectionType,
+  BeginMetadataTransitionDocument,
+  type CollectionTemplateFragment,
+  CollectionType,
   DeleteMetadataDocument,
   type DocumentFragment,
   type DocumentTemplateFragment,
   EditMetadataDocument,
   ExtensionFilterType,
-  type FindAttributes, FindCollectionsCountDocument,
+  type FindAttributes,
+  FindCollectionsCountDocument,
   FindMetadataCountDocument,
-  FindMetadataDocument, GetCollectionTemplateDocument,
+  FindMetadataDocument,
+  GetCollectionTemplateDocument,
   GetMetadataDocument,
   GetMetadataDocumentDocument,
   GetMetadataDocumentTemplateDocument,
@@ -34,7 +38,8 @@ import {
   type PermissionInput,
   RemoveMetadataPermissionDocument,
   RemoveMetadataRelationshipDocument,
-  RemoveMetadataTraitDocument, SetCollectionAttributesDocument,
+  RemoveMetadataTraitDocument,
+  SetCollectionAttributesDocument,
   SetJsonContentsDocument,
   SetMetadataAttributesDocument,
   SetMetadataContentPublicDocument,
@@ -89,33 +94,33 @@ export class ContentMetadata<T extends NetworkClient> extends Api<T> {
   }
 
   async getDocumentTemplate(
-      id: string,
-      version: number,
+    id: string,
+    version: number,
   ): Promise<DocumentTemplateFragment> {
     const response = await this.network.execute(
-        GetMetadataDocumentTemplateDocument,
-        {
-          id,
-          version,
-        },
+      GetMetadataDocumentTemplateDocument,
+      {
+        id,
+        version,
+      },
     )
     return response!.content!.metadata!
-        .documentTemplate as DocumentTemplateFragment
+      .documentTemplate as DocumentTemplateFragment
   }
 
   async getCollectionTemplate(
-      id: string,
-      version: number,
+    id: string,
+    version: number,
   ): Promise<CollectionTemplateFragment> {
     const response = await this.network.execute(
-        GetCollectionTemplateDocument,
-        {
-          id,
-          version,
-        },
+      GetCollectionTemplateDocument,
+      {
+        id,
+        version,
+      },
     )
     return response!.content!.metadata!
-        .collectionTemplate as CollectionTemplateFragment
+      .collectionTemplate as CollectionTemplateFragment
   }
 
   async getUploadUrl(id: string): Promise<SignedUrl> {
@@ -371,7 +376,7 @@ export class ContentMetadata<T extends NetworkClient> extends Api<T> {
     return this.executeAndTransformAsyncData(
       FindMetadataDocument,
       {
-        query: q
+        query: q,
       },
       (data) => {
         if (!data) return null
@@ -382,9 +387,9 @@ export class ContentMetadata<T extends NetworkClient> extends Api<T> {
 
   findCountAsyncData(query: {
     attributes?:
-        | Array<FindAttributes>
-        | Ref<Array<FindAttributes>>
-        | null
+      | Array<FindAttributes>
+      | Ref<Array<FindAttributes>>
+      | null
     extension?: ExtensionFilterType | Ref<ExtensionFilterType> | null
     contentTypes?: Array<string> | Ref<string[]> | null
     categoryIds?: Array<string> | Ref<Array<string>> | null
@@ -403,12 +408,12 @@ export class ContentMetadata<T extends NetworkClient> extends Api<T> {
       }
     })
     return this.executeAndTransformAsyncData(
-        FindMetadataCountDocument,
-        { query: q },
-        (data) => {
-          if (!data) return null
-          return data.content.findMetadataCount || 0
-        },
+      FindMetadataCountDocument,
+      { query: q },
+      (data) => {
+        if (!data) return null
+        return data.content.findMetadataCount || 0
+      },
     )
   }
 

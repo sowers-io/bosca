@@ -5,21 +5,24 @@ const dropZoneRef = ref<HTMLDivElement>()
 const client = useBoscaClient()
 
 const rawBiblesCollections = await client.collections.findCollection(
-  [ { attributes: [ { key: 'collection', value: 'raw-bibles' } ] } ],
+  [{ attributes: [{ key: 'collection', value: 'raw-bibles' }] }],
   0,
   1,
 )
 const rawBiblesCollectionId = rawBiblesCollections[0].id
 
 const biblesCollections = await client.collections.findCollection(
-    [ { attributes: [ { key: 'collection', value: 'bibles' } ] } ],
+  [{ attributes: [{ key: 'collection', value: 'bibles' }] }],
   0,
   1,
 )
 const biblesCollectionId = biblesCollections[0].id
 
-const { data: rawBibles, refresh: refreshRawBibles } = await client.collections.listAsyncData(rawBiblesCollectionId)
-const { data: bibles, refresh } = await client.collections.listAsyncData(biblesCollectionId)
+const { data: rawBibles, refresh: refreshRawBibles } = await client.collections
+  .listAsyncData(rawBiblesCollectionId)
+const { data: bibles, refresh } = await client.collections.listAsyncData(
+  biblesCollectionId,
+)
 
 const router = useRouter()
 
@@ -82,7 +85,10 @@ onMounted(() => {
 })
 </script>
 <template>
-  <div ref="dropZoneRef" class="h-full w-full flex flex-wrap md:flex-nowrap gap-4">
+  <div
+    ref="dropZoneRef"
+    class="h-full w-full flex flex-wrap md:flex-nowrap gap-4"
+  >
     <Card class="w-full min-w-[600px]">
       <CardContent>
         <Table>

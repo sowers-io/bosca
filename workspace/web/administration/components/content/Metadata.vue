@@ -4,8 +4,8 @@ const props = defineProps<{
 }>()
 
 const client = useBoscaClient()
-const {data: metadata, refresh} = client.metadata.getAsyncData(
-    props.metadataId,
+const { data: metadata, refresh } = client.metadata.getAsyncData(
+  props.metadataId,
 )
 const router = useRouter()
 const confirmDelete = ref(false)
@@ -46,7 +46,13 @@ client.listeners.onMetadataSupplementaryChanged((id) => {
           <TabsTrigger value="attributes">
             Attributes
           </TabsTrigger>
-          <TabsTrigger value="content" v-if="metadata.uploaded || metadata.content.type === 'bosca/v-document'">
+          <TabsTrigger
+            value="content"
+            v-if="
+              metadata.uploaded ||
+              metadata.content.type === 'bosca/v-document'
+            "
+          >
             Content
           </TabsTrigger>
           <TabsTrigger value="supplementary">
@@ -59,32 +65,32 @@ client.listeners.onMetadataSupplementaryChanged((id) => {
         <div class="grow"></div>
         <div>
           <Button variant="outline" @click="onDelete">
-            <Icon name="i-lucide-trash"/>
+            <Icon name="i-lucide-trash" />
           </Button>
         </div>
       </div>
       <TabsContent value="general" class="border-none p-0 outline-none">
         <div class="flex flex-wrap gap-8">
-          <ContentMetadataDetails :metadata="metadata" class="w-[600px]"/>
-          <ContentVisibility :content="metadata" class="w-[600px]"/>
-          <ContentStates :content="metadata" class="w-[600px]"/>
-          <ContentContents :content="metadata" class="w-[600px]"/>
+          <ContentMetadataDetails :metadata="metadata" class="w-[600px]" />
+          <ContentVisibility :content="metadata" class="w-[600px]" />
+          <ContentStates :content="metadata" class="w-[600px]" />
+          <ContentContents :content="metadata" class="w-[600px]" />
         </div>
       </TabsContent>
       <TabsContent value="content" class="border-none p-0 outline-none">
-        <ContentMetadataContent class="col-span-2" :metadata="metadata"/>
+        <ContentMetadataContent class="col-span-2" :metadata="metadata" />
       </TabsContent>
       <TabsContent value="traits" class="border-none p-0 outline-none">
-        <ContentTraits class="col-span-2" :content="metadata"/>
+        <ContentTraits class="col-span-2" :content="metadata" />
       </TabsContent>
       <TabsContent value="attributes" class="border-none p-0 outline-none">
-        <ContentAttributes class="col-span-2" :content="metadata"/>
+        <ContentAttributes class="col-span-2" :content="metadata" />
       </TabsContent>
       <TabsContent value="supplementary" class="border-none p-0 outline-none">
-        <ContentMetadataSupplementary class="col-span-2" :metadata="metadata"/>
+        <ContentMetadataSupplementary class="col-span-2" :metadata="metadata" />
       </TabsContent>
       <TabsContent value="workflows" class="border-none p-0 outline-none">
-        <ContentWorkflows class="col-span-2" :content="metadata"/>
+        <ContentWorkflows class="col-span-2" :content="metadata" />
       </TabsContent>
     </Tabs>
     <Dialog v-model:open="confirmDelete">
@@ -92,7 +98,8 @@ client.listeners.onMetadataSupplementaryChanged((id) => {
         <DialogHeader>
           <DialogTitle>Delete Metadata</DialogTitle>
           <DialogDescription>
-            Are you sure you want to delete this metadata?  It will also delete any documents or supplementary data.<br/>
+            Are you sure you want to delete this metadata? It will also delete
+            any documents or supplementary data.<br />
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>

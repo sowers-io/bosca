@@ -4,13 +4,14 @@ import type {
   DocumentInput,
   DocumentTemplateFragment,
   MetadataFragment,
-  MetadataRelationshipFragment, ParentCollectionFragment,
+  MetadataRelationshipFragment,
+  ParentCollectionFragment,
 } from '~/lib/graphql/graphql.ts'
 import { AttributeUiType } from '~/lib/graphql/graphql.ts'
 import type { BoscaClient } from '~/lib/bosca/client.ts'
 import type { Reactive } from 'vue'
 import { toMetadataInput } from '~/lib/metadata.ts'
-import slugify from "slugify";
+import slugify from 'slugify'
 
 export async function save(
   client: BoscaClient<any>,

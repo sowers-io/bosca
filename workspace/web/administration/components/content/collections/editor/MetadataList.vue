@@ -1,28 +1,29 @@
 <script lang="ts" setup>
-import type {CollectionFragment} from "~/lib/graphql/graphql.ts";
-import Table from "~/components/ui/table/Table.vue";
-import TableHeader from "~/components/ui/table/TableHeader.vue";
-import TableHead from "~/components/ui/table/TableHead.vue";
-import TableRow from "~/components/ui/table/TableRow.vue";
-import TableBody from "~/components/ui/table/TableBody.vue";
-import TableFooter from "~/components/ui/table/TableFooter.vue";
+import type { CollectionFragment } from '~/lib/graphql/graphql.ts'
+import Table from '~/components/ui/table/Table.vue'
+import TableHeader from '~/components/ui/table/TableHeader.vue'
+import TableHead from '~/components/ui/table/TableHead.vue'
+import TableRow from '~/components/ui/table/TableRow.vue'
+import TableBody from '~/components/ui/table/TableBody.vue'
+import TableFooter from '~/components/ui/table/TableFooter.vue'
 
 const props = defineProps<{
   collection: CollectionFragment
-  limit: number,
-  offset: number,
+  limit: number
+  offset: number
   count: number
 }>()
 
-const count = defineModel('count', {type: Number, default: 0})
+const count = defineModel('count', { type: Number, default: 0 })
 
 const router = useRouter()
 const client = useBoscaClient()
-const {metadata, count: collectionCount} = await client.collections.getCollectionChildMetadata(
+const { metadata, count: collectionCount } = await client.collections
+  .getCollectionChildMetadata(
     props.collection.id,
     props.offset,
     props.limit,
-)
+  )
 
 onUpdated(() => {
   count.value = collectionCount
@@ -30,7 +31,6 @@ onUpdated(() => {
 onMounted(() => {
   count.value = collectionCount
 })
-
 </script>
 <template>
   <div>
@@ -42,10 +42,10 @@ onMounted(() => {
       </TableHeader>
       <TableBody>
         <TableRow
-            v-for="item in metadata"
-            :key="item.id"
-            @click="router.push(`/content/${item.id}`)"
-            class="cursor-pointer"
+          v-for="item in metadata"
+          :key="item.id"
+          @click="router.push(`/content/${item.id}`)"
+          class="cursor-pointer"
         >
           <TableCell class="font-medium flex content-center">
             <NuxtLink :to="'/collections/' + item.id">{{ item.name }}</NuxtLink>

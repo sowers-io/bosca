@@ -15,14 +15,17 @@ export class Configurations<T extends NetworkClient> extends Api<T> {
     super(network)
   }
 
-  getConfigurationsAsyncData(): AsyncData<Array<ConfigurationFragment> | null, any> {
+  getConfigurationsAsyncData(): AsyncData<
+    Array<ConfigurationFragment> | null,
+    any
+  > {
     return this.executeAndTransformAsyncData(
-        GetConfigurationsDocument,
-        {},
-        (data) => {
-          if (!data) return null
-          return data.configurations?.all as Array<ConfigurationFragment>
-        },
+      GetConfigurationsDocument,
+      {},
+      (data) => {
+        if (!data) return null
+        return data.configurations?.all as Array<ConfigurationFragment>
+      },
     )
   }
 
@@ -32,11 +35,17 @@ export class Configurations<T extends NetworkClient> extends Api<T> {
   }
 
   async getConfiguration(key: string): Promise<ConfigurationFragment | null> {
-    const response = await this.network.execute(GetConfigurationDocument, { key })
-    return response?.configurations.configuration as ConfigurationFragment | null
+    const response = await this.network.execute(GetConfigurationDocument, {
+      key,
+    })
+    return response?.configurations.configuration as
+      | ConfigurationFragment
+      | null
   }
 
-  async setConfiguration(configuration: ConfigurationInput): Promise<ConfigurationFragment> {
+  async setConfiguration(
+    configuration: ConfigurationInput,
+  ): Promise<ConfigurationFragment> {
     const response = await this.network.execute(SetConfigurationDocument, {
       configuration,
     })

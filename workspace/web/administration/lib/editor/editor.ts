@@ -12,13 +12,13 @@ import { Bible } from '~/lib/editor/bible.ts'
 import { toast } from '~/components/ui/toast'
 import type {
   DocumentFragment,
-  MetadataFragment,
   DocumentTemplateFragment,
+  MetadataFragment,
 } from '~/lib/graphql/graphql.ts'
 import { Plugin } from '@tiptap/pm/state'
 import Document from '@tiptap/extension-document'
 import { type EditorEvents } from '@tiptap/core'
-import {Container} from "~/lib/editor/container.ts";
+import { Container } from '~/lib/editor/container.ts'
 
 export function newEditor(
   document: DocumentFragment,
@@ -62,7 +62,10 @@ export function newEditor(
     extensions: [
       CustomDocument,
       StarterKit.configure({ document: false }),
-      Container.configure({ metadata: metadata, containers: template?.containers || [] }),
+      Container.configure({
+        metadata: metadata,
+        containers: template?.containers || [],
+      }),
       Image,
       Link,
       Underline,

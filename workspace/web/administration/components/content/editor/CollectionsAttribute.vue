@@ -1,7 +1,5 @@
 <script lang="ts" setup>
-import type {
-  CollectionIdNameFragment,
-} from '~/lib/graphql/graphql.ts'
+import type { CollectionIdNameFragment } from '~/lib/graphql/graphql.ts'
 
 import {
   Command,
@@ -100,7 +98,7 @@ function onRemove(id: CollectionIdNameFragment) {
           <ComboboxAnchor as-child>
             <ComboboxInput placeholder="Select Items..." as-child>
               <TagsInputInput
-                  @focus="open = true"
+                @focus="open = true"
                 class="w-full px-3"
                 :class="attribute.value.length > 0 ? 'mt-2' : ''"
                 @keydown.enter.prevent

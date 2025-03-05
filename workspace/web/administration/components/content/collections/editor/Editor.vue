@@ -1,27 +1,31 @@
 <script lang="ts" setup>
 import {
   AttributeUiType,
-  type CollectionFragment, type CollectionIdNameFragment,
+  type CollectionFragment,
+  type CollectionIdNameFragment,
   type CollectionMetadataRelationshipFragment,
   type CollectionTemplateFragment,
   type DocumentTemplateAttribute,
   type ParentCollectionFragment,
 } from '@/lib/graphql/graphql'
-import {toast} from '~/components/ui/toast'
-import {Uploader} from '@/lib/uploader'
-import {hideAll} from 'tippy.js'
-import {OpenMediaPickerEvent} from '@/lib/editor/commanditems'
-import {AttributeState, newAttributeState} from '~/lib/attribute.ts'
-import type {WatchSource} from 'vue'
+import { toast } from '~/components/ui/toast'
+import { Uploader } from '@/lib/uploader'
+import { hideAll } from 'tippy.js'
+import { OpenMediaPickerEvent } from '@/lib/editor/commanditems'
+import { AttributeState, newAttributeState } from '~/lib/attribute.ts'
+import type { WatchSource } from 'vue'
 import {
   Pagination,
   PaginationEllipsis,
   PaginationFirst,
-  PaginationLast, PaginationList, PaginationListItem,
-  PaginationNext, PaginationPrev
-} from "~/components/ui/pagination";
-import {toCollectionInput} from "~/lib/collection.ts";
-import slugify from "slugify";
+  PaginationLast,
+  PaginationList,
+  PaginationListItem,
+  PaginationNext,
+  PaginationPrev,
+} from '~/components/ui/pagination'
+import { toCollectionInput } from '~/lib/collection.ts'
+import slugify from 'slugify'
 
 const client = useBoscaClient()
 const uploader = new Uploader(client)
@@ -35,8 +39,8 @@ const props = defineProps<{
   hasChanges: boolean
 }>()
 
-const collection = defineModel('collection', {type: Object, default: null})
-const hasChanges = defineModel('hasChanges', {type: Boolean, default: null})
+const collection = defineModel('collection', { type: Object, default: null })
+const hasChanges = defineModel('hasChanges', { type: Boolean, default: null })
 const title = ref(props.collection.name)
 const attributes = reactive(new Map<string, AttributeState>())
 
@@ -44,7 +48,7 @@ function isEqual(a: any, b: any) {
   if (!a && !b) return true
   if (a === b) return true
   return typeof a === 'string' && a.length === 0 && !b ||
-      typeof b === 'string' && b.length === 0 && !a
+    typeof b === 'string' && b.length === 0 && !a
 }
 
 function updateHasChanges() {
@@ -85,7 +89,7 @@ function updateHasChanges() {
           const metadataId = toRaw(attr.value)?.metadata?.id
           const relationship = attr.configuration.relationship
           const currId = props.relationships.find((r) =>
-              r.relationship === relationship
+            r.relationship === relationship
           )?.metadata?.id
           if (!isEqual(metadataId, currId)) {
             changes = true
@@ -114,7 +118,7 @@ async function updateAttributes() {
       attr = newAttributeState(attribute as DocumentTemplateAttribute)
       attributes.set(attribute.key, reactive(attr) as AttributeState)
       const attrRef = attributes.get(attribute.key) as unknown as WatchSource<
-          AttributeState
+        AttributeState
       >
       const key = attr.key
       const cfg = attr.configuration
@@ -126,15 +130,19 @@ async function updateAttributes() {
           break
         case AttributeUiType.Collection:
           if (attr.list) {
-            attr.value = (props.parents || []).filter((c) => c.attributes.type === cfg.type)
+            attr.value = (props.parents || []).filter((c) =>
+              c.attributes.type === cfg.type
+            )
           } else {
-            attr.value = (props.parents || []).find((c) => c.attributes.type === cfg.type)
+            attr.value = (props.parents || []).find((c) =>
+              c.attributes.type === cfg.type
+            )
           }
           break
         case AttributeUiType.Image:
         case AttributeUiType.File:
           const r = props.relationships.find((r) =>
-              r.relationship === attr?.configuration.relationship
+            r.relationship === attr?.configuration.relationship
           )
           if (r) {
             attr.value = {
@@ -170,14 +178,14 @@ async function onRunWorkflow(attribute: AttributeState) {
   const attr = props.template?.attributes?.find((a) => a.key === attribute.key)
   for (const workflow of attr?.workflows || []) {
     await client.collections.enqueueCollectionWorkflow(
-        workflow.workflow!.id,
-        props.collection.id,
+      workflow.workflow!.id,
+      props.collection.id,
     )
     if (workflows.length > 0) workflows += ', '
     workflows += workflow.workflow!.name
   }
   attribute.loading = true
-  toast({title: 'Executing: ' + attribute.description})
+  toast({ title: 'Executing: ' + attribute.description })
 }
 
 function onOpenMediaPicker(event: OpenMediaPickerEvent) {
@@ -218,24 +226,30 @@ async function onSave() {
             const collections = attr.value
             if (!collections) continue
             for (const collection of collections) {
-              await client.collections.addCollection(collection.id, props.collection.id)
+              await client.collections.addCollection(
+                collection.id,
+                props.collection.id,
+              )
             }
           } else if (attr.value) {
             const collection = attr.value as CollectionIdNameFragment
-            await client.collections.addCollection(collection.id, props.collection.id)
+            await client.collections.addCollection(
+              collection.id,
+              props.collection.id,
+            )
           }
           break
         }
         case AttributeUiType.Image:
         case AttributeUiType.File: {
           const removeRelationshipId = props.relationships.find((r) =>
-              r.relationship === attr.configuration.relationship
+            r.relationship === attr.configuration.relationship
           )?.metadata?.id
           if (removeRelationshipId) {
             await client.collections.removeMetadataRelationship(
-                props.collection.id,
-                removeRelationshipId,
-                attr.configuration.relationship,
+              props.collection.id,
+              removeRelationshipId,
+              attr.configuration.relationship,
             )
           }
           if (!attr.value) continue
@@ -302,13 +316,15 @@ const editable = computed(() => props.collection.workflow.state === 'draft')
   <div class="w-full h-full" v-if="collection">
     <div class="grid grid-cols-3 gap-2 h-full w-full">
       <div class="col-span-2">
-        <Input :disabled="collection.workflow.state !== 'draft'"
-            v-model="title"
-            class="w-full"
-            placeholder="Title" />
+        <Input
+          :disabled="collection.workflow.state !== 'draft'"
+          v-model="title"
+          class="w-full"
+          placeholder="Title"
+        />
         <Tabs
-            v-model:model-value="selectedTab"
-            class="h-full space-y-6 mt-4"
+          v-model:model-value="selectedTab"
+          class="h-full space-y-6 mt-4"
         >
           <div class="flex">
             <TabsList>
@@ -322,32 +338,43 @@ const editable = computed(() => props.collection.workflow.state === 'draft')
             <div class="grow"></div>
             <div class="flex items-center mr-4">
               <Pagination
-                  v-slot="{ page }"
-                  v-model:page="currentPage"
-                  :total="count"
-                  :items-per-page="limit"
-                  :sibling-count="1"
-                  show-edges
+                v-slot="{ page }"
+                v-model:page="currentPage"
+                :total="count"
+                :items-per-page="limit"
+                :sibling-count="1"
+                show-edges
               >
-                <PaginationList v-slot="{ items }" class="flex items-center gap-1">
+                <PaginationList
+                  v-slot="{ items }"
+                  class="flex items-center gap-1"
+                >
                   <PaginationFirst />
                   <PaginationPrev />
 
                   <template v-for="(item, index) in items">
                     <PaginationListItem
-                        v-if="item.type === 'page'"
-                        :key="index"
-                        :value="item.value"
-                        as-child
+                      v-if="item.type === 'page'"
+                      :key="index"
+                      :value="item.value"
+                      as-child
                     >
                       <Button
-                          class="w-10 h-10 p-0"
-                          :variant="item.value === page ? 'default' : 'outline'"
+                        class="w-10 h-10 p-0"
+                        :variant="
+                          item.value === page
+                          ? 'default'
+                          : 'outline'
+                        "
                       >
                         {{ item.value }}
                       </Button>
                     </PaginationListItem>
-                    <PaginationEllipsis v-else :key="item.type" :index="index" />
+                    <PaginationEllipsis
+                      v-else
+                      :key="item.type"
+                      :index="index"
+                    />
                   </template>
 
                   <PaginationNext />
@@ -357,24 +384,30 @@ const editable = computed(() => props.collection.workflow.state === 'draft')
             </div>
             <div class="flex items-center">
               <Button :disabled="hasChanges">
-                <Icon name="i-lucide-plus"/>
+                <Icon name="i-lucide-plus" />
               </Button>
             </div>
           </div>
-          <TabsContent value="collections" class="border-none p-0 mt-0 outline-none">
+          <TabsContent
+            value="collections"
+            class="border-none p-0 mt-0 outline-none"
+          >
             <ContentCollectionsEditorCollectionsList
-                :collection="collection"
-                :offset="offset"
-                :limit="limit"
-                v-model:count="count"
+              :collection="collection"
+              :offset="offset"
+              :limit="limit"
+              v-model:count="count"
             />
           </TabsContent>
-          <TabsContent value="metadata" class="border-none p-0 mt-0 outline-none">
+          <TabsContent
+            value="metadata"
+            class="border-none p-0 mt-0 outline-none"
+          >
             <ContentCollectionsEditorMetadataList
-                :collection="collection"
-                :offset="offset"
-                :limit="limit"
-                v-model:count="count"
+              :collection="collection"
+              :offset="offset"
+              :limit="limit"
+              v-model:count="count"
             />
           </TabsContent>
         </Tabs>
@@ -382,16 +415,15 @@ const editable = computed(() => props.collection.workflow.state === 'draft')
       <div class="min-h-[calc(100dvh-170px)]">
         <div class="bg-accent rounded-md px-4 py-2 h-full">
           <ContentEditorAttributes
-              :parents="parents"
-              :attributes="attributes"
-              :workflows-enabled="!hasChanges"
-              :uploader="uploader"
-              :editable="editable"
-              :on-run-workflow="onRunWorkflow"
+            :parents="parents"
+            :attributes="attributes"
+            :workflows-enabled="!hasChanges"
+            :uploader="uploader"
+            :editable="editable"
+            :on-run-workflow="onRunWorkflow"
           />
         </div>
       </div>
     </div>
   </div>
 </template>
-

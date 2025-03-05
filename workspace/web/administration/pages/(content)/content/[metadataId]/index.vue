@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import {toast} from '~/components/ui/toast'
+import { toast } from '~/components/ui/toast'
 import {
   type ParentCollectionFragment,
   WorkflowStateType,
@@ -12,32 +12,36 @@ const route = useRoute()
 const client = useBoscaClient()
 
 const metadata = ref(
-    await client.metadata.get(route.params.metadataId.toString()),
+  await client.metadata.get(route.params.metadataId.toString()),
 )
 const relationships = ref(
-    await client.metadata.getRelationships(route.params.metadataId.toString()),
+  await client.metadata.getRelationships(route.params.metadataId.toString()),
 )
 const parents = ref(
-    await client.metadata.getParents(route.params.metadataId.toString()),
+  await client.metadata.getParents(route.params.metadataId.toString()),
 )
 const document = ref(
-    await client.metadata.getDocument(route.params.metadataId.toString()),
+  await client.metadata.getDocument(route.params.metadataId.toString()),
 )
 const documentCollection = computed(() => {
-  return parents.value?.find((c) => c.attributes['editor.type'] === 'Document') as
-      | ParentCollectionFragment
-      | undefined
+  return parents.value?.find((c) =>
+    c.attributes['editor.type'] === 'Document'
+  ) as
+    | ParentCollectionFragment
+    | undefined
 })
 const parentCollections = computed(() => {
-  return parents.value?.filter((c) => c.attributes['editor.type'] !== 'Document') || []
+  return parents.value?.filter((c) =>
+    c.attributes['editor.type'] !== 'Document'
+  ) || []
 })
 const template = ref(
-    document.value.template?.id && document.value.template?.version
-        ? await client.metadata.getDocumentTemplate(
-            document.value.template?.id,
-            document.value.template?.version,
-        )
-        : null,
+  document.value.template?.id && document.value.template?.version
+    ? await client.metadata.getDocumentTemplate(
+      document.value.template?.id,
+      document.value.template?.version,
+    )
+    : null,
 )
 const { data: states } = client.workflows.getStatesAsyncData()
 const stateName = computed(() => {
@@ -67,13 +71,14 @@ async function onPublish() {
     return
   }
   const states = await client.workflows.getStates() || []
-  const published = states.find((s) => s.type === WorkflowStateType.Published)?.id || ''
+  const published =
+    states.find((s) => s.type === WorkflowStateType.Published)?.id || ''
   if (metadata.value.workflow.state !== published) {
     await client.metadata.beginTransition(
-        metadata.value.id,
-        metadata.value.version,
-        published,
-        'Publishing Document',
+      metadata.value.id,
+      metadata.value.version,
+      published,
+      'Publishing Document',
     )
   }
   if (!metadata.value.public) {
@@ -88,10 +93,10 @@ async function onPublish() {
     }
     if (relationship.metadata.workflow.state !== published) {
       await client.metadata.beginTransition(
-          relationship.metadata.id,
-          relationship.metadata.version,
-          published,
-          'Publishing Document',
+        relationship.metadata.id,
+        relationship.metadata.version,
+        published,
+        'Publishing Document',
       )
     }
     if (!relationship.metadata.public) {
@@ -106,17 +111,22 @@ async function onPublish() {
 async function onUnpublish() {
   const states = await client.workflows.getStates() || []
   await client.metadata.beginTransition(
-      metadata.value.id,
-      metadata.value.version,
-      states.find((s) => s.type === WorkflowStateType.Draft)?.id || '',
-      'Unpublishing Document',
+    metadata.value.id,
+    metadata.value.version,
+    states.find((s) => s.type === WorkflowStateType.Draft)?.id || '',
+    'Unpublishing Document',
   )
 }
 
 async function onPreview() {
-  const configuration = await client.configurations.getConfiguration('preview.url')
+  const configuration = await client.configurations.getConfiguration(
+    'preview.url',
+  )
   if (!configuration || !metadata.value?.slug) return
-  window.open(configuration.value.value + '?slug=' + metadata.value!.slug, '_blank')
+  window.open(
+    configuration.value.value + '?slug=' + metadata.value!.slug,
+    '_blank',
+  )
 }
 
 function onDelete() {
@@ -137,7 +147,7 @@ client.listeners.onMetadataChanged(async (id) => {
       relationships.value = await client.metadata.getRelationships(id)
       metadata.value = await client.metadata.get(id)
       outOfDate.value = hasChanges.value
-      toast({title: 'Document updated.'})
+      toast({ title: 'Document updated.' })
     } catch (ignore) {
     }
   }
@@ -145,8 +155,8 @@ client.listeners.onMetadataChanged(async (id) => {
 
 onMounted(() => {
   breadcrumbs.set([
-    {title: 'Content', to: '/content'},
-    {title: 'Edit Document'},
+    { title: 'Content', to: '/content' },
+    { title: 'Edit Document' },
   ])
 })
 </script>
@@ -158,8 +168,10 @@ onMounted(() => {
           <Badge variant="secondary">{{ stateName }}
             <span v-if="metadata.workflow.pending">*</span>
           </Badge>
-          <Badge v-if="hasChanges" variant="outline" class="ms-2 text-gray-400">Has Changes</Badge>
-          <Badge v-if="outOfDate" variant="destructive" class="ms-2">Out of Date</Badge>
+          <Badge v-if="hasChanges" variant="outline" class="ms-2 text-gray-400"
+          >Has Changes</Badge>
+          <Badge v-if="outOfDate" variant="destructive" class="ms-2"
+          >Out of Date</Badge>
         </div>
       </div>
       <div class="grow"></div>
@@ -167,12 +179,12 @@ onMounted(() => {
         <Tooltip v-if="metadata?.workflow?.state === 'draft'">
           <TooltipTrigger as-child>
             <Button
-                @click="reset"
-                class="flex gap-2"
-                variant="secondary"
-                :disabled="!hasChanges"
+              @click="reset"
+              class="flex gap-2"
+              variant="secondary"
+              :disabled="!hasChanges"
             >
-              <Icon name="i-lucide-rotate-ccw" class="size-4"/>
+              <Icon name="i-lucide-rotate-ccw" class="size-4" />
             </Button>
           </TooltipTrigger>
           <TooltipContent>
@@ -182,12 +194,12 @@ onMounted(() => {
         <Tooltip v-if="metadata?.workflow?.state === 'draft'">
           <TooltipTrigger as-child>
             <Button
-                @click="onSave"
-                class="flex gap-2"
-                variant="secondary"
-                :disabled="!hasChanges"
+              @click="onSave"
+              class="flex gap-2"
+              variant="secondary"
+              :disabled="!hasChanges"
             >
-              <Icon name="i-lucide-save" class="size-4"/>
+              <Icon name="i-lucide-save" class="size-4" />
             </Button>
           </TooltipTrigger>
           <TooltipContent>
@@ -196,8 +208,13 @@ onMounted(() => {
         </Tooltip>
         <Tooltip>
           <TooltipTrigger as-child>
-            <Button @click="onPreview" :disabled="hasChanges" class="flex gap-2" variant="secondary">
-              <Icon name="i-lucide-screen-share" class="size-4"/>
+            <Button
+              @click="onPreview"
+              :disabled="hasChanges"
+              class="flex gap-2"
+              variant="secondary"
+            >
+              <Icon name="i-lucide-screen-share" class="size-4" />
             </Button>
           </TooltipTrigger>
           <TooltipContent>
@@ -207,7 +224,7 @@ onMounted(() => {
         <Tooltip>
           <TooltipTrigger as-child>
             <Button @click="onDelete" class="flex gap-2" variant="secondary">
-              <Icon name="i-lucide-trash" class="size-4"/>
+              <Icon name="i-lucide-trash" class="size-4" />
             </Button>
           </TooltipTrigger>
           <TooltipContent>
@@ -217,12 +234,12 @@ onMounted(() => {
         <Tooltip v-if="metadata?.workflow?.state === 'draft'">
           <TooltipTrigger as-child>
             <Button
-                @click="onPublish"
-                :disabled="hasChanges || metadata?.workflow?.pending"
-                class="flex gap-2"
-                variant="secondary"
+              @click="onPublish"
+              :disabled="hasChanges || metadata?.workflow?.pending"
+              class="flex gap-2"
+              variant="secondary"
             >
-              <Icon name="i-lucide-square-play" class="size-4"/>
+              <Icon name="i-lucide-square-play" class="size-4" />
             </Button>
           </TooltipTrigger>
           <TooltipContent>
@@ -232,12 +249,12 @@ onMounted(() => {
         <Tooltip v-if="metadata?.workflow?.state === 'published'">
           <TooltipTrigger as-child>
             <Button
-                @click="onUnpublish"
-                :disabled="metadata?.workflow?.pending"
-                class="flex gap-2"
-                variant="secondary"
+              @click="onUnpublish"
+              :disabled="metadata?.workflow?.pending"
+              class="flex gap-2"
+              variant="secondary"
             >
-              <Icon name="i-lucide-square-square" class="size-4"/>
+              <Icon name="i-lucide-square-square" class="size-4" />
             </Button>
           </TooltipTrigger>
           <TooltipContent>
@@ -247,12 +264,17 @@ onMounted(() => {
         <Tooltip>
           <TooltipTrigger as-child>
             <Button
-                :disabled="hasChanges"
-                @click="router.push('/metadata/edit/' + metadata.id + '?document=true')"
-                class="flex gap-2"
-                variant="secondary"
+              :disabled="hasChanges"
+              @click="
+                router.push(
+                  '/metadata/edit/' + metadata.id +
+                    '?document=true',
+                )
+              "
+              class="flex gap-2"
+              variant="secondary"
             >
-              <Icon name="i-lucide-bolt" class="size-4"/>
+              <Icon name="i-lucide-bolt" class="size-4" />
             </Button>
           </TooltipTrigger>
           <TooltipContent>
@@ -263,13 +285,13 @@ onMounted(() => {
     </div>
     <div class="border-none p-0 outline-none mt-4">
       <ContentMetadataEditor
-          :documentCollection="documentCollection"
-          :parents="parentCollections"
-          :relationships="relationships"
-          :document="document"
-          :template="template"
-          v-model:metadata="metadata"
-          v-model:has-changes="hasChanges"
+        :documentCollection="documentCollection"
+        :parents="parentCollections"
+        :relationships="relationships"
+        :document="document"
+        :template="template"
+        v-model:metadata="metadata"
+        v-model:has-changes="hasChanges"
       />
     </div>
     <Dialog v-model:open="confirmDelete">
@@ -277,7 +299,7 @@ onMounted(() => {
         <DialogHeader>
           <DialogTitle>Delete Document</DialogTitle>
           <DialogDescription>
-            Are you sure you want to delete this document?<br/>
+            Are you sure you want to delete this document?<br />
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
@@ -296,7 +318,7 @@ onMounted(() => {
         <DialogHeader>
           <DialogTitle>Reset Document</DialogTitle>
           <DialogDescription>
-            Are you sure you want to reset this document?<br/>
+            Are you sure you want to reset this document?<br />
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>

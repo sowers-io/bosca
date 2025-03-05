@@ -3,15 +3,17 @@ import type { CollectionItem } from '~/lib/bosca/contentcollection'
 import { computedAsync } from '@vueuse/core'
 import type { MetadataInput } from '~/lib/graphql/graphql'
 import TableFooter from '~/components/ui/table/TableFooter.vue'
-import {toast} from "~/components/ui/toast";
+import { toast } from '~/components/ui/toast'
 import {
   Pagination,
-  PaginationEllipsis, PaginationFirst, PaginationLast,
+  PaginationEllipsis,
+  PaginationFirst,
+  PaginationLast,
   PaginationList,
   PaginationListItem,
   PaginationNext,
-  PaginationPrev
-} from "~/components/ui/pagination";
+  PaginationPrev,
+} from '~/components/ui/pagination'
 
 const client = useBoscaClient()
 const router = useRouter()
@@ -23,14 +25,17 @@ const limit = ref(12)
 const offset = computed(() => (currentPage.value - 1) * limit.value)
 
 const { data: collection } = client.collections.findAsyncData({
-  attributes: [ { attributes: [ { key: 'editor.type', value: 'DocumentsAndGuides' } ] } ],
+  attributes: [{
+    attributes: [{ key: 'editor.type', value: 'DocumentsAndGuides' }],
+  }],
   offset: 0,
   limit: 1,
 })
 
 const collections = computedAsync<CollectionItem[]>(async () => {
   if (!collection.value) return []
-  const items = (await client.collections.list(collection.value[0].id))?.items || []
+  const items =
+    (await client.collections.list(collection.value[0].id))?.items || []
   if (selectedId.value == '' && items.length > 0) {
     selectedId.value = items[0].id
   }
@@ -92,7 +97,7 @@ async function onAdd() {
       if (!template) {
         toast({
           title: 'No template found',
-          description: 'Please create a template first'
+          description: 'Please create a template first',
         })
         return
       }
@@ -157,12 +162,12 @@ onMounted(() => {
       <div class="grow"></div>
       <div class="flex items-center mr-4">
         <Pagination
-            v-slot="{ page }"
-            v-model:page="currentPage"
-            :total="count || 0"
-            :items-per-page="limit"
-            :sibling-count="1"
-            show-edges
+          v-slot="{ page }"
+          v-model:page="currentPage"
+          :total="count || 0"
+          :items-per-page="limit"
+          :sibling-count="1"
+          show-edges
         >
           <PaginationList v-slot="{ items }" class="flex items-center gap-1">
             <PaginationFirst />
@@ -170,14 +175,18 @@ onMounted(() => {
 
             <template v-for="(item, index) in items">
               <PaginationListItem
-                  v-if="item.type === 'page'"
-                  :key="index"
-                  :value="item.value"
-                  as-child
+                v-if="item.type === 'page'"
+                :key="index"
+                :value="item.value"
+                as-child
               >
                 <Button
-                    class="w-10 h-10 p-0"
-                    :variant="item.value === page ? 'default' : 'outline'"
+                  class="w-10 h-10 p-0"
+                  :variant="
+                    item.value === page
+                    ? 'default'
+                    : 'outline'
+                  "
                 >
                   {{ item.value }}
                 </Button>

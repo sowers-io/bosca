@@ -50,7 +50,6 @@ async function onSave() {
 watch(attributes, () => {
   hasChanges.value = true
 })
-
 </script>
 
 <template>
@@ -64,8 +63,8 @@ watch(attributes, () => {
     </CardHeader>
     <CardContent>
       <JsonEditorVue
-          class="jse-theme-dark"
-          v-model="attributes"
+        class="jse-theme-dark"
+        v-model="attributes"
       />
       <div class="pt-4">
         <Button

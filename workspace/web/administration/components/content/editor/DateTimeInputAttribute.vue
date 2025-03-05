@@ -7,7 +7,6 @@ defineProps<{
   workflowsEnabled: boolean
   onRunWorkflow: (attribute: AttributeState) => void
 }>()
-
 </script>
 
 <template>
@@ -23,7 +22,10 @@ defineProps<{
         <div class="text-xs text-red py-2 ps-0.5" v-if="attribute.invalidValue">
           Invalid Date/Time
         </div>
-        <div class="text-xs text-orange py-2 ps-0.5" v-if="attribute.valueWarning">
+        <div
+          class="text-xs text-orange py-2 ps-0.5"
+          v-if="attribute.valueWarning"
+        >
           {{ attribute.valueWarning }}
         </div>
       </div>

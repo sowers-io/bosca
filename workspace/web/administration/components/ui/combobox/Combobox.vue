@@ -3,7 +3,7 @@ import {
   ComboboxRoot,
   type ComboboxRootEmits,
   type ComboboxRootProps,
-  useForwardPropsEmits
+  useForwardPropsEmits,
 } from 'radix-vue'
 
 const props = defineProps<ComboboxRootProps>()
@@ -13,8 +13,7 @@ const forwarded = useForwardPropsEmits(props, emits)
 </script>
 
 <template>
-  <ComboboxRoot
-      v-bind="forwarded">
+  <ComboboxRoot v-bind="forwarded">
     <slot />
   </ComboboxRoot>
 </template>

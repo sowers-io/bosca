@@ -10,7 +10,7 @@ declare module '@tiptap/core' {
     bible: {
       setReferences: (
         options: {
-          usfm?: Array<string>,
+          usfm?: Array<string>
           metadataIds?: Array<string>
         },
       ) => ReturnType

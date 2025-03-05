@@ -1,7 +1,12 @@
 <script setup lang="ts">
-import type {CollectionItem} from '~/lib/bosca/contentcollection'
-import {computedAsync} from '@vueuse/core'
-import {type CollectionInput, CollectionType, type FindAttributes, type MetadataFragment} from '~/lib/graphql/graphql'
+import type { CollectionItem } from '~/lib/bosca/contentcollection'
+import { computedAsync } from '@vueuse/core'
+import {
+  type CollectionInput,
+  CollectionType,
+  type FindAttributes,
+  type MetadataFragment,
+} from '~/lib/graphql/graphql'
 import TableFooter from '~/components/ui/table/TableFooter.vue'
 
 import {
@@ -14,7 +19,7 @@ import {
   PaginationNext,
   PaginationPrev,
 } from '@/components/ui/pagination'
-import {toast} from "~/components/ui/toast";
+import { toast } from '~/components/ui/toast'
 
 const client = useBoscaClient()
 const router = useRouter()
@@ -24,15 +29,16 @@ const currentPage = ref(1)
 const limit = ref(12)
 const offset = computed(() => (currentPage.value - 1) * limit.value)
 
-const {data: rootCollection} = client.collections.findAsyncData({
-  attributes: [{attributes: [{key: 'editor.type', value: 'Collections'}]}],
+const { data: rootCollection } = client.collections.findAsyncData({
+  attributes: [{ attributes: [{ key: 'editor.type', value: 'Collections' }] }],
   offset: 0,
   limit: 1,
 })
 
 const collections = computedAsync<CollectionItem[]>(async () => {
   if (!rootCollection.value) return []
-  const items = (await client.collections.list(rootCollection.value[0].id))?.items || []
+  const items =
+    (await client.collections.list(rootCollection.value[0].id))?.items || []
   if (selectedId.value == '' && items.length > 0) {
     selectedId.value = items[0].id
   }
@@ -57,10 +63,13 @@ const { data: templates } = client.metadata.findAsyncData({
 })
 
 const findAttributes = computed(() => {
-  const editorType = collections.value.find((c) => c.id === selectedId.value)?.attributes['editor.type']
-  return [{ attributes: [
-      { key: 'editor.type', value: editorType }
-    ] } as FindAttributes]
+  const editorType = collections.value.find((c) => c.id === selectedId.value)
+    ?.attributes['editor.type']
+  return [{
+    attributes: [
+      { key: 'editor.type', value: editorType },
+    ],
+  } as FindAttributes]
 })
 
 const { data: items } = client.collections.findAsyncData({
@@ -71,7 +80,7 @@ const { data: items } = client.collections.findAsyncData({
   limit: limit,
 })
 
-const {data: itemsCount} = client.collections.findCountAsyncData({
+const { data: itemsCount } = client.collections.findCountAsyncData({
   attributes: findAttributes,
   categoryIds: categoryIds,
   type: CollectionType.Standard,
@@ -86,14 +95,14 @@ async function onAdd() {
       if (!template) {
         toast({
           title: 'No template found',
-          description: 'Please create a template first'
+          description: 'Please create a template first',
         })
         return
       }
       const version = (template as MetadataFragment).version
       const collectionTemplate = await client.metadata.getCollectionTemplate(
-          template.id,
-          version,
+        template.id,
+        version,
       )
       if (collectionTemplate.defaultAttributes) {
         for (const key in collectionTemplate.defaultAttributes) {
@@ -120,7 +129,7 @@ async function onAdd() {
 const breadcrumbs = useBreadcrumbs()
 
 onMounted(() => {
-  breadcrumbs.set([{title: 'Content'}])
+  breadcrumbs.set([{ title: 'Content' }])
 })
 
 watch(selectedId, () => {
@@ -139,12 +148,12 @@ watch(selectedId, () => {
       <div class="grow"></div>
       <div class="flex items-center mr-4">
         <Pagination
-            v-slot="{ page }"
-            v-model:page="currentPage"
-            :total="itemsCount || 0"
-            :items-per-page="limit"
-            :sibling-count="1"
-            show-edges
+          v-slot="{ page }"
+          v-model:page="currentPage"
+          :total="itemsCount || 0"
+          :items-per-page="limit"
+          :sibling-count="1"
+          show-edges
         >
           <PaginationList v-slot="{ items }" class="flex items-center gap-1">
             <PaginationFirst />
@@ -152,14 +161,18 @@ watch(selectedId, () => {
 
             <template v-for="(item, index) in items">
               <PaginationListItem
-                  v-if="item.type === 'page'"
-                  :key="index"
-                  :value="item.value"
-                  as-child
+                v-if="item.type === 'page'"
+                :key="index"
+                :value="item.value"
+                as-child
               >
                 <Button
-                    class="w-10 h-10 p-0"
-                    :variant="item.value === page ? 'default' : 'outline'"
+                  class="w-10 h-10 p-0"
+                  :variant="
+                    item.value === page
+                    ? 'default'
+                    : 'outline'
+                  "
                 >
                   {{ item.value }}
                 </Button>
@@ -174,14 +187,14 @@ watch(selectedId, () => {
       </div>
       <div class="flex items-center">
         <Button @click="onAdd">
-          <Icon name="i-lucide-plus"/>
+          <Icon name="i-lucide-plus" />
         </Button>
       </div>
     </div>
     <TabsContent
-        v-for="collection in collections"
-        :value="collection.id"
-        class="border-none p-0 mt-0 outline-none"
+      v-for="collection in collections"
+      :value="collection.id"
+      class="border-none p-0 mt-0 outline-none"
     >
       <Table>
         <TableHeader>
@@ -191,10 +204,10 @@ watch(selectedId, () => {
         </TableHeader>
         <TableBody>
           <TableRow
-              v-for="item in items"
-              :key="item.id"
-              @click="router.push(`/collections/${item.id}`)"
-              class="cursor-pointer"
+            v-for="item in items"
+            :key="item.id"
+            @click="router.push(`/collections/${item.id}`)"
+            class="cursor-pointer"
           >
             <TableCell class="font-medium flex content-center">
               <NuxtLink :to="'/collections/' + item.id">
