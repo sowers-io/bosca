@@ -216,10 +216,17 @@ type Document {
 type DocumentTemplate {
     attributes: [TemplateAttribute!]!
     configuration: JSON
+    containers: [DocumentTemplateContainer!]!
     content: JSON!
     defaultAttributes: JSON
     metadata: Metadata
     schema: JSON
+}
+
+type DocumentTemplateContainer {
+    description: String!
+    id: String!
+    name: String!
 }
 
 type DocumentTemplates {
@@ -1171,9 +1178,16 @@ input DocumentInput {
     title: String!
 }
 
+input DocumentTemplateContainerInput {
+    description: String!
+    id: String!
+    name: String!
+}
+
 input DocumentTemplateInput {
     attributes: [TemplateAttributeInput!]!
     configuration: JSON
+    containers: [DocumentTemplateContainerInput!]
     content: JSON!
     defaultAttributes: JSON
     schema: JSON

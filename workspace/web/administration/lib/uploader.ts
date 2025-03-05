@@ -62,6 +62,10 @@ export class Uploader {
         collectionName = 'Videos'
       } else if (type.startsWith('audio/')) {
         collectionName = 'Audio'
+      } else if (type.startsWith('application/pdf')) {
+        collectionName = 'PDFs'
+      } else {
+        console.error('Unsupported file type: ' + type)
       }
       if (!collectionName) {
         toast({

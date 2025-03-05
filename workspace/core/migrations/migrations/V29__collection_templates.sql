@@ -30,7 +30,7 @@ create table collection_template_attributes
     foreign key (metadata_id, version) references collection_templates (metadata_id, version) on delete cascade
 );
 
-create table collection_template_attribute_workflow_ids
+create table collection_template_attribute_workflows
 (
     metadata_id uuid    not null,
     version     int     not null,

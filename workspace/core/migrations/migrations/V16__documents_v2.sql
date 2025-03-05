@@ -21,6 +21,30 @@ create table document_templates
     foreign key (metadata_id) references metadata (id) on delete cascade
 );
 
+create table document_template_containers
+(
+    metadata_id uuid    not null,
+    version     int     not null,
+    id          varchar not null,
+    name        varchar not null,
+    description varchar not null,
+    sort        int     not null,
+    primary key (metadata_id, version, id),
+    foreign key (metadata_id, version) references document_templates (metadata_id, version) on delete cascade
+);
+
+create table document_template_container_workflows
+(
+    metadata_id uuid    not null,
+    version     int     not null,
+    id          varchar not null,
+    workflow_id varchar not null,
+    auto_run    bool    not null default false,
+    primary key (metadata_id, version, id, workflow_id),
+    foreign key (metadata_id, version, id) references document_template_containers (metadata_id, version, id) on delete cascade,
+    foreign key (workflow_id) references workflows (id)
+);
+
 create table document_template_attributes
 (
     metadata_id       uuid              not null,
@@ -38,7 +62,7 @@ create table document_template_attributes
     foreign key (metadata_id, version) references document_templates (metadata_id, version) on delete cascade
 );
 
-create table document_template_attribute_workflow_ids
+create table document_template_attribute_workflows
 (
     metadata_id uuid    not null,
     version     int     not null,

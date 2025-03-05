@@ -1,18 +1,18 @@
-use crate::graphql::content::template_attribute_workflow_object::TemplateAttributeWorkflowObject;
 use crate::models::content::attribute_type::AttributeType;
 use crate::models::content::attribute_ui_type::AttributeUiType;
 use crate::models::content::template_attribute::TemplateAttribute;
-use crate::models::content::template_attribute_workflow::TemplateAttributeWorkflow;
+use crate::models::content::template_workflow::TemplateWorkflow;
 use async_graphql::Object;
 use serde_json::Value;
+use crate::graphql::content::template_workflow::TemplateWorkflowObject;
 
 pub struct TemplateAttributeObject {
     pub attribute: TemplateAttribute,
-    pub workflows: Vec<TemplateAttributeWorkflow>,
+    pub workflows: Vec<TemplateWorkflow>,
 }
 
 impl TemplateAttributeObject {
-    pub fn new(attribute: TemplateAttribute, workflows: Vec<TemplateAttributeWorkflow>) -> Self {
+    pub fn new(attribute: TemplateAttribute, workflows: Vec<TemplateWorkflow>) -> Self {
         Self { attribute, workflows }
     }
 }
@@ -53,7 +53,7 @@ impl TemplateAttributeObject {
         &self.attribute.supplementary_key
     }
 
-    pub async fn workflows(&self) -> Vec<TemplateAttributeWorkflowObject> {
-        self.workflows.iter().cloned().map(TemplateAttributeWorkflowObject::new).collect()
+    pub async fn workflows(&self) -> Vec<TemplateWorkflowObject> {
+        self.workflows.iter().cloned().map(TemplateWorkflowObject::new).collect()
     }
 }

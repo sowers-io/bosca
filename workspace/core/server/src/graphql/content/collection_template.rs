@@ -1,10 +1,10 @@
 use crate::context::BoscaContext;
-use crate::graphql::content::collection_attribute_object::CollectionTemplateAttributeObject;
 use crate::graphql::content::metadata::MetadataObject;
+use crate::graphql::content::template_attribute::TemplateAttributeObject;
 use crate::models::content::collection_template::CollectionTemplate;
+use crate::models::content::find_query::FindQueries;
 use async_graphql::{Context, Error, Object};
 use serde_json::Value;
-use crate::models::content::find_query::FindQueries;
 
 pub struct CollectionTemplateObject {
     pub template: CollectionTemplate,
@@ -47,21 +47,26 @@ impl CollectionTemplateObject {
     pub async fn attributes(
         &self,
         ctx: &Context<'_>,
-    ) -> Result<Vec<CollectionTemplateAttributeObject>, Error> {
+    ) -> Result<Vec<TemplateAttributeObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        Ok(ctx
+        let mut attributes = Vec::new();
+        for attribute in ctx
             .content
             .collection_templates
             .get_template_attributes(&self.template.metadata_id, self.template.version)
             .await?
-            .into_iter()
-            .map(|a| {
-                CollectionTemplateAttributeObject::new(
-                    self.template.metadata_id,
+        {
+            let workflows = ctx
+                .content
+                .collection_templates
+                .get_template_attribute_workflows(
+                    &self.template.metadata_id,
                     self.template.version,
-                    a,
+                    &attribute.key,
                 )
-            })
-            .collect())
+                .await?;
+            attributes.push(TemplateAttributeObject::new(attribute, workflows));
+        }
+        Ok(attributes)
     }
 }

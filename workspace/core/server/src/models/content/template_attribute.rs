@@ -2,7 +2,7 @@ use async_graphql::*;
 use tokio_postgres::Row;
 use crate::models::content::attribute_type::AttributeType;
 use crate::models::content::attribute_ui_type::AttributeUiType;
-use crate::models::content::template_attribute_workflow::TemplateAttributeWorkflowInput;
+use crate::models::content::template_workflow::TemplateWorkflowInput;
 
 #[derive(Clone)]
 pub struct TemplateAttribute {
@@ -27,7 +27,7 @@ pub struct TemplateAttributeInput {
     pub supplementary_key: Option<String>,
     pub ui: AttributeUiType,
     pub list: bool,
-    pub workflow_ids: Vec<TemplateAttributeWorkflowInput>
+    pub workflows: Vec<TemplateWorkflowInput>
 }
 
 

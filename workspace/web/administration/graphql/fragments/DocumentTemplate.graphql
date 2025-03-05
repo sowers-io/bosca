@@ -3,6 +3,9 @@ fragment DocumentTemplate on DocumentTemplate {
     schema
     content
     defaultAttributes
+    containers {
+        ...DocumentTemplateContainer
+    }
     attributes {
         key
         name

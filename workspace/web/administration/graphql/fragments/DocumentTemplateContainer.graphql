@@ -1,0 +1,6 @@
+fragment DocumentTemplateContainer on DocumentTemplateContainer {
+    id
+    name
+    description
+}
+

@@ -3,7 +3,7 @@ import {BubbleMenu, EditorContent, type Range} from '@tiptap/vue-3'
 import {
   AttributeUiType,
   type DocumentFragment,
-  type DocumentTemplateAttribute,
+  type TemplateAttribute,
   type DocumentTemplateFragment,
   type MetadataFragment,
   type MetadataRelationshipFragment,
@@ -12,7 +12,11 @@ import {
 import {toast} from '~/components/ui/toast'
 import {Uploader} from '@/lib/uploader'
 import {hideAll} from 'tippy.js'
-import {CommandItems, OpenMediaPickerEvent} from '@/lib/editor/commanditems'
+import {
+  CommandItems,
+  OpenMediaPickerEvent,
+  NewContainerEvent,
+} from '@/lib/editor/commanditems'
 import {AttributeState, newAttributeState} from '~/lib/attribute.ts'
 import {save} from '~/lib/editor/save.ts'
 import {newEditor} from '~/lib/editor/editor.ts'
@@ -125,7 +129,7 @@ async function updateAttributes() {
   for (const attribute of props.template?.attributes || []) {
     let attr = attributes.get(attribute.key)
     if (!attr) {
-      attr = newAttributeState(attribute as DocumentTemplateAttribute)
+      attr = newAttributeState(attribute as TemplateAttribute)
       attributes.set(attribute.key, reactive(attr) as AttributeState)
       const attrRef = attributes.get(attribute.key) as unknown as WatchSource<
           AttributeState
@@ -186,11 +190,12 @@ const editor = newEditor(
       }
       const node = editor.view.dom.childNodes[0]
       title.value = node ? (node as HTMLElement)?.innerText : ''
-    },
+    }
 )
 
 let pendingRange: Range | null | undefined = null
 const mediaDialogOpen = ref(false)
+const newContainerOpen = ref(false)
 
 async function onRunWorkflow(attribute: AttributeState) {
   if (attribute.loading) return
@@ -242,10 +247,29 @@ async function onAddMedia(id: string) {
   mediaDialogOpen.value = false
 }
 
+async function onAddContainer(name: string) {
+  const e = editor.value
+  if (!e) return
+  let chain = e.chain().focus()
+  if (pendingRange) {
+    chain = chain.deleteRange(pendingRange)
+    pendingRange = null
+  }
+  chain.setContainer({ name }).run()
+  newContainerOpen.value = false
+  toast({title: 'Added: ' + name})
+}
+
 function onOpenMediaPicker(event: OpenMediaPickerEvent) {
   hideAll()
   pendingRange = event.range
   mediaDialogOpen.value = true
+}
+
+function onNewContainerEvent(event: NewContainerEvent) {
+  hideAll()
+  pendingRange = event.range
+  newContainerOpen.value = true
 }
 
 async function onSave() {
@@ -287,6 +311,8 @@ onMounted(async () => {
   window.addEventListener('reset-document', onReset)
   // @ts-ignore
   window.addEventListener(OpenMediaPickerEvent.NAME, onOpenMediaPicker)
+  // @ts-ignore
+  window.addEventListener(NewContainerEvent.NAME, onNewContainerEvent)
 })
 
 onUpdated(() => updateAttributes())
@@ -296,6 +322,8 @@ onUnmounted(() => {
   window.removeEventListener('reset-document', onReset)
   // @ts-ignore
   window.removeEventListener(OpenMediaPickerEvent.NAME, onOpenMediaPicker)
+  // @ts-ignore
+  window.removeEventListener(NewContainerEvent.NAME, onNewContainerEvent)
 })
 
 watch(metadata, async () => {
@@ -328,7 +356,7 @@ const editable = computed(() => props.metadata.workflow.state === 'draft')
 <template>
   <div class="w-full h-full" v-if="editor">
     <bubble-menu
-        class="flex border bg-background gap-1 rounded-md p-1 drop-shadow-xl ms-2 w-442px"
+        class="flex border bg-background gap-1 rounded-md p-1 drop-shadow-xl ms-2 w-482px"
         :tippy-options="{ duration: 100, offset: [0, 20] }"
         :editor="editor"
     >
@@ -391,6 +419,18 @@ const editable = computed(() => props.metadata.workflow.state === 'draft')
         </div>
       </DialogContent>
     </Dialog>
+    <Dialog v-model:open="newContainerOpen">
+      <DialogContent>
+        <div class="flex flex-col gap-2 h-full">
+          <h1 class="font-bold">Select the Container Type</h1>
+          <Select>
+            <SelectItem v-for="(container, index) in template?.containers || []" :key="index" :value="container.id" @click="onAddContainer(container.id)">
+              {{ container.name }}
+            </SelectItem>
+          </Select>
+        </div>
+      </DialogContent>
+    </Dialog>
   </div>
 </template>
 
@@ -437,5 +477,16 @@ const editable = computed(() => props.metadata.workflow.state === 'draft')
 
 .tiptap.ProseMirror {
   @apply border rounded-md py-2 px-4 w-full max-w-full;
+}
+
+.container {
+  @apply border rounded-md my-2 py-4 px-2 w-full;
+}
+
+.container-name {
+  @apply text-xs mb-4 border border-green-500 font-bold bg-green-100 text-green-600 rounded-md py-2 px-2 w-full;
+}
+.container-content {
+  @apply px-1;
 }
 </style>

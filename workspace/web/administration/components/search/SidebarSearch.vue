@@ -4,6 +4,7 @@ import type {
   MetadataIdNameFragment, ProfileIdNameFragment,
 } from '~/lib/graphql/graphql'
 import {getLink} from "~/lib/link.ts";
+import {toast} from "~/components/ui/toast";
 
 const { metaSymbol } = useShortcuts()
 const client = useBoscaClient()
@@ -18,6 +19,9 @@ const filter = ref<string | null>(null)
 const storageSystemId = computed(() => storageSystems.value?.find((s) => s.name === 'Default Search')?.id || '')
 
 watch(search, () => {
+  if (!storageSystemId.value) {
+    toast({title: 'No default storage system found.'})
+  }
   if (search.value.length > 0) {
     if (limit.value == 10) {
       limit.value = 100

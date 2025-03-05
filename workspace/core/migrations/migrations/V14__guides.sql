@@ -31,7 +31,7 @@ create table guide_template_attributes
     foreign key (metadata_id, version) references guide_templates (metadata_id, version) on delete cascade
 );
 
-create table guide_template_attribute_workflow_ids
+create table guide_template_attribute_workflows
 (
     metadata_id uuid    not null,
     version     int     not null,
@@ -76,7 +76,7 @@ create table guide_template_step_attributes
     foreign key (metadata_id, version, step) references guide_template_steps (metadata_id, version, id) on delete cascade
 );
 
-create table guide_template_step_attribute_workflow_ids
+create table guide_template_step_attribute_workflows
 (
     metadata_id uuid    not null,
     version     int     not null,

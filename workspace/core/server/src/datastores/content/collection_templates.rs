@@ -6,7 +6,7 @@ use std::sync::Arc;
 use uuid::Uuid;
 use crate::models::content::collection_template::{CollectionTemplate, CollectionTemplateInput};
 use crate::models::content::template_attribute::TemplateAttribute;
-use crate::models::content::template_attribute_workflow::TemplateAttributeWorkflow;
+use crate::models::content::template_workflow::TemplateWorkflow;
 
 #[derive(Clone)]
 pub struct CollectionTemplatesDataStore {
@@ -68,9 +68,9 @@ impl CollectionTemplatesDataStore {
         metadata_id: &Uuid,
         version: i32,
         key: &String,
-    ) -> Result<Vec<TemplateAttributeWorkflow>, Error> {
+    ) -> Result<Vec<TemplateWorkflow>, Error> {
         let connection = self.pool.get().await?;
-        let stmt = connection.prepare_cached("select * from collection_template_attribute_workflow_ids where metadata_id = $1 and version = $2 and key = $3").await?;
+        let stmt = connection.prepare_cached("select * from collection_template_attribute_workflows where metadata_id = $1 and version = $2 and key = $3").await?;
         let results = connection
             .query(&stmt, &[metadata_id, &version, key])
             .await?;
@@ -136,7 +136,7 @@ impl CollectionTemplatesDataStore {
         )
         .await?;
         txn.execute(
-            "delete from collection_template_attribute_workflow_ids where metadata_id = $1 and version = $2",
+            "delete from collection_template_attribute_workflows where metadata_id = $1 and version = $2",
             &[metadata_id, &version],
         )
         .await?;
@@ -155,7 +155,7 @@ impl CollectionTemplatesDataStore {
         template: &CollectionTemplateInput,
     ) -> Result<(), Error> {
         let stmt = txn.prepare_cached("insert into collection_template_attributes (metadata_id, version, key, name, description, configuration, type, ui, list, sort, supplementary_key) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)").await?;
-        let stmt_wid = txn.prepare_cached("insert into collection_template_attribute_workflow_ids (metadata_id, version, key, workflow_id, auto_run) values ($1, $2, $3, $4, $5)").await?;
+        let stmt_wid = txn.prepare_cached("insert into collection_template_attribute_workflows (metadata_id, version, key, workflow_id, auto_run) values ($1, $2, $3, $4, $5)").await?;
         for (index, attr) in template.attributes.iter().enumerate() {
             let sort = index as i32;
             txn.execute(
@@ -175,7 +175,7 @@ impl CollectionTemplatesDataStore {
                 ],
             )
             .await?;
-            for wid in &attr.workflow_ids {
+            for wid in &attr.workflows {
                 txn.execute(
                     &stmt_wid,
                     &[

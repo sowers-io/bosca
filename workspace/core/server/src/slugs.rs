@@ -1,5 +1,5 @@
 use crate::context::BoscaContext;
-use crate::models::content::slug::SlugType;
+use crate::models::content::slug::{Slug, SlugType};
 use crate::models::content::supplementary::MetadataSupplementary;
 use crate::models::security::permission::PermissionAction;
 use crate::util::security::get_principal_from_headers;
@@ -47,15 +47,22 @@ pub async fn slug(
         .await
         .map_err(|_| (StatusCode::UNAUTHORIZED, "Unauthorized".to_owned()))?;
     let slug = slug.split('.').next().unwrap();
-    let slug = ctx
+    let mut slug_content = ctx
         .content
         .get_slug(slug)
         .await
         .map_err(|_| (StatusCode::NOT_FOUND, "Not Found".to_owned()))?;
-    if slug.is_none() {
-        return Err((StatusCode::NOT_FOUND, "Not Found".to_owned()))?;
+    if slug_content.is_none() {
+        if let Ok(id) = Uuid::parse_str(&slug) {
+            slug_content = Some(Slug {
+                id,
+                slug_type: SlugType::Metadata
+            })
+        } else {
+            return Err((StatusCode::NOT_FOUND, "Not Found".to_owned()))?;
+        }
     }
-    let slug = slug.unwrap();
+    let slug = slug_content.unwrap();
     if slug.slug_type != SlugType::Metadata {
         return Err((StatusCode::NOT_FOUND, "Not Found".to_owned()))?;
     }

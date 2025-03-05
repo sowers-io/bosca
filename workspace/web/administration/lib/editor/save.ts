@@ -1,6 +1,6 @@
 import type {
   CollectionIdNameFragment,
-  Document,
+  DocumentFragment,
   DocumentInput,
   DocumentTemplateFragment,
   MetadataFragment,
@@ -14,7 +14,7 @@ import slugify from "slugify";
 
 export async function save(
   client: BoscaClient<any>,
-  document: Document,
+  document: DocumentFragment,
   metadata: MetadataFragment,
   template: DocumentTemplateFragment | null,
   parents: ParentCollectionFragment[],

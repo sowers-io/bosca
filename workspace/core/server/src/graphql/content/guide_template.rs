@@ -1,7 +1,7 @@
 use crate::context::BoscaContext;
 use crate::graphql::content::guide_template_step::GuideTemplateStepObject;
 use crate::graphql::content::metadata::MetadataObject;
-use crate::graphql::content::template_attribute_object::TemplateAttributeObject;
+use crate::graphql::content::template_attribute::TemplateAttributeObject;
 use crate::models::content::guide_template::GuideTemplate;
 use crate::models::content::guide_type::GuideType;
 use async_graphql::{Context, Error, Object};

@@ -1,9 +1,10 @@
 use crate::context::BoscaContext;
+use crate::graphql::content::document_template_container::DocumentTemplateContainerObject;
 use crate::graphql::content::metadata::MetadataObject;
+use crate::graphql::content::template_attribute::TemplateAttributeObject;
 use crate::models::content::document_template::DocumentTemplate;
 use async_graphql::{Context, Error, Object};
 use serde_json::Value;
-use crate::graphql::content::template_attribute_object::TemplateAttributeObject;
 
 pub struct DocumentTemplateObject {
     pub template: DocumentTemplate,
@@ -41,6 +42,28 @@ impl DocumentTemplateObject {
 
     pub async fn default_attributes(&self) -> &Option<Value> {
         &self.template.default_attributes
+    }
+
+    pub async fn containers(
+        &self,
+        ctx: &Context<'_>,
+    ) -> Result<Vec<DocumentTemplateContainerObject>, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let containers = ctx
+            .content
+            .documents
+            .get_template_containers(&self.template.metadata_id, self.template.version)
+            .await?;
+        Ok(containers
+            .into_iter()
+            .map(|c| {
+                DocumentTemplateContainerObject::new(
+                    self.template.metadata_id,
+                    self.template.version,
+                    c,
+                )
+            })
+            .collect())
     }
 
     pub async fn attributes(

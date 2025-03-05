@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import type {NuxtError} from "#app";
+
 const { theme, radius } = useCustomize()
 
 useHead({
@@ -11,7 +13,7 @@ useHead({
 const props = defineProps({
   error: Object as () => NuxtError,
 })
-console.error(props, props.error)
+console.error(props.error)
 
 const router = useRouter()
 </script>

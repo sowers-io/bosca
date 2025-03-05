@@ -2,6 +2,7 @@ use async_graphql::InputObject;
 use serde_json::Value;
 use tokio_postgres::Row;
 use uuid::Uuid;
+use crate::models::content::document_template_container::DocumentTemplateContainerInput;
 use crate::models::content::template_attribute::TemplateAttributeInput;
 
 #[derive(Clone)]
@@ -20,6 +21,7 @@ pub struct DocumentTemplateInput {
     pub configuration: Option<Value>,
     pub schema: Option<Value>,
     pub default_attributes: Option<Value>,
+    pub containers: Option<Vec<DocumentTemplateContainerInput>>,
     pub content: Value,
 }
 

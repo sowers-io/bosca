@@ -1,0 +1,28 @@
+use async_graphql::InputObject;
+use tokio_postgres::Row;
+use crate::models::content::template_workflow::TemplateWorkflowInput;
+
+#[derive(Clone)]
+pub struct DocumentTemplateContainer {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+}
+
+#[derive(InputObject, Clone)]
+pub struct DocumentTemplateContainerInput {
+    pub id: String,
+    pub name: String,
+    pub description: String,
+    pub workflows: Vec<TemplateWorkflowInput>
+}
+
+impl From<&Row> for DocumentTemplateContainer {
+    fn from(row: &Row) -> Self {
+        Self {
+            id: row.get("id"),
+            name: row.get("name"),
+            description: row.get("description"),
+        }
+    }
+}

@@ -11,16 +11,17 @@ import Suggestion from '~/lib/editor/suggestion.ts'
 import { Bible } from '~/lib/editor/bible.ts'
 import { toast } from '~/components/ui/toast'
 import type {
-  Document as BoscaDocument,
-  DocumentTemplateFragment,
+  DocumentFragment,
   MetadataFragment,
+  DocumentTemplateFragment,
 } from '~/lib/graphql/graphql.ts'
 import { Plugin } from '@tiptap/pm/state'
 import Document from '@tiptap/extension-document'
 import { type EditorEvents } from '@tiptap/core'
+import {Container} from "~/lib/editor/container.ts";
 
 export function newEditor(
-  document: BoscaDocument,
+  document: DocumentFragment,
   metadata: MetadataFragment,
   template: DocumentTemplateFragment | null = null,
   uploader: Uploader | null = null,
@@ -55,14 +56,13 @@ export function newEditor(
   const content = document?.content?.document
     ? toRaw(document?.content?.document)
     : null
-
-  console.log(content)
   return useEditor({
     content: content,
     editable: metadata.workflow.state === 'draft' && editable,
     extensions: [
       CustomDocument,
       StarterKit.configure({ document: false }),
+      Container.configure({ containers: template?.containers || [] }),
       Image,
       Link,
       Underline,

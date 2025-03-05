@@ -1,7 +1,7 @@
 import {
   AttributeType,
   AttributeUiType,
-  type DocumentTemplateAttribute,
+  type TemplateAttribute,
 } from '~/lib/graphql/graphql.ts'
 import type { BoscaClient } from '~/lib/bosca/client.ts'
 
@@ -137,7 +137,7 @@ export class AttributeState {
 }
 
 export function newAttributeState(
-  attribute: DocumentTemplateAttribute,
+  attribute: TemplateAttribute,
 ): AttributeState {
   return new AttributeState(
     attribute.key,

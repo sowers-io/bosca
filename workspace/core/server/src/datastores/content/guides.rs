@@ -6,7 +6,7 @@ use crate::models::content::guide_template::{GuideTemplate, GuideTemplateInput};
 use crate::models::content::guide_template_step::GuideTemplateStep;
 use crate::models::content::guide_template_step_module::GuideTemplateStepModule;
 use crate::models::content::template_attribute::TemplateAttribute;
-use crate::models::content::template_attribute_workflow::TemplateAttributeWorkflow;
+use crate::models::content::template_workflow::TemplateWorkflow;
 use async_graphql::*;
 use deadpool_postgres::{GenericClient, Pool, Transaction};
 use log::error;
@@ -70,9 +70,9 @@ impl GuidesDataStore {
         metadata_id: &Uuid,
         version: i32,
         key: &String,
-    ) -> Result<Vec<TemplateAttributeWorkflow>, Error> {
+    ) -> Result<Vec<TemplateWorkflow>, Error> {
         let connection = self.pool.get().await?;
-        let stmt = connection.prepare_cached("select * from guide_template_attribute_workflow_ids where metadata_id = $1 and version = $2 and key = $3").await?;
+        let stmt = connection.prepare_cached("select * from guide_template_attribute_workflows where metadata_id = $1 and version = $2 and key = $3").await?;
         let results = connection
             .query(&stmt, &[metadata_id, &version, key])
             .await?;
@@ -114,9 +114,9 @@ impl GuidesDataStore {
         version: i32,
         step_id: i64,
         key: &str,
-    ) -> Result<Vec<TemplateAttributeWorkflow>, Error> {
+    ) -> Result<Vec<TemplateWorkflow>, Error> {
         let connection = self.pool.get().await?;
-        let stmt = connection.prepare_cached("select * from guide_template_step_attribute_workflow_ids where metadata_id = $1 and version = $2 and step = $3 and key = $4").await?;
+        let stmt = connection.prepare_cached("select * from guide_template_step_attribute_workflows where metadata_id = $1 and version = $2 and step = $3 and key = $4").await?;
         let key = key.to_string();
         let results = connection
             .query(&stmt, &[metadata_id, &version, &step_id, &key])
@@ -212,7 +212,7 @@ impl GuidesDataStore {
         template: &GuideTemplateInput,
     ) -> Result<(), Error> {
         let stmt_attrs = txn.prepare_cached("insert into guide_template_attributes (metadata_id, version, key, name, description, configuration, type, ui, list, sort, supplementary_key) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)").await?;
-        let stmt_attr_wid = txn.prepare_cached("insert into guide_template_attribute_workflow_ids (metadata_id, version, key, workflow_id, auto_run) values ($1, $2, $3, $4, $5)").await?;
+        let stmt_attr_wid = txn.prepare_cached("insert into guide_template_attribute_workflows (metadata_id, version, key, workflow_id, auto_run) values ($1, $2, $3, $4, $5)").await?;
         for (index, attr) in template.attributes.iter().enumerate() {
             let sort = index as i32;
             txn.execute(
@@ -232,7 +232,7 @@ impl GuidesDataStore {
                 ],
             )
             .await?;
-            for wid in &attr.workflow_ids {
+            for wid in &attr.workflows {
                 txn.execute(
                     &stmt_attr_wid,
                     &[
@@ -248,7 +248,7 @@ impl GuidesDataStore {
         }
         let stmt_steps = txn.prepare_cached("insert into guide_template_steps (metadata_id, version, template_metadata_id, template_metadata_version, sort) values ($1, $2, $3, $4, $5) returning id").await?;
         let stmt_step_attrs = txn.prepare_cached("insert into guide_template_step_attributes (metadata_id, version, step, key, name, description, configuration, type, ui, list, sort, supplementary_key) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)").await?;
-        let stmt_step_attr_wid = txn.prepare_cached("insert into guide_template_step_attribute_workflow_ids (metadata_id, version, step, key, workflow_id, auto_run) values ($1, $2, $3, $4, $5, $6)").await?;
+        let stmt_step_attr_wid = txn.prepare_cached("insert into guide_template_step_attribute_workflows (metadata_id, version, step, key, workflow_id, auto_run) values ($1, $2, $3, $4, $5, $6)").await?;
         let stmt_step_modules = txn.prepare_cached("insert into guide_template_step_modules (metadata_id, version, step, template_metadata_id, template_metadata_version, sort) values ($1, $2, $3, $4, $5, $6)").await?;
         for (index, step) in template.steps.iter().enumerate() {
             let sort = index as i32;
@@ -285,7 +285,7 @@ impl GuidesDataStore {
                     ],
                 )
                 .await?;
-                for wid in &attr.workflow_ids {
+                for wid in &attr.workflows {
                     txn.execute(
                         &stmt_step_attr_wid,
                         &[
