@@ -121,7 +121,8 @@ function checkForChanges() {
 
 async function updateAttributes() {
   if (editor.value) {
-    const editable = props.metadata.workflow.state === 'draft' && !props.metadata.workflow.stateValid
+    const editable = props.metadata.workflow.state === 'draft' &&
+      !props.metadata.workflow.stateValid
     if (editable !== editor.value.isEditable) {
       editor.value.setEditable(editable, true)
     }
@@ -354,7 +355,10 @@ client.listeners.onMetadataSupplementaryChanged(async (id, key) => {
   }
 })
 
-const editable = computed(() => props.metadata.workflow.state === 'draft' && !props.metadata.workflow.stateValid)
+const editable = computed(() =>
+  props.metadata.workflow.state === 'draft' &&
+  !props.metadata.workflow.stateValid
+)
 </script>
 
 <template>

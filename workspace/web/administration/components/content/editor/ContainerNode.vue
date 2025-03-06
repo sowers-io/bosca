@@ -45,7 +45,8 @@ async function onRunWorkflow() {
   } catch (e) {
     loading.value = false
     toast({
-      title: 'Error Executing: ' + nodeContainer.value.description + ': ' +  (e as unknown as any).message,
+      title: 'Error Executing: ' + nodeContainer.value.description + ': ' +
+        (e as unknown as any).message,
     })
   }
 }

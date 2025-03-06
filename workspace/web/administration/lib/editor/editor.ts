@@ -59,13 +59,16 @@ export function newEditor(
     : null
   return useEditor({
     content: content,
-    editable: metadata.workflow.state === 'draft' && !metadata.workflow.stateValid && editable,
+    editable: metadata.workflow.state === 'draft' &&
+      !metadata.workflow.stateValid && editable,
     extensions: [
       CustomDocument,
       StarterKit.configure({ document: false }),
       Container.configure({
         metadata: metadata,
-        containers: (template?.containers || []) as Array<DocumentTemplateContainerFragment>,
+        containers: (template?.containers || []) as Array<
+          DocumentTemplateContainerFragment
+        >,
       }),
       Image,
       Link,

@@ -312,7 +312,7 @@ const count = ref(0)
 const editable = computed(() => props.collection.workflow.state === 'draft')
 
 async function onAddItem() {
-  toast({title: 'Not Implemented'})
+  toast({ title: 'Not Implemented' })
 }
 </script>
 

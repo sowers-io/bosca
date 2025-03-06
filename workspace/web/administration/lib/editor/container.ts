@@ -1,7 +1,7 @@
 import { mergeAttributes, Node } from '@tiptap/core'
 import type {
-    DocumentTemplateContainerFragment,
-    MetadataFragment,
+  DocumentTemplateContainerFragment,
+  MetadataFragment,
 } from '~/lib/graphql/graphql.ts'
 import { VueNodeViewRenderer } from '@tiptap/vue-3'
 import ContainerNode from '~/components/content/editor/ContainerNode.vue'

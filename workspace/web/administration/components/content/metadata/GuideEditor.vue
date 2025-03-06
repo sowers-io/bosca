@@ -19,15 +19,13 @@ const props = defineProps<{
 }>()
 
 const guideCollection = computed(() => {
-  return props.parents?.find((c) =>
-      c.attributes['editor.type'] === 'Guide'
-  ) as
-      | ParentCollectionFragment
-      | undefined
+  return props.parents?.find((c) => c.attributes['editor.type'] === 'Guide') as
+    | ParentCollectionFragment
+    | undefined
 })
 const parentCollections = computed(() => {
   return props.parents?.filter((c) =>
-      c.attributes['editor.type'] !== 'Guide'
+    c.attributes['editor.type'] !== 'Guide'
   ) || []
 })
 const { data: states } = client.workflows.getStatesAsyncData()
@@ -35,7 +33,8 @@ const stateName = computed(() => {
   return states.value?.find((s) => s.id === props.metadata.workflow.state)?.name
 })
 const pendingStateName = computed(() => {
-  return states.value?.find((s) => s.id === props.metadata.workflow.pending)?.name
+  return states.value?.find((s) => s.id === props.metadata.workflow.pending)
+    ?.name
 })
 const hasChanges = ref(false)
 const confirmDelete = ref(false)
@@ -61,18 +60,19 @@ async function onPublish() {
     return
   }
   const states = await client.workflows.getStates() || []
-  const published = states.find((s) => s.type === WorkflowStateType.Published)?.id || ''
+  const published =
+    states.find((s) => s.type === WorkflowStateType.Published)?.id || ''
   let stateValid: Date | null = null
   if (props.metadata.attributes['published']) {
     stateValid = new Date(Date.parse(props.metadata.attributes['published']))
   }
   if (props.metadata.workflow.state !== published) {
     await client.metadata.beginTransition(
-        props.metadata.id,
-        props.metadata.version,
-        published,
-        'Publishing Document',
-        stateValid
+      props.metadata.id,
+      props.metadata.version,
+      published,
+      'Publishing Document',
+      stateValid,
     )
   }
   if (!props.metadata.public) {
@@ -87,11 +87,11 @@ async function onPublish() {
     }
     if (relationship.metadata.workflow.state !== published) {
       await client.metadata.beginTransition(
-          relationship.metadata.id,
-          relationship.metadata.version,
-          published,
-          'Publishing Document',
-          stateValid
+        relationship.metadata.id,
+        relationship.metadata.version,
+        published,
+        'Publishing Document',
+        stateValid,
       )
     }
     if (!relationship.metadata.public) {
@@ -107,27 +107,27 @@ async function onUnpublish() {
   const states = await client.workflows.getStates() || []
   if (props.metadata.workflow.stateValid) {
     await client.metadata.cancelTransition(
-        props.metadata.id,
-        props.metadata.version,
+      props.metadata.id,
+      props.metadata.version,
     )
   } else {
     await client.metadata.beginTransition(
-        props.metadata.id,
-        props.metadata.version,
-        states.find((s) => s.type === WorkflowStateType.Draft)?.id || '',
-        'Unpublishing Guide',
+      props.metadata.id,
+      props.metadata.version,
+      states.find((s) => s.type === WorkflowStateType.Draft)?.id || '',
+      'Unpublishing Guide',
     )
   }
 }
 
 async function onPreview() {
   const configuration = await client.configurations.getConfiguration(
-      'preview.url',
+    'preview.url',
   )
   if (!configuration || !props.metadata?.slug) return
   window.open(
-      configuration.value.value + '?slug=' + props.metadata!.slug,
-      '_blank',
+    configuration.value.value + '?slug=' + props.metadata!.slug,
+    '_blank',
   )
 }
 
@@ -149,7 +149,9 @@ async function doDelete() {
           <Badge variant="secondary">{{ stateName }}
             <span v-if="metadata.workflow.pending">*</span>
           </Badge>
-          <Badge variant="secondary" class="ms-4" v-if="pendingStateName">{{ pendingStateName }}</Badge>
+          <Badge variant="secondary" class="ms-4" v-if="pendingStateName">{{
+            pendingStateName
+          }}</Badge>
           <Badge v-if="hasChanges" variant="outline" class="ms-2 text-gray-400"
           >Has Changes</Badge>
           <Badge v-if="outOfDate" variant="destructive" class="ms-2"
@@ -161,10 +163,10 @@ async function doDelete() {
         <Tooltip v-if="metadata?.workflow?.state === 'draft'">
           <TooltipTrigger as-child>
             <Button
-                @click="reset"
-                class="flex gap-2"
-                variant="secondary"
-                :disabled="!hasChanges"
+              @click="reset"
+              class="flex gap-2"
+              variant="secondary"
+              :disabled="!hasChanges"
             >
               <Icon name="i-lucide-rotate-ccw" class="size-4" />
             </Button>
@@ -176,10 +178,10 @@ async function doDelete() {
         <Tooltip v-if="metadata?.workflow?.state === 'draft'">
           <TooltipTrigger as-child>
             <Button
-                @click="onSave"
-                class="flex gap-2"
-                variant="secondary"
-                :disabled="!hasChanges"
+              @click="onSave"
+              class="flex gap-2"
+              variant="secondary"
+              :disabled="!hasChanges"
             >
               <Icon name="i-lucide-save" class="size-4" />
             </Button>
@@ -191,10 +193,10 @@ async function doDelete() {
         <Tooltip>
           <TooltipTrigger as-child>
             <Button
-                @click="onPreview"
-                :disabled="hasChanges"
-                class="flex gap-2"
-                variant="secondary"
+              @click="onPreview"
+              :disabled="hasChanges"
+              class="flex gap-2"
+              variant="secondary"
             >
               <Icon name="i-lucide-screen-share" class="size-4" />
             </Button>
@@ -213,13 +215,18 @@ async function doDelete() {
             <p>Delete Guide</p>
           </TooltipContent>
         </Tooltip>
-        <Tooltip v-if="metadata?.workflow?.state === 'draft' && !metadata?.workflow?.stateValid">
+        <Tooltip
+          v-if="
+            metadata?.workflow?.state === 'draft' &&
+            !metadata?.workflow?.stateValid
+          "
+        >
           <TooltipTrigger as-child>
             <Button
-                @click="onPublish"
-                :disabled="hasChanges || metadata?.workflow?.pending"
-                class="flex gap-2"
-                variant="secondary"
+              @click="onPublish"
+              :disabled="hasChanges || metadata?.workflow?.pending"
+              class="flex gap-2"
+              variant="secondary"
             >
               <Icon name="i-lucide-square-play" class="size-4" />
             </Button>
@@ -228,13 +235,21 @@ async function doDelete() {
             <p>Publish Guide</p>
           </TooltipContent>
         </Tooltip>
-        <Tooltip v-if="metadata?.workflow?.state === 'published' || metadata?.workflow?.stateValid">
+        <Tooltip
+          v-if="
+            metadata?.workflow?.state === 'published' ||
+            metadata?.workflow?.stateValid
+          "
+        >
           <TooltipTrigger as-child>
             <Button
-                @click="onUnpublish"
-                :disabled="metadata?.workflow?.pending && !(metadata?.workflow?.stateValid)"
-                class="flex gap-2"
-                variant="secondary"
+              @click="onUnpublish"
+              :disabled="
+                metadata?.workflow?.pending &&
+                !(metadata?.workflow?.stateValid)
+              "
+              class="flex gap-2"
+              variant="secondary"
             >
               <Icon name="i-lucide-square-square" class="size-4" />
             </Button>
@@ -246,15 +261,15 @@ async function doDelete() {
         <Tooltip>
           <TooltipTrigger as-child>
             <Button
-                :disabled="hasChanges"
-                @click="
+              :disabled="hasChanges"
+              @click="
                 router.push(
                   '/metadata/edit/' + metadata.id +
                     '?guide=true',
                 )
               "
-                class="flex gap-2"
-                variant="secondary"
+              class="flex gap-2"
+              variant="secondary"
             >
               <Icon name="i-lucide-bolt" class="size-4" />
             </Button>

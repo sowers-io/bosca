@@ -5,7 +5,9 @@ import {
   AddMetadataPermissionDocument,
   AddMetadataRelationshipDocument,
   AddMetadataTraitDocument,
-  BeginMetadataTransitionDocument, CancelMetadataWorkflowsDocument, CancelTransitionDocument,
+  BeginMetadataTransitionDocument,
+  CancelMetadataWorkflowsDocument,
+  CancelTransitionDocument,
   type CollectionTemplateFragment,
   CollectionType,
   DeleteMetadataDocument,
@@ -20,14 +22,18 @@ import {
   GetCollectionTemplateDocument,
   GetMetadataDocument,
   GetMetadataDocumentDocument,
-  GetMetadataDocumentTemplateDocument, GetMetadataGuideDocument, GetMetadataGuideTemplateDocument,
+  GetMetadataDocumentTemplateDocument,
+  GetMetadataGuideDocument,
+  GetMetadataGuideTemplateDocument,
   GetMetadataParentsDocument,
   GetMetadataPermissionsDocument,
   GetMetadataRelationshipsDocument,
   GetMetadataSupplementaryDocument,
   GetMetadataSupplementaryJsonDocument,
   GetMetadataSupplementaryTextDocument,
-  GetMetadataUploadDocument, GuideFragment, GuideTemplateFragment,
+  GetMetadataUploadDocument,
+  GuideFragment,
+  GuideTemplateFragment,
   type MetadataFragment,
   type MetadataInput,
   type MetadataRelationshipFragment,
@@ -94,15 +100,15 @@ export class ContentMetadata<T extends NetworkClient> extends Api<T> {
   }
 
   async getGuideTemplate(
-      id: string,
-      version: number,
+    id: string,
+    version: number,
   ): Promise<GuideTemplateFragment> {
     const response = await this.network.execute(
-        GetMetadataGuideTemplateDocument,
-        {
-          id,
-          version,
-        },
+      GetMetadataGuideTemplateDocument,
+      {
+        id,
+        version,
+      },
     )
     return response!.content!.metadata!.guideTemplate as GuideTemplateFragment
   }
@@ -512,11 +518,11 @@ export class ContentMetadata<T extends NetworkClient> extends Api<T> {
   }
 
   async beginTransition(
-      id: string,
-      version: number,
-      state: string,
-      status: string,
-      stateValid: Date | null = null
+    id: string,
+    version: number,
+    state: string,
+    status: string,
+    stateValid: Date | null = null,
   ) {
     await this.network.execute(BeginMetadataTransitionDocument, {
       id,
@@ -528,8 +534,8 @@ export class ContentMetadata<T extends NetworkClient> extends Api<T> {
   }
 
   async cancelTransition(
-      id: string,
-      version: number,
+    id: string,
+    version: number,
   ) {
     await this.network.execute(CancelTransitionDocument, {
       metadataId: id,
