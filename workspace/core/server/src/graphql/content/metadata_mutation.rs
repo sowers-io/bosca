@@ -174,9 +174,17 @@ impl MetadataMutationObject {
     async fn delete(&self, ctx: &Context<'_>, metadata_id: String) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::parse_str(metadata_id.as_str())?;
-        ctx.check_metadata_action(&id, PermissionAction::Delete)
+        let metadata = ctx.check_metadata_action(&id, PermissionAction::Delete)
             .await?;
-        ctx.content.metadata.mark_deleted(&id).await?;
+        ctx.content.metadata.mark_deleted(&metadata.id).await?;
+        ctx.workflow.enqueue_metadata_workflow(
+            "metadata.delete.finalize",
+            &metadata.id,
+            &metadata.version,
+            None,
+            None,
+            None
+        ).await?;
         Ok(true)
     }
 

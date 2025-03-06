@@ -40,6 +40,14 @@ pub async fn delete_collection(
                         ctx.content.metadata.delete(ctx, &item.id).await?;
                     } else {
                         ctx.content.metadata.mark_deleted(&item.id).await?;
+                        ctx.workflow.enqueue_metadata_workflow(
+                            "metadata.delete.finalize",
+                            &item.id,
+                            &item.version,
+                            None,
+                            None,
+                            None
+                        ).await?;
                     }
                 }
             }
@@ -65,6 +73,13 @@ pub async fn delete_collection(
         ctx.content.collections.delete(collection_id).await?;
     } else {
         ctx.content.collections.mark_deleted(collection_id).await?;
+        ctx.workflow.enqueue_collection_workflow(
+            "collection.delete.finalize",
+            &collection_id,
+            None,
+            None,
+            None
+        ).await?;
     }
     Ok(())
 }
