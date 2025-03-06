@@ -20,14 +20,14 @@ import {
   GetCollectionTemplateDocument,
   GetMetadataDocument,
   GetMetadataDocumentDocument,
-  GetMetadataDocumentTemplateDocument,
+  GetMetadataDocumentTemplateDocument, GetMetadataGuideDocument, GetMetadataGuideTemplateDocument,
   GetMetadataParentsDocument,
   GetMetadataPermissionsDocument,
   GetMetadataRelationshipsDocument,
   GetMetadataSupplementaryDocument,
   GetMetadataSupplementaryJsonDocument,
   GetMetadataSupplementaryTextDocument,
-  GetMetadataUploadDocument,
+  GetMetadataUploadDocument, GuideFragment, GuideTemplateFragment,
   type MetadataFragment,
   type MetadataInput,
   type MetadataRelationshipFragment,
@@ -84,6 +84,27 @@ export class ContentMetadata<T extends NetworkClient> extends Api<T> {
     return response!.content!.metadata!.relationships as Array<
       MetadataRelationshipFragment
     >
+  }
+
+  async getGuide(id: string): Promise<GuideFragment> {
+    const response = await this.network.execute(GetMetadataGuideDocument, {
+      id: id,
+    })
+    return response!.content!.metadata!.guide as GuideFragment
+  }
+
+  async getGuideTemplate(
+      id: string,
+      version: number,
+  ): Promise<GuideTemplateFragment> {
+    const response = await this.network.execute(
+        GetMetadataGuideTemplateDocument,
+        {
+          id,
+          version,
+        },
+    )
+    return response!.content!.metadata!.guideTemplate as GuideTemplateFragment
   }
 
   async getDocument(id: string): Promise<DocumentFragment> {

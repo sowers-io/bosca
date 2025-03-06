@@ -17,7 +17,7 @@ export async function save(
   client: BoscaClient<any>,
   document: DocumentFragment,
   metadata: MetadataFragment,
-  template: DocumentTemplateFragment | null,
+  template: DocumentTemplateFragment | null | undefined,
   parents: ParentCollectionFragment[],
   title: string,
   relationships: MetadataRelationshipFragment[],

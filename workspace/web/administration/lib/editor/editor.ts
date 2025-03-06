@@ -11,7 +11,8 @@ import Suggestion from '~/lib/editor/suggestion.ts'
 import { Bible } from '~/lib/editor/bible.ts'
 import { toast } from '~/components/ui/toast'
 import type {
-  DocumentFragment, DocumentTemplateContainerFragment,
+  DocumentFragment,
+  DocumentTemplateContainerFragment,
   DocumentTemplateFragment,
   MetadataFragment,
 } from '~/lib/graphql/graphql.ts'

@@ -32,7 +32,7 @@ async function onRunWorkflow() {
     loading.value = true
     hideAll()
     let workflows = ''
-    for (const workflow of nodeContainer.value.workflows || []) {
+    for (const workflow of nodeContainer.value?.workflows || []) {
       await client.workflows.enqueueMetadataWorkflow(
         workflow.workflow!.id,
         props.extension.options.metadata.id,
@@ -85,11 +85,11 @@ client.listeners.onMetadataSupplementaryChanged(async (id, key) => {
   <NodeViewWrapper>
     <div class="container">
       <div class="container-name flex items-center justify-between">
-        {{ nodeContainer?.name }}
+        {{ nodeContainer?.name || HTMLAttributes.name }}
         <template
           v-if="
-            nodeContainer.workflows &&
-            nodeContainer.workflows.length > 0
+            nodeContainer?.workflows &&
+            (nodeContainer?.workflows?.length || 0) > 0
           "
         >
           <Button

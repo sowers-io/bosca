@@ -31,7 +31,7 @@ const props = defineProps<{
   parents: ParentCollectionFragment[]
   relationships: MetadataRelationshipFragment[]
   document: DocumentFragment
-  template: DocumentTemplateFragment | null
+  template: DocumentTemplateFragment | null | undefined
   hasChanges: boolean
 }>()
 

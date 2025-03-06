@@ -310,6 +310,10 @@ const offset = computed(() => (currentPage.value - 1) * limit.value)
 const count = ref(0)
 
 const editable = computed(() => props.collection.workflow.state === 'draft')
+
+async function onAddItem() {
+  toast({title: 'Not Implemented'})
+}
 </script>
 
 <template>
@@ -383,7 +387,7 @@ const editable = computed(() => props.collection.workflow.state === 'draft')
               </Pagination>
             </div>
             <div class="flex items-center">
-              <Button :disabled="hasChanges">
+              <Button :disabled="hasChanges" @click="onAddItem">
                 <Icon name="i-lucide-plus" />
               </Button>
             </div>

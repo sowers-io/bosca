@@ -81,6 +81,8 @@ type Documents = {
     "query GetMetadata($id: String!, $version: Int) {\n  content {\n    metadata(id: $id, version: $version) {\n      ...Metadata\n    }\n  }\n}\n\nquery GetMetadataUpload($id: String!) {\n  content {\n    metadata(id: $id) {\n      content {\n        ...MetadataContentUpload\n      }\n    }\n  }\n}": typeof types.GetMetadataDocument,
     "query GetMetadataDocument($id: String!) {\n  content {\n    metadata(id: $id) {\n      document {\n        ...Document\n      }\n    }\n  }\n}": typeof types.GetMetadataDocumentDocument,
     "query GetMetadataDocumentTemplate($id: String!, $version: Int) {\n  content {\n    metadata(id: $id, version: $version) {\n      documentTemplate {\n        ...DocumentTemplate\n      }\n    }\n  }\n}": typeof types.GetMetadataDocumentTemplateDocument,
+    "query GetMetadataGuide($id: String!) {\n  content {\n    metadata(id: $id) {\n      guide {\n        ...Guide\n      }\n    }\n  }\n}": typeof types.GetMetadataGuideDocument,
+    "query GetMetadataGuideTemplate($id: String!, $version: Int) {\n  content {\n    metadata(id: $id, version: $version) {\n      guideTemplate {\n        ...GuideTemplate\n      }\n    }\n  }\n}": typeof types.GetMetadataGuideTemplateDocument,
     "query GetMetadataParents($id: String!) {\n  content {\n    metadata(id: $id) {\n      parentCollections(offset: 0, limit: 100) {\n        ...ParentCollection\n      }\n    }\n  }\n}": typeof types.GetMetadataParentsDocument,
     "query GetMetadataPermissions($id: String!) {\n  content {\n    metadata(id: $id) {\n      permissions {\n        ...Permission\n      }\n    }\n  }\n}": typeof types.GetMetadataPermissionsDocument,
     "query GetMetadataRelationships($id: String!) {\n  content {\n    metadata(id: $id) {\n      relationships {\n        ...MetadataRelationship\n      }\n    }\n  }\n}": typeof types.GetMetadataRelationshipsDocument,
@@ -158,6 +160,12 @@ type Documents = {
     "fragment DocumentTemplateContainer on DocumentTemplateContainer {\n  id\n  name\n  description\n  supplementaryKey\n  workflows {\n    ...TemplateWorkflow\n  }\n}": typeof types.DocumentTemplateContainerFragmentDoc,
     "fragment FindAttributes on FindAttributes {\n  attributes {\n    ...FindAttribute\n  }\n}\n\nfragment FindAttribute on FindAttribute {\n  key\n  value\n}\n\nfragment FindQuery on FindQuery {\n  attributes {\n    ...FindAttributes\n  }\n  categoryIds\n  collectionType\n  contentTypes\n  extensionFilter\n  offset\n  limit\n}\n\nfragment FindQueryOption on FindQueryOption {\n  name\n  query {\n    ...FindQuery\n  }\n}": typeof types.FindAttributesFragmentDoc,
     "fragment Group on Group {\n  id\n  name\n}": typeof types.GroupFragmentDoc,
+    "fragment Guide on Guide {\n  template {\n    id\n    version\n  }\n  type\n  rrule\n  steps {\n    ...GuideStep\n  }\n}": typeof types.GuideFragmentDoc,
+    "fragment GuideStep on GuideStep {\n  metadata {\n    ...Metadata\n  }\n  modules {\n    ...GuideStepModule\n  }\n}": typeof types.GuideStepFragmentDoc,
+    "fragment GuideStepModule on GuideStepModule {\n  metadata {\n    ...Metadata\n  }\n}": typeof types.GuideStepModuleFragmentDoc,
+    "fragment GuideTemplate on GuideTemplate {\n  metadata {\n    id\n    version\n  }\n  rrule\n  type\n  defaultAttributes\n  attributes {\n    ...TemplateAttribute\n  }\n  steps {\n    ...GuideTemplateStep\n  }\n}": typeof types.GuideTemplateFragmentDoc,
+    "fragment GuideTemplateStep on GuideTemplateStep {\n  metadata {\n    id\n    version\n  }\n  attributes {\n    ...TemplateAttribute\n  }\n  modules {\n    ...GuideTemplateStepModule\n  }\n}": typeof types.GuideTemplateStepFragmentDoc,
+    "fragment GuideTemplateStepModule on GuideTemplateStepModule {\n  metadata {\n    ...Metadata\n  }\n}": typeof types.GuideTemplateStepModuleFragmentDoc,
     "fragment MetadataIdName on Metadata {\n  __typename\n  id\n  version\n  slug\n  name\n  content {\n    type\n  }\n}\n\nfragment Metadata on Metadata {\n  __typename\n  id\n  version\n  slug\n  name\n  labels\n  languageTag\n  public\n  publicContent\n  publicSupplementary\n  parentId\n  type\n  source {\n    id\n    identifier\n  }\n  categories {\n    ...Category\n  }\n  content {\n    ...MetadataContent\n  }\n  created\n  modified\n  uploaded\n  ready\n  attributes\n  systemAttributes\n  traitIds\n  workflow {\n    ...MetadataWorkflow\n  }\n  supplementary {\n    ...MetadataSupplementary\n  }\n  profiles {\n    ...MetadataProfile\n  }\n}": typeof types.MetadataIdNameFragmentDoc,
     "fragment MetadataContent on MetadataContent {\n  type\n  length\n  urls {\n    download {\n      url\n      headers {\n        name\n        value\n      }\n    }\n  }\n}\n\nfragment MetadataContentUpload on MetadataContent {\n  urls {\n    upload {\n      url\n      headers {\n        name\n        value\n      }\n    }\n  }\n}": typeof types.MetadataContentFragmentDoc,
     "fragment MetadataProfile on MetadataProfile {\n  relationship\n  profile {\n    ...Profile\n  }\n}": typeof types.MetadataProfileFragmentDoc,
@@ -255,6 +263,8 @@ const documents: Documents = {
     "query GetMetadata($id: String!, $version: Int) {\n  content {\n    metadata(id: $id, version: $version) {\n      ...Metadata\n    }\n  }\n}\n\nquery GetMetadataUpload($id: String!) {\n  content {\n    metadata(id: $id) {\n      content {\n        ...MetadataContentUpload\n      }\n    }\n  }\n}": types.GetMetadataDocument,
     "query GetMetadataDocument($id: String!) {\n  content {\n    metadata(id: $id) {\n      document {\n        ...Document\n      }\n    }\n  }\n}": types.GetMetadataDocumentDocument,
     "query GetMetadataDocumentTemplate($id: String!, $version: Int) {\n  content {\n    metadata(id: $id, version: $version) {\n      documentTemplate {\n        ...DocumentTemplate\n      }\n    }\n  }\n}": types.GetMetadataDocumentTemplateDocument,
+    "query GetMetadataGuide($id: String!) {\n  content {\n    metadata(id: $id) {\n      guide {\n        ...Guide\n      }\n    }\n  }\n}": types.GetMetadataGuideDocument,
+    "query GetMetadataGuideTemplate($id: String!, $version: Int) {\n  content {\n    metadata(id: $id, version: $version) {\n      guideTemplate {\n        ...GuideTemplate\n      }\n    }\n  }\n}": types.GetMetadataGuideTemplateDocument,
     "query GetMetadataParents($id: String!) {\n  content {\n    metadata(id: $id) {\n      parentCollections(offset: 0, limit: 100) {\n        ...ParentCollection\n      }\n    }\n  }\n}": types.GetMetadataParentsDocument,
     "query GetMetadataPermissions($id: String!) {\n  content {\n    metadata(id: $id) {\n      permissions {\n        ...Permission\n      }\n    }\n  }\n}": types.GetMetadataPermissionsDocument,
     "query GetMetadataRelationships($id: String!) {\n  content {\n    metadata(id: $id) {\n      relationships {\n        ...MetadataRelationship\n      }\n    }\n  }\n}": types.GetMetadataRelationshipsDocument,
@@ -332,6 +342,12 @@ const documents: Documents = {
     "fragment DocumentTemplateContainer on DocumentTemplateContainer {\n  id\n  name\n  description\n  supplementaryKey\n  workflows {\n    ...TemplateWorkflow\n  }\n}": types.DocumentTemplateContainerFragmentDoc,
     "fragment FindAttributes on FindAttributes {\n  attributes {\n    ...FindAttribute\n  }\n}\n\nfragment FindAttribute on FindAttribute {\n  key\n  value\n}\n\nfragment FindQuery on FindQuery {\n  attributes {\n    ...FindAttributes\n  }\n  categoryIds\n  collectionType\n  contentTypes\n  extensionFilter\n  offset\n  limit\n}\n\nfragment FindQueryOption on FindQueryOption {\n  name\n  query {\n    ...FindQuery\n  }\n}": types.FindAttributesFragmentDoc,
     "fragment Group on Group {\n  id\n  name\n}": types.GroupFragmentDoc,
+    "fragment Guide on Guide {\n  template {\n    id\n    version\n  }\n  type\n  rrule\n  steps {\n    ...GuideStep\n  }\n}": types.GuideFragmentDoc,
+    "fragment GuideStep on GuideStep {\n  metadata {\n    ...Metadata\n  }\n  modules {\n    ...GuideStepModule\n  }\n}": types.GuideStepFragmentDoc,
+    "fragment GuideStepModule on GuideStepModule {\n  metadata {\n    ...Metadata\n  }\n}": types.GuideStepModuleFragmentDoc,
+    "fragment GuideTemplate on GuideTemplate {\n  metadata {\n    id\n    version\n  }\n  rrule\n  type\n  defaultAttributes\n  attributes {\n    ...TemplateAttribute\n  }\n  steps {\n    ...GuideTemplateStep\n  }\n}": types.GuideTemplateFragmentDoc,
+    "fragment GuideTemplateStep on GuideTemplateStep {\n  metadata {\n    id\n    version\n  }\n  attributes {\n    ...TemplateAttribute\n  }\n  modules {\n    ...GuideTemplateStepModule\n  }\n}": types.GuideTemplateStepFragmentDoc,
+    "fragment GuideTemplateStepModule on GuideTemplateStepModule {\n  metadata {\n    ...Metadata\n  }\n}": types.GuideTemplateStepModuleFragmentDoc,
     "fragment MetadataIdName on Metadata {\n  __typename\n  id\n  version\n  slug\n  name\n  content {\n    type\n  }\n}\n\nfragment Metadata on Metadata {\n  __typename\n  id\n  version\n  slug\n  name\n  labels\n  languageTag\n  public\n  publicContent\n  publicSupplementary\n  parentId\n  type\n  source {\n    id\n    identifier\n  }\n  categories {\n    ...Category\n  }\n  content {\n    ...MetadataContent\n  }\n  created\n  modified\n  uploaded\n  ready\n  attributes\n  systemAttributes\n  traitIds\n  workflow {\n    ...MetadataWorkflow\n  }\n  supplementary {\n    ...MetadataSupplementary\n  }\n  profiles {\n    ...MetadataProfile\n  }\n}": types.MetadataIdNameFragmentDoc,
     "fragment MetadataContent on MetadataContent {\n  type\n  length\n  urls {\n    download {\n      url\n      headers {\n        name\n        value\n      }\n    }\n  }\n}\n\nfragment MetadataContentUpload on MetadataContent {\n  urls {\n    upload {\n      url\n      headers {\n        name\n        value\n      }\n    }\n  }\n}": types.MetadataContentFragmentDoc,
     "fragment MetadataProfile on MetadataProfile {\n  relationship\n  profile {\n    ...Profile\n  }\n}": types.MetadataProfileFragmentDoc,
@@ -647,6 +663,14 @@ export function graphql(source: "query GetMetadataDocumentTemplate($id: String!,
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
+export function graphql(source: "query GetMetadataGuide($id: String!) {\n  content {\n    metadata(id: $id) {\n      guide {\n        ...Guide\n      }\n    }\n  }\n}"): (typeof documents)["query GetMetadataGuide($id: String!) {\n  content {\n    metadata(id: $id) {\n      guide {\n        ...Guide\n      }\n    }\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "query GetMetadataGuideTemplate($id: String!, $version: Int) {\n  content {\n    metadata(id: $id, version: $version) {\n      guideTemplate {\n        ...GuideTemplate\n      }\n    }\n  }\n}"): (typeof documents)["query GetMetadataGuideTemplate($id: String!, $version: Int) {\n  content {\n    metadata(id: $id, version: $version) {\n      guideTemplate {\n        ...GuideTemplate\n      }\n    }\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
 export function graphql(source: "query GetMetadataParents($id: String!) {\n  content {\n    metadata(id: $id) {\n      parentCollections(offset: 0, limit: 100) {\n        ...ParentCollection\n      }\n    }\n  }\n}"): (typeof documents)["query GetMetadataParents($id: String!) {\n  content {\n    metadata(id: $id) {\n      parentCollections(offset: 0, limit: 100) {\n        ...ParentCollection\n      }\n    }\n  }\n}"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
@@ -952,6 +976,30 @@ export function graphql(source: "fragment FindAttributes on FindAttributes {\n  
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(source: "fragment Group on Group {\n  id\n  name\n}"): (typeof documents)["fragment Group on Group {\n  id\n  name\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "fragment Guide on Guide {\n  template {\n    id\n    version\n  }\n  type\n  rrule\n  steps {\n    ...GuideStep\n  }\n}"): (typeof documents)["fragment Guide on Guide {\n  template {\n    id\n    version\n  }\n  type\n  rrule\n  steps {\n    ...GuideStep\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "fragment GuideStep on GuideStep {\n  metadata {\n    ...Metadata\n  }\n  modules {\n    ...GuideStepModule\n  }\n}"): (typeof documents)["fragment GuideStep on GuideStep {\n  metadata {\n    ...Metadata\n  }\n  modules {\n    ...GuideStepModule\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "fragment GuideStepModule on GuideStepModule {\n  metadata {\n    ...Metadata\n  }\n}"): (typeof documents)["fragment GuideStepModule on GuideStepModule {\n  metadata {\n    ...Metadata\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "fragment GuideTemplate on GuideTemplate {\n  metadata {\n    id\n    version\n  }\n  rrule\n  type\n  defaultAttributes\n  attributes {\n    ...TemplateAttribute\n  }\n  steps {\n    ...GuideTemplateStep\n  }\n}"): (typeof documents)["fragment GuideTemplate on GuideTemplate {\n  metadata {\n    id\n    version\n  }\n  rrule\n  type\n  defaultAttributes\n  attributes {\n    ...TemplateAttribute\n  }\n  steps {\n    ...GuideTemplateStep\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "fragment GuideTemplateStep on GuideTemplateStep {\n  metadata {\n    id\n    version\n  }\n  attributes {\n    ...TemplateAttribute\n  }\n  modules {\n    ...GuideTemplateStepModule\n  }\n}"): (typeof documents)["fragment GuideTemplateStep on GuideTemplateStep {\n  metadata {\n    id\n    version\n  }\n  attributes {\n    ...TemplateAttribute\n  }\n  modules {\n    ...GuideTemplateStepModule\n  }\n}"];
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(source: "fragment GuideTemplateStepModule on GuideTemplateStepModule {\n  metadata {\n    ...Metadata\n  }\n}"): (typeof documents)["fragment GuideTemplateStepModule on GuideTemplateStepModule {\n  metadata {\n    ...Metadata\n  }\n}"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
