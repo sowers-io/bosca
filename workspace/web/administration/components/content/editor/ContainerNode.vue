@@ -1,7 +1,6 @@
 <script lang="ts" setup>
 import {
-  AttributeUiType,
-  type DocumentTemplateContainer,
+  type DocumentTemplateContainerFragment,
 } from '~/lib/graphql/graphql.js'
 import { NodeViewContent, NodeViewWrapper } from '@tiptap/vue-3'
 import type { Editor } from '@tiptap/core'
@@ -10,7 +9,7 @@ import { toast } from '~/components/ui/toast'
 
 const props = defineProps<{
   name: String
-  containers: DocumentTemplateContainer[]
+  containers: DocumentTemplateContainerFragment[]
   extension: any
   editor: Editor
   getPos: Function
@@ -22,7 +21,7 @@ const client = useBoscaClient()
 const loading = ref(false)
 
 const nodeContainer = computed(() => {
-  return props.extension.options.containers?.find((c) =>
+  return props.extension.options.containers?.find((c: any) =>
     c.id === props.HTMLAttributes.name
   )
 })
@@ -46,8 +45,7 @@ async function onRunWorkflow() {
   } catch (e) {
     loading.value = false
     toast({
-      title: 'Error Executing: ' + nodeContainer.value.description + ': ' +
-        e.message,
+      title: 'Error Executing: ' + nodeContainer.value.description + ': ' +  (e as unknown as any).message,
     })
   }
 }

@@ -1,0 +1,5 @@
+mutation CancelMetadataWorkflows($id: String!, $version: Int!, $workflowId: String!) {
+    workflows {
+        cancelWorkflows(metadataId: $id, metadataVersion: $version, workflowId: $workflowId)
+    }
+}

@@ -34,7 +34,8 @@ impl RedisTransaction {
                     key_ix += 2;
                     script.push_str(&rpush);
                 }
-                RedisTransactionOp::RemovePlanRunning(_)
+                RedisTransactionOp::CancelQueueJob(_)
+                | RedisTransactionOp::RemovePlanRunning(_)
                 | RedisTransactionOp::RemoveJobRunning(_) => {
                     let zrem = format!(
                         "redis.call('ZREM', tostring(KEYS[{}]), tostring(KEYS[{}]))\n",
@@ -65,13 +66,20 @@ impl RedisTransaction {
                     invocation.key(&queue_key).key(&key);
                 }
                 RedisTransactionOp::QueueJobLater(op, timeout) => {
+                    // putting in running queue so that when the timeout checker will find this
+                    // and re-run it later.  TODO: maybe do this differently
                     let queue_key = JobQueues::running_job_queue_key(&op.queue);
                     let key = JobQueues::queue_job_key(&op.queue, &op.id, op.index);
                     invocation
-                        .key(queue_key)
-                        .key(key)
+                        .key(&queue_key)
+                        .key(&key)
                         .arg(Utc::now().timestamp())
                         .arg(timeout);
+                }
+                RedisTransactionOp::CancelQueueJob(op) => {
+                    let queue_key = JobQueues::pending_job_queue_key(&op.queue);
+                    let key = JobQueues::queue_job_key(&op.queue, &op.id, op.index);
+                    invocation.key(&queue_key).key(&key);
                 }
                 RedisTransactionOp::RemovePlanRunning(op) => {
                     let queue_key = JobQueues::running_plan_queue_key(&op.queue);
@@ -87,8 +95,8 @@ impl RedisTransaction {
                     let queue_key = JobQueues::running_plan_queue_key(&op.queue);
                     let key = JobQueues::queue_plan_key(&op.queue, &op.id);
                     invocation
-                        .key(queue_key)
-                        .key(key)
+                        .key(&queue_key)
+                        .key(&key)
                         .arg(Utc::now().timestamp())
                         .arg(1800);
                 }
@@ -96,8 +104,8 @@ impl RedisTransaction {
                     let queue_key = JobQueues::running_job_queue_key(&op.queue);
                     let key = JobQueues::queue_job_key(&op.queue, &op.id, op.index);
                     invocation
-                        .key(queue_key)
-                        .key(key)
+                        .key(&queue_key)
+                        .key(&key)
                         .arg(Utc::now().timestamp())
                         .arg(1800);
                 }
@@ -126,6 +134,7 @@ pub enum RedisTransactionOp {
     JobCheckin(WorkflowJobId),
     QueueJob(WorkflowJobId),
     QueueJobLater(WorkflowJobId, i64),
+    CancelQueueJob(WorkflowJobId),
     RemovePlanRunning(WorkflowExecutionId),
     RemoveJobRunning(WorkflowJobId),
 }

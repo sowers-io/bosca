@@ -6,6 +6,7 @@ fragment WorkflowPlan on WorkflowExecutionPlan {
     active
     failed
     error
+    cancelled
     workflow {
         ...PlanWorkflow
     }

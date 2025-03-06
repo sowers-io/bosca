@@ -64,7 +64,14 @@ if (props.content.version) {
             v-for="plan in plans || []"
             :key="plan.id.id + '-' + plan.id.queue"
           >
-            <TableCell>{{ plan.workflow.name }}</TableCell>
+            <TableCell>
+              <template v-if="plan.cancelled">
+                <s>{{ plan.workflow.name }}</s>
+              </template>
+              <template v-else>
+                {{ plan.workflow.name }}
+              </template>
+            </TableCell>
             <TableCell>{{ plan.active.length }}</TableCell>
             <TableCell>{{ plan.failed.length }}</TableCell>
             <TableCell>{{ plan.complete.length }}</TableCell>

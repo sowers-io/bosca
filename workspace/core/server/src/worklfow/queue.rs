@@ -4,7 +4,9 @@ use crate::models::workflow::execution_plan::{
     WorkflowJobId,
 };
 use crate::redis::RedisClient;
-use crate::worklfow::transaction::RedisTransactionOp::JobCheckin;
+use crate::worklfow::transaction::RedisTransactionOp::{
+    CancelQueueJob, JobCheckin, RemoveJobRunning, RemovePlanRunning,
+};
 use crate::worklfow::transaction::{RedisTransaction, RedisTransactionOp};
 use async_graphql::Error;
 use chrono::{DateTime, Utc};
@@ -120,6 +122,64 @@ impl JobQueues {
         self.get_plan_and_lock(transaction, &id).await
     }
 
+    pub async fn cancel_workflows(
+        &self,
+        workflow_id: &str,
+        metadata_id: &Option<Uuid>,
+        metadata_version: &Option<i32>,
+        collection_id: &Option<Uuid>,
+    ) -> Result<(), Error> {
+        let mut connection = self.pool.get().await?;
+        let workflow_id = workflow_id.to_owned();
+        let results = if let Some(collection_id) = collection_id {
+            let stmt = connection.prepare("select id, queue from workflow_plans where collection_id = $1 and workflow_id = $2 and finished is null").await?;
+            connection
+                .query(&stmt, &[collection_id, &workflow_id])
+                .await?
+        } else if let Some(metadata_id) = metadata_id {
+            let stmt = connection.prepare("select id, queue from workflow_plans where metadata_id = $1 and metadata_version = $2 and workflow_id = $3 and finished is null").await?;
+            connection
+                .query(&stmt, &[metadata_id, metadata_version, &workflow_id])
+                .await?
+        } else {
+            return Ok(());
+        };
+
+        let db_txn = connection.transaction().await?;
+        let mut redis_txn = RedisTransaction::new();
+
+        for row in results {
+            let id = row.get("id");
+            let queue = row.get("queue");
+            let id = WorkflowExecutionId { id, queue };
+            let Some(mut plan) = self.get_plan_and_lock(&db_txn, &id).await? else {
+                continue;
+            };
+            for job in plan.jobs.iter_mut() {
+                job.finished = Some(Utc::now());
+                redis_txn.add_op(CancelQueueJob(job.id.clone()));
+                redis_txn.add_op(RemoveJobRunning(job.id.clone()));
+            }
+            plan.active.clear();
+            plan.finished = Some(Utc::now());
+            plan.cancelled = true;
+            redis_txn.add_op(RemovePlanRunning(plan.id.clone()));
+            self.set_plan(&db_txn, &plan, false).await?;
+        }
+
+        db_txn.commit().await?;
+        redis_txn.execute(&self.redis).await?;
+
+        if let Some(id) = &collection_id {
+            self.notifier.collection_changed(id).await?;
+        }
+        if let Some(id) = &metadata_id {
+            self.notifier.metadata_changed(id).await?;
+        }
+
+        Ok(())
+    }
+
     pub async fn set_plan(
         &self,
         transaction: &Transaction<'_>,
@@ -128,11 +188,25 @@ impl JobQueues {
     ) -> Result<(), Error> {
         let stmt = transaction
             .prepare(
-                "insert into workflow_plans (id, configuration) values ($1, $2) on conflict (id) do update set configuration = $2, modified = now()",
+                "insert into workflow_plans (id, queue, workflow_id, metadata_id, metadata_version, collection_id, finished, configuration) values ($1, $2, $3, $4, $5, $6, $7, $8) on conflict (id) do update set finished = $7, configuration = $8, modified = now()",
             )
             .await?;
         let value = json!(plan);
-        transaction.execute(&stmt, &[&plan.id.id, &value]).await?;
+        transaction
+            .execute(
+                &stmt,
+                &[
+                    &plan.id.id,
+                    &plan.id.queue,
+                    &plan.workflow.id,
+                    &plan.metadata_id,
+                    &plan.metadata_version,
+                    &plan.collection_id,
+                    &plan.finished,
+                    &value,
+                ],
+            )
+            .await?;
         if register {
             if let Some(metadata_id) = &plan.metadata_id {
                 let stmt = transaction
@@ -200,9 +274,11 @@ impl JobQueues {
         let queues: Vec<String> = connection.keys("queue::running::*").await?;
         for queue_parts in queues {
             let queue = queue_parts.split("::").last().unwrap();
+            let key1 = JobQueues::pending_job_queue_key(queue);
+            let key2 = JobQueues::running_job_queue_key(queue);
             let result: i32 = script
-                .key(JobQueues::pending_job_queue_key(queue))
-                .key(JobQueues::running_job_queue_key(queue))
+                .key(key1)
+                .key(key2)
                 .arg(time)
                 .invoke_async(&mut connection)
                 .await?;
@@ -218,6 +294,9 @@ impl JobQueues {
         &self,
         plan: &mut WorkflowExecutionPlan,
     ) -> Result<WorkflowExecutionId, Error> {
+        if plan.finished.is_some() {
+            return Err(Error::new("can't enqueue plan, it's already finished"));
+        }
         debug!(target: "workflow", "enqueuing plan: {}", plan.id);
         let mut connection = self.pool.get().await?;
         let db_txn = connection.transaction().await?;
@@ -260,12 +339,16 @@ impl JobQueues {
             db_txn.rollback().await?;
             return Err(Error::new("job is already complete"));
         }
+
         let mut ids = Vec::new();
         let mut redis_txn = RedisTransaction::new();
         let mut plans = plans.to_vec();
         let mut collection_ids = HashSet::new();
         let mut metadata_ids = HashSet::new();
         for plan in plans.iter_mut() {
+            if plan.finished.is_some() {
+                return Err(Error::new("can't enqueue plan, it's already finished"));
+            }
             plan.parent = Some(parent_job.id.clone());
             let state = plan.enqueue(&db_txn, &mut redis_txn, self, 1).await?;
             if state == WorkflowExecutePlanState::Complete {
@@ -368,7 +451,25 @@ impl JobQueues {
             return Ok(None);
         };
         if let Some(plan) = self.get_plan_by_job(&job_id).await? {
-            return Ok(Some(plan.jobs.get(job_id.index as usize).unwrap().clone()));
+            if plan.finished.is_some() {
+                error!("invalid plan state");
+                let mut txn = RedisTransaction::new();
+                for job in plan.jobs.iter() {
+                    txn.add_op(RemoveJobRunning(job.id.clone()));
+                }
+                txn.add_op(RemovePlanRunning(plan.id.clone()));
+                txn.execute(&self.redis).await?;
+                return Ok(None);
+            }
+            let job = plan.jobs.get(job_id.index as usize).unwrap().clone();
+            if job.complete {
+                error!("invalid job state");
+                let mut txn = RedisTransaction::new();
+                txn.add_op(RemoveJobRunning(job.id.clone()));
+                txn.execute(&self.redis).await?;
+                return Ok(None);
+            }
+            return Ok(Some(job));
         }
         Ok(None)
     }
@@ -383,7 +484,11 @@ impl JobQueues {
         let Some(mut plan) = self.get_plan_and_lock(&transaction, plan_id).await? else {
             return Err(Error::new("can't set plan context, missing plan"));
         };
-        plan.context = if context.is_null() { None } else { Some(context.clone()) };
+        plan.context = if context.is_null() {
+            None
+        } else {
+            Some(context.clone())
+        };
         self.set_plan(&transaction, &plan, false).await?;
         transaction.commit().await?;
         self.incr("queue::context::set::count").await?;
@@ -401,9 +506,17 @@ impl JobQueues {
             return Err(Error::new("can't set job context, missing plan"));
         };
         let job = plan.jobs.get_mut(job_id.index as usize).unwrap();
-        job.context = if context.is_null() { None } else { Some(context.clone()) };
+        job.context = if context.is_null() {
+            None
+        } else {
+            Some(context.clone())
+        };
         if let Some(plan_job) = plan.jobs.get_mut(job_id.index as usize) {
-            plan_job.context = if context.is_null() { None } else { Some(context.clone()) };
+            plan_job.context = if context.is_null() {
+                None
+            } else {
+                Some(context.clone())
+            };
         }
         self.set_plan(&transaction, &plan, false).await?;
         transaction.commit().await?;
@@ -422,7 +535,8 @@ impl JobQueues {
             return Err(Error::new("can't set job context, missing plan"));
         };
         let mut redis_txn = RedisTransaction::new();
-        plan.set_job_delayed_until(job_id, &db_txn, &mut redis_txn, self, delayed_until).await?;
+        plan.set_job_delayed_until(job_id, &db_txn, &mut redis_txn, self, delayed_until)
+            .await?;
         db_txn.commit().await?;
         redis_txn.execute(&self.redis).await?;
         self.incr("queue::job::delayed").await?;
@@ -452,6 +566,17 @@ impl JobQueues {
         &self,
         job_id: &WorkflowJobId,
     ) -> Result<(), Error> {
+        let Some(plan) = self.get_plan_by_job(job_id).await? else {
+            return Err(Error::new("can't mark execution complete, missing job"));
+        };
+        if plan.finished.is_some() {
+            return Ok(());
+        }
+        if let Some(job) = plan.jobs.get(job_id.index as usize) {
+            if job.complete {
+                return Ok(());
+            }
+        }
         let mut txn = RedisTransaction::new();
         txn.add_op(JobCheckin(job_id.clone()));
         txn.execute(&self.redis).await?;
@@ -473,11 +598,6 @@ impl JobQueues {
             .await
         {
             Ok(result) => {
-                if result == WorkflowExecutePlanState::Complete
-                    || result == WorkflowExecutePlanState::Error
-                {
-                    redis_txn.add_op(RedisTransactionOp::RemovePlanRunning(plan.id.clone()))
-                }
                 transaction.commit().await?;
                 redis_txn.execute(&self.redis).await?;
                 self.incr("queue::job::complete").await?;

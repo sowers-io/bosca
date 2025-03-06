@@ -11,7 +11,7 @@ import Suggestion from '~/lib/editor/suggestion.ts'
 import { Bible } from '~/lib/editor/bible.ts'
 import { toast } from '~/components/ui/toast'
 import type {
-  DocumentFragment,
+  DocumentFragment, DocumentTemplateContainerFragment,
   DocumentTemplateFragment,
   MetadataFragment,
 } from '~/lib/graphql/graphql.ts'
@@ -58,13 +58,13 @@ export function newEditor(
     : null
   return useEditor({
     content: content,
-    editable: metadata.workflow.state === 'draft' && editable,
+    editable: metadata.workflow.state === 'draft' && !metadata.workflow.stateValid && editable,
     extensions: [
       CustomDocument,
       StarterKit.configure({ document: false }),
       Container.configure({
         metadata: metadata,
-        containers: template?.containers || [],
+        containers: (template?.containers || []) as Array<DocumentTemplateContainerFragment>,
       }),
       Image,
       Link,

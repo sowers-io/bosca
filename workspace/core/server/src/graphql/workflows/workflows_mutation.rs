@@ -10,6 +10,7 @@ use crate::graphql::workflows::traits_mutation::TraitsMutationObject;
 use crate::graphql::workflows::transitions_mutation::TransitionsMutationObject;
 use crate::graphql::workflows::workflow::WorkflowObject;
 use crate::graphql::workflows::workflow_execution_id::WorkflowExecutionIdObject;
+use crate::graphql::workflows::workflow_schedules_mutation::WorkflowSchedulesMutationObject;
 use crate::models::content::find_query::FindQueryInput;
 use crate::models::workflow::execution_plan::{WorkflowExecutionIdInput, WorkflowJobIdInput};
 use crate::models::workflow::transitions::BeginTransitionInput;
@@ -20,7 +21,7 @@ use async_graphql::{Context, Error, Object};
 use chrono::{DateTime, Utc};
 use serde_json::Value;
 use uuid::Uuid;
-use crate::graphql::workflows::workflow_schedules_mutation::WorkflowSchedulesMutationObject;
+use crate::models::security::permission::PermissionAction;
 
 pub(crate) struct WorkflowsMutationObject {}
 
@@ -118,6 +119,93 @@ impl WorkflowsMutationObject {
     ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         begin_transition(ctx, &request, configurations.as_ref()).await?;
+        Ok(true)
+    }
+
+    async fn cancel_transition(
+        &self,
+        ctx: &Context<'_>,
+        metadata_id: Option<String>,
+        metadata_version: Option<i32>,
+        collection_id: Option<String>,
+    ) -> Result<bool, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        if let Some(metadata_id) = &metadata_id {
+            let id = Uuid::parse_str(metadata_id.as_str())?;
+            if let Some(version) = metadata_version {
+                let metadata = ctx
+                    .check_metadata_version_action(&id, version, PermissionAction::Manage)
+                    .await?;
+                ctx.workflow
+                    .cancel_workflows(
+                        "metadata.delayed.transition",
+                        &Some(id),
+                        &metadata_version,
+                        &None,
+                    )
+                    .await?;
+                ctx.content
+                    .metadata_workflows
+                    .set_metadata_workflow_state(
+                        &ctx.principal,
+                        &metadata,
+                        &metadata.workflow_state_id,
+                        None,
+                        "Cancelled Transition",
+                        false,
+                        true,
+                    )
+                    .await?;
+            }
+        } else if let Some(collection_id) = &collection_id {
+            let id = Uuid::parse_str(collection_id.as_str())?;
+            let collection = ctx
+                .check_collection_action(&id, PermissionAction::Manage)
+                .await?;
+            ctx.workflow
+                .cancel_workflows(
+                    "metadata.delayed.transition",
+                    &Some(id),
+                    &metadata_version,
+                    &None,
+                )
+                .await?;
+            ctx.content
+                .collection_workflows
+                .set_state(
+                    &ctx.principal,
+                    &collection,
+                    &collection.workflow_state_id,
+                    None,
+                    "Cancelled Transition",
+                    false,
+                    true,
+                )
+                .await?;
+        }
+        Ok(true)
+    }
+
+    async fn cancel_workflows(
+        &self,
+        ctx: &Context<'_>,
+        workflow_id: String,
+        metadata_id: Option<String>,
+        metadata_version: Option<i32>,
+        collection_id: Option<String>,
+    ) -> Result<bool, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        ctx.check_has_service_account().await?;
+        let metadata_id = metadata_id.map(|id| Uuid::parse_str(id.as_str()).unwrap());
+        let collection_id = collection_id.map(|id| Uuid::parse_str(id.as_str()).unwrap());
+        ctx.workflow
+            .cancel_workflows(
+                &workflow_id,
+                &metadata_id,
+                &metadata_version,
+                &collection_id,
+            )
+            .await?;
         Ok(true)
     }
 
@@ -239,7 +327,13 @@ impl WorkflowsMutationObject {
             let id = Uuid::parse_str(collection_id.as_str())?;
 
             ctx.workflow
-                .enqueue_collection_workflow(&workflow_id, &id, configurations.as_ref(), None, delay_until)
+                .enqueue_collection_workflow(
+                    &workflow_id,
+                    &id,
+                    configurations.as_ref(),
+                    None,
+                    delay_until,
+                )
                 .await?
         } else {
             return Err(Error::new(

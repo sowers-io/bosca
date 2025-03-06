@@ -83,6 +83,7 @@ pub struct WorkflowExecutionPlan {
     pub enqueued: DateTime<Utc>,
     pub delay_until: Option<DateTime<Utc>>,
     pub finished: Option<DateTime<Utc>>,
+    pub cancelled: bool,
     pub workflow: Workflow,
     pub jobs: Vec<WorkflowJob>,
     pub metadata_id: Option<Uuid>,
@@ -175,7 +176,7 @@ impl WorkflowExecutionPlan {
 
                 if let Some(delay_until) = &self.delay_until {
                     let now = Utc::now();
-                    if now > *delay_until {
+                    if now < *delay_until {
                         let diff = delay_until.timestamp() - now.timestamp();
                         redis_txn.add_op(RedisTransactionOp::QueueJobLater(job.id.clone(), diff));
                     } else {
@@ -247,6 +248,8 @@ impl WorkflowExecutionPlan {
         let result = self.enqueue(db_txn, redis_txn, queues, next_execution_group).await?;
         if result == WorkflowExecutePlanState::Running {
             redis_txn.add_op(RedisTransactionOp::PlanCheckin(self.id.clone()));
+        } else if result == WorkflowExecutePlanState::Complete {
+            redis_txn.add_op(RedisTransactionOp::RemovePlanRunning(self.id.clone()));
         }
         Ok(result)
     }
@@ -283,16 +286,22 @@ impl WorkflowExecutionPlan {
         self.failed.insert(job_id.index);
         self.active.remove(&job_id.index);
         let job = self.jobs.get_mut(job_id.index as usize).unwrap();
+        job.failures += 1;
         job.error = Some(error.to_owned());
-        let failure_count = job.failures + 1;
-        job.failures = failure_count;
-        info!("job failures: {} {} {}", self.id, job_id, failure_count);
-        let timeout: i64 = (failure_count * 30) as i64;
+
+        info!("job failures: {} {} {}", self.id, job_id, job.failures);
+
+        let timeout: i64 = (job.failures * 30) as i64;
         queues.set_plan(db_txn, self, false).await?;
+
         // TODO: setup limit to failures
         redis_txn.add_op(RedisTransactionOp::RemoveJobRunning(job_id.clone()));
-        redis_txn.add_op(RedisTransactionOp::QueueJobLater(job_id.clone(), timeout));
-        redis_txn.add_op(RedisTransactionOp::PlanCheckin(self.id.clone()));
+        if self.finished.is_none() {
+            redis_txn.add_op(RedisTransactionOp::PlanCheckin(self.id.clone()));
+            redis_txn.add_op(RedisTransactionOp::QueueJobLater(job_id.clone(), timeout));
+        } else {
+            redis_txn.add_op(RedisTransactionOp::RemovePlanRunning(self.id.clone()));
+        }
         Ok(())
     }
 }

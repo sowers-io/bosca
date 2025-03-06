@@ -121,7 +121,7 @@ function checkForChanges() {
 
 async function updateAttributes() {
   if (editor.value) {
-    const editable = props.metadata.workflow.state === 'draft'
+    const editable = props.metadata.workflow.state === 'draft' && !props.metadata.workflow.stateValid
     if (editable !== editor.value.isEditable) {
       editor.value.setEditable(editable, true)
     }
@@ -354,7 +354,7 @@ client.listeners.onMetadataSupplementaryChanged(async (id, key) => {
   }
 })
 
-const editable = computed(() => props.metadata.workflow.state === 'draft')
+const editable = computed(() => props.metadata.workflow.state === 'draft' && !props.metadata.workflow.stateValid)
 </script>
 
 <template>
@@ -478,6 +478,10 @@ const editable = computed(() => props.metadata.workflow.state === 'draft')
   list-style-type: decimal; /* Show numbers as ordered list style */
   list-style-position: inside;
   @apply m-0 p-0 mt-4;
+}
+
+.tiptap a {
+  @apply underline;
 }
 
 .tiptap ol li {

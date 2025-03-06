@@ -25,7 +25,8 @@ pub struct BeginTransitionInput {
     pub state_valid: Option<DateTime<Utc>>,
     pub status: String,
     pub supplementary_id: Option<String>,
-    pub wait_for_completion: Option<bool>
+    pub wait_for_completion: Option<bool>,
+    pub restart: Option<bool>
 }
 
 impl From<Row> for Transition {

@@ -71,6 +71,9 @@ impl WorkflowExecutionPlanObject {
     async fn failed(&self) -> Vec<i32> {
         self.plan.failed.iter().cloned().collect()
     }
+    async fn cancelled(&self) -> bool {
+        self.plan.cancelled
+    }
     async fn error(&self) -> &Option<String> {
         &self.plan.error
     }

@@ -47,6 +47,9 @@ const { data: states } = client.workflows.getStatesAsyncData()
 const stateName = computed(() => {
   return states.value?.find((s) => s.id === metadata.value.workflow.state)?.name
 })
+const pendingStateName = computed(() => {
+  return states.value?.find((s) => s.id === metadata.value.workflow.pending)?.name
+})
 const hasChanges = ref(false)
 const confirmDelete = ref(false)
 const confirmReset = ref(false)
@@ -71,14 +74,18 @@ async function onPublish() {
     return
   }
   const states = await client.workflows.getStates() || []
-  const published =
-    states.find((s) => s.type === WorkflowStateType.Published)?.id || ''
+  const published = states.find((s) => s.type === WorkflowStateType.Published)?.id || ''
+  let stateValid: Date | null = null
+  if (metadata.value.attributes['published']) {
+    stateValid = new Date(Date.parse(metadata.value.attributes['published']))
+  }
   if (metadata.value.workflow.state !== published) {
     await client.metadata.beginTransition(
       metadata.value.id,
       metadata.value.version,
       published,
       'Publishing Document',
+      stateValid
     )
   }
   if (!metadata.value.public) {
@@ -97,6 +104,7 @@ async function onPublish() {
         relationship.metadata.version,
         published,
         'Publishing Document',
+        stateValid
       )
     }
     if (!relationship.metadata.public) {
@@ -110,12 +118,19 @@ async function onPublish() {
 
 async function onUnpublish() {
   const states = await client.workflows.getStates() || []
-  await client.metadata.beginTransition(
-    metadata.value.id,
-    metadata.value.version,
-    states.find((s) => s.type === WorkflowStateType.Draft)?.id || '',
-    'Unpublishing Document',
-  )
+  if (metadata.value.workflow.stateValid) {
+    await client.metadata.cancelTransition(
+        metadata.value.id,
+        metadata.value.version,
+    )
+  } else {
+    await client.metadata.beginTransition(
+        metadata.value.id,
+        metadata.value.version,
+        states.find((s) => s.type === WorkflowStateType.Draft)?.id || '',
+        'Unpublishing Document',
+    )
+  }
 }
 
 async function onPreview() {
@@ -168,6 +183,7 @@ onMounted(() => {
           <Badge variant="secondary">{{ stateName }}
             <span v-if="metadata.workflow.pending">*</span>
           </Badge>
+          <Badge variant="secondary" class="ms-4" v-if="pendingStateName">{{ pendingStateName }}</Badge>
           <Badge v-if="hasChanges" variant="outline" class="ms-2 text-gray-400"
           >Has Changes</Badge>
           <Badge v-if="outOfDate" variant="destructive" class="ms-2"
@@ -231,7 +247,7 @@ onMounted(() => {
             <p>Delete Document</p>
           </TooltipContent>
         </Tooltip>
-        <Tooltip v-if="metadata?.workflow?.state === 'draft'">
+        <Tooltip v-if="metadata?.workflow?.state === 'draft' && !metadata?.workflow?.stateValid">
           <TooltipTrigger as-child>
             <Button
               @click="onPublish"
@@ -246,11 +262,11 @@ onMounted(() => {
             <p>Publish Document</p>
           </TooltipContent>
         </Tooltip>
-        <Tooltip v-if="metadata?.workflow?.state === 'published'">
+        <Tooltip v-if="metadata?.workflow?.state === 'published' || metadata?.workflow?.stateValid">
           <TooltipTrigger as-child>
             <Button
               @click="onUnpublish"
-              :disabled="metadata?.workflow?.pending"
+              :disabled="metadata?.workflow?.pending && !(metadata?.workflow?.stateValid)"
               class="flex gap-2"
               variant="secondary"
             >

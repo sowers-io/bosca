@@ -819,6 +819,7 @@ type WorkflowExecutionId {
 
 type WorkflowExecutionPlan {
     active: [Int!]!
+    cancelled: Boolean!
     collectionId: String
     complete: [Int!]!
     context: JSON
@@ -929,6 +930,8 @@ type WorkflowsMutation {
     activities: ActivitiesMutation!
     add(workflow: WorkflowInput!): Workflow!
     beginTransition(configurations: [WorkflowConfigurationInput!], request: BeginTransitionInput!): Boolean!
+    cancelTransition(collectionId: String, metadataId: String, metadataVersion: Int): Boolean!
+    cancelWorkflows(collectionId: String, metadataId: String, metadataVersion: Int, workflowId: String!): Boolean!
     delete(id: String!): Boolean!
     edit(workflow: WorkflowInput!): Workflow!
     enqueueChildWorkflow(configurations: [WorkflowConfigurationInput!], delayUntil: DateTime, jobId: WorkflowJobIdInput!, workflowId: String!): WorkflowExecutionId!
@@ -1081,6 +1084,7 @@ input AttributesFilterInput {
 input BeginTransitionInput {
     collectionId: String
     metadataId: String
+    restart: Boolean
     stateId: String!
     stateValid: DateTime
     status: String!

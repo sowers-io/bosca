@@ -53,7 +53,7 @@ pub async fn slug(
         .await
         .map_err(|_| (StatusCode::NOT_FOUND, "Not Found".to_owned()))?;
     if slug_content.is_none() {
-        if let Ok(id) = Uuid::parse_str(&slug) {
+        if let Ok(id) = Uuid::parse_str(slug) {
             slug_content = Some(Slug {
                 id,
                 slug_type: SlugType::Metadata

@@ -20,12 +20,12 @@ use crate::worklfow::queue::JobQueues;
 use async_graphql::*;
 use chrono::{DateTime, Utc};
 use deadpool_postgres::{GenericClient, Pool, Transaction};
+use log::warn;
 use meilisearch_sdk::client::Client;
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::Duration;
-use log::warn;
 use uuid::Uuid;
 
 #[derive(Clone)]
@@ -305,12 +305,13 @@ impl WorkflowDataStore {
         Ok(())
     }
 
-    pub async fn get_workflow(&self, id: &String) -> Result<Option<Workflow>, Error> {
+    pub async fn get_workflow(&self, id: &str) -> Result<Option<Workflow>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached("select * from workflows where id = $1")
             .await?;
-        let mut rows = connection.query(&stmt, &[id]).await?;
+        let id = id.to_owned();
+        let mut rows = connection.query(&stmt, &[&id]).await?;
         if rows.is_empty() {
             return Ok(None);
         }
@@ -1338,6 +1339,7 @@ impl WorkflowDataStore {
             active: HashSet::new(),
             complete: HashSet::new(),
             failed: HashSet::new(),
+            cancelled: false,
             metadata_id,
             workflow: workflow.clone(),
             jobs,
@@ -1352,7 +1354,7 @@ impl WorkflowDataStore {
 
     pub async fn enqueue_metadata_workflow(
         &self,
-        workflow_id: &String,
+        workflow_id: &str,
         metadata_id: &Uuid,
         version: &i32,
         configurations: Option<&Vec<WorkflowConfigurationInput>>,
@@ -1376,7 +1378,7 @@ impl WorkflowDataStore {
             }
             Ok(plan)
         } else {
-            Err(Error::new("workflow not found"))
+            Err(Error::new(format!("workflow not found: {}", workflow_id)))
         }
     }
 
@@ -1412,7 +1414,7 @@ impl WorkflowDataStore {
         wait_for_completion: Option<bool>,
         delay_until: Option<DateTime<Utc>>,
     ) -> Result<WorkflowExecutionPlan, Error> {
-        if let Some(workflow) = self.get_workflow(&workflow_id.to_string()).await? {
+        if let Some(workflow) = self.get_workflow(workflow_id).await? {
             let mut plan = self
                 .get_new_execution_plan(
                     &workflow,
@@ -1433,7 +1435,27 @@ impl WorkflowDataStore {
         }
     }
 
-    async fn wait_for_execution_plan(&self, id: &WorkflowExecutionId, delay_until: Option<DateTime<Utc>>) -> Result<(), Error> {
+    pub async fn cancel_workflows(
+        &self,
+        workflow_id: &str,
+        metadata_id: &Option<Uuid>,
+        metadata_version: &Option<i32>,
+        collection_id: &Option<Uuid>,
+    ) -> Result<(), Error> {
+        self.queues.cancel_workflows(
+            workflow_id,
+            metadata_id,
+            metadata_version,
+            collection_id
+        ).await?;
+        Ok(())
+    }
+
+    async fn wait_for_execution_plan(
+        &self,
+        id: &WorkflowExecutionId,
+        delay_until: Option<DateTime<Utc>>,
+    ) -> Result<(), Error> {
         let can_wait = if let Some(delay_until) = delay_until {
             delay_until > Utc::now()
         } else {
@@ -1444,7 +1466,7 @@ impl WorkflowDataStore {
             loop {
                 if let Some(plan) = self.queues.get_plan(id).await? {
                     if plan.complete.len() == plan.jobs.len() {
-                        return Ok(())
+                        return Ok(());
                     }
                 }
                 tokio::time::sleep(Duration::from_secs(3)).await;

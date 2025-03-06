@@ -5,7 +5,7 @@ import {
   AddMetadataPermissionDocument,
   AddMetadataRelationshipDocument,
   AddMetadataTraitDocument,
-  BeginMetadataTransitionDocument,
+  BeginMetadataTransitionDocument, CancelMetadataWorkflowsDocument, CancelTransitionDocument,
   type CollectionTemplateFragment,
   CollectionType,
   DeleteMetadataDocument,
@@ -491,16 +491,28 @@ export class ContentMetadata<T extends NetworkClient> extends Api<T> {
   }
 
   async beginTransition(
-    id: string,
-    version: number,
-    state: string,
-    status: string,
+      id: string,
+      version: number,
+      state: string,
+      status: string,
+      stateValid: Date | null = null
   ) {
     await this.network.execute(BeginMetadataTransitionDocument, {
       id,
       version,
       state,
+      stateValid: stateValid ? stateValid.toISOString() : null,
       status,
+    })
+  }
+
+  async cancelTransition(
+      id: string,
+      version: number,
+  ) {
+    await this.network.execute(CancelTransitionDocument, {
+      metadataId: id,
+      version,
     })
   }
 

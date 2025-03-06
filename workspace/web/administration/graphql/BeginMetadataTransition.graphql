@@ -1,5 +1,5 @@
-mutation BeginMetadataTransition($id: String!, $version: Int!, $state: String!, $status: String!) {
+mutation BeginMetadataTransition($id: String!, $version: Int!, $state: String!, $status: String!, $stateValid: DateTime) {
     workflows {
-        beginTransition(request: {metadataId: $id, version: $version, stateId: $state, status: $status, waitForCompletion: true})
+        beginTransition(request: {metadataId: $id, version: $version, stateId: $state, stateValid: $stateValid, status: $status, waitForCompletion: true})
     }
 }
