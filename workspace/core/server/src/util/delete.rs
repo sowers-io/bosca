@@ -75,7 +75,7 @@ pub async fn delete_collection(
         ctx.content.collections.mark_deleted(collection_id).await?;
         ctx.workflow.enqueue_collection_workflow(
             "collection.delete.finalize",
-            &collection_id,
+            collection_id,
             None,
             None,
             None
