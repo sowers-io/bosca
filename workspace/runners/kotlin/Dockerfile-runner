@@ -1,0 +1,19 @@
+FROM quay.io/quarkus/ubi-quarkus-mandrel-builder-image:jdk-23 AS build
+
+WORKDIR /build
+
+ENV GRADLE_USER_HOME=/build/.gradle-user-home
+ENV GRADLE_HOME=/build/.gradle-home
+
+COPY . .
+
+RUN ./gradlew --no-daemon nativeCompile
+
+FROM quay.io/quarkus/quarkus-micro-image:2.0
+
+WORKDIR /app
+
+COPY --from=build /build/runner/build/native/nativeCompile/bosca-runner .
+
+EXPOSE 8000
+CMD ["/app/bosca-runner", "run"]

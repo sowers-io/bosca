@@ -1,0 +1,4 @@
+fragment PlanWorkflow on Workflow {
+    id
+    name
+}

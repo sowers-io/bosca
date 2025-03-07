@@ -1,0 +1,11 @@
+query GetCollectionWorkflowPlans($id: String) {
+    content {
+        collection(id: $id) {
+            workflow {
+                plans {
+                    ...WorkflowPlan
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,13 @@
+fragment TemplateAttribute on TemplateAttribute {
+    key
+    name
+    description
+    type
+    supplementaryKey
+    ui
+    list
+    configuration
+    workflows {
+        ...TemplateWorkflow
+    }
+}

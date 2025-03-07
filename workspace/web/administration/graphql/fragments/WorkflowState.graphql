@@ -1,0 +1,10 @@
+fragment WorkflowState on WorkflowState {
+    id
+    name
+    configuration
+    description
+    entryWorkflowId
+    exitWorkflowId
+    workflowId
+    type
+}

@@ -1,0 +1,9 @@
+query GetMetadataContent($id: String!) {
+    content {
+        metadata(id: $id) {
+            content {
+                ...MetadataContent
+            }
+        }
+    }
+}

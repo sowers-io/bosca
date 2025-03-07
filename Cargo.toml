@@ -1,9 +1,9 @@
 [workspace]
 resolver = "2"
 members = [
-    "workspace/migrations",
-    "workspace/server",
-    "workspace/analytics",
-    "workspace/util/telemetry",
-    "workspace/graphql-clients/client-generator",
+    "workspace/core/migrations",
+    "workspace/core/server",
+    "workspace/core/analytics",
+    "workspace/core/util/telemetry",
+    "workspace/core/util/database",
 ]

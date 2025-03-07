@@ -1,0 +1,6 @@
+subscription OnTransitionChanged {
+    transition {
+        fromStateId
+        toStateId
+    }
+}

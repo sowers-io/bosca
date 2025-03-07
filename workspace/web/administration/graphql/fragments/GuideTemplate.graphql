@@ -1,0 +1,16 @@
+fragment GuideTemplate on GuideTemplate {
+    metadata {
+        id
+        version
+    }
+    rrule
+    type
+    defaultAttributes
+    attributes {
+        ...TemplateAttribute
+    }
+    steps {
+        ...GuideTemplateStep
+    }
+}
+

@@ -1,0 +1,36 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Run bosca" type="CargoCommandRunConfiguration" factoryName="Cargo Command">
+    <option name="buildProfileId" value="dev" />
+    <option name="command" value="run --package bosca-server --bin bosca-server" />
+    <option name="workingDirectory" value="file://$PROJECT_DIR$/workspace/core/server" />
+    <envs>
+      <env name="AWS_ACCESS_KEY_ID" value="67fO5gFs6BuksBrh6rMp" />
+      <env name="AWS_ALLOW_HTTP" value="true" />
+      <env name="AWS_BUCKET" value="bosca" />
+      <env name="AWS_ENDPOINT" value="http://127.0.0.1:9010" />
+      <env name="AWS_SECRET_ACCESS_KEY" value="eV4rlwomvXsM19CXorOTb5uYaFLeNXsPLKx5Uxdm" />
+      <env name="BOSCA_URL_PREFIX" value="http://127.0.0.1:8000" />
+      <env name="DATABASE_JOBS_URL" value="postgres://boscajobs:boscajobs@127.0.0.1:5434/boscajobs" />
+      <env name="DATABASE_URL" value="postgres://bosca:bosca@127.0.0.1:5433/bosca" />
+      <env name="JWT_AUDIENCE" value="bosca.io" />
+      <env name="JWT_ISSUER" value="bosca-graphql" />
+      <env name="JWT_SECRET" value="bosca1234*" />
+      <env name="SEARCH_KEY" value="p8JcB_HuMHRxN7uVXfrG2wU06b5k7oTvaAAYo6nsi9M" />
+      <env name="SEARCH_URL" value="http://127.0.0.1:7701" />
+      <env name="STORAGE" value="/tmp/bosca/fs" />
+      <env name="CONFIGURATION_SECRET_KEY" value="changeme" />
+    </envs>
+    <option name="emulateTerminal" value="true" />
+    <option name="channel" value="DEFAULT" />
+    <option name="requiredFeatures" value="true" />
+    <option name="allFeatures" value="false" />
+    <option name="withSudo" value="false" />
+    <option name="buildTarget" value="REMOTE" />
+    <option name="backtrace" value="SHORT" />
+    <option name="isRedirectInput" value="false" />
+    <option name="redirectInputPath" value="" />
+    <method v="2">
+      <option name="CARGO.BUILD_TASK_PROVIDER" enabled="true" />
+    </method>
+  </configuration>
+</component>

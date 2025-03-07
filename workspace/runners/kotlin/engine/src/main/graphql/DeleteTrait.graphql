@@ -1,0 +1,7 @@
+mutation DeleteTrait($id: String!) {
+    workflows {
+        traits {
+            delete(id: $id)
+        }
+    }
+}

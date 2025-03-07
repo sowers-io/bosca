@@ -1,0 +1,9 @@
+mutation EditStorageSystem($id: String!, $input: StorageSystemInput!) {
+    workflows {
+        storageSystems {
+            edit(id: $id, storageSystem: $input) {
+                ...StorageSystem
+            }
+        }
+    }
+}

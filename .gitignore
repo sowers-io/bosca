@@ -7,3 +7,7 @@ node_modules
 dist
 *.tsbuildinfo
 tmp
+build
+.gradle
+.output
+.kotlin

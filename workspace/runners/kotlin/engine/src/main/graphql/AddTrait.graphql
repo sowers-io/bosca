@@ -1,0 +1,9 @@
+mutation AddTrait($trait: TraitInput!) {
+    workflows {
+        traits {
+            add(model: $trait) {
+                ...Trait
+            }
+        }
+    }
+}

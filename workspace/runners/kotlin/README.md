@@ -1,0 +1,2 @@
+./gradlew -Pagent run # Runs on JVM with native-image-agent.
+./gradlew metadataCopy --task run --dir src/main/resources/META-INF/native-image # Copies the metadata collected by the agent into the project sources

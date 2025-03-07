@@ -1,0 +1,15 @@
+fragment LoginResponse on LoginResponse {
+    principal {
+        id
+        groups {
+            id
+            name
+        }
+    }
+    refreshToken
+    token {
+        token
+        expiresAt
+        issuedAt
+    }
+}

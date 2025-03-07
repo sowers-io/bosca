@@ -1,0 +1,9 @@
+query GetActivity($id: String!) {
+    workflows {
+        activities {
+            activity(id: $id) {
+                ...Activity
+            }
+        }
+    }
+}

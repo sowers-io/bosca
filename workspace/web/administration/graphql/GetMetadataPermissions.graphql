@@ -1,0 +1,9 @@
+query GetMetadataPermissions($id: String!) {
+    content {
+        metadata(id: $id) {
+            permissions {
+                ...Permission
+            }
+        }
+    }
+}

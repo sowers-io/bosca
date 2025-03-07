@@ -1,0 +1,5 @@
+mutation SetWorkflowJobDelayedUntil($jobId: WorkflowJobIdInput!, $until: DateTime!) {
+    workflows {
+        setExecutionPlanJobDelayed(jobId: $jobId, delayedUntil: $until)
+    }
+}

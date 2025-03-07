@@ -1,0 +1,11 @@
+fragment Configuration on Configuration {
+    key
+    description
+    value
+    permissions {
+        action
+        group {
+            ...Group
+        }
+    }
+}

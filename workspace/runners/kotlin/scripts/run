@@ -1,0 +1,16 @@
+#!/bin/sh
+
+set -e
+
+export BOSCA_PASSWORD=password
+export BOSCA_QUEUES="video,10;media,20;default,10;bible,200;bible-ai,100;bible-book,200;bible-chapter,200;bible-verse,100;media-transcription,1;media-upload,5;metadata,100;search-index,500;traits,500;transition,500"
+export BOSCA_URL=http://127.0.0.1:8000/graphql
+export BOSCA_USERNAME=admin
+export MUX_TEST=true
+export MUX_TOKEN_ID=
+export MUX_TOKEN_SECRET=
+export RUNPOD_TOKEN=
+export RUNPOD_TRANSCRIBE_FUNCTION=
+export RUNPOD_URL=http://127.0.0.1:8003
+
+./gradlew run --args "run"

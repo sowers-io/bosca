@@ -1,0 +1,5 @@
+mutation SetWorkflowJobCheckin($jobId: WorkflowJobIdInput!) {
+    workflows {
+        setExecutionPlanJobCheckin(jobId: $jobId)
+    }
+}

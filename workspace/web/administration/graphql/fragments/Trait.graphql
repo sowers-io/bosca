@@ -1,0 +1,8 @@
+fragment Trait on Trait {
+    id
+    name
+    description
+    contentTypes
+    workflowIds
+    deleteWorkflowId
+}

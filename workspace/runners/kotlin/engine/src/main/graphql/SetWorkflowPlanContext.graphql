@@ -1,0 +1,5 @@
+mutation SetWorkflowPlanContext($planId: WorkflowExecutionIdInput!, $context: JSON!) {
+    workflows {
+        setExecutionPlanContext(planId: $planId, context: $context)
+    }
+}

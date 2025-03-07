@@ -1,0 +1,4 @@
+fragment Ordering on Ordering {
+    path
+    order
+}

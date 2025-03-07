@@ -1,0 +1,7 @@
+mutation DeleteStorageSystem($id: String!) {
+    workflows {
+        storageSystems {
+            delete(id: $id)
+        }
+    }
+}

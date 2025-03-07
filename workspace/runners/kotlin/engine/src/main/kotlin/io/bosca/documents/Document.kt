@@ -1,0 +1,20 @@
+package io.bosca.documents
+
+import io.bosca.documents.marks.Mark
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+
+@Serializable
+data class Content(
+    val document: DocumentNode
+)
+
+@Serializable
+@SerialName("doc")
+data class Document(
+    @SerialName("attrs")
+    override val attributes: DocumentAttributes = EmptyDocumentAttributes(),
+    override val content: List<DocumentNode>,
+    override val marks: List<Mark> = emptyList(),
+) : DocumentNode
+

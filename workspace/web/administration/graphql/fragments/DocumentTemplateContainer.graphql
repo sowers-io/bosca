@@ -1,0 +1,10 @@
+fragment DocumentTemplateContainer on DocumentTemplateContainer {
+    id
+    name
+    description
+    supplementaryKey
+    workflows {
+        ...TemplateWorkflow
+    }
+}
+

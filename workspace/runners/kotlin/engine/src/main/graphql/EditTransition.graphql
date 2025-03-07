@@ -1,0 +1,9 @@
+mutation EditTransition($input: TransitionInput!) {
+    workflows {
+        transitions {
+            edit(transition: $input) {
+                ...Transition
+            }
+        }
+    }
+}

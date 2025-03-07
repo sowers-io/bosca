@@ -1,0 +1,7 @@
+mutation SetDocument($id: String!, $version: Int!, $document: DocumentInput!) {
+    content {
+        metadata {
+            setMetadataDocument(id: $id, version: $version, document: $document)
+        }
+    }
+}

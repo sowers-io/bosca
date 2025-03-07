@@ -1,0 +1,100 @@
+package io.bosca.workflow.ext
+
+import dev.langchain4j.model.chat.ChatLanguageModel
+import dev.langchain4j.model.embedding.EmbeddingModel
+import dev.langchain4j.model.embedding.onnx.allminilml6v2.AllMiniLmL6V2EmbeddingModel
+import dev.langchain4j.model.openai.OpenAiChatModel
+import io.bosca.api.Client
+import io.bosca.api.KeyValue
+import io.bosca.graphql.fragment.Model
+import io.bosca.util.DefaultKeys
+import io.bosca.util.ModelTypes
+import io.bosca.util.decode
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.modules.SerializersModule
+import kotlinx.serialization.modules.polymorphic
+import java.time.Duration
+
+fun Model.toEmbeddingModel(): EmbeddingModel {
+    when (type) {
+        "embedding" -> {
+            when (name) {
+                "all-mini-lm-l6-v2" -> return AllMiniLmL6V2EmbeddingModel()
+                else -> throw UnsupportedOperationException("Unsupported embedding name: $name")
+            }
+        }
+
+        else -> throw UnsupportedOperationException("Unsupported model type: $type")
+    }
+}
+
+suspend fun Model.toChatLanguageModel(client: Client): ChatLanguageModel {
+    val configuration = configuration.decode<LanguageModelConfiguration>()
+    
+    return when (type) {
+        ModelTypes.OpenAI -> {
+            val key = configuration?.apiKey
+                ?: client.configurations.get<KeyValue>(DefaultKeys.OPENAI_KEY)?.value
+                ?: error("apiKey missing")
+            OpenAiChatModel.builder()
+                .apiKey(key)
+                .modelName(configuration?.modelName ?: name)
+                .timeout(Duration.ofMinutes(30))
+                .logRequests(true)
+                .logResponses(true)
+                .build()
+        }
+
+        ModelTypes.Ollama -> {
+            val url = configuration?.baseUrl
+                ?: client.configurations.get<KeyValue>(DefaultKeys.OLLAMA_URL)?.value
+                ?: "http://localhost:11434/v1"
+            val key = configuration?.apiKey
+                ?: client.configurations.get<KeyValue>(DefaultKeys.OLLAMA_KEY)?.value
+                ?: "ollama"
+            val model = configuration?.baseUrl
+                ?: client.configurations.get<KeyValue>(DefaultKeys.OLLAMA_MODEL_DEFAULT)?.value
+                ?: "llama3.3:70b-instruct-q8_0"
+            OpenAiChatModel.builder()
+                .baseUrl(url)
+                .apiKey(key)
+                .modelName(model)
+                .timeout(Duration.ofMinutes(30))
+                .logRequests(true)
+                .logResponses(true)
+                .build()
+        }
+
+        else -> throw UnsupportedOperationException("Unsupported model type: $type")
+    }
+}
+
+interface ModelConfiguration {
+    val temperature: Float
+    val dimension: Long
+}
+
+@Serializable
+@SerialName("default")
+class DefaultConfiguration(
+    override val temperature: Float = 0f,
+    override val dimension: Long = 768
+) : ModelConfiguration
+
+@Serializable
+class LanguageModelConfiguration(
+    val baseUrl: String? = null,
+    val apiKey: String? = null,
+    val modelName: String? = null,
+    override val temperature: Float = 0f,
+    override val dimension: Long = 768
+) : ModelConfiguration
+
+val ModelConfigurationSerializers = SerializersModule {
+    polymorphic(ModelConfiguration::class) {
+        subclass(DefaultConfiguration::class, DefaultConfiguration.serializer())
+        subclass(LanguageModelConfiguration::class, LanguageModelConfiguration.serializer())
+    }
+    polymorphicDefaultDeserializer(ModelConfiguration::class) { DefaultConfiguration.serializer() }
+}

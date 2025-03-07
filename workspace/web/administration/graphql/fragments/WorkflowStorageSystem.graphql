@@ -1,0 +1,6 @@
+fragment WorkflowActivityStorageSystem on WorkflowActivityStorageSystem {
+    system {
+        id
+    }
+    configuration
+}

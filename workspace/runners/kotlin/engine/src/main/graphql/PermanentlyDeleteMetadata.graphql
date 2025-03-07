@@ -1,0 +1,7 @@
+mutation PermanentlyDeleteMetadata($id: String!) {
+    content {
+        metadata {
+            permanentlyDelete(metadataId: $id)
+        }
+    }
+}

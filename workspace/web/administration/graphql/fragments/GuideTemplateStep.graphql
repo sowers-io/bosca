@@ -1,0 +1,13 @@
+fragment GuideTemplateStep on GuideTemplateStep {
+    metadata {
+        id
+        version
+    }
+    attributes {
+        ...TemplateAttribute
+    }
+    modules {
+        ...GuideTemplateStepModule
+    }
+}
+

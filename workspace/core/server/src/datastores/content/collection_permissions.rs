@@ -1,0 +1,152 @@
+use crate::datastores::notifier::Notifier;
+use crate::models::content::collection::Collection;
+use crate::models::security::permission::{Permission, PermissionAction};
+use crate::models::security::principal::Principal;
+use crate::security::evaluator::Evaluator;
+use async_graphql::*;
+use deadpool_postgres::{GenericClient, Pool, Transaction};
+use std::sync::Arc;
+use log::error;
+use uuid::Uuid;
+
+#[derive(Clone)]
+pub struct CollectionPermissionsDataStore {
+    pool: Arc<Pool>,
+    notifier: Arc<Notifier>,
+}
+
+impl CollectionPermissionsDataStore {
+    pub fn new(pool: Arc<Pool>, notifier: Arc<Notifier>) -> Self {
+        Self { pool, notifier }
+    }
+
+    async fn on_collection_changed(&self, id: &Uuid) -> Result<(), Error> {
+        if let Err(e) = self.notifier.collection_changed(id).await {
+            error!("Failed to notify collection changes: {:?}", e);
+        }
+        Ok(())
+    }
+
+    pub async fn has(
+        &self,
+        collection: &Collection,
+        principal: &Principal,
+        action: PermissionAction,
+    ) -> Result<bool, Error> {
+        if collection.deleted {
+            return Ok(false);
+        }
+        if action == PermissionAction::View
+            && collection.public
+            && collection.workflow_state_id == "published"
+        {
+            return Ok(true);
+        }
+        if action == PermissionAction::List
+            && collection.public_list
+            && collection.workflow_state_id == "published"
+        {
+            return Ok(true);
+        }
+        let eval = Evaluator::new(self.get(&collection.id).await?);
+        Ok(eval.evaluate(principal, &action))
+    }
+
+    pub async fn has_txn(
+        &self,
+        txn: &Transaction<'_>,
+        collection: &Collection,
+        principal: &Principal,
+        action: PermissionAction,
+    ) -> Result<bool, Error> {
+        if collection.deleted {
+            return Ok(false);
+        }
+        if action == PermissionAction::View
+            && collection.public
+            && collection.workflow_state_id == "published"
+        {
+            return Ok(true);
+        }
+        if action == PermissionAction::List
+            && collection.public_list
+            && collection.workflow_state_id == "published"
+        {
+            return Ok(true);
+        }
+        let eval = Evaluator::new(
+            self.get_txn(txn, &collection.id)
+                .await?,
+        );
+        Ok(eval.evaluate(principal, &action))
+    }
+
+    pub async fn get(&self, id: &Uuid) -> Result<Vec<Permission>, Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection.prepare_cached("select collection_id as entity_id, group_id, action from collection_permissions where collection_id = $1").await?;
+        let rows = connection.query(&stmt, &[id]).await?;
+        Ok(rows.iter().map(|r| r.into()).collect())
+    }
+
+    pub async fn get_txn(
+        &self,
+        txn: &Transaction<'_>,
+        id: &Uuid,
+    ) -> Result<Vec<Permission>, Error> {
+        let stmt = txn.prepare_cached("select collection_id as entity_id, group_id, action from collection_permissions where collection_id = $1").await?;
+        let rows = txn.query(&stmt, &[id]).await?;
+        Ok(rows.iter().map(|r| r.into()).collect())
+    }
+
+    pub async fn add(&self, permission: &Permission) -> Result<(), Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection.prepare_cached("insert into collection_permissions (collection_id, group_id, action) values ($1, $2, $3)").await?;
+        connection
+            .execute(
+                &stmt,
+                &[
+                    &permission.entity_id,
+                    &permission.group_id,
+                    &permission.action,
+                ],
+            )
+            .await?;
+        self.on_collection_changed(&permission.entity_id).await?;
+        Ok(())
+    }
+
+    pub async fn add_txn(
+        &self,
+        txn: &Transaction<'_>,
+        permission: &Permission,
+    ) -> Result<(), Error> {
+        let stmt = txn.prepare_cached("insert into collection_permissions (collection_id, group_id, action) values ($1, $2, $3)").await?;
+        txn.execute(
+            &stmt,
+            &[
+                &permission.entity_id,
+                &permission.group_id,
+                &permission.action,
+            ],
+        )
+            .await?;
+        Ok(())
+    }
+
+    pub async fn delete(&self, permission: &Permission) -> Result<(), Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection.prepare_cached("delete from collection_permissions where collection_id = $1 and group_id = $2 and action = $3").await?;
+        connection
+            .execute(
+                &stmt,
+                &[
+                    &permission.entity_id,
+                    &permission.group_id,
+                    &permission.action,
+                ],
+            )
+            .await?;
+        self.on_collection_changed(&permission.entity_id).await?;
+        Ok(())
+    }
+}

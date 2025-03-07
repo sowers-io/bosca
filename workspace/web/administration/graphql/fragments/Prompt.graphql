@@ -1,0 +1,9 @@
+fragment Prompt on Prompt {
+    id
+    name
+    description
+    inputType
+    outputType
+    systemPrompt
+    userPrompt
+}

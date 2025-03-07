@@ -1,0 +1,7 @@
+mutation VerifySignUp($token: String!) {
+    security {
+        signup {
+            passwordVerify(verificationToken: $token)
+        }
+    }
+}

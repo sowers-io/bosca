@@ -1,0 +1,1539 @@
+# This file was generated. Do not edit manually.
+
+schema {
+    query: Query
+    mutation: Mutation
+    subscription: Subscription
+}
+
+"""
+
+Indicates that an Input Object is a OneOf Input Object (and thus requires
+exactly one of its field be provided)
+"""
+directive @oneOf on INPUT_OBJECT
+
+union CollectionItem = Collection | Metadata
+
+union ContentItem = Collection | Metadata | Profile
+
+union WorkflowExecution = WorkflowExecutionPlan | WorkflowJob
+
+type Activities {
+    activity(id: String!): Activity
+    all: [Activity!]!
+}
+
+type ActivitiesMutation {
+    add(activity: ActivityInput!): Activity
+    delete(activityId: String!): Boolean!
+    edit(activity: ActivityInput!): Activity
+}
+
+type Activity {
+    childWorkflowId: String
+    configuration: JSON
+    description: String!
+    id: String!
+    inputs: [ActivityParameter!]!
+    name: String!
+    outputs: [ActivityParameter!]!
+}
+
+type ActivityParameter {
+    name: String!
+    type: ActivityParameterType!
+}
+
+type Categories {
+    all: [Category!]!
+}
+
+type Category {
+    id: String!
+    name: String!
+}
+
+type CategoryMutation {
+    add(category: CategoryInput!): Category!
+    delete(id: String!): Boolean!
+    edit(category: CategoryInput!, id: String!): Category!
+}
+
+type Collection {
+    attributes(filter: AttributesFilterInput): JSON
+    categories: [Category!]!
+    collections(limit: Int!, offset: Int!): [Collection!]!
+    collectionsCount: Int!
+    created: DateTime!
+    deleted: Boolean!
+    description: String
+    id: String!
+    itemAttributes: JSON
+    items(limit: Int!, offset: Int!): [CollectionItem!]!
+    itemsCount: Int!
+    labels: [String!]!
+    metadata(limit: Int!, offset: Int!): [Metadata!]!
+    metadataCount: Int!
+    metadataRelationships: [CollectionMetadataRelationship!]!
+    modified: DateTime!
+    name: String!
+    ordering: [Ordering!]
+    parentCollections(limit: Int!, offset: Int!): [Collection!]!
+    permissions: [Permission!]!
+    public: Boolean!
+    publicList: Boolean!
+    ready: DateTime
+    slug: String
+    systemAttributes: JSON
+    templateMetadata: Metadata
+    traitIds: [String!]!
+    type: CollectionType!
+    workflow: CollectionWorkflow!
+}
+
+type CollectionMetadataRelationship {
+    attributes: JSON
+    metadata: Metadata!
+    relationship: String
+}
+
+type CollectionMutation {
+    add(collection: CollectionInput!, collectionItemAttributes: JSON): Collection!
+    addBulk(collections: [CollectionChildInput!]!): [Collection!]!
+    addChildCollection(attributes: JSON, collectionId: String!, id: String!): Collection!
+    addChildMetadata(attributes: JSON, id: String!, metadataId: String!): Collection!
+    addMetadataRelationship(relationship: CollectionMetadataRelationshipInput!): CollectionMetadataRelationship!
+    addPermission(permission: PermissionInput!): Permission!
+    delete(id: String!, recursive: Boolean): Boolean!
+    deleteMetadataRelationship(id: String!, metadataId: String!, relationship: String!): Boolean!
+    deletePermission(permission: PermissionInput!): Permission!
+    edit(collection: CollectionInput!, id: String!): Collection!
+    editMetadataRelationship(relationship: CollectionMetadataRelationshipInput!): Boolean!
+    permanentlyDelete(collectionId: String!, recursive: Boolean): Boolean!
+    removeChildCollection(collectionId: String!, id: String!): Collection!
+    removeChildMetadata(id: String!, metadataId: String!): Collection!
+    setChildItemAttributes(attributes: JSON, childCollectionId: String, childMetadataId: String, id: String!): Collection!
+    setCollectionAttributes(attributes: JSON!, id: String!): Boolean!
+    setCollectionOrdering(id: String!, ordering: JSON!): Boolean!
+    setPublic(id: String!, public: Boolean!): Collection!
+    setPublicList(id: String!, public: Boolean!): Collection!
+    setReady(id: String!): Boolean!
+    setWorkflowState(state: CollectionWorkflowState!): Boolean!
+    setWorkflowStateComplete(state: CollectionWorkflowCompleteState!): Boolean!
+}
+
+type CollectionTemplate {
+    attributes: [TemplateAttribute!]!
+    collectionFilter: FindQueries
+    configuration: JSON
+    defaultAttributes: JSON
+    metadata: Metadata
+    metadataFilter: FindQueries
+}
+
+type CollectionTemplates {
+    all: [CollectionTemplate!]!
+}
+
+type CollectionWorkflow {
+    deleteWorkflow: String
+    pending: String
+    plans: [WorkflowExecutionPlan!]!
+    state: String!
+    stateValid: DateTime
+}
+
+type Configuration {
+    description: String!
+    id: String!
+    key: String!
+    permissions: [ConfigurationPermission!]!
+    value: JSON
+}
+
+type ConfigurationPermission {
+    action: PermissionAction!
+    group: Group!
+}
+
+type Configurations {
+    all: [Configuration!]!
+    configuration(key: String!): Configuration
+}
+
+type ConfigurationsMutation {
+    deleteConfiguration(key: String!): String
+    setConfiguration(configuration: ConfigurationInput!): Configuration
+}
+
+type Content {
+    categories: Categories!
+    collection(id: String): Collection
+    collectionTemplates: CollectionTemplates!
+    documentTemplates: DocumentTemplates!
+    findCollections(query: FindQueryInput!): [Collection!]!
+    findCollectionsCount(query: FindQueryInput!): Int!
+    findMetadata(query: FindQueryInput!): [Metadata!]!
+    findMetadataCount(query: FindQueryInput!): Int!
+    metadata(id: String!, version: Int): Metadata
+    metadataSupplementary(id: String!, key: String!, version: Int): MetadataSupplementary
+    slug(slug: String!): ContentItem
+    sources: Sources!
+}
+
+type ContentMutation {
+    category: CategoryMutation!
+    collection: CollectionMutation!
+    metadata: MetadataMutation!
+    reindex: Boolean!
+    sources: SourceMutation!
+}
+
+type Document {
+    content: JSON!
+    template: Metadata
+    title: String!
+}
+
+type DocumentTemplate {
+    attributes: [TemplateAttribute!]!
+    configuration: JSON
+    containers: [DocumentTemplateContainer!]!
+    content: JSON!
+    defaultAttributes: JSON
+    metadata: Metadata
+    schema: JSON
+}
+
+type DocumentTemplateContainer {
+    description: String!
+    id: String!
+    name: String!
+    supplementaryKey: String
+    workflows: [TemplateWorkflow!]!
+}
+
+type DocumentTemplates {
+    all: [DocumentTemplate!]!
+}
+
+type FindAttribute {
+    key: String!
+    value: String!
+}
+
+type FindAttributes {
+    attributes: [FindAttribute!]!
+}
+
+type FindQueries {
+    options: [FindQueryOption!]!
+}
+
+type FindQuery {
+    attributes: [FindAttributes!]!
+    categoryIds: [String!]
+    collectionType: CollectionType
+    contentTypes: [String!]
+    extensionFilter: ExtensionFilterType
+    limit: Int
+    offset: Int
+}
+
+type FindQueryOption {
+    name: String!
+    query: FindQuery!
+}
+
+type Group {
+    id: String!
+    name: String!
+}
+
+type Groups {
+    all(limit: Int!, offset: Int!): [Group!]!
+}
+
+type Guide {
+    rrule: String
+    steps: [GuideStep!]!
+    template: Metadata
+    type: GuideType!
+}
+
+type GuideStep {
+    metadata: Metadata
+    modules: [GuideStepModule!]!
+}
+
+type GuideStepModule {
+    metadata: Metadata
+}
+
+type GuideTemplate {
+    attributes: [TemplateAttribute!]!
+    defaultAttributes: JSON
+    metadata: Metadata
+    rrule: String
+    steps: [GuideTemplateStep!]!
+    type: GuideType!
+}
+
+type GuideTemplateStep {
+    attributes: [TemplateAttribute!]!
+    metadata: Metadata
+    modules: [GuideTemplateStepModule!]!
+}
+
+type GuideTemplateStepModule {
+    metadata: Metadata
+}
+
+type Login {
+    password(identifier: String!, password: String!): LoginResponse!
+}
+
+type LoginMutation {
+    password(identifier: String!, password: String!): LoginResponse!
+    refreshToken(refreshToken: String!): LoginResponse!
+}
+
+type LoginResponse {
+    principal: Principal!
+    profile: Profile
+    refreshToken: String!
+    token: Token!
+}
+
+type Metadata {
+    attributes(filter: AttributesFilterInput): JSON
+    categories: [Category!]!
+    collectionTemplate: CollectionTemplate
+    content: MetadataContent!
+    created: DateTime!
+    deleted: Boolean!
+    document: Document
+    documentTemplate: DocumentTemplate
+    guide: Guide
+    guideTemplate: GuideTemplate
+    id: String!
+    itemAttributes: JSON
+    labels: [String!]!
+    languageTag: String!
+    modified: DateTime!
+    name: String!
+    parentCollections(limit: Int!, offset: Int!): [Collection!]!
+    parentId: String
+    permissions: [Permission!]!
+    profiles: [MetadataProfile!]!
+    public: Boolean!
+    publicContent: Boolean!
+    publicSupplementary: Boolean!
+    ready: DateTime
+    relationships(filter: [String!]): [MetadataRelationship!]!
+    slug: String
+    source: MetadataSource!
+    supplementary(key: String): [MetadataSupplementary!]!
+    systemAttributes: JSON
+    traitIds: [String!]!
+    type: MetadataType!
+    uploaded: DateTime
+    version: Int!
+    workflow: MetadataWorkflow!
+}
+
+type MetadataContent {
+    json: JSON!
+    length: Int
+    text: String!
+    type: String!
+    urls: MetadataContentUrls!
+}
+
+type MetadataContentUrls {
+    download: SignedUrl!
+    upload: SignedUrl!
+}
+
+type MetadataMutation {
+    add(collectionItemAttributes: JSON, metadata: MetadataInput!): Metadata!
+    addBulk(metadatas: [MetadataChildInput!]!): [Metadata!]!
+    addCategory(categoryId: String!, metadataId: String!): Boolean!
+    addPermission(permission: PermissionInput!): Permission!
+    addRelationship(relationship: MetadataRelationshipInput!): MetadataRelationship!
+    addSearchDocuments(documents: [SearchDocumentInput!]!, storageSystemId: String!): Boolean!
+    addSupplementary(supplementary: MetadataSupplementaryInput!): MetadataSupplementary!
+    addTrait(metadataId: String!, traitId: String!): [WorkflowExecutionPlan!]!
+    delete(metadataId: String!): Boolean!
+    deleteCategory(categoryId: String!, metadataId: String!): Boolean!
+    deleteContent(metadataId: String!): Boolean!
+    deletePermission(permission: PermissionInput!): Permission!
+    deleteRelationship(id1: String!, id2: String!, relationship: String!): Boolean!
+    deleteSupplementary(id: String!, key: String!): Boolean!
+    deleteTrait(metadataId: String!, traitId: String!): WorkflowExecutionPlan
+    edit(id: String!, metadata: MetadataInput!): Metadata!
+    editRelationship(relationship: MetadataRelationshipInput!): Boolean!
+    permanentlyDelete(metadataId: String!): Boolean!
+    setMetadataAttributes(attributes: JSON!, id: String!): Boolean!
+    setMetadataContents(contentType: String, file: Upload!, id: String!): Boolean!
+    setMetadataDocument(document: DocumentInput!, id: String!, version: Int!): Boolean!
+    setMetadataJsonContents(content: JSON!, contentType: String, id: String!): Boolean!
+    setMetadataReady(configurations: [WorkflowConfigurationInput!], id: String!): Boolean!
+    setMetadataSystemAttributes(attributes: JSON!, id: String!): Boolean!
+    setMetadataTextContents(content: String!, contentType: String, id: String!): Boolean!
+    setMetadataUploaded(configurations: [WorkflowConfigurationInput!], contentType: String, id: String!, len: Int!, ready: Boolean): Boolean!
+    setPublic(id: String!, public: Boolean!): Metadata!
+    setPublicContent(id: String!, public: Boolean!): Metadata!
+    setPublicSupplementary(id: String!, public: Boolean!): Metadata!
+    setSupplementaryContents(contentType: String!, file: Upload!, id: String!, key: String!): Boolean!
+    setSupplementaryTextContents(content: String!, contentType: String!, id: String!, key: String!): Boolean!
+    setSupplementaryUploaded(contentType: String!, len: Int!, metadataId: String!, supplementaryKey: String!): Boolean!
+    setWorkflowState(state: MetadataWorkflowState!): Boolean!
+    setWorkflowStateComplete(state: MetadataWorkflowCompleteState!): Boolean!
+}
+
+type MetadataProfile {
+    profile: Profile
+    relationship: String!
+}
+
+type MetadataRelationship {
+    attributes: JSON
+    id: String!
+    metadata: Metadata!
+    relationship: String!
+}
+
+type MetadataSource {
+    id: String
+    identifier: String
+    sourceUrl: String
+}
+
+type MetadataSupplementary {
+    attributes: JSON
+    content: MetadataSupplementaryContent!
+    created: String!
+    key: String!
+    metadataId: String!
+    modified: String!
+    name: String!
+    source: MetadataSupplementarySource!
+    uploaded: String
+}
+
+type MetadataSupplementaryContent {
+    json: JSON!
+    length: Int
+    text: String!
+    type: String!
+    urls: MetadataSupplementaryContentUrls!
+}
+
+type MetadataSupplementaryContentUrls {
+    download: SignedUrl!
+    upload: SignedUrl!
+}
+
+type MetadataSupplementaryIdObject {
+    id: String!
+    supplementary: String!
+}
+
+type MetadataSupplementarySource {
+    id: String!
+    identifier: String
+}
+
+type MetadataWorkflow {
+    deleteWorkflow: String
+    pending: String
+    plans: [WorkflowExecutionPlan!]!
+    state: String!
+    stateValid: DateTime
+}
+
+type Model {
+    configuration: JSON!
+    description: String!
+    id: String!
+    name: String!
+    type: String!
+}
+
+type Models {
+    all: [Model!]!
+    model(id: String!): Model
+}
+
+type ModelsMutation {
+    add(model: ModelInput!): Model
+    delete(id: String!): Boolean!
+    edit(id: String!, model: ModelInput!): Model
+}
+
+type Mutation {
+    configurations: ConfigurationsMutation!
+    content: ContentMutation!
+    persistedQueries: PersistedQueriesMutation!
+    profiles: ProfilesMutation!
+    security: SecurityMutation!
+    workflows: WorkflowsMutation!
+}
+
+type Ordering {
+    order: Order!
+    path: [String!]!
+    type: AttributeType!
+}
+
+type Permission {
+    action: PermissionAction!
+    group: Group!
+    groupId: String!
+}
+
+type PersistedQueriesMutation {
+    add(application: String!, query: String!, sha256: String!): Boolean!
+    addAll(application: String!, queries: [PersistedQueryInput!]!): Boolean!
+    delete(application: String!, sha256: String!): Boolean!
+    deleteAll: Boolean!
+}
+
+type PersistedQueriesObject {
+    all: [PersistedQuery!]!
+    query(sha256: String!): PersistedQuery
+}
+
+type PersistedQuery {
+    application: String!
+    query: String!
+    sha256: String!
+}
+
+type Principal {
+    groups: [Group!]!
+    id: String!
+    verified: Boolean!
+}
+
+type Principals {
+    all(limit: Int!, offset: Int!): [Principal!]!
+    current: Principal!
+}
+
+type Profile {
+    attributes: [ProfileAttribute!]!
+    id: String!
+    name: String!
+    slug: String
+    visibility: ProfileVisibility!
+}
+
+type ProfileAttribute {
+    attributes: JSON
+    confidence: Int!
+    expires: DateTime
+    id: String!
+    metadata: Metadata
+    priority: Int!
+    source: String!
+    typeId: String!
+    visibility: ProfileVisibility!
+}
+
+type ProfileAttributeType {
+    description: String!
+    id: String!
+    name: String!
+    visibility: ProfileVisibility!
+}
+
+type ProfileAttributeTypes {
+    all: [ProfileAttributeType!]!
+}
+
+type Profiles {
+    all(limit: Int!, offset: Int!): [Profile!]!
+    attributeTypes: ProfileAttributeTypes!
+    current: Profile
+    profile(id: String!): Profile
+}
+
+type ProfilesMutation {
+    add(profile: ProfileInput!): Profile
+    addAttributeType(attribute: ProfileAttributeTypeInput!): Boolean!
+    deleteAttributeType(attributeId: String!): Boolean!
+    edit(id: String, profile: ProfileInput!): Profile
+    editAttributeType(attribute: ProfileAttributeTypeInput!): Boolean!
+}
+
+type Prompt {
+    description: String!
+    id: String!
+    inputType: String!
+    name: String!
+    outputType: String!
+    schema: JSON
+    systemPrompt: String!
+    userPrompt: String!
+}
+
+type Prompts {
+    all: [Prompt!]!
+    prompt(id: String!): Prompt
+}
+
+type PromptsMutation {
+    add(prompt: PromptInput!): Prompt
+    delete(id: String!): Boolean!
+    edit(id: String!, prompt: PromptInput!): Prompt
+}
+
+type Query {
+    configurations: Configurations!
+    content: Content!
+    persistedQueries: PersistedQueriesObject!
+    profiles: Profiles!
+    search(query: SearchQuery!): SearchResultObject!
+    security: Security!
+    workflows: Workflows!
+}
+
+type SearchDocument {
+    collection: Collection
+    content: String!
+    metadata: Metadata
+    profile: Profile
+}
+
+type SearchResultObject {
+    documents: [SearchDocument!]!
+    estimatedHits: Int!
+}
+
+type Security {
+    actions: [String!]!
+    groups: Groups!
+    login: Login!
+    principal: Principal!
+    principals: Principals!
+}
+
+type SecurityMutation {
+    addPrincipalGroup(groupId: String!, principalId: String!): Boolean!
+    expireRefreshTokens: Boolean!
+    login: LoginMutation!
+    signup: SignupMutation!
+}
+
+type SignedUrl {
+    headers: [SignedUrlHeader!]!
+    url: String!
+}
+
+type SignedUrlHeader {
+    name: String!
+    value: String!
+}
+
+type SignupMutation {
+    password(identifier: String!, password: String!, profile: ProfileInput!): Principal!
+    passwordVerify(verificationToken: String!): Boolean!
+}
+
+type Source {
+    configuration: JSON!
+    description: String!
+    id: String!
+    name: String!
+}
+
+type SourceMutation {
+    add(source: SourceInput!): Source
+}
+
+type Sources {
+    all: [Source!]!
+    source(id: String!): Source
+}
+
+type StorageSystem {
+    configuration: JSON
+    description: String!
+    id: String!
+    models: [StorageSystemModel!]!
+    name: String!
+    type: StorageSystemType!
+}
+
+type StorageSystemModel {
+    configuration: JSON!
+    model: Model
+    modelId: String!
+}
+
+type StorageSystems {
+    all: [StorageSystem!]!
+    storageSystem(id: String!): StorageSystem
+}
+
+type StorageSystemsMutation {
+    add(storageSystem: StorageSystemInput!): StorageSystem
+    delete(id: String!): Boolean!
+    edit(id: String!, storageSystem: StorageSystemInput!): StorageSystem
+}
+
+type Subscription {
+    activity: String!
+    category: String!
+    collection: String!
+    configuration: String!
+    metadata: String!
+    metadataSupplementary: MetadataSupplementaryIdObject!
+    model: String!
+    prompt: String!
+    state: String!
+    storageSystem: String!
+    trait: String!
+    transition: TransitionIdObject!
+    workflow: String!
+    workflowPlanFailed: WorkflowExecutionId!
+    workflowPlanFinished: WorkflowExecutionId!
+    workflowSchedule: String!
+}
+
+type TemplateAttribute {
+    configuration: JSON
+    description: String!
+    key: String!
+    list: Boolean!
+    name: String!
+    supplementaryKey: String
+    type: AttributeType!
+    ui: AttributeUiType!
+    workflows: [TemplateWorkflow!]!
+}
+
+type TemplateWorkflow {
+    autoRun: Boolean!
+    workflow: Workflow
+}
+
+type Token {
+    expiresAt: Int!
+    issuedAt: Int!
+    token: String!
+}
+
+type Trait {
+    contentTypes: [String!]!
+    deleteWorkflowId: String
+    description: String!
+    id: String!
+    name: String!
+    workflowIds: [String!]!
+    workflows: [Workflow!]!
+}
+
+type Traits {
+    all: [Trait!]!
+    trait(id: String!): Trait
+}
+
+type TraitsMutation {
+    add(model: TraitInput!): Trait
+    delete(id: String!): Boolean!
+    edit(model: TraitInput!): Trait
+}
+
+type Transition {
+    description: String!
+    fromStateId: String!
+    toStateId: String!
+}
+
+type TransitionIdObject {
+    fromStateId: String!
+    toStateId: String!
+}
+
+type Transitions {
+    all: [Transition!]!
+    transition(fromStateId: String!, toStateId: String!): Transition
+}
+
+type TransitionsMutation {
+    add(transition: TransitionInput!): Transition
+    delete(fromStateId: String!, toStateId: String!): Boolean!
+    edit(transition: TransitionInput!): Transition
+}
+
+type Workflow {
+    activities: [WorkflowActivity!]!
+    configuration: JSON!
+    description: String!
+    id: String!
+    name: String!
+    queue: String!
+}
+
+type WorkflowActivity {
+    activityId: String!
+    configuration: JSON
+    executionGroup: Int!
+    id: Int!
+    inputs: [WorkflowActivityParameter!]!
+    models: [WorkflowActivityModel!]!
+    outputs: [WorkflowActivityParameter!]!
+    prompts: [WorkflowActivityPrompt!]!
+    queue: String!
+    storageSystems: [WorkflowActivityStorageSystem!]!
+}
+
+type WorkflowActivityModel {
+    configuration: JSON
+    model: Model!
+}
+
+type WorkflowActivityParameter {
+    name: String!
+    value: String!
+}
+
+type WorkflowActivityPrompt {
+    configuration: JSON
+    prompt: Prompt!
+}
+
+type WorkflowActivityStorageSystem {
+    configuration: JSON
+    system: StorageSystem!
+}
+
+type WorkflowExecutionId {
+    id: String!
+    queue: String!
+}
+
+type WorkflowExecutionPlan {
+    active: [Int!]!
+    collectionId: String
+    complete: [Int!]!
+    context: JSON
+    error: String
+    failed: [Int!]!
+    id: WorkflowExecutionId!
+    jobs: [WorkflowJob!]!
+    metadata: Metadata
+    metadataId: String
+    metadataVersion: Int
+    parent: WorkflowJobId
+    supplementaryId: String
+    workflow: Workflow!
+}
+
+type WorkflowJob {
+    activity: Activity!
+    children: [WorkflowExecutionId!]!
+    collection: Collection
+    collectionId: String
+    completedChildren: [WorkflowExecutionId!]!
+    context: JSON
+    error: String
+    failedChildren: [WorkflowExecutionId!]!
+    id: WorkflowJobId!
+    metadata: Metadata
+    metadataVersion: Int
+    models: [WorkflowActivityModel!]!
+    planId: WorkflowExecutionId!
+    prompts: [WorkflowActivityPrompt!]!
+    storageSystems: [WorkflowActivityStorageSystem!]!
+    supplementaryId: String
+    workflow: Workflow!
+    workflowActivity: WorkflowActivity!
+}
+
+type WorkflowJobId {
+    id: String!
+    index: Int!
+    queue: String!
+}
+
+type WorkflowSchedule {
+    attributes: JSON
+    collection: Collection
+    configuration: JSON
+    enabled: Boolean!
+    ends: DateTime
+    id: String!
+    lastRun: DateTime
+    lastScheduled: DateTime
+    metadata: Metadata
+    nextRun: DateTime
+    rrule: String!
+    starts: DateTime!
+    workflow: Workflow
+}
+
+type WorkflowSchedules {
+    all: [WorkflowSchedule!]!
+}
+
+type WorkflowSchedulesMutation {
+    add(collectionId: String, metadataId: String, schedule: WorkflowScheduleInput!): WorkflowSchedule
+    delete(id: String!): Boolean!
+}
+
+type WorkflowState {
+    configuration: JSON
+    description: String!
+    entryWorkflowId: String
+    exitWorkflowId: String
+    id: String!
+    name: String!
+    type: WorkflowStateType!
+    workflowId: String
+}
+
+type WorkflowStates {
+    all: [WorkflowState!]!
+    state(id: String!): WorkflowState
+}
+
+type WorkflowStatesMutation {
+    add(state: WorkflowStateInput!): WorkflowState
+    delete(id: String!): Boolean!
+    edit(state: WorkflowStateInput!): WorkflowState
+}
+
+type Workflows {
+    activities: Activities!
+    all: [Workflow!]!
+    executionPlan(id: String!, queue: String!): WorkflowExecutionPlan
+    executions(limit: Int!, offset: Int!, queue: String!): [WorkflowExecution!]!
+    models: Models!
+    nextJob(queue: String!): WorkflowJob
+    prompts: Prompts!
+    schedules: WorkflowSchedules!
+    states: WorkflowStates!
+    storageSystems: StorageSystems!
+    traits: Traits!
+    transitions: Transitions!
+    workflow(id: String!): Workflow
+    workflowActivity(id: Int!): WorkflowActivity
+}
+
+type WorkflowsMutation {
+    activities: ActivitiesMutation!
+    add(workflow: WorkflowInput!): Workflow!
+    beginTransition(configurations: [WorkflowConfigurationInput!], request: BeginTransitionInput!): Boolean!
+    cancelWorkflows(collectionId: String, metadataId: String, metadataVersion: Int, workflowId: String!): Boolean!
+    delete(id: String!): Boolean!
+    edit(workflow: WorkflowInput!): Workflow!
+    enqueueChildWorkflow(configurations: [WorkflowConfigurationInput!], delayUntil: DateTime, jobId: WorkflowJobIdInput!, workflowId: String!): WorkflowExecutionId!
+    enqueueChildWorkflows(delayUntil: DateTime, jobId: WorkflowJobIdInput!, workflowIds: [String!]!): [WorkflowExecutionId!]!
+    enqueueWorkflow(collectionId: String, configurations: [WorkflowConfigurationInput!], delayUntil: DateTime, metadataId: String, version: Int, workflowId: String!): WorkflowExecutionId!
+    expireAll: Boolean!
+    findAndEnqueueWorkflow(configurations: [WorkflowConfigurationInput!], delayUntil: DateTime, query: FindQueryInput!, workflowId: String!): [WorkflowExecutionId!]!
+    models: ModelsMutation!
+    prompts: PromptsMutation!
+    schedules: WorkflowSchedulesMutation!
+    setExecutionPlanContext(context: JSON!, planId: WorkflowExecutionIdInput!): Boolean!
+    setExecutionPlanJobCheckin(jobId: WorkflowJobIdInput!): Boolean!
+    setExecutionPlanJobComplete(jobId: WorkflowJobIdInput!): Boolean!
+    setExecutionPlanJobContext(context: JSON!, jobId: WorkflowJobIdInput!): Boolean!
+    setExecutionPlanJobDelayed(delayedUntil: DateTime!, jobId: WorkflowJobIdInput!): Boolean!
+    setExecutionPlanJobFailed(error: String!, jobId: WorkflowJobIdInput!): Boolean!
+    states: WorkflowStatesMutation!
+    storageSystems: StorageSystemsMutation!
+    traits: TraitsMutation!
+    transitions: TransitionsMutation!
+}
+
+enum ActivityParameterType {
+    CONTEXT
+    SUPPLEMENTARY
+    SUPPLEMENTARY_ARRAY
+}
+
+enum AttributeType {
+    COLLECTION
+    DATE
+    DATE_TIME
+    FLOAT
+    INT
+    METADATA
+    PROFILE
+    STRING
+}
+
+enum AttributeUiType {
+    COLLECTION
+    FILE
+    IMAGE
+    INPUT
+    METADATA
+    PROFILE
+    TEXTAREA
+}
+
+enum CollectionType {
+    FOLDER
+    QUEUE
+    ROOT
+    STANDARD
+    SYSTEM
+}
+
+enum ExtensionFilterType {
+    COLLECTION_TEMPLATE
+    DOCUMENT
+    DOCUMENT_TEMPLATE
+    GUIDE
+    GUIDE_TEMPLATE
+}
+
+enum GuideType {
+    CALENDAR
+    CALENDAR_PROGRESS
+    LINEAR
+    LINEAR_PROGRESS
+}
+
+enum MetadataType {
+    STANDARD
+    VARIANT
+}
+
+enum Order {
+    ASCENDING
+    DESCENDING
+}
+
+enum PermissionAction {
+    DELETE
+    EDIT
+    EXECUTE
+    IMPERSONATE
+    LIST
+    MANAGE
+    VIEW
+}
+
+enum ProfileVisibility {
+    FRIENDS
+    FRIENDS_OF_FRIENDS
+    PUBLIC
+    SYSTEM
+    USER
+}
+
+enum StorageSystemType {
+    SEARCH
+    SUPPLEMENTARY
+    VECTOR
+}
+
+enum WorkflowStateType {
+    APPROVAL
+    APPROVED
+    DRAFT
+    FAILURE
+    PENDING
+    PROCESSING
+    PUBLISHED
+}
+
+"""
+
+Implement the DateTime<Utc> scalar
+
+The input/output is a string in RFC3339 format.
+"""
+scalar DateTime
+
+"A scalar that can represent any JSON value."
+scalar JSON
+
+scalar Upload
+
+input ActivityInput {
+    childWorkflowId: String
+    configuration: JSON
+    description: String!
+    id: String!
+    inputs: [ActivityParameterInput!]!
+    name: String!
+    outputs: [ActivityParameterInput!]!
+}
+
+input ActivityParameterInput {
+    name: String!
+    type: ActivityParameterType!
+}
+
+input AttributesFilterInput {
+    attributes: [String!]!
+    childAttributes: AttributesFilterInput
+}
+
+input BeginTransitionInput {
+    collectionId: String
+    metadataId: String
+    restart: Boolean
+    stateId: String!
+    stateValid: DateTime
+    status: String!
+    supplementaryId: String
+    version: Int
+    waitForCompletion: Boolean
+}
+
+input CategoryInput {
+    name: String!
+}
+
+input CollectionChildInput {
+    attributes: JSON
+    collection: CollectionInput!
+}
+
+input CollectionInput {
+    attributes: JSON
+    categoryIds: [String!]
+    collectionType: CollectionType
+    collections: [CollectionChildInput!]
+    description: String
+    index: Boolean
+    labels: [String!]
+    metadata: [MetadataChildInput!]
+    name: String!
+    ordering: [OrderingInput!]
+    parentCollectionId: String
+    slug: String
+    state: CollectionWorkflowInput
+    templateMetadataId: String
+    templateMetadataVersion: Int
+    traitIds: [String!]
+}
+
+input CollectionMetadataRelationshipInput {
+    attributes: JSON
+    id: String!
+    metadataId: String!
+    relationship: String
+}
+
+input CollectionTemplateInput {
+    attributes: [TemplateAttributeInput!]!
+    collectionFilter: FindQueriesInput
+    configuration: JSON
+    defaultAttributes: JSON
+    metadataFilter: FindQueriesInput
+}
+
+input CollectionWorkflowCompleteState {
+    collectionId: String!
+    status: String!
+}
+
+input CollectionWorkflowInput {
+    deleteWorkflowId: String
+    state: String!
+}
+
+input CollectionWorkflowState {
+    collectionId: String!
+    immediate: Boolean!
+    stateId: String!
+    status: String!
+}
+
+input ConfigurationInput {
+    description: String!
+    key: String!
+    permissions: [PermissionInput!]!
+    value: JSON!
+}
+
+input DocumentInput {
+    content: JSON!
+    templateMetadataId: String
+    templateMetadataVersion: Int
+    title: String!
+}
+
+input DocumentTemplateContainerInput {
+    description: String!
+    id: String!
+    name: String!
+    supplementaryKey: String
+    workflows: [TemplateWorkflowInput!]!
+}
+
+input DocumentTemplateInput {
+    attributes: [TemplateAttributeInput!]!
+    configuration: JSON
+    containers: [DocumentTemplateContainerInput!]
+    content: JSON!
+    defaultAttributes: JSON
+    schema: JSON
+}
+
+input FindAttributeInput {
+    key: String!
+    value: String!
+}
+
+input FindAttributesInput {
+    attributes: [FindAttributeInput!]!
+}
+
+input FindQueriesInput {
+    options: [FindQueryOptionInput!]!
+}
+
+input FindQueryInput {
+    attributes: [FindAttributesInput!]!
+    categoryIds: [String!]
+    collectionType: CollectionType
+    contentTypes: [String!]
+    extensionFilter: ExtensionFilterType
+    limit: Int
+    offset: Int
+}
+
+input FindQueryOptionInput {
+    name: String!
+    query: FindQueryInput!
+}
+
+input GuideInput {
+    guideType: GuideType!
+    rrule: String
+    steps: GuideStepInput
+    templateMetadataId: String
+    templateMetadataVersion: Int
+}
+
+input GuideStepInput {
+    modules: [GuideStepModuleInput!]!
+    stepMetadataId: String
+    stepMetadataVersion: Int
+    templateMetadataId: String
+    templateMetadataVersion: Int
+    templateStepId: Int
+}
+
+input GuideStepModuleInput {
+    moduleMetadataId: String!
+    moduleMetadataVersion: Int!
+    templateMetadataId: String
+    templateMetadataVersion: Int
+    templateModuleId: Int
+    templateStepId: Int
+}
+
+input GuideTemplateInput {
+    attributes: [TemplateAttributeInput!]!
+    defaultAttributes: JSON
+    rrule: String!
+    steps: [GuideTemplateStepInput!]!
+    type: GuideType!
+}
+
+input GuideTemplateStepInput {
+    attributes: [TemplateAttributeInput!]!
+    modules: [GuideTemplateStepModuleInput!]!
+    templateMetadataId: String
+    templateMetadataVersion: Int
+}
+
+input GuideTemplateStepModuleInput {
+    configuration: JSON
+    templateMetadataId: String!
+    templateMetadataVersion: Int!
+}
+
+input MetadataChildInput {
+    attributes: JSON
+    metadata: MetadataInput!
+}
+
+input MetadataInput {
+    attributes: JSON
+    categoryIds: [String!]
+    collectionTemplate: CollectionTemplateInput
+    contentLength: Int
+    contentType: String!
+    document: DocumentInput
+    documentTemplate: DocumentTemplateInput
+    guide: GuideInput
+    guideTemplate: GuideTemplateInput
+    index: Boolean
+    labels: [String!]
+    languageTag: String!
+    metadataType: MetadataType
+    name: String!
+    parentCollectionId: String
+    parentId: String
+    profiles: [MetadataProfileInput!]
+    slug: String
+    source: MetadataSourceInput
+    state: MetadataWorkflowInput
+    traitIds: [String!]
+    version: Int
+}
+
+input MetadataProfileInput {
+    profileId: String!
+    relationship: String!
+}
+
+input MetadataRelationshipInput {
+    attributes: JSON
+    id1: String!
+    id2: String!
+    relationship: String
+}
+
+input MetadataSourceInput {
+    id: String
+    identifier: String
+    sourceUrl: String
+}
+
+input MetadataSupplementaryInput {
+    attributes: JSON
+    contentLength: Int
+    contentType: String!
+    key: String!
+    metadataId: String!
+    name: String!
+    sourceId: String
+    sourceIdentifier: String
+}
+
+input MetadataWorkflowCompleteState {
+    metadataId: String!
+    status: String!
+}
+
+input MetadataWorkflowInput {
+    deleteWorkflowId: String
+    state: String!
+}
+
+input MetadataWorkflowState {
+    immediate: Boolean!
+    metadataId: String!
+    stateId: String!
+    status: String!
+}
+
+input ModelInput {
+    configuration: JSON!
+    description: String!
+    name: String!
+    type: String!
+}
+
+input OrderingInput {
+    order: Order!
+    path: [String!]!
+    type: AttributeType!
+}
+
+input PermissionInput {
+    action: PermissionAction!
+    entityId: String!
+    groupId: String!
+}
+
+input PersistedQueryInput {
+    query: String!
+    sha256: String!
+}
+
+input ProfileAttributeInput {
+    attributes: JSON
+    confidence: Int!
+    expiration: DateTime
+    id: String
+    metadataId: String
+    metadataSupplementary: String
+    priority: Int!
+    source: String!
+    typeId: String!
+    visibility: ProfileVisibility!
+}
+
+input ProfileAttributeTypeInput {
+    description: String!
+    id: String!
+    name: String!
+    visibility: ProfileVisibility!
+}
+
+input ProfileInput {
+    attributes: [ProfileAttributeInput!]!
+    name: String!
+    slug: String
+    visibility: ProfileVisibility!
+}
+
+input PromptInput {
+    description: String!
+    inputType: String!
+    name: String!
+    outputType: String!
+    schema: JSON
+    systemPrompt: String!
+    userPrompt: String!
+}
+
+input SearchDocumentInput {
+    collectionId: String
+    content: String!
+    metadataId: String
+    profileId: String
+}
+
+input SearchQuery {
+    filter: String
+    limit: Int
+    offset: Int
+    query: String!
+    storageSystemId: String!
+}
+
+input SourceInput {
+    configuration: JSON!
+    description: String!
+    name: String!
+}
+
+input StorageSystemInput {
+    configuration: JSON
+    description: String!
+    models: [StorageSystemModelInput!]!
+    name: String!
+    type: StorageSystemType!
+}
+
+input StorageSystemModelInput {
+    configuration: JSON!
+    modelId: String!
+}
+
+input TemplateAttributeInput {
+    configuration: JSON
+    description: String!
+    key: String!
+    list: Boolean!
+    name: String!
+    supplementaryKey: String
+    type: AttributeType!
+    ui: AttributeUiType!
+    workflows: [TemplateWorkflowInput!]!
+}
+
+input TemplateWorkflowInput {
+    autoRun: Boolean!
+    workflowId: String!
+}
+
+input TraitInput {
+    contentTypes: [String!]!
+    deleteWorkflowId: String
+    description: String!
+    id: String!
+    name: String!
+    workflowIds: [String!]!
+}
+
+input TransitionInput {
+    description: String!
+    fromStateId: String!
+    toStateId: String!
+}
+
+input WorkflowActivityInput {
+    activityId: String!
+    configuration: JSON
+    description: String!
+    executionGroup: Int!
+    inputs: [WorkflowActivityParameterInput!]!
+    models: [WorkflowActivityModelInput!]!
+    outputs: [WorkflowActivityParameterInput!]!
+    prompts: [WorkflowActivityPromptInput!]!
+    queue: String!
+    storageSystems: [WorkflowActivityStorageSystemInput!]!
+}
+
+input WorkflowActivityModelInput {
+    configuration: JSON
+    modelId: String!
+}
+
+input WorkflowActivityParameterInput {
+    name: String!
+    value: String!
+}
+
+input WorkflowActivityPromptInput {
+    configuration: JSON
+    promptId: String!
+}
+
+input WorkflowActivityStorageSystemInput {
+    configuration: JSON
+    systemId: String!
+}
+
+input WorkflowConfigurationInput {
+    activityId: String!
+    configuration: JSON!
+}
+
+input WorkflowExecutionIdInput {
+    id: String!
+    queue: String!
+}
+
+input WorkflowInput {
+    activities: [WorkflowActivityInput!]!
+    configuration: JSON!
+    description: String!
+    id: String!
+    name: String!
+    queue: String!
+}
+
+input WorkflowJobIdInput {
+    id: String!
+    index: Int!
+    queue: String!
+}
+
+input WorkflowScheduleInput {
+    attributes: JSON
+    configuration: JSON
+    enabled: Boolean!
+    ends: DateTime
+    rrule: String!
+    workflowId: String!
+}
+
+input WorkflowStateInput {
+    configuration: JSON!
+    description: String!
+    entryWorkflowId: String
+    exitWorkflowId: String
+    id: String!
+    name: String!
+    type: WorkflowStateType!
+    workflowId: String
+}

@@ -1,0 +1,9 @@
+query GetPrincipals($offset: Int!, $limit: Int!) {
+    security {
+        principals {
+            all(offset: $offset, limit: $limit) {
+                ...Principal
+            }
+        }
+    }
+}

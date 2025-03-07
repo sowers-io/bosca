@@ -1,0 +1,5 @@
+fragment ParentCollection on Collection {
+    id
+    name
+    attributes
+}

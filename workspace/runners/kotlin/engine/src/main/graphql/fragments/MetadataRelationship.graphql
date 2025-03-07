@@ -1,0 +1,12 @@
+fragment MetadataRelationshipMetadata on Metadata {
+    id
+    name
+}
+
+fragment MetadataRelationship on MetadataRelationship {
+    metadata {
+        ...MetadataRelationshipMetadata
+    }
+    relationship
+    attributes
+}

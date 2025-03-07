@@ -1,0 +1,9 @@
+query GetTextContents($id: String!) {
+    content {
+        metadata(id: $id) {
+            content {
+                text
+            }
+        }
+    }
+}

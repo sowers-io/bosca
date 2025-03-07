@@ -1,0 +1,7 @@
+mutation SetCollectionReady($id: String!) {
+    content {
+        collection {
+            setReady(id: $id)
+        }
+    }
+}

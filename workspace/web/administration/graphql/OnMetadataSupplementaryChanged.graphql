@@ -1,0 +1,6 @@
+subscription OnMetadataSupplementaryChanged {
+    metadataSupplementary {
+        id
+        supplementary
+    }
+}

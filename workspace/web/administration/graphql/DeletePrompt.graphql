@@ -1,0 +1,7 @@
+mutation DeletePrompt($id: String!) {
+    workflows {
+        prompts {
+            delete(id: $id)
+        }
+    }
+}

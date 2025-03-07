@@ -1,0 +1,13 @@
+fragment DocumentTemplate on DocumentTemplate {
+    configuration
+    schema
+    content
+    defaultAttributes
+    containers {
+        ...DocumentTemplateContainer
+    }
+    attributes {
+        ...TemplateAttribute
+    }
+}
+

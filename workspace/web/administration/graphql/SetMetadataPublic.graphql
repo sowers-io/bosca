@@ -1,0 +1,9 @@
+mutation SetMetadataPublic($id: String!, $public: Boolean!) {
+    content {
+        metadata {
+            setPublic(id: $id, public: $public) {
+                id
+            }
+        }
+    }
+}

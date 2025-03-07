@@ -1,0 +1,10 @@
+query GetWorkflow($id: String!) {
+    workflows {
+        workflow(id: $id) {
+            ...Workflow
+            activities {
+                ...WorkflowActivity
+            }
+        }
+    }
+}

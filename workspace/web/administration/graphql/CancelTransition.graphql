@@ -1,0 +1,5 @@
+mutation CancelTransition($collectionId: String, $metadataId: String, $version: Int) {
+    workflows {
+        cancelTransition(collectionId: $collectionId, metadataId: $metadataId, metadataVersion: $version)
+    }
+}

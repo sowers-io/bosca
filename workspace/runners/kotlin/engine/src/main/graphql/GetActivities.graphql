@@ -1,0 +1,9 @@
+query GetActivities {
+    workflows {
+        activities {
+            all {
+                ...Activity
+            }
+        }
+    }
+}

@@ -91,15 +91,15 @@ jobs:
           registry: ghcr.io
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
-      - name: Build and push imageproxy
+      - name: Build and push imageprocessor
         uses: docker/build-push-action@v3
         with:
-          context: workspace/imageproxy
-          file: workspace/imageproxy/Dockerfile
+          context: workspace/core/imageprocessor
+          file: workspace/core/imageprocessor/Dockerfile
           push: true
           tags: |
-            ghcr.io/sowers-io/bosca/imageproxy:latest
-            ghcr.io/sowers-io/bosca/imageproxy:${{ github.sha }}
+            ghcr.io/sowers-io/bosca/imageprocessor:latest
+            ghcr.io/sowers-io/bosca/imageprocessor:${{ github.sha }}
 
   publish-kubernetes:
     runs-on: ubuntu-22.04

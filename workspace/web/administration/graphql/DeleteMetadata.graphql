@@ -1,0 +1,7 @@
+mutation DeleteMetadata($id: String!) {
+    content {
+        metadata {
+            delete(metadataId: $id)
+        }
+    }
+}
