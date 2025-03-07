@@ -94,7 +94,7 @@ client.listeners.onMetadataSupplementaryChanged(async (id, key) => {
           "
         >
           <Button
-            class="flex items-center justify-center ms-2 size-8 p-0"
+            class="flex items-center justify-center ms-2 size-5 p-0"
             variant="ghost"
             @click="onRunWorkflow()"
           >

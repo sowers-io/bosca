@@ -1,5 +1,5 @@
 {
-  "name": "@bosca/imageproxy",
+  "name": "@bosca/imageprocessor",
   "version": "0.0.0",
   "private": true,
   "scripts": {
