@@ -8,6 +8,10 @@ export default defineNuxtConfig({
     port: 3001,
   },
 
+  nitro: {
+    preset: "denoServer",
+  },
+
   modules: [
     '@unocss/nuxt',
     'shadcn-nuxt',

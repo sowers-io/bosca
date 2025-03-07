@@ -59,7 +59,6 @@ graalvmNative {
                 "-H:+AllowDeprecatedBuilderClassesOnImageClasspath",
                 "-H:+UnlockExperimentalVMOptions",
                 "-O1",
-                "--gc=G1",
                 "--initialize-at-run-time=io.grpc.netty.shaded.io.netty.handler.ssl.BouncyCastleAlpnSslUtils",
                 "--initialize-at-run-time=ai.onnxruntime.OrtEnvironment",
                 "--initialize-at-run-time=ai.onnxruntime.OnnxRuntime",
