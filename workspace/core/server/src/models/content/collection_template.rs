@@ -1,4 +1,5 @@
 use async_graphql::InputObject;
+use serde::Serialize;
 use serde_json::Value;
 use tokio_postgres::Row;
 use uuid::Uuid;
@@ -15,7 +16,7 @@ pub struct CollectionTemplate {
     pub collection_filter: Option<FindQueries>,
 }
 
-#[derive(InputObject, Clone)]
+#[derive(InputObject, Clone, Serialize)]
 pub struct CollectionTemplateInput {
     pub attributes: Vec<TemplateAttributeInput>,
     pub default_attributes: Option<Value>,

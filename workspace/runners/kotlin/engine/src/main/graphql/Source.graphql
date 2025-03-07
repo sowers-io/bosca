@@ -1,0 +1,9 @@
+query GetSource($id: String!) {
+    content {
+        sources {
+            source(id: $id) {
+                ...Source
+            }
+        }
+    }
+}

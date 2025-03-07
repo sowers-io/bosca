@@ -1,5 +1,6 @@
 use async_graphql::InputObject;
 use rrule::RRuleSet;
+use serde::Serialize;
 use tokio_postgres::Row;
 use uuid::Uuid;
 use crate::models::content::guide_step::GuideStepInput;
@@ -15,7 +16,7 @@ pub struct Guide {
     pub guide_type: GuideType,
 }
 
-#[derive(InputObject, Clone)]
+#[derive(InputObject, Clone, Serialize)]
 pub struct GuideInput {
     pub guide_type: GuideType,
     pub rrule: Option<String>,

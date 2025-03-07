@@ -1,0 +1,11 @@
+mutation AddMetadataTrait($metadataId: String!, $traitId: String!) {
+    content {
+        metadata {
+            addTrait(metadataId: $metadataId, traitId: $traitId) {
+                id {
+                    ...WorkflowExecutionId
+                }
+            }
+        }
+    }
+}

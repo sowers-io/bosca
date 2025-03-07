@@ -1,0 +1,7 @@
+mutation EditWorkflow($input: WorkflowInput!) {
+    workflows {
+        edit(workflow: $input) {
+            id
+        }
+    }
+}

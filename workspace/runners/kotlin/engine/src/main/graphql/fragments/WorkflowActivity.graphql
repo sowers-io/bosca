@@ -1,0 +1,22 @@
+fragment WorkflowActivity on WorkflowActivity {
+    id
+    activityId
+    queue
+    executionGroup
+    inputs {
+        ...WorkflowActivityParameter
+    }
+    outputs {
+        ...WorkflowActivityParameter
+    }
+    configuration
+    storageSystems {
+        ...WorkflowActivityStorageSystem
+    }
+    models {
+        ...WorkflowActivityModel
+    }
+    prompts {
+        ...WorkflowActivityPrompt
+    }
+}

@@ -1,0 +1,5 @@
+mutation SetWorkflowJobFailed($jobId: WorkflowJobIdInput!, $error: String!) {
+    workflows {
+        setExecutionPlanJobFailed(jobId: $jobId, error: $error)
+    }
+}

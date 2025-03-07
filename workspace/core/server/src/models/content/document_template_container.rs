@@ -1,4 +1,5 @@
 use async_graphql::InputObject;
+use serde::Serialize;
 use tokio_postgres::Row;
 use crate::models::content::template_workflow::TemplateWorkflowInput;
 
@@ -10,7 +11,7 @@ pub struct DocumentTemplateContainer {
     pub supplementary_key: Option<String>,
 }
 
-#[derive(InputObject, Clone)]
+#[derive(InputObject, Clone, Serialize)]
 pub struct DocumentTemplateContainerInput {
     pub id: String,
     pub name: String,

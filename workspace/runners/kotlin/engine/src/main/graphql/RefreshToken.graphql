@@ -1,0 +1,9 @@
+mutation RefreshToken($token: String!) {
+    security {
+      login {
+        refreshToken(refreshToken: $token) {
+          ...LoginResponse
+        }
+      }
+    }
+}

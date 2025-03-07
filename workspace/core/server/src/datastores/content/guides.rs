@@ -179,11 +179,11 @@ impl GuidesDataStore {
         txn.execute(
             &stmt,
             &[
+                &metadata_id,
+                &version,
                 &template.rrule,
                 &template.guide_type,
                 &template.default_attributes,
-                &metadata_id,
-                &version,
             ],
         )
         .await?;
@@ -252,13 +252,14 @@ impl GuidesDataStore {
         let stmt_step_modules = txn.prepare_cached("insert into guide_template_step_modules (metadata_id, version, step, template_metadata_id, template_metadata_version, sort) values ($1, $2, $3, $4, $5, $6)").await?;
         for (index, step) in template.steps.iter().enumerate() {
             let sort = index as i32;
+            let id = step.template_metadata_id.as_ref().map(|id| Uuid::parse_str(id.as_str()).unwrap());
             let result = txn
                 .query_one(
                     &stmt_steps,
                     &[
                         metadata_id,
                         &version,
-                        &step.template_metadata_id,
+                        &id,
                         &step.template_metadata_version,
                         &sort,
                     ],

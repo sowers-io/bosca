@@ -1,0 +1,7 @@
+mutation PermanentlyDeleteCollection($id: String!, $recursive: Boolean) {
+    content {
+        collection {
+            permanentlyDelete(collectionId: $id, recursive: $recursive)
+        }
+    }
+}

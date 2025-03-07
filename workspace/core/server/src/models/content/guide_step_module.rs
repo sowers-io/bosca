@@ -1,4 +1,5 @@
 use async_graphql::InputObject;
+use serde::Serialize;
 use tokio_postgres::Row;
 use uuid::Uuid;
 
@@ -8,7 +9,7 @@ pub struct GuideStepModule {
     pub module_metadata_version: i32,
 }
 
-#[derive(InputObject, Clone)]
+#[derive(InputObject, Clone, Serialize)]
 pub struct GuideStepModuleInput {
     pub template_metadata_id: Option<String>,
     pub template_metadata_version: Option<i32>,

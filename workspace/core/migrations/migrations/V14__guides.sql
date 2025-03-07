@@ -48,10 +48,8 @@ create table guide_template_steps
     metadata_id               uuid      not null,
     version                   int       not null,
     id                        bigserial not null,
-
-    template_metadata_id      uuid      not null,
-    template_metadata_version int       not null,
-
+    template_metadata_id      uuid,
+    template_metadata_version int,
     sort                      int       not null,
     primary key (metadata_id, version, id),
     foreign key (metadata_id, version) references guide_templates (metadata_id, version) on delete cascade,

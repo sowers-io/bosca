@@ -1,0 +1,5 @@
+mutation BeginCollectionTransition($id: String!, $state: String!, $status: String!, $restart: Boolean!) {
+    workflows {
+        beginTransition(request: {collectionId: $id, stateId: $state, status: $status, restart: $restart, waitForCompletion: true})
+    }
+}

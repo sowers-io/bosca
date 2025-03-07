@@ -1,0 +1,11 @@
+fragment WorkflowPlan on WorkflowExecutionPlan {
+    id {
+        ...WorkflowExecutionId
+    }
+    complete
+    active
+    failed
+    workflow {
+        ...PlanWorkflow
+    }
+}

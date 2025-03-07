@@ -49,6 +49,7 @@ pub struct Metadata {
     pub public: bool,
     pub public_content: bool,
     pub public_supplementary: bool,
+    pub etag: Option<String>,
     pub deleted: bool
 }
 
@@ -142,6 +143,7 @@ impl From<&Row> for Metadata {
             public: row.get("public"),
             public_content: row.get("public_content"),
             public_supplementary: row.get("public_supplementary"),
+            etag: row.get("etag"),
             deleted: row.get("deleted")
         }
     }

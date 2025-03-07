@@ -1,0 +1,40 @@
+fragment MetadataIdName on Metadata {
+    id
+    version
+    name
+}
+
+fragment Metadata on Metadata {
+    id
+    version
+    parentId
+    name
+    type
+    labels
+    languageTag
+    public
+    publicContent
+    publicSupplementary
+    content {
+        ...MetadataContent
+    }
+    created
+    modified
+    uploaded
+    ready
+    attributes
+    systemAttributes
+    traitIds
+    source {
+        id
+        identifier
+        sourceUrl
+    }
+    workflow {
+        ...MetadataWorkflow
+    }
+    supplementary {
+        ...MetadataSupplementary
+    }
+}
+

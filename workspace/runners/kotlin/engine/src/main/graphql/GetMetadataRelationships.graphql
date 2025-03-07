@@ -1,0 +1,9 @@
+query GetMetadataRelationships($id: String!) {
+    content {
+        metadata(id: $id) {
+            relationships {
+                ...MetadataRelationship
+            }
+        }
+    }
+}

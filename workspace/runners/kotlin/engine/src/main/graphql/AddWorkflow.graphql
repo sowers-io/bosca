@@ -1,0 +1,7 @@
+mutation AddWorkflow($workflow: WorkflowInput!) {
+    workflows {
+        add(workflow: $workflow) {
+            ...Workflow
+        }
+    }
+}

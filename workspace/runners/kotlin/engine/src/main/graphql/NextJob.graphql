@@ -1,0 +1,7 @@
+query NextJob($queue: String!) {
+    workflows {
+        nextJob(queue: $queue) {
+            ...WorkflowJob
+        }
+    }
+}

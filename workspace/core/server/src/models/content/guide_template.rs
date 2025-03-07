@@ -1,5 +1,6 @@
 use async_graphql::InputObject;
 use rrule::RRuleSet;
+use serde::Serialize;
 use serde_json::Value;
 use tokio_postgres::Row;
 use uuid::Uuid;
@@ -16,7 +17,7 @@ pub struct GuideTemplate {
     pub default_attributes: Option<Value>,
 }
 
-#[derive(InputObject, Clone)]
+#[derive(InputObject, Clone, Serialize)]
 pub struct GuideTemplateInput {
     pub rrule: String,
     #[graphql(name = "type")]

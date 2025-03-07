@@ -40,6 +40,7 @@ redis = { version = "0.27.6", features = ["aio", "tokio-comp", "r2d2", "streams"
 r2d2 = "0.8.10"
 bosca-database = { path = "../util/database" }
 jsonschema = "0.29.0"
+md5 = "0.7.0"
 
 reqwest = "0.12.8"
 bosca-telemetry = { path = "../util/telemetry" }

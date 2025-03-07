@@ -1,0 +1,7 @@
+mutation DeleteSupplementaryMetadata($id: String!, $key: String!) {
+    content {
+        metadata {
+            deleteSupplementary(id: $id, key: $key)
+        }
+    }
+}

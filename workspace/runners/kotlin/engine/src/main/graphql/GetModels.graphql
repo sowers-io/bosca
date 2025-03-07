@@ -1,0 +1,9 @@
+query GetModels {
+    workflows {
+        models {
+            all {
+                ...Model
+            }
+        }
+    }
+}

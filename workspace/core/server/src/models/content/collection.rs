@@ -43,6 +43,7 @@ pub struct Collection {
     pub public_list: bool,
     pub ready: Option<DateTime<Utc>>,
     pub ordering: Option<Vec<Ordering>>,
+    pub etag: Option<String>,
     pub deleted: bool,
 }
 
@@ -145,6 +146,7 @@ impl From<&Row> for Collection {
             ready: row.get("ready"),
             public: row.get("public"),
             public_list: row.get("public_list"),
+            etag: row.get("etag"),
             deleted: row.get("deleted"),
             ordering,
         }
