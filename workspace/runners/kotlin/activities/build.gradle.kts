@@ -17,7 +17,6 @@ repositories {
 dependencies {
     implementation("com.apollographql.apollo:apollo-runtime:4.1.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.10.1")
-    implementation("io.bosca.bible:shared-jvm:0.0.5")
     implementation("com.dashjoin:jsonata:0.9.8")
     implementation("com.fleeksoft.ksoup:ksoup:0.2.2")
     implementation(project(":engine"))
