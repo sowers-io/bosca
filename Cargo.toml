@@ -4,6 +4,5 @@ members = [
     "workspace/core/migrations",
     "workspace/core/server",
     "workspace/core/analytics",
-    "workspace/core/util/telemetry",
     "workspace/core/util/database",
 ]

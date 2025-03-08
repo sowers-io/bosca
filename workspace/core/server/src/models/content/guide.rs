@@ -22,7 +22,7 @@ pub struct GuideInput {
     pub rrule: Option<String>,
     pub template_metadata_id: Option<String>,
     pub template_metadata_version: Option<i32>,
-    pub steps: Option<GuideStepInput>,
+    pub steps: Vec<GuideStepInput>,
 }
 
 impl From<&Row> for Guide {

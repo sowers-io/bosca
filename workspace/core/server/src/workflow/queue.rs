@@ -4,10 +4,10 @@ use crate::models::workflow::execution_plan::{
     WorkflowJobId,
 };
 use crate::redis::RedisClient;
-use crate::worklfow::transaction::RedisTransactionOp::{
+use crate::workflow::transaction::RedisTransactionOp::{
     CancelQueueJob, JobCheckin, RemoveJobRunning, RemovePlanRunning,
 };
-use crate::worklfow::transaction::{RedisTransaction, RedisTransactionOp};
+use crate::workflow::transaction::{RedisTransaction, RedisTransactionOp};
 use async_graphql::Error;
 use chrono::{DateTime, Utc};
 use deadpool_postgres::{GenericClient, Pool, Transaction};

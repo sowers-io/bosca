@@ -15,6 +15,10 @@ impl GuideStepModuleObject {
 
 #[Object(name = "GuideStepModule")]
 impl GuideStepModuleObject {
+    pub async fn id(&self) -> i64 {
+        self.module.id
+    }
+
     pub async fn metadata(&self, ctx: &Context<'_>) -> Result<Option<MetadataObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let metadata = ctx

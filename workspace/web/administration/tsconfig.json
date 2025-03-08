@@ -3,6 +3,6 @@
   "extends": "./.nuxt/tsconfig.json",
   "compilerOptions": {
     "allowImportingTsExtensions": true,
-    "types": ["vidstack/vue"]
-  }
+    "types": ["vidstack/vue"],
+  },
 }

@@ -62,19 +62,23 @@ suspend fun GuideTemplateDefinition.toGuideTemplateInput(
     parentCollectionId: String,
     collection: CollectionDefinition,
     categories: Map<String, Category>
-) = MetadataInput(
-    name = collection.name + " Guide Template",
-    attributes = (EditorConfiguration(
-        editorType = "Template",
-        templateType = collection.editorType,
-    ).encode() as Map<String, Any> + collection.attributes).toOptional(),
-    categoryIds = (collection.categories ?: emptyList()).map { categoryName ->
-        categories[categoryName]?.id ?: error("Category `$categoryName` not found")
-    }.toOptional(),
-    guideTemplate = collection.templates?.guide?.toInput(client, parentCollectionId, collection, categories).toOptional(),
-    contentType = "bosca/v-guide-template",
-    languageTag = "en",
-    metadataType = MetadataType.STANDARD.toOptional(),
-    parentCollectionId = parentCollectionId.toOptional(),
-    slug = (collection.slug + "-guide-template").toOptional(),
-)
+): MetadataInput {
+    val input = collection.templates?.guide?.toInput(client, parentCollectionId, collection, categories)
+    return MetadataInput(
+        name = collection.name + " Guide Template",
+        attributes = (EditorConfiguration(
+            editorType = "Template",
+            templateType = collection.editorType,
+        ).encode() as Map<String, Any> + collection.attributes).toOptional(),
+        categoryIds = (collection.categories ?: emptyList()).map { categoryName ->
+            categories[categoryName]?.id ?: error("Category `$categoryName` not found")
+        }.toOptional(),
+        guideTemplate = input?.first.toOptional(),
+        documentTemplate = input?.second.toOptional(),
+        contentType = "bosca/v-guide-template",
+        languageTag = "en",
+        metadataType = MetadataType.STANDARD.toOptional(),
+        parentCollectionId = parentCollectionId.toOptional(),
+        slug = (collection.slug + "-guide-template").toOptional(),
+    )
+}

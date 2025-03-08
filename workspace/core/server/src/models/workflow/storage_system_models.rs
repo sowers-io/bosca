@@ -1,4 +1,4 @@
-use crate::worklfow::yaml::into;
+use crate::workflow::yaml::into;
 use async_graphql::*;
 use serde_json::Value;
 use tokio_postgres::Row;

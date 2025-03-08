@@ -1,29 +1,28 @@
 [package]
 name = "bosca-server"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 
 #[target.'cfg(not(target_env = "msvc"))'.dependencies]
 #tikv-jemallocator = "0.6"
 
 [dependencies]
-async-graphql = { version = "7.0.11", features = ["chrono", "chrono-tz", "graphiql", "tokio", "unblock", "apollo_persisted_queries", "log"] }
-async-graphql-axum = "7.0.11"
-axum = { version = "0.7.5", features = ["default", "tokio", "multipart", "tracing", "json", "form", "ws"] }
-axum-extra = { version = "0.9.4", features = ["cookie"] }
+async-graphql = { version = "7.0.15", features = ["chrono", "chrono-tz", "graphiql", "tokio", "unblock", "apollo_persisted_queries", "log", "opentelemetry"] }
+async-graphql-axum = "7.0.15"
+axum = { version = "0.8.1", features = ["default", "tokio", "multipart", "tracing", "json", "form", "ws"] }
+axum-extra = { version = "0.10.0", features = ["cookie"] }
 tower-http = { version = "0.6.1", features = ["timeout", "cors"] }
 deadpool-postgres = "0.14.0"
-http = "1.1.0"
+http = "1.2.0"
 tokio = { version = "1.38.1", features = ["full", "tracing"] }
-tokio-postgres = { version = "0.7.11", features = ["with-uuid-0_8"] }
-tokio-postgres-rustls = "0.12.0"
-uuid = { version = "0.8.2", features = ["v4", "v5", "serde"] }
-yaml-rust2 = "0.9.0"
+tokio-postgres = { version = "0.7.11", features = ["with-uuid-1"] }
+uuid = { version = "1.15.1", features = ["v4", "v5", "serde"] }
+yaml-rust2 = "0.10.0"
 serde_json = "1.0.128"
 serde = "1.0.210"
 postgres-types = { version = "0.2.7", features = ["with-serde_json-1", "with-chrono-0_4"] }
 chrono = { version = "0.4.38", features = ["serde"] }
-aes-gcm = "0.10.3"
+aes-gcm = { version = "0.10.3", features = ["getrandom"] }
 bytes = "1.7.1"
 futures-util = "0.3.30"
 tower = "0.5.1"
@@ -33,28 +32,25 @@ argon2 = "0.5.3"
 log = "0.4.22"
 jsonwebtoken = "9.3.0"
 tokio-stream = "0.1.16"
-async-stream = "0.3.5"
 structured-logger = "1.0.3"
 object_store = { version = "0.11.0", features = ["aws"] }
-redis = { version = "0.27.6", features = ["aio", "tokio-comp", "r2d2", "streams", "connection-manager"] }
-r2d2 = "0.8.10"
+redis = { version = "0.29.1", features = ["aio", "tokio-comp", "r2d2", "streams", "connection-manager"] }
 bosca-database = { path = "../util/database" }
 jsonschema = "0.29.0"
 md5 = "0.7.0"
 
 reqwest = "0.12.8"
-bosca-telemetry = { path = "../util/telemetry" }
-opentelemetry = { version = "0.26.0", features = ["trace"] }
-opentelemetry_sdk = { version = "0.26.0", features = ["rt-tokio", "trace"] }
-opentelemetry-stdout = { version = "0.26.0", features = ["trace"] }
-opentelemetry-otlp = { version = "0.26.0", features = ["tracing", "trace", "metrics", "http", "http-json", "http-proto", "opentelemetry-http", "default", "reqwest"] }
-opentelemetry-http = { version = "0.26.0", features = ["reqwest"] }
-opentelemetry-semantic-conventions = "0.26.0"
+opentelemetry = { version = "0.27.0", features = ["trace"] }
+opentelemetry_sdk = { version = "0.27.0", features = ["rt-tokio", "trace"] }
+opentelemetry-stdout = { version = "0.27.0", features = ["trace"] }
+opentelemetry-otlp = { version = "0.27.0", features = ["tracing", "trace", "metrics", "http", "http-json", "http-proto", "opentelemetry-http", "default", "reqwest"] }
+opentelemetry-http = { version = "0.27.0", features = ["reqwest"] }
+opentelemetry-semantic-conventions = "0.27.0"
 
-meilisearch-sdk = "0.27.1"
+meilisearch-sdk = "0.28.0"
 headers = "0.4.0"
-rustls = { version = "0.23.14", features = ["tls12", "ring"] }
-webpki-roots = "0.26.6"
+rustls = { version = "0.23.23", features = ["tls12", "ring"] }
+webpki-roots = "0.26.8"
 
 mimalloc = { version = "0.1.43", features = ["default"] }
 
@@ -62,6 +58,6 @@ hmac = "0.12.1"
 sha2 = "0.10.8"
 url = "2.5.4"
 hex = "0.4.3"
-rand = "0.8.5"
+rand = "0.9.0"
 rrule = "0.13.0"
 #console-subscriber = "0.4.0"

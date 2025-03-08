@@ -12,23 +12,19 @@ data class GuideTemplateDefinition(
 @Serializable
 data class GuideTemplateGuide(
     val configuration: Map<String, String> = emptyMap(),
-    val defaultAttributes: Map<String, String> = emptyMap(),
     val type: String = "",
     val rrule: String = "",
+    val template: DocumentTemplateDefinition? = null,
     val steps: List<GuideTemplateStep> = emptyList(),
-    val attributes: List<AttributeDefinition> = emptyList()
 )
 
 @Serializable
 data class GuideTemplateStep(
-    val title: String = "",
-    val description: String = "",
+    val template: DocumentTemplateDefinition? = null,
     val modules: List<GuideTemplateStepModule> = emptyList(),
-    val attributes: List<AttributeDefinition> = emptyList()
 )
 
 @Serializable
 data class GuideTemplateStepModule(
-    val template: DocumentTemplateDefinition,
-    val configuration: Map<String, String> = emptyMap()
+    val template: DocumentTemplateDefinition
 )

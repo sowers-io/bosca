@@ -1,6 +1,7 @@
 {
   "version": "4",
   "specifiers": {
+    "npm:@graphql-codegen/add@^5.0.3": "5.0.3_graphql@16.10.0",
     "npm:@graphql-codegen/cli@5.0.4": "5.0.4_graphql@16.10.0_typescript@5.7.3_@types+node@22.13.0",
     "npm:@graphql-codegen/cli@^5.0.4": "5.0.4_graphql@16.10.0_typescript@5.7.3_@types+node@22.13.0",
     "npm:@graphql-codegen/client-preset@^4.6.1": "4.6.1_graphql@16.10.0",
@@ -8817,6 +8818,7 @@
   "workspace": {
     "packageJson": {
       "dependencies": [
+        "npm:@graphql-codegen/add@^5.0.3",
         "npm:@graphql-codegen/cli@^5.0.4",
         "npm:@graphql-codegen/client-preset@^4.6.1",
         "npm:@graphql-codegen/schema-ast@^4.1.0",

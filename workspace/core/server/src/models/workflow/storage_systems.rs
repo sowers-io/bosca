@@ -1,4 +1,4 @@
-use crate::worklfow::yaml::into;
+use crate::workflow::yaml::into;
 use async_graphql::*;
 use bytes::{BufMut, BytesMut};
 use postgres_types::{to_sql_checked, FromSql, IsNull, ToSql, Type};

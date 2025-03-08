@@ -6,6 +6,7 @@ use tokio::sync::RwLock;
 
 #[derive(Clone)]
 pub struct PersistedQueriesCache {
+
     pub queries: Arc<RwLock<HashMap<String, ExecutableDocument>>>,
 }
 
@@ -17,6 +18,7 @@ impl PersistedQueriesCache {
 
 #[async_trait::async_trait]
 impl CacheStorage for PersistedQueriesCache {
+
     async fn get(&self, key: String) -> Option<ExecutableDocument> {
         let queries = self.queries.read().await;
         let document = queries.get(&key);
@@ -24,6 +26,6 @@ impl CacheStorage for PersistedQueriesCache {
     }
 
     async fn set(&self, _: String, _: ExecutableDocument) {
-        panic!("Not implemented")
+        panic!("Not Supported")
     }
 }

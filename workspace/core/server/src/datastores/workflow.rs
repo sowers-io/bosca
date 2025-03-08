@@ -16,17 +16,20 @@ use crate::models::workflow::storage_systems::{StorageSystem, StorageSystemInput
 use crate::models::workflow::traits::{Trait, TraitInput};
 use crate::models::workflow::transitions::{Transition, TransitionInput};
 use crate::models::workflow::workflows::{Workflow, WorkflowInput};
-use crate::worklfow::queue::JobQueues;
+use crate::workflow::queue::JobQueues;
 use async_graphql::*;
 use chrono::{DateTime, Utc};
 use deadpool_postgres::{GenericClient, Pool, Transaction};
-use log::warn;
+use log::{error, warn};
 use meilisearch_sdk::client::Client;
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
+use std::sync::atomic::Ordering::Relaxed;
 use std::time::Duration;
+use tokio::time::sleep;
 use uuid::Uuid;
+use crate::util::RUNNING_BACKGROUND;
 
 #[derive(Clone)]
 pub struct WorkflowDataStore {
@@ -49,6 +52,21 @@ impl WorkflowDataStore {
             notifier,
             search,
         }
+    }
+
+    pub fn start_monitoring_expirations(&self) {
+        let jobs_expiration = self.queues.clone();
+        tokio::spawn(async move {
+            loop {
+                RUNNING_BACKGROUND.fetch_add(1, Relaxed);
+                let now = Utc::now().timestamp();
+                if let Err(e) = jobs_expiration.check_for_expiration(now).await {
+                    error!(target: "workflow", "failed to check for expiration: {:?}", e);
+                }
+                RUNNING_BACKGROUND.fetch_add(-1, Relaxed);
+                sleep(Duration::from_secs(3)).await;
+            }
+        });
     }
 
     /* activities */

@@ -1,6 +1,6 @@
 use crate::models::workflow::execution_plan::{WorkflowExecutionId, WorkflowJobId};
 use crate::redis::RedisClient;
-use crate::worklfow::queue::JobQueues;
+use crate::workflow::queue::JobQueues;
 use async_graphql::Error;
 use chrono::Utc;
 use log::error;

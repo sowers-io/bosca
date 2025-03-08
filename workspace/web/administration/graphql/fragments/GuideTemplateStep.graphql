@@ -1,4 +1,5 @@
 fragment GuideTemplateStep on GuideTemplateStep {
+    id
     metadata {
         id
         version

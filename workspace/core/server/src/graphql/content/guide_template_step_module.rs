@@ -16,6 +16,10 @@ impl GuideTemplateStepModuleObject {
 #[Object(name = "GuideTemplateStepModule")]
 impl GuideTemplateStepModuleObject {
 
+    pub async fn id(&self) -> i64 {
+        self.module.id
+    }
+
     pub async fn metadata(
         &self,
         ctx: &Context<'_>,

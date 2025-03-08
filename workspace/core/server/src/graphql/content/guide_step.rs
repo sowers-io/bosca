@@ -18,12 +18,12 @@ impl GuideStepObject {
 impl GuideStepObject {
     pub async fn metadata(&self, ctx: &Context<'_>) -> Result<Option<MetadataObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        if let Some(metadata_id) = self.step.step_metadata_id {
-            if let Some(version) = self.step.step_metadata_version {
+        if let Some(metadata_id) = &self.step.step_metadata_id {
+            if let Some(version) = &self.step.step_metadata_version {
                 let metadata = ctx
                     .content
                     .metadata
-                    .get_by_version(&metadata_id, version)
+                    .get_by_version(metadata_id, *version)
                     .await?;
                 return Ok(metadata.map(MetadataObject::new))
             }
@@ -36,7 +36,7 @@ impl GuideStepObject {
         let modules = ctx
             .content
             .guides
-            .get_guide_step_modules(&self.step.metadata_id, self.step.version, self.step.id)
+            .get_guide_step_modules(&self.step.metadata_id, self.step.metadata_version, self.step.id)
             .await?;
         Ok(modules
             .into_iter()
