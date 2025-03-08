@@ -1,0 +1,282 @@
+# Workflows
+<primary-label ref="bosca"/>
+<secondary-label ref="alpha"/>
+
+## Workflows
+
+**Workflows** are a structured framework used to automate and orchestrate a series of jobs, called **activities**, in a
+logical sequence to accomplish a specific goal. They provide a modular and highly configurable mechanism for defining
+and managing complex operations, such as processing data, leveraging machine learning models, coordinating computational
+resources, and performing distributed tasks efficiently.
+
+At their core, workflows act as containers for **Activities**, which represent individual steps in the process. These
+activities work together by passing inputs, producing outputs, and integrating with various systems, tools, or configurations
+to create a seamless execution pipeline.
+
+### **Key Components**
+
+1. **Activities**:
+    - An **Activity** is a foundational building block of a workflow. Each activity represents a discrete operation
+      that performs a specific task, such as training a model, making predictions, or processing analytical results.
+    - Activities are extremely versatile and can:
+        - Accept **inputs** (parameters or data) and produce **outputs** to enable seamless interaction between steps in the workflow.
+        - Configure and interact with machine learning models, storage systems, or prompts during execution.
+        - Be executed sequentially or in parallel, depending on their **execution group** assignment.
+    - This modularity ensures each activity is designed for a specific purpose, while also enabling the reuse of activities
+      across multiple workflows.
+2. **Configuration**:
+    - Both workflows and their activities are built around **configurations** written in JSON. These configurations define
+      the requirements, operational settings, and execution details for each workflow and activity.
+    - Configurations make workflows highly adaptable to different environments and use cases by customizing their behavior
+      without needing to modify the underlying code.
+3. **Queue Management**:
+    - Each workflow and its associated activities utilize a **queue** system to organize execution and distribute tasks
+      across compute resources.
+    - This system ensures that workflows can scale efficiently in distributed environments by matching activities to
+      appropriate resources, whether that’s a GPU-accelerated system for computationally heavy tasks or CPU-focused nodes
+      for lighter processing requirements.
+4. **Scheduling**:
+    - You can define different repetitive schedules for each workflow (coming soon).  You can define RRULEs to define how
+      the workflow should repeat over a given amount of time.  For more details, [view the data model](https://github.com/sowers-io/bosca/blob/guides/workspace/migrations/migrations/V17__workflow_schedules.sql).
+
+### **How Workflows Work**
+
+1. **Executing Activities**:
+    - Workflows follow a predefined structure where **Activities** are executed either sequentially or in parallel, as
+      determined by their grouping.
+    - Execution is handled by **Workflow Runners**, which are specialized runtime programs capable of processing workflow jobs.
+      These runners ensure that each activity operates on the right compute resource and under the appropriate conditions:
+        - For example, tasks like training a machine learning model may require Python, as it is well-suited for ML workflows due
+          to its vast ecosystem of libraries and tools like TensorFlow or PyTorch. These tasks are often executed on GPU-powered compute resources.
+        - On the other hand, tasks like running predictions, inference, or processing outputs could be executed efficiently
+          on CPU resources using languages like Rust, Kotlin, or C#, which are ideal for their performance, reliability, and
+          system-level operations.
+    - This execution model allows workflows to fluidly adapt to the strengths of different programming languages and hardware
+      environments, optimizing the performance of each step in the process.
+2. **Exchanging Data Between Activities**:
+    - Workflow activities share data using well-defined **inputs** and **outputs**. Each activity produces outputs that
+      subsequent activities consume, enabling a seamless flow of information along the workflow pipeline.
+    - For workflows that handle large files or require more advanced data management, activities can also integrate with
+      storage systems to read or write shared data efficiently.
+3. **Models**:
+    - Activities can interact with machine learning models or large language models (LLMs) through **WorkflowActivityModel**,
+      enabling workflows to incorporate advanced AI operations seamlessly.
+    - These interactions are highly configurable, ensuring that models are used with the right datasets and in the appropriate
+      contexts. For example:
+        - One activity could involve training a recommendation model based on historic user data.
+        - A subsequent activity might use this trained model to generate personalized recommendations.
+4. **Prompts**:
+    - Workflows can include tasks involving **large language model (LLM) prompts**. These prompts are instructions or queries
+      provided to pre-trained LLMs (e.g., GPT-like models) to perform operations such as natural language processing (NLP),
+      comprehension, or generation tasks.
+    - LLM-based activities allow workflows to leverage cutting-edge AI capabilities for operations like summarization,
+      contextual analysis, or content generation.
+5. **Storage Systems**:
+    - Workflow activities can read from and write to a variety of **storage systems**, ensuring efficient data management and
+      integration across distributed environments. This capability enables workflows to handle datasets, models, and results
+      without bottlenecks, whether the storage is local, remote, or cloud-based.
+    - Examples of Storage Systems might include Vector Databases to support RAG, or object storage to support management of
+      large files.
+
+### **Purpose and Advantages of Workflows**
+
+1. **Modularity**:
+    - Workflows are highly modular, breaking down processes into distinct, manageable activities. This makes them easier to design,
+      maintain, and test while offering the ability to reuse components in new workflows.
+2. **Flexibility and Configurability**:
+    - The JSON-based configuration system enables workflows to be highly adaptable to unique use cases. Users can fine-tune
+      configurations without changing the underlying logic, offering flexibility to support a range of tasks.
+3. **Scalability**:
+    - By leveraging queues and Workflow Runners, workflows can operate efficiently in distributed systems, ensuring tasks are
+      executed on the most appropriate compute resources without overwhelming the system.
+4. **Optimal Resource Utilization**:
+    - Workflows support a mixed environment where different languages or hardware are utilized for specific tasks:
+        - Python and GPUs handle computationally heavy tasks like model training, where libraries and compute acceleration are critical.
+        - Other languages on CPUs handle tasks like inference or application logic, where high performance, memory safety, and streamlined
+          resource usage are essential.
+    - This ensures workflows maximize the efficiency and capabilities of available resources.
+5. **Interoperability**:
+    - Workflows seamlessly integrate with advanced systems, such as machine learning models, large language models, and storage solutions.
+      This interoperability makes workflows highly suitable for scenarios involving automation, data processing, or AI-powered pipelines.
+6. **Seamless AI and NLP Integration**:
+    - The inclusion of LLM prompts enables workflows to perform advanced natural language operations easily, further extending their
+      applicability in AI and data-driven environments.
+
+In conclusion, workflows provide a cohesive and efficient way to define, organize, and execute complex processes. By combining modularity,
+flexibility, and resource optimization, workflows are highly adaptable to a range of use cases, including machine learning pipelines,
+distributed operations, and AI-driven tasks. Their ability to leverage languages and computational environments for specific
+purposes makes them an indispensable tool for solving real-world challenges in diverse domains.
+
+### Data Model
+
+```graphql
+type Workflow {
+    activities: [WorkflowActivity!]!
+    configuration: JSON!
+    description: String!
+    id: String!
+    name: String!
+    queue: String!
+}
+
+type WorkflowActivity {
+    activityId: String!
+    configuration: JSON!
+    executionGroup: Int!
+    id: Int!
+    inputs: [WorkflowActivityParameter!]!
+    models: [WorkflowActivityModel!]!
+    outputs: [WorkflowActivityParameter!]!
+    prompts: [WorkflowActivityPrompt!]!
+    queue: String!
+    storageSystems: [WorkflowActivityStorageSystem!]!
+}
+
+type WorkflowActivityModel {
+    configuration: JSON!
+    model: Model!
+}
+
+type WorkflowActivityParameter {
+    name: String!
+    value: String!
+}
+
+type WorkflowActivityPrompt {
+    configuration: JSON
+    prompt: Prompt!
+}
+
+type WorkflowActivityStorageSystem {
+    configuration: JSON
+    system: StorageSystem!
+}
+```
+
+## Traits
+
+Traits are a way to describe content and how they relate to workflows.  They help remove the burden of keeping track of
+which workflows should be assigned to content.  Often, Bosca can just automatically pick the right trait.  But, there are some types that currently are
+served by being manually chosen.  For instance, Bosca can detect when you upload an MP3 or MP4 and pick the right trait(s)
+for you.  But, if you upload a DBL Bundle, you would need to choose that trait.
+
+### Data Model
+
+```graphql
+type Trait {
+    description: String!
+    id: String!
+    name: String!
+    contentTypes: [String!]!
+    workflowIds: [String!]!
+    workflows: [Workflow!]!
+}
+```
+
+## States & Transitions
+
+Workflows are designed to help manage the **state** and **transitions** of both Collections and Metadata. They allow you
+to define valid transitions, such as moving from `draft` to `published`. Additionally, workflows can specify actions to
+be performed while entering or exiting states.
+
+For a transition to be successful:
+1. **Entry workflows** for the new state must execute successfully.
+2. **Exit workflows** for the prior state must also complete successfully.
+
+Once all conditions are met, the transition completes, and any workflows associated with the final state are executed.
+
+### Data Model
+
+```graphql
+enum WorkflowStateType {
+    APPROVAL
+    APPROVED
+    DRAFT
+    FAILURE
+    PENDING
+    PROCESSING
+    PUBLISHED
+}
+
+type WorkflowState {
+    description: String!
+    configuration: JSON
+    entryWorkflowId: String
+    exitWorkflowId: String
+    id: String!
+    name: String!
+    type: WorkflowStateType!
+    workflowId: String
+}
+
+type Transition {
+    description: String!
+    fromStateId: String!
+    toStateId: String!
+}
+```
+
+## Executions
+
+Workflow execution is the process by which workflows are carried out, leveraging `Workflow Execution Plans` and `Workflow Jobs`.
+- A **Workflow Execution Plan** defines the entire workflow, including its structure, associated activities, and execution flow.
+- A **Workflow Job** represents an actionable `Activity` within the plan, providing detailed instructions for runners.
+
+### Key Concepts
+
+1. **Workflow Jobs** and **Children Workflows**<br />
+   Activities within a workflow (jobs) can initiate **child workflows**, which then integrate back into the main
+   workflow.
+   A workflow job does not complete until all child workflows have finished execution.
+2. **Job Status and Reporting**<br />
+   Runners, which execute jobs, must coordinate with the Bosca Server throughout execution:
+    - Notify upon completion (success or failure).
+    - Provide periodic updates to indicate active execution.
+3. **Concurrent Job Execution**<br />
+   Jobs within a workflow can run concurrently, provided they share the same **execution group**. Execution groups define
+   the order and concurrency behavior (along with queues) for workflow jobs.
+
+### Data Model
+
+```graphql
+type WorkflowExecutionPlan {
+    collectionId: String
+    complete: [Int!]!
+    context: JSON!
+    currentExecutionGroup: [Int!]!
+    error: String
+    failed: [Int!]!
+    id: WorkflowExecutionId!
+    jobs: [WorkflowJob!]!
+    metadata: Metadata
+    metadataId: String
+    metadataVersion: Int
+    next: Int
+    parent: WorkflowJobId
+    pending: [Int!]!
+    running: [Int!]!
+    supplementaryId: String
+    workflow: Workflow!
+}
+
+type WorkflowJob {
+    activity: Activity!
+    children: [WorkflowExecutionId!]!
+    collection: Collection
+    collectionId: String
+    completedChildren: [WorkflowExecutionId!]!
+    context: JSON
+    error: String
+    failedChildren: [WorkflowExecutionId!]!
+    id: WorkflowJobId!
+    metadata: Metadata
+    metadataVersion: Int
+    models: [WorkflowActivityModel!]!
+    planId: WorkflowExecutionId!
+    prompts: [WorkflowActivityPrompt!]!
+    storageSystems: [WorkflowActivityStorageSystem!]!
+    supplementaryId: String
+    workflow: Workflow!
+    workflowActivity: WorkflowActivity!
+}
+```
