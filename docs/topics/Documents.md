@@ -20,7 +20,4 @@ content to improve the productivity of content teams by accomplishing tasks such
 
 In addition, this data model allows for accessibility enhancements and localization.
 
-We're actively building this functionality out. We hope to have an alpha version in the next couple of weeks.
 
-[See More](https://github.com/sowers-io/bosca/blob/guides/workspace/migrations/migrations/V16__documents_v2.sql) detail
-behind documents and content blocks.

@@ -18,9 +18,4 @@ className: "text-xs" }}
 
 Bosca’s focus on personalization makes Guides a powerful tool for creating customized content. By leveraging Workflows
 powered by analytics, AI/ML, and insights into a user’s journey, you can deliver highly relevant and valuable
-experiences
-tailored to your audience’s needs.
-
-We are actively developing this functionality and expect to release an alpha version in the coming weeks.
-
-[See More](https://github.com/sowers-io/bosca/blob/guides/workspace/migrations/migrations/V14__guides.sql)
+experiences tailored to your audience’s needs.

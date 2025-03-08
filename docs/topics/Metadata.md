@@ -94,4 +94,4 @@ type MetadataSupplementarySource {
 }
 ```
 
-See the full schema: [Full Schema](/graphql/) {{ className: "text-sm" }}
+See the full schema: [Full Schema](GraphQL.md)

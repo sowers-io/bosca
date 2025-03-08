@@ -107,7 +107,7 @@ flexibility, and resource optimization, workflows are highly adaptable to a rang
 distributed operations, and AI-driven tasks. Their ability to leverage languages and computational environments for specific
 purposes makes them an indispensable tool for solving real-world challenges in diverse domains.
 
-### Data Model
+### Base Data Model
 
 ```graphql
 type Workflow {
@@ -160,7 +160,7 @@ which workflows should be assigned to content.  Often, Bosca can just automatica
 served by being manually chosen.  For instance, Bosca can detect when you upload an MP3 or MP4 and pick the right trait(s)
 for you.  But, if you upload a DBL Bundle, you would need to choose that trait.
 
-### Data Model
+### Traits Data Model
 
 ```graphql
 type Trait {
@@ -185,7 +185,7 @@ For a transition to be successful:
 
 Once all conditions are met, the transition completes, and any workflows associated with the final state are executed.
 
-### Data Model
+### States & Transition Data Models
 
 ```graphql
 enum WorkflowStateType {
@@ -236,7 +236,7 @@ Workflow execution is the process by which workflows are carried out, leveraging
    Jobs within a workflow can run concurrently, provided they share the same **execution group**. Execution groups define
    the order and concurrency behavior (along with queues) for workflow jobs.
 
-### Data Model
+### Execution Plan Data Model
 
 ```graphql
 type WorkflowExecutionPlan {
