@@ -111,6 +111,11 @@ spec:
                 secretKeyRef:
                   name: url-secret
                   key: key
+            - name: CONFIGURATION_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: configuration-secret
+                  key: key
           envFrom:
             - configMapRef:
                 name: workflow-server-env

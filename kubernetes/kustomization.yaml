@@ -7,6 +7,7 @@ resources:
   - secrets/serviceaccount.yaml
   - secrets/postgres-bosca.yaml
   - secrets/postgres-bosca-direct.yaml
+  - secrets/configuration-secret.yaml
   - secrets/url-secret.yaml
   - services/otel.yaml
   - services/coroot-pg-agent.yaml
