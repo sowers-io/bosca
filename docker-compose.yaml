@@ -35,6 +35,8 @@ services:
       AWS_ACCESS_KEY_ID: 67fO5gFs6BuksBrh6rMp
       AWS_SECRET_ACCESS_KEY: eV4rlwomvXsM19CXorOTb5uYaFLeNXsPLKx5Uxdm
       AWS_ALLOW_HTTP: true
+      CONFIGURATION_SECRET_KEY: changeme
+      URL_SECRET_KEY: changeme
     ports:
       - '8000:8000'
     restart: always
