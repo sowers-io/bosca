@@ -5,6 +5,7 @@ export default withNuxt(antfu(
   {
     unocss: true,
     formatters: true,
+    ignores: ['./lib/graphql/graphql.ts'],
   },
   {
     rules: {

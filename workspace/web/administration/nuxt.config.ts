@@ -9,7 +9,7 @@ export default defineNuxtConfig({
   },
 
   nitro: {
-    preset: "denoServer",
+    preset: 'denoServer',
   },
 
   modules: [
@@ -62,5 +62,5 @@ export default defineNuxtConfig({
     ],
   },
 
-  compatibilityDate: '2024-12-14',
+  compatibilityDate: '2025-03-07',
 })

@@ -268,25 +268,24 @@ type GuideStep {
 }
 
 type GuideStepModule {
+    id: Int!
     metadata: Metadata
 }
 
 type GuideTemplate {
-    attributes: [TemplateAttribute!]!
-    defaultAttributes: JSON
-    metadata: Metadata
     rrule: String
     steps: [GuideTemplateStep!]!
     type: GuideType!
 }
 
 type GuideTemplateStep {
-    attributes: [TemplateAttribute!]!
+    id: Int!
     metadata: Metadata
     modules: [GuideTemplateStepModule!]!
 }
 
 type GuideTemplateStepModule {
+    id: Int!
     metadata: Metadata
 }
 
@@ -819,6 +818,7 @@ type WorkflowExecutionId {
 
 type WorkflowExecutionPlan {
     active: [Int!]!
+    cancelled: Boolean!
     collectionId: String
     complete: [Int!]!
     context: JSON
@@ -929,6 +929,7 @@ type WorkflowsMutation {
     activities: ActivitiesMutation!
     add(workflow: WorkflowInput!): Workflow!
     beginTransition(configurations: [WorkflowConfigurationInput!], request: BeginTransitionInput!): Boolean!
+    cancelTransition(collectionId: String, metadataId: String, metadataVersion: Int): Boolean!
     cancelWorkflows(collectionId: String, metadataId: String, metadataVersion: Int, workflowId: String!): Boolean!
     delete(id: String!): Boolean!
     edit(workflow: WorkflowInput!): Workflow!
@@ -1213,7 +1214,7 @@ input FindQueryOptionInput {
 input GuideInput {
     guideType: GuideType!
     rrule: String
-    steps: GuideStepInput
+    steps: [GuideStepInput!]!
     templateMetadataId: String
     templateMetadataVersion: Int
 }
@@ -1222,37 +1223,26 @@ input GuideStepInput {
     modules: [GuideStepModuleInput!]!
     stepMetadataId: String
     stepMetadataVersion: Int
-    templateMetadataId: String
-    templateMetadataVersion: Int
-    templateStepId: Int
 }
 
 input GuideStepModuleInput {
     moduleMetadataId: String!
     moduleMetadataVersion: Int!
-    templateMetadataId: String
-    templateMetadataVersion: Int
-    templateModuleId: Int
-    templateStepId: Int
 }
 
 input GuideTemplateInput {
-    attributes: [TemplateAttributeInput!]!
-    defaultAttributes: JSON
     rrule: String!
     steps: [GuideTemplateStepInput!]!
     type: GuideType!
 }
 
 input GuideTemplateStepInput {
-    attributes: [TemplateAttributeInput!]!
     modules: [GuideTemplateStepModuleInput!]!
     templateMetadataId: String
     templateMetadataVersion: Int
 }
 
 input GuideTemplateStepModuleInput {
-    configuration: JSON
     templateMetadataId: String!
     templateMetadataVersion: Int!
 }

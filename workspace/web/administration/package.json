@@ -53,6 +53,7 @@
     "@iconify-json/lucide": "^1.2.25",
     "@graphql-codegen/client-preset": "^4.6.1",
     "@graphql-codegen/schema-ast": "^4.1.0",
+    "@graphql-codegen/add": "^5.0.3",
     "@nuxt/icon": "^1.10.3",
     "@nuxtjs/color-mode": "^3.5.2",
     "@pinia/nuxt": "^0.5.1",

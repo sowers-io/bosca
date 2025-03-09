@@ -22,7 +22,7 @@ pub struct GuideInput {
     pub rrule: Option<String>,
     pub template_metadata_id: Option<String>,
     pub template_metadata_version: Option<i32>,
-    pub steps: Option<GuideStepInput>,
+    pub steps: Vec<GuideStepInput>,
 }
 
 impl From<&Row> for Guide {
@@ -33,7 +33,7 @@ impl From<&Row> for Guide {
             version: row.get("version"),
             template_metadata_id: row.get("template_metadata_id"),
             template_metadata_version: row.get("template_metadata_version"),
-            rrule: rrule.map(|r| r.parse().unwrap()),
+            rrule: rrule.filter(|r| !r.is_empty()).map(|r| r.parse().unwrap()),
             guide_type: row.get("type"),
         }
     }

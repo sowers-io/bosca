@@ -138,16 +138,16 @@ impl DocumentsDataStore {
     ) -> Result<(), Error> {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
-        let stmt = txn.prepare_cached("update document_templates set configuration = $1, schema = $2, default_attributes = $3, content = $4 where metadata_id = $5 and version = $6").await?;
+        let stmt = txn.prepare_cached("insert into document_templates (metadata_id, version, configuration, schema, default_attributes, content) values ($1, $2, $3, $4, $5, $6) on conflict (metadata_id, version) do update set configuration = $3, schema = $4, default_attributes = $5, content = $6").await?;
         txn.execute(
             &stmt,
             &[
+                &metadata_id,
+                &version,
                 &template.configuration,
                 &template.schema,
                 &template.default_attributes,
                 &template.content,
-                &metadata_id,
-                &version,
             ],
         )
         .await?;

@@ -8,3 +8,5 @@ pub mod queries;
 pub mod subscription;
 pub mod profiles;
 pub mod configuration;
+pub mod handlers;
+pub mod schema;

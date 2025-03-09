@@ -5,7 +5,7 @@ use async_graphql::Error;
 use deadpool_postgres::{GenericClient, Pool};
 use std::sync::Arc;
 use aes_gcm::{Aes256Gcm, Key, Nonce};
-use aes_gcm::aead::{Aead, KeyInit, OsRng};
+use aes_gcm::aead::{Aead, KeyInit};
 use rand::Rng;
 use sha2::{Digest, Sha256};
 use serde_json::Value;
@@ -150,7 +150,8 @@ impl ConfigurationDataStore {
     fn encrypt_value(&self, plaintext: &str) -> Result<(Vec<u8>, Vec<u8>), Error> {
         let key = self.derive_key();
         let cipher = Aes256Gcm::new(&key);
-        let binding = OsRng.gen::<[u8; 12]>();
+        let mut rng = rand::rng();
+        let binding: [u8; 12] = rng.random();
         let nonce = Nonce::from_slice(&binding);
         let ciphertext = cipher
             .encrypt(nonce, plaintext.as_bytes())

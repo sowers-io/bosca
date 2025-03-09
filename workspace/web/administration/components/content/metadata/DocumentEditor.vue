@@ -155,16 +155,18 @@ async function doDelete() {
     <div class="flex items-center">
       <div class="flex">
         <div>
-          <Badge variant="secondary">{{ stateName }}
-            <span v-if="metadata.workflow.pending">*</span>
+          <Badge variant="secondary">
+            {{ stateName }} <span v-if="metadata.workflow.pending">*</span>
           </Badge>
-          <Badge variant="secondary" class="ms-4" v-if="pendingStateName">{{
-            pendingStateName
-          }}</Badge>
-          <Badge v-if="hasChanges" variant="outline" class="ms-2 text-gray-400"
-          >Has Changes</Badge>
-          <Badge v-if="outOfDate" variant="destructive" class="ms-2"
-          >Out of Date</Badge>
+          <Badge variant="secondary" class="ms-4" v-if="pendingStateName">
+            {{ pendingStateName }}
+          </Badge>
+          <Badge v-if="hasChanges" variant="outline" class="ms-2 text-gray-400">
+            Has Changes
+          </Badge>
+          <Badge v-if="outOfDate" variant="destructive" class="ms-2">
+            Out of Date
+          </Badge>
         </div>
       </div>
       <div class="grow"></div>

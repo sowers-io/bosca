@@ -14,6 +14,13 @@ const config: CodegenConfig = {
         fragmentMasking: false,
         persistedDocuments: true,
       },
+      plugins: [
+        {
+          add: {
+            content: '// @ts-nocheck',
+          },
+        },
+      ],
     },
   },
 }

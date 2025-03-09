@@ -22,7 +22,7 @@ object InstallerExecutorFactory {
         )
     ): InstallerExecutor {
         EnterpriseActivityRegistryFactory.createInstaller(client)?.let {
-            return InstallerExecutor(installers + listOf(it))
+            return InstallerExecutor(listOf(it) + installers)
         }
         return InstallerExecutor(installers)
     }

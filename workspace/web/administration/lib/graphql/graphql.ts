@@ -1,4 +1,5 @@
 /* eslint-disable */
+// @ts-nocheck
 import { TypedDocumentNode as DocumentNode } from '@graphql-typed-document-node/core'
 export type Maybe<T> = T | null
 export type InputMaybe<T> = Maybe<T>
@@ -723,7 +724,7 @@ export type Guide = {
 export type GuideInput = {
   guideType: GuideType
   rrule?: InputMaybe<Scalars['String']['input']>
-  steps?: InputMaybe<GuideStepInput>
+  steps: Array<GuideStepInput>
   templateMetadataId?: InputMaybe<Scalars['String']['input']>
   templateMetadataVersion?: InputMaybe<Scalars['Int']['input']>
 }
@@ -738,38 +739,27 @@ export type GuideStepInput = {
   modules: Array<GuideStepModuleInput>
   stepMetadataId?: InputMaybe<Scalars['String']['input']>
   stepMetadataVersion?: InputMaybe<Scalars['Int']['input']>
-  templateMetadataId?: InputMaybe<Scalars['String']['input']>
-  templateMetadataVersion?: InputMaybe<Scalars['Int']['input']>
-  templateStepId?: InputMaybe<Scalars['Int']['input']>
 }
 
 export type GuideStepModule = {
   __typename?: 'GuideStepModule'
+  id: Scalars['Int']['output']
   metadata?: Maybe<Metadata>
 }
 
 export type GuideStepModuleInput = {
   moduleMetadataId: Scalars['String']['input']
   moduleMetadataVersion: Scalars['Int']['input']
-  templateMetadataId?: InputMaybe<Scalars['String']['input']>
-  templateMetadataVersion?: InputMaybe<Scalars['Int']['input']>
-  templateModuleId?: InputMaybe<Scalars['Int']['input']>
-  templateStepId?: InputMaybe<Scalars['Int']['input']>
 }
 
 export type GuideTemplate = {
   __typename?: 'GuideTemplate'
-  attributes: Array<TemplateAttribute>
-  defaultAttributes?: Maybe<Scalars['JSON']['output']>
-  metadata?: Maybe<Metadata>
   rrule?: Maybe<Scalars['String']['output']>
   steps: Array<GuideTemplateStep>
   type: GuideType
 }
 
 export type GuideTemplateInput = {
-  attributes: Array<TemplateAttributeInput>
-  defaultAttributes?: InputMaybe<Scalars['JSON']['input']>
   rrule: Scalars['String']['input']
   steps: Array<GuideTemplateStepInput>
   type: GuideType
@@ -777,13 +767,12 @@ export type GuideTemplateInput = {
 
 export type GuideTemplateStep = {
   __typename?: 'GuideTemplateStep'
-  attributes: Array<TemplateAttribute>
+  id: Scalars['Int']['output']
   metadata?: Maybe<Metadata>
   modules: Array<GuideTemplateStepModule>
 }
 
 export type GuideTemplateStepInput = {
-  attributes: Array<TemplateAttributeInput>
   modules: Array<GuideTemplateStepModuleInput>
   templateMetadataId?: InputMaybe<Scalars['String']['input']>
   templateMetadataVersion?: InputMaybe<Scalars['Int']['input']>
@@ -791,11 +780,11 @@ export type GuideTemplateStepInput = {
 
 export type GuideTemplateStepModule = {
   __typename?: 'GuideTemplateStepModule'
+  id: Scalars['Int']['output']
   metadata?: Maybe<Metadata>
 }
 
 export type GuideTemplateStepModuleInput = {
-  configuration?: InputMaybe<Scalars['JSON']['input']>
   templateMetadataId: Scalars['String']['input']
   templateMetadataVersion: Scalars['Int']['input']
 }
@@ -4782,65 +4771,144 @@ export type GetMetadataGuideTemplateQuery = {
         __typename?: 'GuideTemplate'
         rrule?: string | null
         type: GuideType
-        defaultAttributes?: any | null
-        metadata?:
-          | { __typename?: 'Metadata'; id: string; version: number }
-          | null
-        attributes: Array<
-          {
-            __typename?: 'TemplateAttribute'
-            key: string
-            name: string
-            description: string
-            type: AttributeType
-            supplementaryKey?: string | null
-            ui: AttributeUiType
-            list: boolean
-            configuration?: any | null
-            workflows: Array<
-              {
-                __typename?: 'TemplateWorkflow'
-                autoRun: boolean
-                workflow?:
-                  | { __typename?: 'Workflow'; id: string; name: string }
-                  | null
-              }
-            >
-          }
-        >
         steps: Array<
           {
             __typename?: 'GuideTemplateStep'
-            metadata?:
-              | { __typename?: 'Metadata'; id: string; version: number }
-              | null
-            attributes: Array<
-              {
-                __typename?: 'TemplateAttribute'
-                key: string
-                name: string
-                description: string
-                type: AttributeType
-                supplementaryKey?: string | null
-                ui: AttributeUiType
-                list: boolean
-                configuration?: any | null
-                workflows: Array<
-                  {
-                    __typename?: 'TemplateWorkflow'
-                    autoRun: boolean
-                    workflow?: {
-                      __typename?: 'Workflow'
-                      id: string
-                      name: string
-                    } | null
-                  }
-                >
+            id: number
+            metadata?: {
+              __typename: 'Metadata'
+              id: string
+              version: number
+              slug?: string | null
+              name: string
+              labels: Array<string>
+              languageTag: string
+              public: boolean
+              publicContent: boolean
+              publicSupplementary: boolean
+              parentId?: string | null
+              type: MetadataType
+              created: any
+              modified: any
+              uploaded?: any | null
+              ready?: any | null
+              attributes?: any | null
+              systemAttributes?: any | null
+              traitIds: Array<string>
+              source: {
+                __typename?: 'MetadataSource'
+                id?: string | null
+                identifier?: string | null
               }
-            >
+              categories: Array<
+                { __typename?: 'Category'; id: string; name: string }
+              >
+              content: {
+                __typename?: 'MetadataContent'
+                type: string
+                length?: number | null
+                urls: {
+                  __typename?: 'MetadataContentUrls'
+                  download: {
+                    __typename?: 'SignedUrl'
+                    url: string
+                    headers: Array<
+                      {
+                        __typename?: 'SignedUrlHeader'
+                        name: string
+                        value: string
+                      }
+                    >
+                  }
+                }
+              }
+              workflow: {
+                __typename?: 'MetadataWorkflow'
+                state: string
+                stateValid?: any | null
+                pending?: string | null
+              }
+              supplementary: Array<
+                {
+                  __typename?: 'MetadataSupplementary'
+                  key: string
+                  name: string
+                  uploaded?: string | null
+                  attributes?: any | null
+                  content: {
+                    __typename?: 'MetadataSupplementaryContent'
+                    type: string
+                    length?: number | null
+                    urls: {
+                      __typename?: 'MetadataSupplementaryContentUrls'
+                      download: {
+                        __typename?: 'SignedUrl'
+                        url: string
+                        headers: Array<
+                          {
+                            __typename?: 'SignedUrlHeader'
+                            name: string
+                            value: string
+                          }
+                        >
+                      }
+                    }
+                  }
+                  source: {
+                    __typename?: 'MetadataSupplementarySource'
+                    id: string
+                    identifier?: string | null
+                  }
+                }
+              >
+              profiles: Array<
+                {
+                  __typename?: 'MetadataProfile'
+                  relationship: string
+                  profile?: {
+                    __typename: 'Profile'
+                    id: string
+                    slug?: string | null
+                    name: string
+                    visibility: ProfileVisibility
+                    attributes: Array<
+                      {
+                        __typename?: 'ProfileAttribute'
+                        id: string
+                        typeId: string
+                        visibility: ProfileVisibility
+                        attributes?: any | null
+                        metadata?: {
+                          __typename?: 'Metadata'
+                          id: string
+                          content: {
+                            __typename?: 'MetadataContent'
+                            urls: {
+                              __typename?: 'MetadataContentUrls'
+                              download: {
+                                __typename?: 'SignedUrl'
+                                url: string
+                                headers: Array<
+                                  {
+                                    __typename?: 'SignedUrlHeader'
+                                    name: string
+                                    value: string
+                                  }
+                                >
+                              }
+                            }
+                          }
+                        } | null
+                      }
+                    >
+                  } | null
+                }
+              >
+            } | null
             modules: Array<
               {
                 __typename?: 'GuideTemplateStepModule'
+                id: number
                 metadata?: {
                   __typename: 'Metadata'
                   id: string
@@ -7978,59 +8046,138 @@ export type GuideTemplateFragment = {
   __typename?: 'GuideTemplate'
   rrule?: string | null
   type: GuideType
-  defaultAttributes?: any | null
-  metadata?: { __typename?: 'Metadata'; id: string; version: number } | null
-  attributes: Array<
-    {
-      __typename?: 'TemplateAttribute'
-      key: string
-      name: string
-      description: string
-      type: AttributeType
-      supplementaryKey?: string | null
-      ui: AttributeUiType
-      list: boolean
-      configuration?: any | null
-      workflows: Array<
-        {
-          __typename?: 'TemplateWorkflow'
-          autoRun: boolean
-          workflow?:
-            | { __typename?: 'Workflow'; id: string; name: string }
-            | null
-        }
-      >
-    }
-  >
   steps: Array<
     {
       __typename?: 'GuideTemplateStep'
-      metadata?: { __typename?: 'Metadata'; id: string; version: number } | null
-      attributes: Array<
-        {
-          __typename?: 'TemplateAttribute'
-          key: string
-          name: string
-          description: string
-          type: AttributeType
-          supplementaryKey?: string | null
-          ui: AttributeUiType
-          list: boolean
-          configuration?: any | null
-          workflows: Array<
-            {
-              __typename?: 'TemplateWorkflow'
-              autoRun: boolean
-              workflow?:
-                | { __typename?: 'Workflow'; id: string; name: string }
-                | null
-            }
-          >
+      id: number
+      metadata?: {
+        __typename: 'Metadata'
+        id: string
+        version: number
+        slug?: string | null
+        name: string
+        labels: Array<string>
+        languageTag: string
+        public: boolean
+        publicContent: boolean
+        publicSupplementary: boolean
+        parentId?: string | null
+        type: MetadataType
+        created: any
+        modified: any
+        uploaded?: any | null
+        ready?: any | null
+        attributes?: any | null
+        systemAttributes?: any | null
+        traitIds: Array<string>
+        source: {
+          __typename?: 'MetadataSource'
+          id?: string | null
+          identifier?: string | null
         }
-      >
+        categories: Array<{ __typename?: 'Category'; id: string; name: string }>
+        content: {
+          __typename?: 'MetadataContent'
+          type: string
+          length?: number | null
+          urls: {
+            __typename?: 'MetadataContentUrls'
+            download: {
+              __typename?: 'SignedUrl'
+              url: string
+              headers: Array<
+                { __typename?: 'SignedUrlHeader'; name: string; value: string }
+              >
+            }
+          }
+        }
+        workflow: {
+          __typename?: 'MetadataWorkflow'
+          state: string
+          stateValid?: any | null
+          pending?: string | null
+        }
+        supplementary: Array<
+          {
+            __typename?: 'MetadataSupplementary'
+            key: string
+            name: string
+            uploaded?: string | null
+            attributes?: any | null
+            content: {
+              __typename?: 'MetadataSupplementaryContent'
+              type: string
+              length?: number | null
+              urls: {
+                __typename?: 'MetadataSupplementaryContentUrls'
+                download: {
+                  __typename?: 'SignedUrl'
+                  url: string
+                  headers: Array<
+                    {
+                      __typename?: 'SignedUrlHeader'
+                      name: string
+                      value: string
+                    }
+                  >
+                }
+              }
+            }
+            source: {
+              __typename?: 'MetadataSupplementarySource'
+              id: string
+              identifier?: string | null
+            }
+          }
+        >
+        profiles: Array<
+          {
+            __typename?: 'MetadataProfile'
+            relationship: string
+            profile?: {
+              __typename: 'Profile'
+              id: string
+              slug?: string | null
+              name: string
+              visibility: ProfileVisibility
+              attributes: Array<
+                {
+                  __typename?: 'ProfileAttribute'
+                  id: string
+                  typeId: string
+                  visibility: ProfileVisibility
+                  attributes?: any | null
+                  metadata?: {
+                    __typename?: 'Metadata'
+                    id: string
+                    content: {
+                      __typename?: 'MetadataContent'
+                      urls: {
+                        __typename?: 'MetadataContentUrls'
+                        download: {
+                          __typename?: 'SignedUrl'
+                          url: string
+                          headers: Array<
+                            {
+                              __typename?: 'SignedUrlHeader'
+                              name: string
+                              value: string
+                            }
+                          >
+                        }
+                      }
+                    }
+                  } | null
+                }
+              >
+            } | null
+          }
+        >
+      } | null
       modules: Array<
         {
           __typename?: 'GuideTemplateStepModule'
+          id: number
           metadata?: {
             __typename: 'Metadata'
             id: string
@@ -8169,32 +8316,131 @@ export type GuideTemplateFragment = {
 
 export type GuideTemplateStepFragment = {
   __typename?: 'GuideTemplateStep'
-  metadata?: { __typename?: 'Metadata'; id: string; version: number } | null
-  attributes: Array<
-    {
-      __typename?: 'TemplateAttribute'
-      key: string
-      name: string
-      description: string
-      type: AttributeType
-      supplementaryKey?: string | null
-      ui: AttributeUiType
-      list: boolean
-      configuration?: any | null
-      workflows: Array<
-        {
-          __typename?: 'TemplateWorkflow'
-          autoRun: boolean
-          workflow?:
-            | { __typename?: 'Workflow'; id: string; name: string }
-            | null
-        }
-      >
+  id: number
+  metadata?: {
+    __typename: 'Metadata'
+    id: string
+    version: number
+    slug?: string | null
+    name: string
+    labels: Array<string>
+    languageTag: string
+    public: boolean
+    publicContent: boolean
+    publicSupplementary: boolean
+    parentId?: string | null
+    type: MetadataType
+    created: any
+    modified: any
+    uploaded?: any | null
+    ready?: any | null
+    attributes?: any | null
+    systemAttributes?: any | null
+    traitIds: Array<string>
+    source: {
+      __typename?: 'MetadataSource'
+      id?: string | null
+      identifier?: string | null
     }
-  >
+    categories: Array<{ __typename?: 'Category'; id: string; name: string }>
+    content: {
+      __typename?: 'MetadataContent'
+      type: string
+      length?: number | null
+      urls: {
+        __typename?: 'MetadataContentUrls'
+        download: {
+          __typename?: 'SignedUrl'
+          url: string
+          headers: Array<
+            { __typename?: 'SignedUrlHeader'; name: string; value: string }
+          >
+        }
+      }
+    }
+    workflow: {
+      __typename?: 'MetadataWorkflow'
+      state: string
+      stateValid?: any | null
+      pending?: string | null
+    }
+    supplementary: Array<
+      {
+        __typename?: 'MetadataSupplementary'
+        key: string
+        name: string
+        uploaded?: string | null
+        attributes?: any | null
+        content: {
+          __typename?: 'MetadataSupplementaryContent'
+          type: string
+          length?: number | null
+          urls: {
+            __typename?: 'MetadataSupplementaryContentUrls'
+            download: {
+              __typename?: 'SignedUrl'
+              url: string
+              headers: Array<
+                { __typename?: 'SignedUrlHeader'; name: string; value: string }
+              >
+            }
+          }
+        }
+        source: {
+          __typename?: 'MetadataSupplementarySource'
+          id: string
+          identifier?: string | null
+        }
+      }
+    >
+    profiles: Array<
+      {
+        __typename?: 'MetadataProfile'
+        relationship: string
+        profile?: {
+          __typename: 'Profile'
+          id: string
+          slug?: string | null
+          name: string
+          visibility: ProfileVisibility
+          attributes: Array<
+            {
+              __typename?: 'ProfileAttribute'
+              id: string
+              typeId: string
+              visibility: ProfileVisibility
+              attributes?: any | null
+              metadata?: {
+                __typename?: 'Metadata'
+                id: string
+                content: {
+                  __typename?: 'MetadataContent'
+                  urls: {
+                    __typename?: 'MetadataContentUrls'
+                    download: {
+                      __typename?: 'SignedUrl'
+                      url: string
+                      headers: Array<
+                        {
+                          __typename?: 'SignedUrlHeader'
+                          name: string
+                          value: string
+                        }
+                      >
+                    }
+                  }
+                }
+              } | null
+            }
+          >
+        } | null
+      }
+    >
+  } | null
   modules: Array<
     {
       __typename?: 'GuideTemplateStepModule'
+      id: number
       metadata?: {
         __typename: 'Metadata'
         id: string
@@ -8325,6 +8571,7 @@ export type GuideTemplateStepFragment = {
 
 export type GuideTemplateStepModuleFragment = {
   __typename?: 'GuideTemplateStepModule'
+  id: number
   metadata?: {
     __typename: 'Metadata'
     id: string
@@ -13605,6 +13852,9 @@ export const GuideTemplateStepModuleFragmentDoc = {
       'kind': 'SelectionSet',
       'selections': [{
         'kind': 'Field',
+        'name': { 'kind': 'Name', 'value': 'id' },
+      }, {
+        'kind': 'Field',
         'name': { 'kind': 'Name', 'value': 'metadata' },
         'selectionSet': {
           'kind': 'SelectionSet',
@@ -14010,25 +14260,15 @@ export const GuideTemplateStepFragmentDoc = {
       'kind': 'SelectionSet',
       'selections': [{
         'kind': 'Field',
+        'name': { 'kind': 'Name', 'value': 'id' },
+      }, {
+        'kind': 'Field',
         'name': { 'kind': 'Name', 'value': 'metadata' },
         'selectionSet': {
           'kind': 'SelectionSet',
           'selections': [{
-            'kind': 'Field',
-            'name': { 'kind': 'Name', 'value': 'id' },
-          }, {
-            'kind': 'Field',
-            'name': { 'kind': 'Name', 'value': 'version' },
-          }],
-        },
-      }, {
-        'kind': 'Field',
-        'name': { 'kind': 'Name', 'value': 'attributes' },
-        'selectionSet': {
-          'kind': 'SelectionSet',
-          'selections': [{
             'kind': 'FragmentSpread',
-            'name': { 'kind': 'Name', 'value': 'TemplateAttribute' },
+            'name': { 'kind': 'Name', 'value': 'Metadata' },
           }],
         },
       }, {
@@ -14040,30 +14280,6 @@ export const GuideTemplateStepFragmentDoc = {
             'kind': 'FragmentSpread',
             'name': { 'kind': 'Name', 'value': 'GuideTemplateStepModule' },
           }],
-        },
-      }],
-    },
-  }, {
-    'kind': 'FragmentDefinition',
-    'name': { 'kind': 'Name', 'value': 'TemplateWorkflow' },
-    'typeCondition': {
-      'kind': 'NamedType',
-      'name': { 'kind': 'Name', 'value': 'TemplateWorkflow' },
-    },
-    'selectionSet': {
-      'kind': 'SelectionSet',
-      'selections': [{
-        'kind': 'Field',
-        'name': { 'kind': 'Name', 'value': 'autoRun' },
-      }, {
-        'kind': 'Field',
-        'name': { 'kind': 'Name', 'value': 'workflow' },
-        'selectionSet': {
-          'kind': 'SelectionSet',
-          'selections': [{
-            'kind': 'Field',
-            'name': { 'kind': 'Name', 'value': 'id' },
-          }, { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'name' } }],
         },
       }],
     },
@@ -14449,43 +14665,6 @@ export const GuideTemplateStepFragmentDoc = {
     },
   }, {
     'kind': 'FragmentDefinition',
-    'name': { 'kind': 'Name', 'value': 'TemplateAttribute' },
-    'typeCondition': {
-      'kind': 'NamedType',
-      'name': { 'kind': 'Name', 'value': 'TemplateAttribute' },
-    },
-    'selectionSet': {
-      'kind': 'SelectionSet',
-      'selections': [
-        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'key' } },
-        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'name' } },
-        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'description' } },
-        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'type' } },
-        {
-          'kind': 'Field',
-          'name': { 'kind': 'Name', 'value': 'supplementaryKey' },
-        },
-        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'ui' } },
-        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'list' } },
-        {
-          'kind': 'Field',
-          'name': { 'kind': 'Name', 'value': 'configuration' },
-        },
-        {
-          'kind': 'Field',
-          'name': { 'kind': 'Name', 'value': 'workflows' },
-          'selectionSet': {
-            'kind': 'SelectionSet',
-            'selections': [{
-              'kind': 'FragmentSpread',
-              'name': { 'kind': 'Name', 'value': 'TemplateWorkflow' },
-            }],
-          },
-        },
-      ],
-    },
-  }, {
-    'kind': 'FragmentDefinition',
     'name': { 'kind': 'Name', 'value': 'GuideTemplateStepModule' },
     'typeCondition': {
       'kind': 'NamedType',
@@ -14494,6 +14673,9 @@ export const GuideTemplateStepFragmentDoc = {
     'selectionSet': {
       'kind': 'SelectionSet',
       'selections': [{
+        'kind': 'Field',
+        'name': { 'kind': 'Name', 'value': 'id' },
+      }, {
         'kind': 'Field',
         'name': { 'kind': 'Name', 'value': 'metadata' },
         'selectionSet': {
@@ -14519,37 +14701,8 @@ export const GuideTemplateFragmentDoc = {
     'selectionSet': {
       'kind': 'SelectionSet',
       'selections': [
-        {
-          'kind': 'Field',
-          'name': { 'kind': 'Name', 'value': 'metadata' },
-          'selectionSet': {
-            'kind': 'SelectionSet',
-            'selections': [{
-              'kind': 'Field',
-              'name': { 'kind': 'Name', 'value': 'id' },
-            }, {
-              'kind': 'Field',
-              'name': { 'kind': 'Name', 'value': 'version' },
-            }],
-          },
-        },
         { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'rrule' } },
         { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'type' } },
-        {
-          'kind': 'Field',
-          'name': { 'kind': 'Name', 'value': 'defaultAttributes' },
-        },
-        {
-          'kind': 'Field',
-          'name': { 'kind': 'Name', 'value': 'attributes' },
-          'selectionSet': {
-            'kind': 'SelectionSet',
-            'selections': [{
-              'kind': 'FragmentSpread',
-              'name': { 'kind': 'Name', 'value': 'TemplateAttribute' },
-            }],
-          },
-        },
         {
           'kind': 'Field',
           'name': { 'kind': 'Name', 'value': 'steps' },
@@ -14558,67 +14711,6 @@ export const GuideTemplateFragmentDoc = {
             'selections': [{
               'kind': 'FragmentSpread',
               'name': { 'kind': 'Name', 'value': 'GuideTemplateStep' },
-            }],
-          },
-        },
-      ],
-    },
-  }, {
-    'kind': 'FragmentDefinition',
-    'name': { 'kind': 'Name', 'value': 'TemplateWorkflow' },
-    'typeCondition': {
-      'kind': 'NamedType',
-      'name': { 'kind': 'Name', 'value': 'TemplateWorkflow' },
-    },
-    'selectionSet': {
-      'kind': 'SelectionSet',
-      'selections': [{
-        'kind': 'Field',
-        'name': { 'kind': 'Name', 'value': 'autoRun' },
-      }, {
-        'kind': 'Field',
-        'name': { 'kind': 'Name', 'value': 'workflow' },
-        'selectionSet': {
-          'kind': 'SelectionSet',
-          'selections': [{
-            'kind': 'Field',
-            'name': { 'kind': 'Name', 'value': 'id' },
-          }, { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'name' } }],
-        },
-      }],
-    },
-  }, {
-    'kind': 'FragmentDefinition',
-    'name': { 'kind': 'Name', 'value': 'TemplateAttribute' },
-    'typeCondition': {
-      'kind': 'NamedType',
-      'name': { 'kind': 'Name', 'value': 'TemplateAttribute' },
-    },
-    'selectionSet': {
-      'kind': 'SelectionSet',
-      'selections': [
-        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'key' } },
-        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'name' } },
-        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'description' } },
-        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'type' } },
-        {
-          'kind': 'Field',
-          'name': { 'kind': 'Name', 'value': 'supplementaryKey' },
-        },
-        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'ui' } },
-        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'list' } },
-        {
-          'kind': 'Field',
-          'name': { 'kind': 'Name', 'value': 'configuration' },
-        },
-        {
-          'kind': 'Field',
-          'name': { 'kind': 'Name', 'value': 'workflows' },
-          'selectionSet': {
-            'kind': 'SelectionSet',
-            'selections': [{
-              'kind': 'FragmentSpread',
-              'name': { 'kind': 'Name', 'value': 'TemplateWorkflow' },
             }],
           },
         },
@@ -15015,6 +15107,9 @@ export const GuideTemplateFragmentDoc = {
       'kind': 'SelectionSet',
       'selections': [{
         'kind': 'Field',
+        'name': { 'kind': 'Name', 'value': 'id' },
+      }, {
+        'kind': 'Field',
         'name': { 'kind': 'Name', 'value': 'metadata' },
         'selectionSet': {
           'kind': 'SelectionSet',
@@ -15036,25 +15131,15 @@ export const GuideTemplateFragmentDoc = {
       'kind': 'SelectionSet',
       'selections': [{
         'kind': 'Field',
+        'name': { 'kind': 'Name', 'value': 'id' },
+      }, {
+        'kind': 'Field',
         'name': { 'kind': 'Name', 'value': 'metadata' },
         'selectionSet': {
           'kind': 'SelectionSet',
           'selections': [{
-            'kind': 'Field',
-            'name': { 'kind': 'Name', 'value': 'id' },
-          }, {
-            'kind': 'Field',
-            'name': { 'kind': 'Name', 'value': 'version' },
-          }],
-        },
-      }, {
-        'kind': 'Field',
-        'name': { 'kind': 'Name', 'value': 'attributes' },
-        'selectionSet': {
-          'kind': 'SelectionSet',
-          'selections': [{
             'kind': 'FragmentSpread',
-            'name': { 'kind': 'Name', 'value': 'TemplateAttribute' },
+            'name': { 'kind': 'Name', 'value': 'Metadata' },
           }],
         },
       }, {
@@ -24418,7 +24503,7 @@ export const GetMetadataGuideDocument = {
   GetMetadataGuideQueryVariables
 >
 export const GetMetadataGuideTemplateDocument = {
-  '__meta__': { 'hash': '98722e5689b4a70701d6847ddd4095b3f2d7c7f4' },
+  '__meta__': { 'hash': 'b5cbc7a06f7143fedb08b5ae54e8db2377219045' },
   'kind': 'Document',
   'definitions': [{
     'kind': 'OperationDefinition',
@@ -24490,67 +24575,6 @@ export const GetMetadataGuideTemplateDocument = {
           }],
         },
       }],
-    },
-  }, {
-    'kind': 'FragmentDefinition',
-    'name': { 'kind': 'Name', 'value': 'TemplateWorkflow' },
-    'typeCondition': {
-      'kind': 'NamedType',
-      'name': { 'kind': 'Name', 'value': 'TemplateWorkflow' },
-    },
-    'selectionSet': {
-      'kind': 'SelectionSet',
-      'selections': [{
-        'kind': 'Field',
-        'name': { 'kind': 'Name', 'value': 'autoRun' },
-      }, {
-        'kind': 'Field',
-        'name': { 'kind': 'Name', 'value': 'workflow' },
-        'selectionSet': {
-          'kind': 'SelectionSet',
-          'selections': [{
-            'kind': 'Field',
-            'name': { 'kind': 'Name', 'value': 'id' },
-          }, { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'name' } }],
-        },
-      }],
-    },
-  }, {
-    'kind': 'FragmentDefinition',
-    'name': { 'kind': 'Name', 'value': 'TemplateAttribute' },
-    'typeCondition': {
-      'kind': 'NamedType',
-      'name': { 'kind': 'Name', 'value': 'TemplateAttribute' },
-    },
-    'selectionSet': {
-      'kind': 'SelectionSet',
-      'selections': [
-        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'key' } },
-        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'name' } },
-        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'description' } },
-        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'type' } },
-        {
-          'kind': 'Field',
-          'name': { 'kind': 'Name', 'value': 'supplementaryKey' },
-        },
-        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'ui' } },
-        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'list' } },
-        {
-          'kind': 'Field',
-          'name': { 'kind': 'Name', 'value': 'configuration' },
-        },
-        {
-          'kind': 'Field',
-          'name': { 'kind': 'Name', 'value': 'workflows' },
-          'selectionSet': {
-            'kind': 'SelectionSet',
-            'selections': [{
-              'kind': 'FragmentSpread',
-              'name': { 'kind': 'Name', 'value': 'TemplateWorkflow' },
-            }],
-          },
-        },
-      ],
     },
   }, {
     'kind': 'FragmentDefinition',
@@ -24943,6 +24967,9 @@ export const GetMetadataGuideTemplateDocument = {
       'kind': 'SelectionSet',
       'selections': [{
         'kind': 'Field',
+        'name': { 'kind': 'Name', 'value': 'id' },
+      }, {
+        'kind': 'Field',
         'name': { 'kind': 'Name', 'value': 'metadata' },
         'selectionSet': {
           'kind': 'SelectionSet',
@@ -24964,25 +24991,15 @@ export const GetMetadataGuideTemplateDocument = {
       'kind': 'SelectionSet',
       'selections': [{
         'kind': 'Field',
+        'name': { 'kind': 'Name', 'value': 'id' },
+      }, {
+        'kind': 'Field',
         'name': { 'kind': 'Name', 'value': 'metadata' },
         'selectionSet': {
           'kind': 'SelectionSet',
           'selections': [{
-            'kind': 'Field',
-            'name': { 'kind': 'Name', 'value': 'id' },
-          }, {
-            'kind': 'Field',
-            'name': { 'kind': 'Name', 'value': 'version' },
-          }],
-        },
-      }, {
-        'kind': 'Field',
-        'name': { 'kind': 'Name', 'value': 'attributes' },
-        'selectionSet': {
-          'kind': 'SelectionSet',
-          'selections': [{
             'kind': 'FragmentSpread',
-            'name': { 'kind': 'Name', 'value': 'TemplateAttribute' },
+            'name': { 'kind': 'Name', 'value': 'Metadata' },
           }],
         },
       }, {
@@ -25007,37 +25024,8 @@ export const GetMetadataGuideTemplateDocument = {
     'selectionSet': {
       'kind': 'SelectionSet',
       'selections': [
-        {
-          'kind': 'Field',
-          'name': { 'kind': 'Name', 'value': 'metadata' },
-          'selectionSet': {
-            'kind': 'SelectionSet',
-            'selections': [{
-              'kind': 'Field',
-              'name': { 'kind': 'Name', 'value': 'id' },
-            }, {
-              'kind': 'Field',
-              'name': { 'kind': 'Name', 'value': 'version' },
-            }],
-          },
-        },
         { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'rrule' } },
         { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'type' } },
-        {
-          'kind': 'Field',
-          'name': { 'kind': 'Name', 'value': 'defaultAttributes' },
-        },
-        {
-          'kind': 'Field',
-          'name': { 'kind': 'Name', 'value': 'attributes' },
-          'selectionSet': {
-            'kind': 'SelectionSet',
-            'selections': [{
-              'kind': 'FragmentSpread',
-              'name': { 'kind': 'Name', 'value': 'TemplateAttribute' },
-            }],
-          },
-        },
         {
           'kind': 'Field',
           'name': { 'kind': 'Name', 'value': 'steps' },

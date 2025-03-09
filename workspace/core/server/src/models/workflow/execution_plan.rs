@@ -3,7 +3,7 @@ use crate::models::workflow::activities::{
     WorkflowActivityParameter, WorkflowActivityPrompt, WorkflowActivityStorageSystem,
 };
 use crate::models::workflow::workflows::Workflow;
-use crate::worklfow::transaction::{RedisTransaction, RedisTransactionOp};
+use crate::workflow::transaction::{RedisTransaction, RedisTransactionOp};
 use async_graphql::{Error, InputObject};
 use chrono::{DateTime, Utc};
 use deadpool_postgres::Transaction;
@@ -13,7 +13,7 @@ use serde_json::Value;
 use std::collections::HashSet;
 use std::fmt::{Display, Formatter};
 use uuid::Uuid;
-use crate::worklfow::queue::JobQueues;
+use crate::workflow::queue::JobQueues;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
 pub struct WorkflowExecutionId {

@@ -311,11 +311,11 @@ type Documents = {
     typeof types.GuideStepFragmentDoc
   'fragment GuideStepModule on GuideStepModule {\n  metadata {\n    ...Metadata\n  }\n}':
     typeof types.GuideStepModuleFragmentDoc
-  'fragment GuideTemplate on GuideTemplate {\n  metadata {\n    id\n    version\n  }\n  rrule\n  type\n  defaultAttributes\n  attributes {\n    ...TemplateAttribute\n  }\n  steps {\n    ...GuideTemplateStep\n  }\n}':
+  'fragment GuideTemplate on GuideTemplate {\n  rrule\n  type\n  steps {\n    ...GuideTemplateStep\n  }\n}':
     typeof types.GuideTemplateFragmentDoc
-  'fragment GuideTemplateStep on GuideTemplateStep {\n  metadata {\n    id\n    version\n  }\n  attributes {\n    ...TemplateAttribute\n  }\n  modules {\n    ...GuideTemplateStepModule\n  }\n}':
+  'fragment GuideTemplateStep on GuideTemplateStep {\n  id\n  metadata {\n    ...Metadata\n  }\n  modules {\n    ...GuideTemplateStepModule\n  }\n}':
     typeof types.GuideTemplateStepFragmentDoc
-  'fragment GuideTemplateStepModule on GuideTemplateStepModule {\n  metadata {\n    ...Metadata\n  }\n}':
+  'fragment GuideTemplateStepModule on GuideTemplateStepModule {\n  id\n  metadata {\n    ...Metadata\n  }\n}':
     typeof types.GuideTemplateStepModuleFragmentDoc
   'fragment MetadataIdName on Metadata {\n  __typename\n  id\n  version\n  slug\n  name\n  content {\n    type\n  }\n}\n\nfragment Metadata on Metadata {\n  __typename\n  id\n  version\n  slug\n  name\n  labels\n  languageTag\n  public\n  publicContent\n  publicSupplementary\n  parentId\n  type\n  source {\n    id\n    identifier\n  }\n  categories {\n    ...Category\n  }\n  content {\n    ...MetadataContent\n  }\n  created\n  modified\n  uploaded\n  ready\n  attributes\n  systemAttributes\n  traitIds\n  workflow {\n    ...MetadataWorkflow\n  }\n  supplementary {\n    ...MetadataSupplementary\n  }\n  profiles {\n    ...MetadataProfile\n  }\n}':
     typeof types.MetadataIdNameFragmentDoc
@@ -667,11 +667,11 @@ const documents: Documents = {
     types.GuideStepFragmentDoc,
   'fragment GuideStepModule on GuideStepModule {\n  metadata {\n    ...Metadata\n  }\n}':
     types.GuideStepModuleFragmentDoc,
-  'fragment GuideTemplate on GuideTemplate {\n  metadata {\n    id\n    version\n  }\n  rrule\n  type\n  defaultAttributes\n  attributes {\n    ...TemplateAttribute\n  }\n  steps {\n    ...GuideTemplateStep\n  }\n}':
+  'fragment GuideTemplate on GuideTemplate {\n  rrule\n  type\n  steps {\n    ...GuideTemplateStep\n  }\n}':
     types.GuideTemplateFragmentDoc,
-  'fragment GuideTemplateStep on GuideTemplateStep {\n  metadata {\n    id\n    version\n  }\n  attributes {\n    ...TemplateAttribute\n  }\n  modules {\n    ...GuideTemplateStepModule\n  }\n}':
+  'fragment GuideTemplateStep on GuideTemplateStep {\n  id\n  metadata {\n    ...Metadata\n  }\n  modules {\n    ...GuideTemplateStepModule\n  }\n}':
     types.GuideTemplateStepFragmentDoc,
-  'fragment GuideTemplateStepModule on GuideTemplateStepModule {\n  metadata {\n    ...Metadata\n  }\n}':
+  'fragment GuideTemplateStepModule on GuideTemplateStepModule {\n  id\n  metadata {\n    ...Metadata\n  }\n}':
     types.GuideTemplateStepModuleFragmentDoc,
   'fragment MetadataIdName on Metadata {\n  __typename\n  id\n  version\n  slug\n  name\n  content {\n    type\n  }\n}\n\nfragment Metadata on Metadata {\n  __typename\n  id\n  version\n  slug\n  name\n  labels\n  languageTag\n  public\n  publicContent\n  publicSupplementary\n  parentId\n  type\n  source {\n    id\n    identifier\n  }\n  categories {\n    ...Category\n  }\n  content {\n    ...MetadataContent\n  }\n  created\n  modified\n  uploaded\n  ready\n  attributes\n  systemAttributes\n  traitIds\n  workflow {\n    ...MetadataWorkflow\n  }\n  supplementary {\n    ...MetadataSupplementary\n  }\n  profiles {\n    ...MetadataProfile\n  }\n}':
     types.MetadataIdNameFragmentDoc,
@@ -2058,27 +2058,27 @@ export function graphql(
  */
 export function graphql(
   source:
-    'fragment GuideTemplate on GuideTemplate {\n  metadata {\n    id\n    version\n  }\n  rrule\n  type\n  defaultAttributes\n  attributes {\n    ...TemplateAttribute\n  }\n  steps {\n    ...GuideTemplateStep\n  }\n}',
+    'fragment GuideTemplate on GuideTemplate {\n  rrule\n  type\n  steps {\n    ...GuideTemplateStep\n  }\n}',
 ): (typeof documents)[
-  'fragment GuideTemplate on GuideTemplate {\n  metadata {\n    id\n    version\n  }\n  rrule\n  type\n  defaultAttributes\n  attributes {\n    ...TemplateAttribute\n  }\n  steps {\n    ...GuideTemplateStep\n  }\n}'
+  'fragment GuideTemplate on GuideTemplate {\n  rrule\n  type\n  steps {\n    ...GuideTemplateStep\n  }\n}'
 ]
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(
   source:
-    'fragment GuideTemplateStep on GuideTemplateStep {\n  metadata {\n    id\n    version\n  }\n  attributes {\n    ...TemplateAttribute\n  }\n  modules {\n    ...GuideTemplateStepModule\n  }\n}',
+    'fragment GuideTemplateStep on GuideTemplateStep {\n  id\n  metadata {\n    ...Metadata\n  }\n  modules {\n    ...GuideTemplateStepModule\n  }\n}',
 ): (typeof documents)[
-  'fragment GuideTemplateStep on GuideTemplateStep {\n  metadata {\n    id\n    version\n  }\n  attributes {\n    ...TemplateAttribute\n  }\n  modules {\n    ...GuideTemplateStepModule\n  }\n}'
+  'fragment GuideTemplateStep on GuideTemplateStep {\n  id\n  metadata {\n    ...Metadata\n  }\n  modules {\n    ...GuideTemplateStepModule\n  }\n}'
 ]
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
 export function graphql(
   source:
-    'fragment GuideTemplateStepModule on GuideTemplateStepModule {\n  metadata {\n    ...Metadata\n  }\n}',
+    'fragment GuideTemplateStepModule on GuideTemplateStepModule {\n  id\n  metadata {\n    ...Metadata\n  }\n}',
 ): (typeof documents)[
-  'fragment GuideTemplateStepModule on GuideTemplateStepModule {\n  metadata {\n    ...Metadata\n  }\n}'
+  'fragment GuideTemplateStepModule on GuideTemplateStepModule {\n  id\n  metadata {\n    ...Metadata\n  }\n}'
 ]
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.

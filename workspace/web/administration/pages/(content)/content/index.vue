@@ -1,7 +1,12 @@
 <script setup lang="ts">
 import type { CollectionItem } from '~/lib/bosca/contentcollection'
 import { computedAsync } from '@vueuse/core'
-import type { MetadataInput } from '~/lib/graphql/graphql'
+import type {
+  GuideStepInput,
+  GuideStepModuleInput,
+  MetadataFragment,
+  MetadataInput,
+} from '~/lib/graphql/graphql'
 import TableFooter from '~/components/ui/table/TableFooter.vue'
 import { toast } from '~/components/ui/toast'
 import {
@@ -19,7 +24,6 @@ const client = useBoscaClient()
 const router = useRouter()
 
 const selectedId = ref('')
-const selectedType = ref('items')
 const currentPage = ref(1)
 const limit = ref(12)
 const offset = computed(() => (currentPage.value - 1) * limit.value)
@@ -32,7 +36,7 @@ const { data: collection } = client.collections.findAsyncData({
   limit: 1,
 })
 
-const collections = computedAsync<CollectionItem[]>(async () => {
+const collectionItems = computedAsync<CollectionItem[]>(async () => {
   if (!collection.value) return []
   const items =
     (await client.collections.list(collection.value[0].id))?.items || []
@@ -43,7 +47,7 @@ const collections = computedAsync<CollectionItem[]>(async () => {
 }, [])
 
 const categoryIds = computed(() => {
-  for (const collection of collections.value || []) {
+  for (const collection of collectionItems.value || []) {
     if (collection.id === selectedId.value) {
       return collection.categories.map((c) => c.id)
     }
@@ -51,9 +55,18 @@ const categoryIds = computed(() => {
   return []
 })
 
+const contentTypes = computed(() => {
+  for (const collection of collectionItems.value || []) {
+    if (collection.id === selectedId.value) {
+      return 'bosca/v-' + collection.attributes['editor.type'].toLowerCase()
+    }
+  }
+  return []
+})
+
 const { data: items } = client.metadata.findAsyncData({
   attributes: [],
-  contentTypes: ['bosca/v-document'],
+  contentTypes: contentTypes,
   categoryIds: categoryIds,
   offset: offset,
   limit: limit,
@@ -61,18 +74,10 @@ const { data: items } = client.metadata.findAsyncData({
 
 const { data: count } = client.metadata.findCountAsyncData({
   attributes: [],
-  contentTypes: ['bosca/v-document'],
+  contentTypes: contentTypes,
   categoryIds: categoryIds,
   offset: offset,
   limit: limit,
-})
-
-const { data: templates } = client.metadata.findAsyncData({
-  attributes: [],
-  contentTypes: ['bosca/v-document-template'],
-  categoryIds: categoryIds,
-  offset: 0,
-  limit: 1,
 })
 
 const content = computed(() => {
@@ -81,63 +86,190 @@ const content = computed(() => {
   ) || []
 })
 
+async function newDocumentFromTemplate(
+  templateId: string,
+  templateVersion: number,
+  contentType: string,
+  attributes: { [key: string]: string },
+  parentCollectionId: string,
+  title: string,
+  categoryIds: string[],
+) {
+  const templateDocument = await client.metadata.getDocumentTemplate(
+    templateId,
+    templateVersion,
+  )
+  if (templateDocument.defaultAttributes) {
+    for (const key in templateDocument.defaultAttributes) {
+      attributes[key] = templateDocument.defaultAttributes[key]
+    }
+  }
+  const metadata: MetadataInput = {
+    parentCollectionId: parentCollectionId,
+    name: title,
+    contentType: contentType,
+    languageTag: 'en',
+    attributes: attributes,
+    document: {
+      templateMetadataId: templateId,
+      templateMetadataVersion: templateVersion,
+      title: title,
+      content: {
+        document: templateDocument.content.document,
+      },
+    },
+    profiles: [
+      {
+        profileId: (await client.profiles.getCurrentProfile()).id!,
+        relationship: 'author',
+      },
+    ],
+    categoryIds: categoryIds,
+  }
+  return await client.metadata.add(metadata)
+}
+
+async function onAddDocument(
+  template: MetadataFragment,
+  contentType: string,
+  attributes: {
+    [key: string]: string
+  },
+  item: CollectionItem,
+) {
+  const metadataId = await newDocumentFromTemplate(
+    template.id,
+    template.version,
+    contentType,
+    attributes,
+    item.id,
+    'New ' + item.attributes['editor.type'],
+    item.categories.map((c) => c.id),
+  )
+  await client.metadata.setReady(metadataId)
+  await router.push(`/content/${metadataId}`)
+}
+
+async function onAddGuide(
+  template: MetadataFragment,
+  contentType: string,
+  attributes: {
+    [key: string]: string
+  },
+  item: CollectionItem,
+) {
+  const templateGuide = await client.metadata.getGuideTemplate(
+    template.id,
+    template.version,
+  )
+  const templateDocument = await client.metadata.getDocumentTemplate(
+    template.id,
+    template.version,
+  )
+  const steps = []
+  for (const templateStep of templateGuide.steps) {
+    const modules: GuideStepModuleInput[] = []
+    const newStep = {
+      modules: modules,
+    } as GuideStepInput
+    if (templateStep.metadata) {
+      newStep.stepMetadataId = await newDocumentFromTemplate(
+        templateStep.metadata.id,
+        templateStep.metadata.version,
+        contentType + '-step',
+        {},
+        item.id,
+        'New Step ' + (steps.length + 1),
+        item.categories.map((c) => c.id),
+      )
+      newStep.stepMetadataVersion = 1
+    }
+    for (const module of templateStep.modules) {
+      if (!module.metadata) continue
+      modules.push({
+        moduleMetadataId: await newDocumentFromTemplate(
+          module.metadata.id,
+          module.metadata.version,
+          contentType + '-module',
+          {},
+          item.id,
+          'New Step Module ' + (modules.length + 1),
+          item.categories.map((c) => c.id),
+        ),
+        moduleMetadataVersion: 1,
+      } as GuideStepModuleInput)
+    }
+    steps.push(newStep)
+  }
+  if (templateDocument.defaultAttributes) {
+    for (const key in templateDocument.defaultAttributes) {
+      attributes[key] = templateDocument.defaultAttributes[key]
+    }
+  }
+  const metadata: MetadataInput = {
+    parentCollectionId: item.id,
+    name: 'New ' + item.attributes['editor.type'],
+    contentType: contentType,
+    languageTag: 'en',
+    attributes: attributes,
+    guide: {
+      templateMetadataId: template.id,
+      templateMetadataVersion: template.version,
+      guideType: templateGuide.type,
+      rrule: templateGuide.rrule && templateGuide.rrule.length > 0
+        ? templateGuide.rrule
+        : null,
+      steps: steps,
+    },
+    document: {
+      templateMetadataId: template.id,
+      templateMetadataVersion: template.version,
+      title: 'New ' + item.attributes['editor.type'],
+      content: {
+        document: templateDocument.content.document,
+      },
+    },
+    profiles: [
+      {
+        profileId: (await client.profiles.getCurrentProfile()).id!,
+        relationship: 'author',
+      },
+    ],
+    categoryIds: item.categories.map((c) => c.id),
+  }
+  const metadataId = await client.metadata.add(metadata)
+  await client.metadata.setReady(metadataId)
+  await router.push(`/content/${metadataId}`)
+}
+
 async function onAdd() {
-  for (const collection of collections.value || []) {
-    if (collection.id === selectedId.value) {
-      const attrs: { [key: string]: string } = {}
-      let ct = 'bosca/v-' + collection.attributes['editor.type'].toLowerCase()
-      if (selectedType.value === 'templates') {
-        attrs['editor.type'] = 'Template'
-        attrs['template.type'] = collection.attributes['editor.type']
-        ct += '-template'
-      } else {
-        attrs['editor.type'] = collection.attributes['editor.type']
+  for (const item of collectionItems.value || []) {
+    if (item.id === selectedId.value) {
+      console.log(item)
+      const contentType = 'bosca/v-' +
+        item.attributes['editor.type'].toLowerCase()
+      const attrs: { [key: string]: string } = {
+        'editor.type': item.attributes['editor.type'],
       }
-      const template = templates.value ? templates.value[0] : null
+      const templates = await client.metadata.find({
+        attributes: [],
+        contentTypes: [contentType + '-template'],
+        categoryIds: categoryIds,
+        offset: 0,
+        limit: 1,
+      })
+      const template = templates[0]
       if (!template) {
         toast({
-          title: 'No template found',
+          title: 'No template found (' + contentType + ')',
           description: 'Please create a template first',
         })
         return
       }
-      const templateDocument = await client.metadata.getDocumentTemplate(
-        template.id,
-        template.version,
-      )
-      if (templateDocument.defaultAttributes) {
-        for (const key in templateDocument.defaultAttributes) {
-          attrs[key] = templateDocument.defaultAttributes[key]
-        }
-      }
-      const metadata: MetadataInput = {
-        parentCollectionId: collection.id,
-        name: 'New ' + collection.attributes['editor.type'],
-        contentType: ct,
-        languageTag: 'en',
-        attributes: attrs,
-        document: {
-          templateMetadataId: template.id,
-          templateMetadataVersion: template.version,
-          title: 'New ' + collection.attributes['editor.type'],
-          content: {
-            document: templateDocument.content.document,
-          },
-        },
-        profiles: [
-          {
-            profileId: (await client.profiles.getCurrentProfile()).id!,
-            relationship: 'author',
-          },
-        ],
-        categoryIds: collection.categories.map((c) => c.id),
-      }
-      const metadataId = await client.metadata.add(metadata)
-      await client.metadata.setReady(metadataId)
-      if (selectedType.value === 'templates') {
-        await router.push(`/content/template/${metadataId}`)
-      } else {
-        await router.push(`/content/${metadataId}`)
+      if (item.attributes['editor.type'] === 'Document') {
+        await onAddDocument(template, contentType, attrs, item)
+      } else if (item.attributes['editor.type'] === 'Guide') {
+        await onAddGuide(template, contentType, attrs, item)
       }
       break
     }
@@ -155,8 +287,11 @@ onMounted(() => {
   <Tabs class="h-full space-y-6" v-model:model-value="selectedId">
     <div class="flex">
       <TabsList>
-        <TabsTrigger v-for="collection in collections" :value="collection.id">
-          {{ collection.name }}
+        <TabsTrigger
+          v-for="collectionItem in collectionItems"
+          :value="collectionItem.id"
+        >
+          {{ collectionItem.name }}
         </TabsTrigger>
       </TabsList>
       <div class="grow"></div>
@@ -206,8 +341,8 @@ onMounted(() => {
       </div>
     </div>
     <TabsContent
-      v-for="collection in collections"
-      :value="collection.id"
+      v-for="collectionItem in collectionItems"
+      :value="collectionItem.id"
       class="border-none p-0 mt-0 outline-none"
     >
       <Table>

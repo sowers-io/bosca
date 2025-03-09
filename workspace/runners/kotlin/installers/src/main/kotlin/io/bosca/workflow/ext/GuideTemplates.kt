@@ -12,7 +12,7 @@ suspend fun GuideTemplateDefinition.toInput(
     parentCollectionId: String,
     collection: CollectionDefinition,
     categories: Map<String, Category>
-): GuideTemplateInput {
+): Pair<GuideTemplateInput, DocumentTemplateInput?> {
     val steps = mutableListOf<GuideTemplateStepInput>()
     for (step in guide.steps) {
         val modules = mutableListOf<GuideTemplateStepModuleInput>()
@@ -34,22 +34,39 @@ suspend fun GuideTemplateDefinition.toInput(
                 GuideTemplateStepModuleInput(
                     templateMetadataId = template.id,
                     templateMetadataVersion = template.version,
-                    configuration = module.configuration.toOptional()
                 )
             )
         }
+        val stepMetadata = step.template?.toDocumentTemplateInput(
+            parentCollectionId,
+            collection,
+            categories
+        )
+        val stepCurrent = stepMetadata?.let { client.get(it.slug.getOrThrow() ?: error("Missing slug"))?.metadata }
+        val template = if (stepMetadata != null) {
+            if (stepCurrent != null) {
+                client.metadata.edit(stepCurrent.id, stepMetadata)
+                stepCurrent
+            } else {
+                val id = client.metadata.add(stepMetadata) ?: error("Failed to add metadata")
+                client.metadata.get(id) ?: error("Failed to get metadata")
+            }
+        } else {
+            null
+        }
         steps.add(
             GuideTemplateStepInput(
-                attributes = step.attributes.map { it.toInput() },
+                templateMetadataId = template?.id.toOptional(),
+                templateMetadataVersion = template?.version.toOptional(),
                 modules = modules
             )
         )
     }
-    return GuideTemplateInput(
-        attributes = guide.attributes.map { it.toInput() },
-        defaultAttributes = guide.defaultAttributes.toOptional(),
-        rrule = guide.rrule,
-        type = GuideType.valueOf(guide.type),
-        steps = steps
+    return Pair(
+        GuideTemplateInput(
+            rrule = guide.rrule,
+            type = GuideType.valueOf(guide.type),
+            steps = steps
+        ), guide.template?.toInput()
     )
 }

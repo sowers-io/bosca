@@ -1,4 +1,5 @@
 fragment GuideTemplateStepModule on GuideTemplateStepModule {
+    id
     metadata {
         ...Metadata
     }

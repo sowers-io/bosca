@@ -501,8 +501,8 @@ const editable = computed(() =>
 }
 
 .container-name {
-  @apply text-xs mb-4 border border-gray-500 font-bold bg-gray-100
-    text-gray-600 rounded-md py-2 px-2 w-full;
+  @apply text-xs mb-4 border border-gray-500 font-bold bg-gray-100 text-gray-600
+    rounded-md py-2 px-2 w-full;
 }
 .container-content {
   @apply px-1;

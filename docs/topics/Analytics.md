@@ -1,0 +1,33 @@
+# Analytics
+<primary-label ref="bosca"/>
+<secondary-label ref="alpha"/>
+
+## Purpose
+The main purpose of these analytics components is to:
+1. Enable data for personalized AI/ML models to enrich the user experiences.
+2. Provide insights into content usage and support strategies for improving content roadmaps (often in conjunction with Google Analytics).
+
+## Analytics Clients
+- **Browser**
+
+  *See More*: [](https://github.com/sowers-io/bosca/tree/main/workspace/analytics-clients/browser/src)
+
+## Analytics Frontend
+The Analytics Frontend is responsible for handling first-party data events. It also provides features such as:
+- **Event Enrichment**: [Initial implementation](https://github.com/sowers-io/bosca/blob/main/workspace/analytics/src/transforms/cloudflare_geo.rs) supports geo enrichment via Cloudflare headers.
+- **Event Triggers**: Planned future functionality to enable personalized notifications and more.
+
+## Analytics Backend
+The Analytics Backend processes enriched events from the Frontend. Key responsibilities include:
+- **Data Handling**: Buffers events to disk and generates Parquet files (initial implementation), storing them in object storage. Future plans include forwarding data to other stores like ClickHouse.
+- **Storage and Analysis**: Supports reasonable long-term event storage and analysis using DuckDB.
+
+## Dashboards
+Initially, we're providing up-to-date visualizations of events through [Evidence](https://evidence.dev/) dashboards
+(work-in-progress, to be released later or if you request them directly).
+
+### Additional Information
+Both the Frontend & Backend are a single binary.  When deployed, you can choose to either have a single instance
+or deploy such that they have specific purposes (enrichment, triggers vs storage).<br />
+*Code*: [](https://github.com/sowers-io/bosca/tree/main/workspace/analytics) <br />
+*Deployment*: See [Frontend](https://github.com/sowers-io/bosca/tree/main/kubernetes/analytics-frontend) or [Backend](https://github.com/sowers-io/bosca/tree/main/kubernetes/analytics-backend)

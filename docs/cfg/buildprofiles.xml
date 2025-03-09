@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE buildprofiles SYSTEM "https://resources.jetbrains.com/writerside/1.0/build-profiles.dtd">
+<buildprofiles xsi:noNamespaceSchemaLocation="https://resources.jetbrains.com/writerside/1.0/build-profiles.xsd"
+               xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+
+    <build-profile instance="bd">
+        <variables>
+            <color-preset>soft</color-preset>
+            <noindex-content>false</noindex-content>
+        </variables>
+    </build-profile>
+    <variables>
+        <header-logo>logo.svg</header-logo>
+
+        <custom-css>custom.css</custom-css>
+
+        <showDownloadButton>false</showDownloadButton>
+
+        <primary-color>#83ad6d</primary-color>
+        <link-color>#83ad6d</link-color>
+    </variables>
+
+    <footer>
+        <copyright>Sowers, LLC</copyright>
+    </footer>
+
+</buildprofiles>
