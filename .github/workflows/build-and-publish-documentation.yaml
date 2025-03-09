@@ -99,7 +99,7 @@ jobs:
         uses: docker/build-push-action@v3
         with:
           context: docs-build
-          file: Dockerfile
+          file: docs-build/Dockerfile
           push: true
           tags: |
             ghcr.io/sowers-io/bosca/documentation:latest
