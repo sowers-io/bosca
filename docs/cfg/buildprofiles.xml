@@ -7,18 +7,21 @@
         <variables>
             <color-preset>soft</color-preset>
             <noindex-content>false</noindex-content>
+            <analytics-head-script-file>analytics.html</analytics-head-script-file>
         </variables>
     </build-profile>
     <variables>
         <header-logo>logo.svg</header-logo>
 
         <custom-css>custom.css</custom-css>
-
+        <custom-favicons>favicon.ico</custom-favicons>
         <showDownloadButton>false</showDownloadButton>
 
         <primary-color>#83ad6d</primary-color>
         <link-color>#83ad6d</link-color>
     </variables>
+
+    <sitemap change-frequency="weekly" />
 
     <footer>
         <copyright>Sowers, LLC</copyright>
