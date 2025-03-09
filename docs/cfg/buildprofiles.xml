@@ -5,6 +5,7 @@
 
     <build-profile instance="bd">
         <variables>
+            <web-root>https://docs.bosca.io</web-root>
             <color-preset>soft</color-preset>
             <noindex-content>false</noindex-content>
             <analytics-head-script-file>analytics.html</analytics-head-script-file>
@@ -12,6 +13,7 @@
     </build-profile>
     <variables>
         <header-logo>logo.svg</header-logo>
+        <generate-sitemap-url-prefix>https://docs.bosca.io</generate-sitemap-url-prefix>
 
         <custom-css>custom.css</custom-css>
         <custom-favicons>favicon.ico</custom-favicons>
