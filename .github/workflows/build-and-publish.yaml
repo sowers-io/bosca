@@ -12,7 +12,7 @@ on:
 
 jobs:
   lint:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     env:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
@@ -25,7 +25,7 @@ jobs:
       - run: cargo clippy
 
   build-and-publish-backend:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     env:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
@@ -74,7 +74,7 @@ jobs:
             ghcr.io/sowers-io/bosca/analytics:${{ github.sha }}
 
   build-and-publish-frontend:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     env:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
@@ -102,7 +102,7 @@ jobs:
             ghcr.io/sowers-io/bosca/imageprocessor:${{ github.sha }}
 
   publish-kubernetes:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-22.04
     needs:
       - lint
       - build-and-publish-backend
