@@ -34,8 +34,6 @@ async-stream = "0.3.5"
 structured-logger = "1.0.3"
 object_store = { version = "0.11.0", features = ["aws"] }
 
-duckdb = { version = "1.1.1", features = ["serde_json", "parquet", "uuid"] }
-
 reqwest = { version = "0.12.8", features = ["default", "json"] }
 opentelemetry = { version = "0.26.0", features = ["trace"] }
 opentelemetry_sdk = { version = "0.26.0", features = ["rt-tokio", "trace"] }

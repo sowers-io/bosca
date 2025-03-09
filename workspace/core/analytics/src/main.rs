@@ -4,7 +4,6 @@ pub mod events_transform;
 mod installation;
 mod transforms;
 mod writers;
-mod query;
 
 use axum::extract::{DefaultBodyLimit, State};
 use axum::routing::post;
@@ -260,7 +259,6 @@ async fn main() {
 
     let app = Router::new()
         .route("/", get(index))
-        .route("/query", post(query::query))
         .route("/health", get(health))
         .route("/register", post(register))
         .route("/events", post(events))
