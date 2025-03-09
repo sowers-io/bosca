@@ -1,11 +1,7 @@
 fragment GuideTemplateStep on GuideTemplateStep {
     id
     metadata {
-        id
-        version
-    }
-    attributes {
-        ...TemplateAttribute
+        ...Metadata
     }
     modules {
         ...GuideTemplateStepModule

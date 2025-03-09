@@ -31,7 +31,9 @@ const router = useRouter()
         <p class="text-center text-muted-foreground">
           There was an error executing your request.
         </p>
-        <p class="text-center text-muted-foreground overflow-auto my-10 max-w-[500px]">
+        <p
+          class="text-center text-muted-foreground overflow-auto my-10 max-w-[500px]"
+        >
           {{ error }}
         </p>
       </template>

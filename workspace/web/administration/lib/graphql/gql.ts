@@ -163,8 +163,8 @@ type Documents = {
     "fragment Guide on Guide {\n  template {\n    id\n    version\n  }\n  type\n  rrule\n  steps {\n    ...GuideStep\n  }\n}": typeof types.GuideFragmentDoc,
     "fragment GuideStep on GuideStep {\n  metadata {\n    ...Metadata\n  }\n  modules {\n    ...GuideStepModule\n  }\n}": typeof types.GuideStepFragmentDoc,
     "fragment GuideStepModule on GuideStepModule {\n  metadata {\n    ...Metadata\n  }\n}": typeof types.GuideStepModuleFragmentDoc,
-    "fragment GuideTemplate on GuideTemplate {\n  metadata {\n    id\n    version\n  }\n  rrule\n  type\n  defaultAttributes\n  attributes {\n    ...TemplateAttribute\n  }\n  steps {\n    ...GuideTemplateStep\n  }\n}": typeof types.GuideTemplateFragmentDoc,
-    "fragment GuideTemplateStep on GuideTemplateStep {\n  id\n  metadata {\n    id\n    version\n  }\n  attributes {\n    ...TemplateAttribute\n  }\n  modules {\n    ...GuideTemplateStepModule\n  }\n}": typeof types.GuideTemplateStepFragmentDoc,
+    "fragment GuideTemplate on GuideTemplate {\n  rrule\n  type\n  steps {\n    ...GuideTemplateStep\n  }\n}": typeof types.GuideTemplateFragmentDoc,
+    "fragment GuideTemplateStep on GuideTemplateStep {\n  id\n  metadata {\n    ...Metadata\n  }\n  modules {\n    ...GuideTemplateStepModule\n  }\n}": typeof types.GuideTemplateStepFragmentDoc,
     "fragment GuideTemplateStepModule on GuideTemplateStepModule {\n  id\n  metadata {\n    ...Metadata\n  }\n}": typeof types.GuideTemplateStepModuleFragmentDoc,
     "fragment MetadataIdName on Metadata {\n  __typename\n  id\n  version\n  slug\n  name\n  content {\n    type\n  }\n}\n\nfragment Metadata on Metadata {\n  __typename\n  id\n  version\n  slug\n  name\n  labels\n  languageTag\n  public\n  publicContent\n  publicSupplementary\n  parentId\n  type\n  source {\n    id\n    identifier\n  }\n  categories {\n    ...Category\n  }\n  content {\n    ...MetadataContent\n  }\n  created\n  modified\n  uploaded\n  ready\n  attributes\n  systemAttributes\n  traitIds\n  workflow {\n    ...MetadataWorkflow\n  }\n  supplementary {\n    ...MetadataSupplementary\n  }\n  profiles {\n    ...MetadataProfile\n  }\n}": typeof types.MetadataIdNameFragmentDoc,
     "fragment MetadataContent on MetadataContent {\n  type\n  length\n  urls {\n    download {\n      url\n      headers {\n        name\n        value\n      }\n    }\n  }\n}\n\nfragment MetadataContentUpload on MetadataContent {\n  urls {\n    upload {\n      url\n      headers {\n        name\n        value\n      }\n    }\n  }\n}": typeof types.MetadataContentFragmentDoc,
@@ -345,8 +345,8 @@ const documents: Documents = {
     "fragment Guide on Guide {\n  template {\n    id\n    version\n  }\n  type\n  rrule\n  steps {\n    ...GuideStep\n  }\n}": types.GuideFragmentDoc,
     "fragment GuideStep on GuideStep {\n  metadata {\n    ...Metadata\n  }\n  modules {\n    ...GuideStepModule\n  }\n}": types.GuideStepFragmentDoc,
     "fragment GuideStepModule on GuideStepModule {\n  metadata {\n    ...Metadata\n  }\n}": types.GuideStepModuleFragmentDoc,
-    "fragment GuideTemplate on GuideTemplate {\n  metadata {\n    id\n    version\n  }\n  rrule\n  type\n  defaultAttributes\n  attributes {\n    ...TemplateAttribute\n  }\n  steps {\n    ...GuideTemplateStep\n  }\n}": types.GuideTemplateFragmentDoc,
-    "fragment GuideTemplateStep on GuideTemplateStep {\n  id\n  metadata {\n    id\n    version\n  }\n  attributes {\n    ...TemplateAttribute\n  }\n  modules {\n    ...GuideTemplateStepModule\n  }\n}": types.GuideTemplateStepFragmentDoc,
+    "fragment GuideTemplate on GuideTemplate {\n  rrule\n  type\n  steps {\n    ...GuideTemplateStep\n  }\n}": types.GuideTemplateFragmentDoc,
+    "fragment GuideTemplateStep on GuideTemplateStep {\n  id\n  metadata {\n    ...Metadata\n  }\n  modules {\n    ...GuideTemplateStepModule\n  }\n}": types.GuideTemplateStepFragmentDoc,
     "fragment GuideTemplateStepModule on GuideTemplateStepModule {\n  id\n  metadata {\n    ...Metadata\n  }\n}": types.GuideTemplateStepModuleFragmentDoc,
     "fragment MetadataIdName on Metadata {\n  __typename\n  id\n  version\n  slug\n  name\n  content {\n    type\n  }\n}\n\nfragment Metadata on Metadata {\n  __typename\n  id\n  version\n  slug\n  name\n  labels\n  languageTag\n  public\n  publicContent\n  publicSupplementary\n  parentId\n  type\n  source {\n    id\n    identifier\n  }\n  categories {\n    ...Category\n  }\n  content {\n    ...MetadataContent\n  }\n  created\n  modified\n  uploaded\n  ready\n  attributes\n  systemAttributes\n  traitIds\n  workflow {\n    ...MetadataWorkflow\n  }\n  supplementary {\n    ...MetadataSupplementary\n  }\n  profiles {\n    ...MetadataProfile\n  }\n}": types.MetadataIdNameFragmentDoc,
     "fragment MetadataContent on MetadataContent {\n  type\n  length\n  urls {\n    download {\n      url\n      headers {\n        name\n        value\n      }\n    }\n  }\n}\n\nfragment MetadataContentUpload on MetadataContent {\n  urls {\n    upload {\n      url\n      headers {\n        name\n        value\n      }\n    }\n  }\n}": types.MetadataContentFragmentDoc,
@@ -991,11 +991,11 @@ export function graphql(source: "fragment GuideStepModule on GuideStepModule {\n
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "fragment GuideTemplate on GuideTemplate {\n  metadata {\n    id\n    version\n  }\n  rrule\n  type\n  defaultAttributes\n  attributes {\n    ...TemplateAttribute\n  }\n  steps {\n    ...GuideTemplateStep\n  }\n}"): (typeof documents)["fragment GuideTemplate on GuideTemplate {\n  metadata {\n    id\n    version\n  }\n  rrule\n  type\n  defaultAttributes\n  attributes {\n    ...TemplateAttribute\n  }\n  steps {\n    ...GuideTemplateStep\n  }\n}"];
+export function graphql(source: "fragment GuideTemplate on GuideTemplate {\n  rrule\n  type\n  steps {\n    ...GuideTemplateStep\n  }\n}"): (typeof documents)["fragment GuideTemplate on GuideTemplate {\n  rrule\n  type\n  steps {\n    ...GuideTemplateStep\n  }\n}"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "fragment GuideTemplateStep on GuideTemplateStep {\n  id\n  metadata {\n    id\n    version\n  }\n  attributes {\n    ...TemplateAttribute\n  }\n  modules {\n    ...GuideTemplateStepModule\n  }\n}"): (typeof documents)["fragment GuideTemplateStep on GuideTemplateStep {\n  id\n  metadata {\n    id\n    version\n  }\n  attributes {\n    ...TemplateAttribute\n  }\n  modules {\n    ...GuideTemplateStepModule\n  }\n}"];
+export function graphql(source: "fragment GuideTemplateStep on GuideTemplateStep {\n  id\n  metadata {\n    ...Metadata\n  }\n  modules {\n    ...GuideTemplateStepModule\n  }\n}"): (typeof documents)["fragment GuideTemplateStep on GuideTemplateStep {\n  id\n  metadata {\n    ...Metadata\n  }\n  modules {\n    ...GuideTemplateStepModule\n  }\n}"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

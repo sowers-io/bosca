@@ -17,10 +17,10 @@ const config: CodegenConfig = {
       plugins: [
         {
           add: {
-            content: '// @ts-nocheck'
-          }
+            content: '// @ts-nocheck',
+          },
         },
-      ]
+      ],
     },
   },
 }

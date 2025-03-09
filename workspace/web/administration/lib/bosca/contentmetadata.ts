@@ -375,6 +375,35 @@ export class ContentMetadata<T extends NetworkClient> extends Api<T> {
     await this.network.execute(DeleteMetadataDocument, { id })
   }
 
+  async find(query: {
+    attributes?:
+        | Array<FindAttributes>
+        | Ref<Array<FindAttributes>>
+        | null
+    extension?: ExtensionFilterType | Ref<ExtensionFilterType> | null
+    categoryIds?: Array<string> | Ref<string[]> | null
+    contentTypes?: Array<string> | Ref<string[]> | null
+    offset?: number | Ref<number>
+    limit?: number | Ref<number>
+  }): Promise<MetadataFragment[]> {
+    const q = {
+      attributes: unref(query.attributes),
+      extension: unref(query.extension),
+      categoryIds: unref(query.categoryIds),
+      // @ts-ignore: this should be fine
+      contentTypes: unref(query.contentTypes),
+      offset: unref(query.offset),
+      limit: unref(query.limit),
+    }
+    const response = await this.network.execute(
+        FindMetadataDocument,
+        {
+          query: q,
+        },
+    )
+    return response?.content?.findMetadata as MetadataFragment[] | null || []
+  }
+
   findAsyncData(query: {
     attributes?:
       | Array<FindAttributes>
