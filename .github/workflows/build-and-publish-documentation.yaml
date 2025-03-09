@@ -79,6 +79,8 @@ jobs:
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
       IMAGE_TAG: ${{ github.sha }}
     steps:
+      - uses: actions/checkout@v3
+
       - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
