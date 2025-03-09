@@ -1,8 +1,12 @@
+use crate::caching_headers::CachingHeaderManager;
 use crate::context::BoscaContext;
 use crate::graphql::content::category::CategoryObject;
 use crate::graphql::content::collection::CollectionObject;
+use crate::graphql::content::collection_template::CollectionTemplateObject;
 use crate::graphql::content::document::DocumentObject;
 use crate::graphql::content::document_template::DocumentTemplateObject;
+use crate::graphql::content::guide::GuideObject;
+use crate::graphql::content::guide_template::GuideTemplateObject;
 use crate::graphql::content::metadata_content::MetadataContentObject;
 use crate::graphql::content::metadata_profile::MetadataProfileObject;
 use crate::graphql::content::metadata_relationship::MetadataRelationshipObject;
@@ -16,9 +20,6 @@ use crate::models::security::permission::{Permission, PermissionAction};
 use async_graphql::{Context, Error, Object};
 use chrono::{DateTime, Utc};
 use serde_json::Value;
-use crate::graphql::content::collection_template::CollectionTemplateObject;
-use crate::graphql::content::guide::GuideObject;
-use crate::graphql::content::guide_template::GuideTemplateObject;
 
 pub struct MetadataObject {
     metadata: Metadata,
@@ -36,6 +37,14 @@ impl MetadataObject {
         self.metadata.id.to_string()
     }
 
+    async fn etag(&self, ctx: &Context<'_>, add_header: bool) -> Result<&Option<String>, Error> {
+        if add_header {
+            let caching = CachingHeaderManager::get(ctx)?;
+            caching.apply(ctx, &self.metadata);
+        }
+        Ok(&self.metadata.etag)
+    }
+
     async fn parent_id(&self) -> Option<String> {
         self.metadata.parent_id.map(|id| id.to_string())
     }
@@ -45,7 +54,7 @@ impl MetadataObject {
     }
 
     async fn trait_ids(&self, ctx: &Context<'_>) -> Result<Vec<String>, Error> {
-        let ctx = ctx.data::<BoscaContext>()?;
+        let ctx = BoscaContext::get(ctx)?;
         ctx.content.metadata.get_trait_ids(&self.metadata.id).await
     }
 
@@ -205,7 +214,10 @@ impl MetadataObject {
         Ok(guide.map(GuideObject::new))
     }
 
-    async fn guide_template(&self, ctx: &Context<'_>) -> Result<Option<GuideTemplateObject>, Error> {
+    async fn guide_template(
+        &self,
+        ctx: &Context<'_>,
+    ) -> Result<Option<GuideTemplateObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let guide = ctx
             .content

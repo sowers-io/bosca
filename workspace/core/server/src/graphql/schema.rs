@@ -9,6 +9,7 @@ use async_graphql::extensions::apollo_persisted_queries::ApolloPersistedQueries;
 use async_graphql::extensions::OpenTelemetry;
 use async_graphql::Schema;
 use opentelemetry_sdk::trace::Tracer;
+use crate::caching_headers::CachingHeaders;
 
 pub fn new_schema(
     ctx: BoscaContext,
@@ -18,6 +19,7 @@ pub fn new_schema(
     Schema::build(QueryObject, MutationObject, SubscriptionObject)
         .data(ctx.clone())
         .extension(Authorization)
+        .extension(CachingHeaders)
         .extension(telemetry)
         .extension(persisted_queries)
         .extension(Logger)

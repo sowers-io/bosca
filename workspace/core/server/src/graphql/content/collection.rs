@@ -4,6 +4,7 @@ use crate::models::content::collection::{Collection, CollectionType};
 use async_graphql::{Context, Error, Object, Union};
 use chrono::{DateTime, Utc};
 use serde_json::Value;
+use crate::caching_headers::CachingHeaderManager;
 use crate::context::BoscaContext;
 use crate::graphql::content::category::CategoryObject;
 use crate::graphql::content::collection_metadata_relationship::CollectionMetadataRelationshipObject;
@@ -32,6 +33,14 @@ impl CollectionObject {
 impl CollectionObject {
     async fn id(&self) -> String {
         self.collection.id.to_string()
+    }
+
+    async fn etag(&self, ctx: &Context<'_>, add_header: bool) -> Result<&Option<String>, Error> {
+        if add_header {
+            let caching = CachingHeaderManager::get(ctx)?;
+            caching.apply(ctx, &self.collection);
+        }
+        Ok(&self.collection.etag)
     }
 
     async fn slug(&self, ctx: &Context<'_>) -> Result<Option<String>, Error> {

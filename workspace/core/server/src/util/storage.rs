@@ -26,24 +26,20 @@ pub async fn storage_system_metadata_delete(
         match storage_system.system_type {
             StorageSystemType::Search => {
                 if let Some(configuration) = &storage_system.configuration {
-                    let index_name = configuration
-                        .get("indexName")
-                        .unwrap()
-                        .as_str()
-                        .unwrap()
-                        .to_string();
-                    match client.get_index(&index_name).await {
-                        Ok(index) => {
-                            index.delete_document(&metadata.id.to_string()).await?;
-                        }
-                        Err(e) => {
-                            if let meilisearch_sdk::errors::Error::Meilisearch(e) = e {
-                                if e.error_code == IndexNotFound {
+                    if let Some(index_name) = configuration.get("indexName") {
+                        let index_name = index_name.as_str().unwrap().to_string();
+                        match client.get_index(&index_name).await {
+                            Ok(index) => {
+                                index.delete_document(&metadata.id.to_string()).await?;
+                            }
+                            Err(e) => {
+                                if let meilisearch_sdk::errors::Error::Meilisearch(e) = e {
+                                    if e.error_code == IndexNotFound {} else {
+                                        return Err(Error::new(e.to_string()));
+                                    }
                                 } else {
                                     return Err(Error::new(e.to_string()));
                                 }
-                            } else {
-                                return Err(Error::new(e.to_string()));
                             }
                         }
                     }

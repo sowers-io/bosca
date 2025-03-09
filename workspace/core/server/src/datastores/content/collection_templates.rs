@@ -1,7 +1,5 @@
-use crate::datastores::notifier::Notifier;
 use async_graphql::*;
 use deadpool_postgres::{GenericClient, Pool, Transaction};
-use log::error;
 use std::sync::Arc;
 use uuid::Uuid;
 use crate::models::content::collection_template::{CollectionTemplate, CollectionTemplateInput};
@@ -11,19 +9,11 @@ use crate::models::content::template_workflow::TemplateWorkflow;
 #[derive(Clone)]
 pub struct CollectionTemplatesDataStore {
     pool: Arc<Pool>,
-    notifier: Arc<Notifier>,
 }
 
 impl CollectionTemplatesDataStore {
-    pub fn new(pool: Arc<Pool>, notifier: Arc<Notifier>) -> Self {
-        Self { pool, notifier }
-    }
-
-    async fn on_metadata_changed(&self, id: &Uuid) -> Result<(), Error> {
-        if let Err(e) = self.notifier.metadata_changed(id).await {
-            error!("Failed to notify metadata changes: {:?}", e);
-        }
-        Ok(())
+    pub fn new(pool: Arc<Pool>) -> Self {
+        Self { pool }
     }
 
     pub async fn get_templates(&self) -> Result<Vec<CollectionTemplate>, Error> {
@@ -77,14 +67,13 @@ impl CollectionTemplatesDataStore {
         Ok(results.iter().map(|r| r.into()).collect())
     }
 
-    pub async fn add_template(
+    pub async fn add_template_txn(
         &self,
+        txn: &Transaction<'_>,
         metadata_id: &Uuid,
         version: i32,
         template: &CollectionTemplateInput,
     ) -> Result<(), Error> {
-        let mut connection = self.pool.get().await?;
-        let txn = connection.transaction().await?;
         let stmt = txn.prepare_cached("insert into collection_templates (metadata_id, version, default_attributes, configuration, collection_filter, metadata_filter) values ($1, $2, $3, $4, $5, $6)").await?;
         let collection_filter = template.collection_filter.as_ref().map(|f| serde_json::to_value(f).unwrap());
         let metadata_filter = template.metadata_filter.as_ref().map(|f| serde_json::to_value(f).unwrap());
@@ -100,21 +89,18 @@ impl CollectionTemplatesDataStore {
             ],
         )
         .await?;
-        self.add_template_txn(&txn, metadata_id, version, template)
+        self.add_template_items_txn(&txn, metadata_id, version, template)
             .await?;
-        txn.commit().await?;
-        self.on_metadata_changed(metadata_id).await?;
         Ok(())
     }
 
-    pub async fn edit_template(
+    pub async fn edit_template_txn(
         &self,
+        txn: &Transaction<'_>,
         metadata_id: &Uuid,
         version: i32,
         template: &CollectionTemplateInput,
     ) -> Result<(), Error> {
-        let mut connection = self.pool.get().await?;
-        let txn = connection.transaction().await?;
         let stmt = txn.prepare_cached("update collection_templates set default_attributes = $1, configuration = $2, collection_filter = $3, metadata_filter = $4 where metadata_id = $5 and version = $6").await?;
         let collection_filter = template.collection_filter.as_ref().map(|f| serde_json::to_value(f).unwrap());
         let metadata_filter = template.metadata_filter.as_ref().map(|f| serde_json::to_value(f).unwrap());
@@ -140,14 +126,12 @@ impl CollectionTemplatesDataStore {
             &[metadata_id, &version],
         )
         .await?;
-        self.add_template_txn(&txn, metadata_id, version, template)
+        self.add_template_items_txn(&txn, metadata_id, version, template)
             .await?;
-        txn.commit().await?;
-        self.on_metadata_changed(metadata_id).await?;
         Ok(())
     }
 
-    async fn add_template_txn(
+    async fn add_template_items_txn(
         &self,
         txn: &Transaction<'_>,
         metadata_id: &Uuid,

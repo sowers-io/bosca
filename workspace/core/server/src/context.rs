@@ -9,7 +9,7 @@ use crate::models::content::collection::Collection;
 use crate::models::content::metadata::Metadata;
 use crate::models::security::permission::PermissionAction;
 use crate::models::security::principal::Principal;
-use async_graphql::Error;
+use async_graphql::{Context, Error};
 use bosca_database::build_pool;
 use deadpool_postgres::Transaction;
 use meilisearch_sdk::client::Client;
@@ -299,5 +299,9 @@ impl BoscaContext {
             }
         }
         Ok(())
+    }
+
+    pub fn get<'a>(ctx: &Context<'a>) -> Result<&'a BoscaContext, Error> {
+        ctx.data::<BoscaContext>()
     }
 }

@@ -4,11 +4,12 @@ use crate::graphql::content::metadata_mutation::WorkflowConfigurationInput;
 use crate::models::content::metadata::Metadata;
 use crate::models::security::principal::Principal;
 use async_graphql::*;
+use chrono::DateTime;
 use deadpool_postgres::{GenericClient, Pool};
 use log::error;
 use std::sync::Arc;
-use chrono::DateTime;
 use uuid::Uuid;
+use crate::datastores::content::tag::update_metadata_etag;
 
 #[derive(Clone)]
 pub struct MetadataWorkflowsDataStore {
@@ -131,11 +132,16 @@ impl MetadataWorkflowsDataStore {
     }
 
     async fn set_metadata_ready(&self, id: &Uuid) -> Result<(), Error> {
-        let connection = self.pool.get().await?;
-        let stmt = connection
-            .prepare_cached("update metadata set ready = now() where id = $1")
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        let stmt = txn
+            .prepare_cached(
+                "update metadata set ready = now(), modified = now() where id = $1",
+            )
             .await?;
-        connection.execute(&stmt, &[id]).await?;
+        txn.execute(&stmt, &[id]).await?;
+        update_metadata_etag(&txn, id).await?;
+        txn.commit().await?;
         self.on_metadata_changed(id).await?;
         Ok(())
     }

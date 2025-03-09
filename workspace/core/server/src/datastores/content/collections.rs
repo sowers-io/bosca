@@ -21,6 +21,7 @@ use serde_json::Value;
 use std::sync::Arc;
 use tokio_postgres::Statement;
 use uuid::Uuid;
+use crate::datastores::content::tag::update_collection_etag;
 
 #[derive(Clone)]
 pub struct CollectionsDataStore {
@@ -187,39 +188,48 @@ impl CollectionsDataStore {
                 "you can only supply either a child collection id or child metadata id",
             ));
         }
-        let connection = self.pool.get().await?;
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
         if let Some(child_id) = child_collection_id {
-            let stmt = connection.prepare_cached("update collection_items set attributes = $1 where collection_id = $2 and child_collection_id = $3").await?;
-            connection
+            let stmt = txn.prepare_cached("update collection_items set attributes = $1 where collection_id = $2 and child_collection_id = $3").await?;
+            txn
                 .execute(&stmt, &[&attributes, collection_id, &child_id])
                 .await?;
         } else if let Some(child_id) = child_metadata_id {
-            let stmt = connection.prepare_cached("update collection_items set attributes = $1 where collection_id = $2 and child_metadata_id = $3").await?;
-            connection
+            let stmt = txn.prepare_cached("update collection_items set attributes = $1 where collection_id = $2 and child_metadata_id = $3").await?;
+            txn
                 .execute(&stmt, &[&attributes, collection_id, &child_id])
                 .await?;
         }
+        update_collection_etag(&txn, collection_id).await?;
+        txn.commit().await?;
         Ok(())
     }
 
     pub async fn set_public(&self, id: &Uuid, public: bool) -> Result<(), Error> {
-        let connection = self.pool.get().await?;
-        let stmt = connection
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        let stmt = txn
             .prepare_cached("update collections set public = $1, modified = now() where id = $2")
             .await?;
-        connection.execute(&stmt, &[&public, id]).await?;
+        txn.execute(&stmt, &[&public, id]).await?;
+        update_collection_etag(&txn, id).await?;
+        txn.commit().await?;
         self.on_collection_changed(id).await?;
         Ok(())
     }
 
     pub async fn set_public_list(&self, id: &Uuid, public: bool) -> Result<(), Error> {
-        let connection = self.pool.get().await?;
-        let stmt = connection
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        let stmt = txn
             .prepare_cached(
                 "update collections set public_list = $1, modified = now() where id = $2",
             )
             .await?;
-        connection.execute(&stmt, &[&public, id]).await?;
+        txn.execute(&stmt, &[&public, id]).await?;
+        update_collection_etag(&txn, id).await?;
+        txn.commit().await?;
         self.on_collection_changed(id).await?;
         Ok(())
     }
@@ -396,7 +406,7 @@ impl CollectionsDataStore {
         } else {
             Uuid::parse_str("00000000-0000-0000-0000-000000000000")?
         };
-        match self.add_txn(&txn, collection).await {
+        match self.add_txn(&txn, collection, true).await {
             Ok(value) => {
                 txn.commit().await?;
                 self.on_collection_changed(&value).await?;
@@ -427,10 +437,11 @@ impl CollectionsDataStore {
         }
     }
 
-    pub async fn add_txn<'a>(
+    async fn add_txn<'a>(
         &'a self,
         txn: &'a Transaction<'a>,
         collection: &CollectionInput,
+        update_etag: bool,
     ) -> Result<Uuid, Error> {
         let stmt: Statement = if collection.collection_type.unwrap_or(CollectionType::Folder)
             == CollectionType::Root
@@ -464,7 +475,7 @@ impl CollectionsDataStore {
             )
             .await?;
 
-        let id = rows.first().unwrap().get(0);
+        let id: Uuid = rows.first().unwrap().get(0);
 
         let stmt = txn.prepare_cached("insert into slugs (slug, collection_id) values (case when length($1) > 0 then $1 else slugify($2) end, $3) on conflict (slug) do update set slug = slugify($2) || nextval('duplicate_slug_seq')").await?;
         txn.execute(&stmt, &[&collection.slug, &collection.name, &id])
@@ -481,6 +492,10 @@ impl CollectionsDataStore {
                 let cid = Uuid::parse_str(category_id)?;
                 self.add_category_txn(txn, &id, &cid).await?
             }
+        }
+
+        if update_etag {
+            update_collection_etag(txn, &id).await?;
         }
 
         Ok(id)
@@ -595,6 +610,8 @@ impl CollectionsDataStore {
             }
         }
 
+        update_collection_etag(txn, id).await?;
+
         Ok(())
     }
 
@@ -604,15 +621,18 @@ impl CollectionsDataStore {
         collection_id: &Uuid,
         attributes: &Option<Value>,
     ) -> Result<(), Error> {
-        let connection = self.pool.get().await?;
-        let stmt = connection
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        let stmt = txn
             .prepare_cached(
                 "insert into collection_items (collection_id, child_collection_id, attributes) values ($1, $2, $3)",
             )
             .await?;
-        connection
+        txn
             .execute(&stmt, &[id, collection_id, attributes])
             .await?;
+        update_collection_etag(&txn, id).await?;
+        txn.commit().await?;
         self.on_collection_changed(id).await?;
         self.on_collection_changed(collection_id).await?;
         Ok(())
@@ -636,15 +656,18 @@ impl CollectionsDataStore {
         metadata_id: &Uuid,
         attributes: &Option<Value>,
     ) -> Result<(), Error> {
-        let connection = self.pool.get().await?;
-        let stmt = connection
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        let stmt = txn
             .prepare_cached(
                 "insert into collection_items (collection_id, child_metadata_id, attributes) values ($1, $2, $3)",
             )
             .await?;
-        connection
+        txn
             .execute(&stmt, &[id, metadata_id, attributes])
             .await?;
+        update_collection_etag(&txn, id).await?;
+        txn.commit().await?;
         self.on_collection_changed(id).await?;
         self.on_metadata_changed(metadata_id).await?;
         Ok(())
@@ -673,26 +696,32 @@ impl CollectionsDataStore {
         id: &Uuid,
         collection_id: &Uuid,
     ) -> Result<(), Error> {
-        let connection = self.pool.get().await?;
-        let stmt = connection
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        let stmt = txn
             .prepare_cached(
                 "delete from collection_items where collection_id = $1 and child_collection_id = $2",
             )
             .await?;
-        connection.execute(&stmt, &[id, collection_id]).await?;
+        txn.execute(&stmt, &[id, collection_id]).await?;
+        update_collection_etag(&txn, id).await?;
+        txn.commit().await?;
         self.on_collection_changed(collection_id).await?;
         self.on_collection_changed(id).await?;
         Ok(())
     }
 
     pub async fn remove_child_metadata(&self, id: &Uuid, metadata_id: &Uuid) -> Result<(), Error> {
-        let connection = self.pool.get().await?;
-        let stmt = connection
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        let stmt = txn
             .prepare_cached(
                 "delete from collection_items where collection_id = $1 and child_metadata_id = $2",
             )
             .await?;
-        connection.execute(&stmt, &[id, metadata_id]).await?;
+        txn.execute(&stmt, &[id, metadata_id]).await?;
+        update_collection_etag(&txn, id).await?;
+        txn.commit().await?;
         self.on_collection_changed(id).await?;
         self.on_metadata_changed(metadata_id).await?;
         Ok(())
@@ -703,27 +732,33 @@ impl CollectionsDataStore {
         collection_id: &Uuid,
         attributes: Value,
     ) -> Result<(), Error> {
-        let connection = self.pool.get().await?;
-        let stmt = connection
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        let stmt = txn
             .prepare_cached(
                 "update collections set attributes = $1, modified = now() where id = $2",
             )
             .await?;
-        connection
+        txn
             .execute(&stmt, &[&attributes, &collection_id])
             .await?;
+        update_collection_etag(&txn, collection_id).await?;
+        txn.commit().await?;
         self.on_collection_changed(collection_id).await?;
         Ok(())
     }
 
     pub async fn set_ordering(&self, collection_id: &Uuid, ordering: Value) -> Result<(), Error> {
-        let connection = self.pool.get().await?;
-        let stmt = connection
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        let stmt = txn
             .prepare_cached("update collections set ordering = $1, modified = now() where id = $2")
             .await?;
-        connection
+        txn
             .execute(&stmt, &[&ordering, &collection_id])
             .await?;
+        update_collection_etag(&txn, collection_id).await?;
+        txn.commit().await?;
         self.on_collection_changed(collection_id).await?;
         Ok(())
     }
@@ -793,7 +828,7 @@ impl CollectionsDataStore {
                 ctx.check_collection_action_txn(txn, &parent_collection_id, PermissionAction::Edit)
                     .await?;
             }
-            let id = self.add_txn(txn, collection).await?;
+            let id = self.add_txn(txn, collection, false).await?;
             let permissions = if let Some(permissions) = &permissions {
                 permissions.clone()
             } else {
@@ -852,6 +887,7 @@ impl CollectionsDataStore {
                     )
                     .await?;
             }
+            update_collection_etag(&txn, &id).await?;
             if collection.index.unwrap_or(true) {
                 search_documents.push(SearchDocumentInput {
                     collection_id: Some(id.to_string()),

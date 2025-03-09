@@ -70,6 +70,14 @@ impl ContentItem for Metadata {
         &self.workflow_state_pending_id
     }
 
+    fn etag(&self) -> &Option<String> {
+        &self.etag
+    }
+
+    fn modified(&self) -> &DateTime<Utc> {
+        &self.modified
+    }
+
     fn ready(&self) -> &Option<DateTime<Utc>> {
         &self.ready
     }

@@ -13,3 +13,4 @@ pub mod collection_templates;
 pub mod sources;
 pub mod workflow_schedules;
 pub mod guides;
+mod tag;

@@ -56,36 +56,6 @@ impl MetadataMutationObject {
                 .await?
                 .unwrap()
         };
-        if let Some(document) = &metadata.document {
-            ctx.content
-                .documents
-                .add_document(&new_metadata.id, new_metadata.version, document)
-                .await?;
-        }
-        if let Some(document_template) = &metadata.document_template {
-            ctx.content
-                .documents
-                .add_template(&new_metadata.id, new_metadata.version, document_template)
-                .await?;
-        }
-        if let Some(guide) = &metadata.guide {
-            ctx.content
-                .guides
-                .add_guide(&new_metadata.id, new_metadata.version, guide)
-                .await?;
-        }
-        if let Some(guide_template) = &metadata.guide_template {
-            ctx.content
-                .guides
-                .add_template(&new_metadata.id, new_metadata.version, guide_template)
-                .await?;
-        }
-        if let Some(collection_template) = &metadata.collection_template {
-            ctx.content
-                .collection_templates
-                .add_template(&new_metadata.id, new_metadata.version, collection_template)
-                .await?;
-        }
         Ok(new_metadata.into())
     }
 
@@ -106,41 +76,6 @@ impl MetadataMutationObject {
             ));
         }
         ctx.content.metadata.edit(ctx, &id, &metadata).await?;
-        let version = if let Some(version) = metadata.version {
-            version
-        } else {
-            current.version
-        };
-        if let Some(document) = &metadata.document {
-            ctx.content
-                .documents
-                .edit_document(&id, version, document)
-                .await?;
-        }
-        if let Some(document_template) = &metadata.document_template {
-            ctx.content
-                .documents
-                .edit_template(&id, version, document_template)
-                .await?;
-        }
-        if let Some(guide) = &metadata.guide {
-            ctx.content
-                .guides
-                .edit_guide(&id, version, guide)
-                .await?;
-        }
-        if let Some(guide_template) = &metadata.guide_template {
-            ctx.content
-                .guides
-                .edit_template(&id, version, guide_template)
-                .await?;
-        }
-        if let Some(collection_template) = &metadata.collection_template {
-            ctx.content
-                .collection_templates
-                .edit_template(&id, version, collection_template)
-                .await?;
-        }
         match ctx.content.metadata.get(&id).await? {
             Some(metadata) => Ok(metadata.into()),
             None => Err(Error::new("Error creating metadata")),
@@ -834,7 +769,7 @@ impl MetadataMutationObject {
             .await?;
         ctx.content
             .documents
-            .edit_document(&metadata.id, metadata.version, &document)
+            .set_document(&metadata.id, metadata.version, &document)
             .await?;
         Ok(true)
     }

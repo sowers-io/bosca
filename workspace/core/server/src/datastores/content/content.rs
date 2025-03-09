@@ -48,7 +48,6 @@ impl ContentDataStore {
             ),
             collection_templates: CollectionTemplatesDataStore::new(
                 Arc::clone(&pool),
-                Arc::clone(&notifier),
             ),
             metadata: MetadataDataStore::new(Arc::clone(&pool), Arc::clone(&notifier)),
             metadata_permissions: MetadataPermissionsDataStore::new(
@@ -60,7 +59,7 @@ impl ContentDataStore {
                 Arc::clone(&notifier),
             ),
             documents: DocumentsDataStore::new(Arc::clone(&pool), Arc::clone(&notifier)),
-            guides: GuidesDataStore::new(Arc::clone(&pool), Arc::clone(&notifier)),
+            guides: GuidesDataStore::new(Arc::clone(&pool)),
             sources: SourcesDataStore::new(Arc::clone(&pool)),
             pool,
         }

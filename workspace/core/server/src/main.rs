@@ -14,6 +14,7 @@ mod shutdown_hook;
 mod slugs;
 mod util;
 mod workflow;
+mod caching_headers;
 
 use crate::files::{download, upload};
 use async_graphql::extensions::apollo_persisted_queries::ApolloPersistedQueries;

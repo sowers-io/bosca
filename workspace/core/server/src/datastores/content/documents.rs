@@ -6,6 +6,7 @@ use deadpool_postgres::{GenericClient, Pool, Transaction};
 use log::error;
 use std::sync::Arc;
 use uuid::Uuid;
+use crate::datastores::content::tag::update_metadata_etag;
 use crate::models::content::document_template_container::DocumentTemplateContainer;
 use crate::models::content::template_attribute::TemplateAttribute;
 use crate::models::content::template_workflow::TemplateWorkflow;
@@ -104,12 +105,11 @@ impl DocumentsDataStore {
 
     pub async fn add_template(
         &self,
+        txn: &Transaction<'_>,
         metadata_id: &Uuid,
         version: i32,
         template: &DocumentTemplateInput,
     ) -> Result<(), Error> {
-        let mut connection = self.pool.get().await?;
-        let txn = connection.transaction().await?;
         let stmt = txn.prepare_cached("insert into document_templates (metadata_id, version, configuration, schema, default_attributes, content) values ($1, $2, $3, $4, $5, $6)").await?;
         txn.execute(
             &stmt,
@@ -123,21 +123,18 @@ impl DocumentsDataStore {
             ],
         )
         .await?;
-        self.add_template_txn(&txn, metadata_id, version, template)
+        self.add_template_items_txn(&txn, metadata_id, version, template)
             .await?;
-        txn.commit().await?;
-        self.on_metadata_changed(metadata_id).await?;
         Ok(())
     }
 
-    pub async fn edit_template(
+    pub async fn edit_template_txn(
         &self,
+        txn: &Transaction<'_>,
         metadata_id: &Uuid,
         version: i32,
         template: &DocumentTemplateInput,
     ) -> Result<(), Error> {
-        let mut connection = self.pool.get().await?;
-        let txn = connection.transaction().await?;
         let stmt = txn.prepare_cached("insert into document_templates (metadata_id, version, configuration, schema, default_attributes, content) values ($1, $2, $3, $4, $5, $6) on conflict (metadata_id, version) do update set configuration = $3, schema = $4, default_attributes = $5, content = $6").await?;
         txn.execute(
             &stmt,
@@ -166,14 +163,12 @@ impl DocumentsDataStore {
             &[metadata_id, &version],
         )
         .await?;
-        self.add_template_txn(&txn, metadata_id, version, template)
+        self.add_template_items_txn(txn, metadata_id, version, template)
             .await?;
-        txn.commit().await?;
-        self.on_metadata_changed(metadata_id).await?;
         Ok(())
     }
 
-    async fn add_template_txn(
+    async fn add_template_items_txn(
         &self,
         txn: &Transaction<'_>,
         metadata_id: &Uuid,
@@ -260,14 +255,13 @@ impl DocumentsDataStore {
         Ok(rows.first().map(|r| r.into()))
     }
 
-    pub async fn add_document(
+    pub async fn add_document_txn(
         &self,
+        txn: &Transaction<'_>,
         metadata_id: &Uuid,
         version: i32,
         document: &DocumentInput,
     ) -> Result<(), Error> {
-        let mut connection = self.pool.get().await?;
-        let txn = connection.transaction().await?;
         let stmt = txn.prepare_cached("insert into documents (metadata_id, version, template_metadata_id, template_metadata_version, title, content) values ($1, $2, $3, $4, $5, $6)").await?;
         let template_metadata_id = document
             .template_metadata_id
@@ -285,12 +279,10 @@ impl DocumentsDataStore {
             ],
         )
         .await?;
-        txn.commit().await?;
-        self.on_metadata_changed(metadata_id).await?;
         Ok(())
     }
 
-    pub async fn edit_document(
+    pub async fn set_document(
         &self,
         metadata_id: &Uuid,
         version: i32,
@@ -314,9 +306,40 @@ impl DocumentsDataStore {
                 &document.content,
             ],
         )
-        .await?;
+            .await?;
+        let stmt = txn.prepare_cached("update metadata set modified = now() where id = $1").await?;
+        txn.execute(&stmt, &[metadata_id]).await?;
+        update_metadata_etag(&txn, metadata_id).await?;
+        txn.execute(&stmt, &[metadata_id]).await?;
         txn.commit().await?;
         self.on_metadata_changed(metadata_id).await?;
+        Ok(())
+    }
+
+    pub async fn edit_document_txn(
+        &self,
+        txn: &Transaction<'_>,
+        metadata_id: &Uuid,
+        version: i32,
+        document: &DocumentInput,
+    ) -> Result<(), Error> {
+        let stmt = txn.prepare_cached("insert into documents (metadata_id, version, template_metadata_id, template_metadata_version, title, content) values ($1, $2, $3, $4, $5, $6) on conflict (metadata_id, version) do update set template_metadata_id = $3, template_metadata_version = $4, title = $5, content = $6").await?;
+        let template_metadata_id = document
+            .template_metadata_id
+            .as_ref()
+            .map(|id| Uuid::parse_str(id.as_str()).unwrap());
+        txn.execute(
+            &stmt,
+            &[
+                metadata_id,
+                &version,
+                &template_metadata_id,
+                &document.template_metadata_version,
+                &document.title,
+                &document.content,
+            ],
+        )
+        .await?;
         Ok(())
     }
 }

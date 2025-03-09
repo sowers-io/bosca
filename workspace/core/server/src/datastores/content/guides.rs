@@ -1,4 +1,3 @@
-use crate::datastores::notifier::Notifier;
 use crate::models::content::guide::{Guide, GuideInput};
 use crate::models::content::guide_step::GuideStep;
 use crate::models::content::guide_step_module::GuideStepModule;
@@ -7,7 +6,6 @@ use crate::models::content::guide_template_step::GuideTemplateStep;
 use crate::models::content::guide_template_step_module::GuideTemplateStepModule;
 use async_graphql::*;
 use deadpool_postgres::{GenericClient, Pool, Transaction};
-use log::error;
 use rrule::RRuleSet;
 use std::sync::Arc;
 use uuid::Uuid;
@@ -15,19 +13,11 @@ use uuid::Uuid;
 #[derive(Clone)]
 pub struct GuidesDataStore {
     pool: Arc<Pool>,
-    notifier: Arc<Notifier>,
 }
 
 impl GuidesDataStore {
-    pub fn new(pool: Arc<Pool>, notifier: Arc<Notifier>) -> Self {
-        Self { pool, notifier }
-    }
-
-    async fn on_metadata_changed(&self, id: &Uuid) -> Result<(), Error> {
-        if let Err(e) = self.notifier.metadata_changed(id).await {
-            error!("Failed to notify metadata changes: {:?}", e);
-        }
-        Ok(())
+    pub fn new(pool: Arc<Pool>) -> Self {
+        Self { pool }
     }
 
     pub async fn get_templates(&self) -> Result<Vec<GuideTemplate>, Error> {
@@ -81,14 +71,13 @@ impl GuidesDataStore {
         Ok(rows.iter().map(|r| r.into()).collect())
     }
 
-    pub async fn add_template(
+    pub async fn add_template_txn(
         &self,
+        txn: &Transaction<'_>,
         metadata_id: &Uuid,
         version: i32,
         template: &GuideTemplateInput,
     ) -> Result<(), Error> {
-        let mut connection = self.pool.get().await?;
-        let txn = connection.transaction().await?;
         let stmt = txn.prepare_cached("insert into guide_templates (metadata_id, version, rrule, type) values ($1, $2, $3, $4)").await?;
         txn.execute(
             &stmt,
@@ -100,21 +89,18 @@ impl GuidesDataStore {
             ],
         )
         .await?;
-        self.add_template_steps_txn(&txn, metadata_id, version, template)
+        self.add_template_steps_txn(txn, metadata_id, version, template)
             .await?;
-        txn.commit().await?;
-        self.on_metadata_changed(metadata_id).await?;
         Ok(())
     }
 
-    pub async fn edit_template(
+    pub async fn edit_template_txn(
         &self,
+        txn: &Transaction<'_>,
         metadata_id: &Uuid,
         version: i32,
         template: &GuideTemplateInput,
     ) -> Result<(), Error> {
-        let mut connection = self.pool.get().await?;
-        let txn = connection.transaction().await?;
         let stmt = txn.prepare_cached("insert into guide_templates (metadata_id, version, rrule, type) values ($1, $2, $3, $4) on conflict (metadata_id, version) do update set rrule = $3, type = $4").await?;
         txn.execute(
             &stmt,
@@ -133,8 +119,6 @@ impl GuidesDataStore {
         .await?;
         self.add_template_steps_txn(&txn, metadata_id, version, template)
             .await?;
-        txn.commit().await?;
-        self.on_metadata_changed(metadata_id).await?;
         Ok(())
     }
 
@@ -226,14 +210,13 @@ impl GuidesDataStore {
         Ok(rows.iter().map(|r| r.into()).collect())
     }
 
-    pub async fn add_guide(
+    pub async fn add_guide_txn(
         &self,
+        txn: &Transaction<'_>,
         metadata_id: &Uuid,
         version: i32,
         guide: &GuideInput,
     ) -> Result<(), Error> {
-        let mut connection = self.pool.get().await?;
-        let txn = connection.transaction().await?;
         let stmt = txn.prepare_cached("insert into guides (metadata_id, version, template_metadata_id, template_metadata_version, rrule, type) values ($1, $2, $3, $4, $5, $6)").await?;
         let template_metadata_id = guide
             .template_metadata_id
@@ -253,21 +236,18 @@ impl GuidesDataStore {
             ],
         )
         .await?;
-        self.add_guide_txn(&txn, metadata_id, version, guide)
+        self.add_guide_items_txn(txn, metadata_id, version, guide)
             .await?;
-        txn.commit().await?;
-        self.on_metadata_changed(metadata_id).await?;
         Ok(())
     }
 
     pub async fn edit_guide(
         &self,
+        txn: &Transaction<'_>,
         metadata_id: &Uuid,
         version: i32,
         guide: &GuideInput,
     ) -> Result<(), Error> {
-        let mut connection = self.pool.get().await?;
-        let txn = connection.transaction().await?;
         let stmt = txn.prepare_cached("insert into guides (metadata_id, version, template_metadata_id, template_metadata_version, guide_metadata_id, guide_metadata_version, rrule, type) values ($1, $2, $3, $4, $5, $6, $7, $8) on conflict (metadata_id, version) do update set template_metadata_id = $3, template_metadata_version = $4, rrule = $5, type = $6, guide_metadata_id = $7, guide_metadata_version = $8").await?;
         let template_metadata_id = guide
             .template_metadata_id
@@ -292,14 +272,12 @@ impl GuidesDataStore {
             &[metadata_id, &version],
         )
         .await?;
-        self.add_guide_txn(&txn, metadata_id, version, guide)
+        self.add_guide_txn(txn, metadata_id, version, guide)
             .await?;
-        txn.commit().await?;
-        self.on_metadata_changed(metadata_id).await?;
         Ok(())
     }
 
-    async fn add_guide_txn(
+    async fn add_guide_items_txn(
         &self,
         txn: &Transaction<'_>,
         metadata_id: &Uuid,

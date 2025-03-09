@@ -1,4 +1,5 @@
 use crate::context::BoscaContext;
+use crate::datastores::content::tag::update_metadata_etag;
 use crate::datastores::content::util::build_find_args;
 use crate::datastores::notifier::Notifier;
 use crate::models::content::category::Category;
@@ -346,23 +347,29 @@ impl MetadataDataStore {
     }
 
     pub async fn set_public(&self, id: &Uuid, public: bool) -> Result<(), Error> {
-        let connection = self.pool.get().await?;
-        let stmt = connection
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        let stmt = txn
             .prepare_cached("update metadata set public = $1, modified = now() where id = $2")
             .await?;
-        connection.execute(&stmt, &[&public, id]).await?;
+        txn.execute(&stmt, &[&public, id]).await?;
+        update_metadata_etag(&txn, &id).await?;
+        txn.commit().await?;
         self.on_metadata_changed(id).await?;
         Ok(())
     }
 
     pub async fn set_public_content(&self, id: &Uuid, public: bool) -> Result<(), Error> {
-        let connection = self.pool.get().await?;
-        let stmt = connection
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        let stmt = txn
             .prepare_cached(
                 "update metadata set public_content = $1, modified = now() where id = $2",
             )
             .await?;
-        connection.execute(&stmt, &[&public, id]).await?;
+        txn.execute(&stmt, &[&public, id]).await?;
+        update_metadata_etag(&txn, id).await?;
+        txn.commit().await?;
         self.on_metadata_changed(id).await?;
         Ok(())
     }
@@ -406,6 +413,7 @@ impl MetadataDataStore {
 
         match self
             .edit_txn(
+                ctx,
                 &txn,
                 id,
                 metadata,
@@ -503,13 +511,14 @@ impl MetadataDataStore {
     }
 
     pub async fn set_attributes(&self, metadata_id: &Uuid, attributes: Value) -> Result<(), Error> {
-        let connection = self.pool.get().await?;
-        let stmt = connection
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        let stmt = txn
             .prepare_cached("update metadata set attributes = $1, modified = now() where id = $2")
             .await?;
-        connection
-            .execute(&stmt, &[&attributes, &metadata_id])
-            .await?;
+        txn.execute(&stmt, &[&attributes, &metadata_id]).await?;
+        update_metadata_etag(&txn, metadata_id).await?;
+        txn.commit().await?;
         self.on_metadata_changed(metadata_id).await?;
         Ok(())
     }
@@ -519,15 +528,16 @@ impl MetadataDataStore {
         metadata_id: &Uuid,
         attributes: Value,
     ) -> Result<(), Error> {
-        let connection = self.pool.get().await?;
-        let stmt = connection
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        let stmt = txn
             .prepare_cached(
                 "update metadata set system_attributes = $1, modified = now() where id = $2",
             )
             .await?;
-        connection
-            .execute(&stmt, &[&attributes, &metadata_id])
-            .await?;
+        txn.execute(&stmt, &[&attributes, &metadata_id]).await?;
+        update_metadata_etag(&txn, &metadata_id).await?;
+        txn.commit().await?;
         self.on_metadata_changed(metadata_id).await?;
         Ok(())
     }
@@ -557,6 +567,7 @@ impl MetadataDataStore {
             self.ensure_content_type_traits(metadata_id, content_type, &txn)
                 .await?;
         }
+        update_metadata_etag(&txn, &metadata_id).await?;
         txn.commit().await?;
         self.on_metadata_changed(metadata_id).await?;
         Ok(())
@@ -596,6 +607,7 @@ impl MetadataDataStore {
 
     async fn add_txn<'a>(
         &'a self,
+        ctx: &BoscaContext,
         txn: &'a Transaction<'a>,
         metadata: &MetadataInput,
     ) -> Result<(Uuid, i32, i32), Error> {
@@ -655,14 +667,48 @@ impl MetadataDataStore {
             }
         }
 
+        if let Some(document) = &metadata.document {
+            ctx.content
+                .documents
+                .add_document_txn(txn, &id, version, document)
+                .await?;
+        }
+        if let Some(document_template) = &metadata.document_template {
+            ctx.content
+                .documents
+                .add_template(txn, &id, version, document_template)
+                .await?;
+        }
+        if let Some(guide) = &metadata.guide {
+            ctx.content
+                .guides
+                .add_guide_txn(txn, &id, version, guide)
+                .await?;
+        }
+        if let Some(guide_template) = &metadata.guide_template {
+            ctx.content
+                .guides
+                .add_template_txn(txn, &id, version, guide_template)
+                .await?;
+        }
+        if let Some(collection_template) = &metadata.collection_template {
+            ctx.content
+                .collection_templates
+                .add_template_txn(txn, &id, version, collection_template)
+                .await?;
+        }
+
         self.ensure_content_type_traits(&id, &metadata.content_type, txn)
             .await?;
+
+        update_metadata_etag(&txn, &id).await?;
 
         Ok((id, version, active_version))
     }
 
     async fn edit_txn<'a>(
         &'a self,
+        ctx: &BoscaContext,
         txn: &'a Transaction<'a>,
         id: &Uuid,
         metadata: &MetadataInput,
@@ -670,33 +716,33 @@ impl MetadataDataStore {
         source_identifier: &Option<String>,
         source_url: &Option<String>,
     ) -> Result<(), Error> {
-        let stmt = txn.prepare("update metadata set name = $1, labels = $2, attributes = $3, language_tag = $4, source_id = $5, source_identifier = $6, source_url = $7, content_type = $8, modified = now() where id = $9").await?;
+        let stmt = txn.prepare("update metadata set name = $1, labels = $2, attributes = $3, language_tag = $4, source_id = $5, source_identifier = $6, source_url = $7, content_type = $8, modified = now() where id = $9 returning version").await?;
         let labels = metadata.labels.clone().unwrap_or_default();
-        txn.query(
-            &stmt,
-            &[
-                &metadata.name,
-                &labels,
-                &metadata.attributes.as_ref().or(Some(&Value::Null)),
-                &metadata.language_tag,
-                source_id,
-                source_identifier,
-                source_url,
-                &metadata.content_type,
-                &id,
-            ],
-        )
-        .await?;
+        let result = txn
+            .query_one(
+                &stmt,
+                &[
+                    &metadata.name,
+                    &labels,
+                    &metadata.attributes.as_ref().or(Some(&Value::Null)),
+                    &metadata.language_tag,
+                    source_id,
+                    source_identifier,
+                    source_url,
+                    &metadata.content_type,
+                    &id,
+                ],
+            )
+            .await?;
+        let version: i32 = result.get(0);
 
-        if let Some(slug) = metadata.slug.as_ref() {
-            let stmt = txn
-                .prepare_cached("delete from slugs where metadata_id = $1")
-                .await?;
-            txn.execute(&stmt, &[id]).await?;
-            let stmt = txn.prepare_cached("insert into slugs (slug, metadata_id) values (case when length($1) > 0 then $1 else slugify($2) end, $3) on conflict (slug) do update set slug = slugify($2) || nextval('duplicate_slug_seq')").await?;
-            txn.execute(&stmt, &[slug, &metadata.name, id])
-                .await?;
-        }
+        let stmt = txn
+            .prepare_cached("delete from slugs where metadata_id = $1")
+            .await?;
+        txn.execute(&stmt, &[id]).await?;
+        let stmt = txn.prepare_cached("insert into slugs (slug, metadata_id) values (case when length($1) > 0 then $1 else slugify($2) end, $3) on conflict (slug) do update set slug = slugify($2) || nextval('duplicate_slug_seq')").await?;
+        txn.execute(&stmt, &[&metadata.slug, &metadata.name, id])
+            .await?;
 
         if let Some(trait_ids) = &metadata.trait_ids {
             self.delete_traits_txn(txn, id).await?;
@@ -722,8 +768,41 @@ impl MetadataDataStore {
             }
         }
 
+        if let Some(document) = &metadata.document {
+            ctx.content
+                .documents
+                .edit_document_txn(txn, &id, version, document)
+                .await?;
+        }
+        if let Some(document_template) = &metadata.document_template {
+            ctx.content
+                .documents
+                .edit_template_txn(txn, &id, version, document_template)
+                .await?;
+        }
+        if let Some(guide) = &metadata.guide {
+            ctx.content
+                .guides
+                .edit_guide(txn, &id, version, guide)
+                .await?;
+        }
+        if let Some(guide_template) = &metadata.guide_template {
+            ctx.content
+                .guides
+                .edit_template_txn(txn, &id, version, guide_template)
+                .await?;
+        }
+        if let Some(collection_template) = &metadata.collection_template {
+            ctx.content
+                .collection_templates
+                .edit_template_txn(txn, &id, version, collection_template)
+                .await?;
+        }
+
         self.ensure_content_type_traits(id, &metadata.content_type, txn)
             .await?;
+
+        update_metadata_etag(&txn, &id).await?;
 
         Ok(())
     }
@@ -977,7 +1056,7 @@ impl MetadataDataStore {
                 ctx.check_collection_action_txn(txn, &collection_id, PermissionAction::Edit)
                     .await?;
             }
-            let (id, version, active_version) = self.add_txn(txn, metadata).await?;
+            let (id, version, active_version) = self.add_txn(ctx, txn, metadata).await?;
             let permissions = if let Some(permissions) = &permissions {
                 permissions.clone()
             } else {
