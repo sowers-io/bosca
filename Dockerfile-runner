@@ -1,6 +1,6 @@
 FROM gcr.io/distroless/static
 
-COPY target/release/bosca-server /
+COPY workspace/runners/kotlin/runner/build/native/nativeCompile/* /
 
 EXPOSE 8000
-CMD ["./bosca-server"]
+CMD ["./bosca-runner", "run"]
