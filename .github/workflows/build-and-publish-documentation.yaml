@@ -70,6 +70,8 @@ jobs:
 
   publish:
     runs-on: ubuntu-22.04
+    needs:
+      - build
     outputs:
       artifact: ${{ steps.define-ids.outputs.artifact }}
     env:
@@ -96,7 +98,7 @@ jobs:
       - name: Prepare
         run: |
           mkdir -p docs-build
-          cp docs/Dockerfile docs-build
+          cp docs/Dockerfile docs-build/
 
       - name: Unzip artifact
         run: unzip -O UTF-8 -qq "artifacts/${{ needs.build.outputs.artifact }}" -d docs-build
