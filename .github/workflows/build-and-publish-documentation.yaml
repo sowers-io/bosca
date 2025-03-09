@@ -89,12 +89,12 @@ jobs:
 
       - name: Prepare
         run: |
-          mkdir -p docs-build
+          mkdir -p docs-build/out
           cp docs/Dockerfile docs-build/
           cp docs/nginx.conf docs-build/
 
       - name: Unzip artifact
-        run: unzip -O UTF-8 -qq "artifacts/${{ needs.build.outputs.artifact }}" -d docs-build
+        run: unzip -O UTF-8 -qq "artifacts/${{ needs.build.outputs.artifact }}" -d docs-build/out
 
       - name: Build Documentation Image
         uses: docker/build-push-action@v3
