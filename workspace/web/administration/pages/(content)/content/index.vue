@@ -126,7 +126,9 @@ async function newDocumentFromTemplate(
     ],
     categoryIds: categoryIds,
   }
-  return await client.metadata.add(metadata)
+  const metadataId = await client.metadata.add(metadata)
+  await client.metadata.setReady(metadataId)
+  return metadataId
 }
 
 async function onAddDocument(
@@ -146,7 +148,6 @@ async function onAddDocument(
     'New ' + item.attributes['editor.type'],
     item.categories.map((c) => c.id),
   )
-  await client.metadata.setReady(metadataId)
   await router.push(`/content/${metadataId}`)
 }
 

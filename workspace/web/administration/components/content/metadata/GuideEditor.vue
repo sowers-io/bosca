@@ -159,6 +159,16 @@ function onDelete() {
 
 async function doDelete() {
   confirmDelete.value = false
+  for (const step of props.guide.steps || []) {
+    for (const module of step.modules || []) {
+      if (module.metadata) {
+        await client.metadata.delete(module.metadata.id)
+      }
+    }
+    if (step.metadata) {
+      await client.metadata.delete(step.metadata.id)
+    }
+  }
   await client.metadata.delete(props.metadata.id)
   await router.push('/content')
 }
