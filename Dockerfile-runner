@@ -1,0 +1,6 @@
+FROM gcr.io/distroless/static
+
+COPY target/release/bosca-server /
+
+EXPOSE 8000
+CMD ["./bosca-server"]
