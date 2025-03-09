@@ -13,8 +13,7 @@ Guides can be used to build content types such as:
 - Daily Story experiences (a full-screen card-based experience including text, imagery, video, and audio)
 - Classroom or courses*
 
-*Guides do not support a classroom-style experience yet, but the design allows for this support in the future. {{
-className: "text-xs" }}
+*Guides do not support a classroom-style experience yet, but the design allows for this support in the future.
 
 Bosca’s focus on personalization makes Guides a powerful tool for creating customized content. By leveraging Workflows
 powered by analytics, AI/ML, and insights into a user’s journey, you can deliver highly relevant and valuable
