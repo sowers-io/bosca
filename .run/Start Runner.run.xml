@@ -1,0 +1,19 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Start Runner" type="JetRunConfigurationType">
+    <option name="ALTERNATIVE_JRE_PATH" value="graalvm-jdk-23" />
+    <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="true" />
+    <envs>
+      <env name="BOSCA_PASSWORD" value="password" />
+      <env name="BOSCA_QUEUES" value="profiles,10;video,4;media,2;default,10;bible,20;bible-ai,10;bible-book,20;bible-chapter,20;bible-verse,10;media-transcription,1;media-upload,5;metadata,50;search-index,100;traits,100;transition,100;" />
+      <env name="BOSCA_URL" value="http://127.0.0.1:8000/graphql" />
+      <env name="BOSCA_USERNAME" value="admin" />
+    </envs>
+    <option name="MAIN_CLASS_NAME" value="io.bosca.MainKt" />
+    <module name="bosca-runner.runner.main" />
+    <option name="PROGRAM_PARAMETERS" value="run" />
+    <shortenClasspath name="NONE" />
+    <method v="2">
+      <option name="Make" enabled="true" />
+    </method>
+  </configuration>
+</component>

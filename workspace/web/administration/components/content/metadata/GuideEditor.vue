@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import {
+  type DocumentFragment,
+  type DocumentTemplateFragment,
   type GuideFragment,
+  type GuideStep,
   type GuideTemplateFragment,
   type MetadataFragment,
   type MetadataRelationshipFragment,
@@ -10,13 +13,21 @@ import {
 
 const router = useRouter()
 const client = useBoscaClient()
+
 const props = defineProps<{
   metadata: MetadataFragment
   relationships: Array<MetadataRelationshipFragment>
   parents: Array<ParentCollectionFragment>
   guide: GuideFragment
   guideTemplate: GuideTemplateFragment | null | undefined
+  document: DocumentFragment | null | undefined
+  documentTemplate: DocumentTemplateFragment | null | undefined
 }>()
+
+const metadata = defineModel<MetadataFragment>('metadata', {
+  type: Object,
+  default: null,
+})
 
 const guideCollection = computed(() => {
   return props.parents?.find((c) => c.attributes['editor.type'] === 'Guide') as
@@ -28,6 +39,7 @@ const parentCollections = computed(() => {
     c.attributes['editor.type'] !== 'Guide'
   ) || []
 })
+
 const { data: states } = client.workflows.getStatesAsyncData()
 const stateName = computed(() => {
   return states.value?.find((s) => s.id === props.metadata.workflow.state)?.name
@@ -36,13 +48,15 @@ const pendingStateName = computed(() => {
   return states.value?.find((s) => s.id === props.metadata.workflow.pending)
     ?.name
 })
+
 const hasChanges = ref(false)
 const confirmDelete = ref(false)
 const confirmReset = ref(false)
 const outOfDate = ref(false)
+const currentStep = ref<GuideStep | null>(null)
 
 function onSave() {
-  window.dispatchEvent(new Event('save-guide'))
+  window.dispatchEvent(new Event('save-document'))
 }
 
 function reset() {
@@ -52,7 +66,7 @@ function reset() {
 function doReset() {
   outOfDate.value = false
   confirmReset.value = false
-  window.dispatchEvent(new Event('reset-guide'))
+  window.dispatchEvent(new Event('reset-document'))
 }
 
 async function onPublish() {
@@ -71,7 +85,7 @@ async function onPublish() {
       props.metadata.id,
       props.metadata.version,
       published,
-      'Publishing Document',
+      'Publishing Guide',
       stateValid,
     )
   }
@@ -90,7 +104,7 @@ async function onPublish() {
         relationship.metadata.id,
         relationship.metadata.version,
         published,
-        'Publishing Document',
+        'Publishing Guide',
         stateValid,
       )
     }
@@ -147,8 +161,7 @@ async function doDelete() {
       <div class="flex">
         <div>
           <Badge variant="secondary">{{ stateName }}
-            <span v-if="metadata.workflow.pending">*</span>
-          </Badge>
+            <span v-if="metadata.workflow.pending">*</span></Badge>
           <Badge variant="secondary" class="ms-4" v-if="pendingStateName">{{
             pendingStateName
           }}</Badge>
@@ -281,7 +294,52 @@ async function doDelete() {
       </div>
     </div>
     <div class="border-none p-0 outline-none mt-4">
-      TODO!
+      <div v-if="!document">
+        <ContentMetadataGuideSteps
+          :metadata="metadata"
+          :relationships="relationships"
+          :parents="parents"
+          :guide="guide"
+          :guideTemplate="guideTemplate"
+          :document="document"
+          :documentTemplate="documentTemplate"
+        />
+      </div>
+      <Tabs
+        v-else
+        default-value="general"
+        class="h-full space-y-6"
+      >
+        <TabsList>
+          <TabsTrigger value="general">
+            Guide Document
+          </TabsTrigger>
+          <TabsTrigger value="items">
+            Guide Items
+          </TabsTrigger>
+        </TabsList>
+        <TabsContent value="general" class="border-none p-0 outline-none">
+          <ContentMetadataEditor
+            :documentCollection="guideCollection"
+            :parents="parentCollections"
+            :relationships="relationships"
+            :document="document"
+            :template="documentTemplate"
+            v-model:metadata="metadata"
+            v-model:has-changes="hasChanges"
+          />
+        </TabsContent>
+        <TabsContent value="items" class="border-none p-0 outline-none">
+          <ContentMetadataGuideItems
+            :metadata="metadata"
+            :relationships="relationships"
+            :parents="parents"
+            :guide="guide"
+            :guideTemplate="guideTemplate"
+            v-model:currentStep="currentStep"
+          />
+        </TabsContent>
+      </Tabs>
     </div>
     <Dialog v-model:open="confirmDelete">
       <DialogContent>

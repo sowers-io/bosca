@@ -35,7 +35,7 @@ if (metadata.value.content.type === 'bosca/v-document') {
         document.value.template?.version,
       )
       : null
-} else {
+} else if (metadata.value.content.type === 'bosca/v-guide') {
   guide.value = await client.metadata.getGuide(
     route.params.metadataId.toString(),
   )
@@ -44,6 +44,16 @@ if (metadata.value.content.type === 'bosca/v-document') {
       ? await client.metadata.getGuideTemplate(
         guide.value.template?.id,
         guide.value.template?.version,
+      )
+      : null
+  document.value = await client.metadata.getDocument(
+    route.params.metadataId.toString(),
+  )
+  documentTemplate.value =
+    document.value.template?.id && document.value.template?.version
+      ? await client.metadata.getDocumentTemplate(
+        document.value.template?.id,
+        document.value.template?.version,
       )
       : null
 }
@@ -64,24 +74,26 @@ client.listeners.onMetadataChanged(async (id) => {
 onMounted(() => {
   breadcrumbs.set([
     { title: 'Content', to: '/content' },
-    { title: 'Edit ' + (document.value ? 'Document' : 'Guide') },
+    { title: 'Edit ' + (guide.value ? 'Guide' : 'Document') },
   ])
 })
 </script>
 <template>
-  <ContentMetadataDocumentEditor
-    v-if="document"
+  <ContentMetadataGuideEditor
+    v-if="guide && document"
     :metadata="metadata"
+    :guide="guide"
+    :guideTemplate="guideTemplate"
     :document="document"
     :documentTemplate="documentTemplate"
     :parents="parents || []"
     :relationships="relationships"
   />
-  <ContentMetadataGuideEditor
-    v-if="guide"
+  <ContentMetadataDocumentEditor
+    v-else-if="document"
     :metadata="metadata"
-    :guide="guide"
-    :guideTemplate="guideTemplate"
+    :document="document"
+    :documentTemplate="documentTemplate"
     :parents="parents || []"
     :relationships="relationships"
   />
