@@ -48,7 +48,7 @@ fun DocumentTemplateDefinition.toDocumentTemplateInput(
     categoryIds = (collection.categories ?: emptyList()).map { categoryName ->
         categories[categoryName]?.id ?: error("Category `$categoryName` not found")
     }.toOptional(),
-    documentTemplate = collection.templates?.document?.toInput().toOptional(),
+    documentTemplate = collection.templates?.guide?.guide?.template?.toInput().toOptional(),
     contentType = "bosca/v-document-template",
     languageTag = "en",
     metadataType = MetadataType.STANDARD.toOptional(),

@@ -33,7 +33,7 @@ impl From<&Row> for Guide {
             version: row.get("version"),
             template_metadata_id: row.get("template_metadata_id"),
             template_metadata_version: row.get("template_metadata_version"),
-            rrule: rrule.map(|r| r.parse().unwrap()),
+            rrule: rrule.filter(|r| !r.is_empty()).map(|r| r.parse().unwrap()),
             guide_type: row.get("type"),
         }
     }

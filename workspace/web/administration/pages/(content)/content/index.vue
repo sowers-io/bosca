@@ -24,7 +24,6 @@ const client = useBoscaClient()
 const router = useRouter()
 
 const selectedId = ref('')
-const selectedType = ref('items')
 const currentPage = ref(1)
 const limit = ref(12)
 const offset = computed(() => (currentPage.value - 1) * limit.value)
@@ -56,9 +55,18 @@ const categoryIds = computed(() => {
   return []
 })
 
+const contentTypes = computed(() => {
+  for (const collection of collectionItems.value || []) {
+    if (collection.id === selectedId.value) {
+      return 'bosca/v-' + collection.attributes['editor.type'].toLowerCase()
+    }
+  }
+  return []
+})
+
 const { data: items } = client.metadata.findAsyncData({
   attributes: [],
-  contentTypes: ['bosca/v-document'],
+  contentTypes: contentTypes,
   categoryIds: categoryIds,
   offset: offset,
   limit: limit,
@@ -66,7 +74,7 @@ const { data: items } = client.metadata.findAsyncData({
 
 const { data: count } = client.metadata.findCountAsyncData({
   attributes: [],
-  contentTypes: ['bosca/v-document'],
+  contentTypes: contentTypes,
   categoryIds: categoryIds,
   offset: offset,
   limit: limit,
@@ -139,11 +147,7 @@ async function onAddDocument(
     item.categories.map((c) => c.id),
   )
   await client.metadata.setReady(metadataId)
-  if (selectedType.value === 'templates') {
-    await router.push(`/content/template/${metadataId}`)
-  } else {
-    await router.push(`/content/${metadataId}`)
-  }
+  await router.push(`/content/${metadataId}`)
 }
 
 async function onAddGuide(
@@ -162,8 +166,6 @@ async function onAddGuide(
     template.id,
     template.version,
   )
-  console.log(templateGuide)
-  console.log(templateDocument)
   const steps = []
   for (const templateStep of templateGuide.steps) {
     const modules: GuideStepModuleInput[] = []
@@ -174,7 +176,7 @@ async function onAddGuide(
       newStep.stepMetadataId = await newDocumentFromTemplate(
         templateStep.metadata.id,
         templateStep.metadata.version,
-        contentType,
+        contentType + '-step',
         {},
         item.id,
         'New Step ' + (steps.length + 1),
@@ -188,7 +190,7 @@ async function onAddGuide(
         moduleMetadataId: await newDocumentFromTemplate(
           module.metadata.id,
           module.metadata.version,
-          contentType,
+          contentType + '-module',
           {},
           item.id,
           'New Step Module ' + (modules.length + 1),
@@ -204,7 +206,6 @@ async function onAddGuide(
       attributes[key] = templateDocument.defaultAttributes[key]
     }
   }
-  console.log(steps)
   const metadata: MetadataInput = {
     parentCollectionId: item.id,
     name: 'New ' + item.attributes['editor.type'],
@@ -215,7 +216,9 @@ async function onAddGuide(
       templateMetadataId: template.id,
       templateMetadataVersion: template.version,
       guideType: templateGuide.type,
-      rrule: templateGuide.rrule && templateGuide.rrule.length > 0 ? templateGuide.rrule : null,
+      rrule: templateGuide.rrule && templateGuide.rrule.length > 0
+        ? templateGuide.rrule
+        : null,
       steps: steps,
     },
     document: {
@@ -236,47 +239,37 @@ async function onAddGuide(
   }
   const metadataId = await client.metadata.add(metadata)
   await client.metadata.setReady(metadataId)
-  if (selectedType.value === 'templates') {
-    await router.push(`/content/template/${metadataId}`)
-  } else {
-    await router.push(`/content/${metadataId}`)
-  }
+  await router.push(`/content/${metadataId}`)
 }
 
 async function onAdd() {
   for (const item of collectionItems.value || []) {
     if (item.id === selectedId.value) {
       console.log(item)
-      const attrs: { [key: string]: string } = {}
-      let ct = 'bosca/v-' + item.attributes['editor.type'].toLowerCase()
-      if (selectedType.value === 'templates') {
-        attrs['editor.type'] = 'Template'
-        attrs['template.type'] = item.attributes['editor.type']
-        ct += '-template'
-      } else {
-        attrs['editor.type'] = item.attributes['editor.type']
+      const contentType = 'bosca/v-' +
+        item.attributes['editor.type'].toLowerCase()
+      const attrs: { [key: string]: string } = {
+        'editor.type': item.attributes['editor.type'],
       }
-
       const templates = await client.metadata.find({
         attributes: [],
-        contentTypes: [ct + '-template'],
+        contentTypes: [contentType + '-template'],
         categoryIds: categoryIds,
         offset: 0,
         limit: 1,
       })
-
       const template = templates[0]
       if (!template) {
         toast({
-          title: 'No template found (' + ct + ')',
+          title: 'No template found (' + contentType + ')',
           description: 'Please create a template first',
         })
         return
       }
       if (item.attributes['editor.type'] === 'Document') {
-        await onAddDocument(template, ct, attrs, item)
+        await onAddDocument(template, contentType, attrs, item)
       } else if (item.attributes['editor.type'] === 'Guide') {
-        await onAddGuide(template, ct, attrs, item)
+        await onAddGuide(template, contentType, attrs, item)
       }
       break
     }

@@ -25,7 +25,7 @@ impl From<&Row> for GuideStep {
         Self {
             id: row.get("id"),
             metadata_id: row.get("metadata_id"),
-            metadata_version: row.get("metadata_version"),
+            metadata_version: row.get("version"),
             step_metadata_id: row.get("step_metadata_id"),
             step_metadata_version: row.get("step_metadata_version"),
         }

@@ -74,13 +74,13 @@ create table guide_steps
 
 create table guide_step_modules
 (
-    metadata_id             uuid   not null,
-    version                 int    not null,
-    step                    bigint not null,
-    id                      bigint not null,
-    module_metadata_id      uuid   not null,
-    module_metadata_version int    not null,
-    sort                    int    not null,
+    metadata_id             uuid      not null,
+    version                 int       not null,
+    step                    bigint    not null,
+    id                      bigserial not null,
+    module_metadata_id      uuid      not null,
+    module_metadata_version int       not null,
+    sort                    int       not null,
     primary key (metadata_id, version, step, id),
     foreign key (metadata_id) references metadata (id),
     foreign key (metadata_id, version, step) references guide_steps (metadata_id, version, id) on delete cascade,

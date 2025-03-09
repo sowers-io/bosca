@@ -377,9 +377,9 @@ export class ContentMetadata<T extends NetworkClient> extends Api<T> {
 
   async find(query: {
     attributes?:
-        | Array<FindAttributes>
-        | Ref<Array<FindAttributes>>
-        | null
+      | Array<FindAttributes>
+      | Ref<Array<FindAttributes>>
+      | null
     extension?: ExtensionFilterType | Ref<ExtensionFilterType> | null
     categoryIds?: Array<string> | Ref<string[]> | null
     contentTypes?: Array<string> | Ref<string[]> | null
@@ -396,10 +396,10 @@ export class ContentMetadata<T extends NetworkClient> extends Api<T> {
       limit: unref(query.limit),
     }
     const response = await this.network.execute(
-        FindMetadataDocument,
-        {
-          query: q,
-        },
+      FindMetadataDocument,
+      {
+        query: q,
+      },
     )
     return response?.content?.findMetadata as MetadataFragment[] | null || []
   }

@@ -2,6 +2,7 @@ use crate::context::BoscaContext;
 use crate::graphql::content::guide_template_step_module::GuideTemplateStepModuleObject;
 use crate::graphql::content::metadata::MetadataObject;
 use crate::models::content::guide_template_step::GuideTemplateStep;
+use crate::models::security::permission::PermissionAction;
 use async_graphql::{Context, Error, Object};
 use uuid::Uuid;
 
@@ -13,7 +14,11 @@ pub struct GuideTemplateStepObject {
 
 impl GuideTemplateStepObject {
     pub fn new(metadata_id: Uuid, metadata_version: i32, step: GuideTemplateStep) -> Self {
-        Self { metadata_id, metadata_version, step }
+        Self {
+            metadata_id,
+            metadata_version,
+            step,
+        }
     }
 }
 
@@ -27,8 +32,10 @@ impl GuideTemplateStepObject {
         let ctx = ctx.data::<BoscaContext>()?;
         if let Some(id) = &self.step.template_metadata_id {
             if let Some(version) = &self.step.template_metadata_version {
-                let metadata = ctx.content.metadata.get_by_version(id, *version).await?;
-                return Ok(metadata.map(MetadataObject::new));
+                let metadata = ctx
+                    .check_metadata_version_action(id, *version, PermissionAction::View)
+                    .await?;
+                return Ok(Some(MetadataObject::new(metadata)));
             }
         }
         Ok(None)

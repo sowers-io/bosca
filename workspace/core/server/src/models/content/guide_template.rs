@@ -28,7 +28,7 @@ impl From<&Row> for GuideTemplate {
         Self {
             metadata_id: row.get("metadata_id"),
             version: row.get("version"),
-            rrule: rrule.map(|r| r.parse().unwrap()),
+            rrule: rrule.filter(|r| !r.is_empty()).map(|r| r.parse().unwrap()),
             guide_type: row.get("type"),
         }
     }
