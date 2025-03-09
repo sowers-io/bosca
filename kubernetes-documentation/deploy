@@ -1,0 +1,17 @@
+#!/bin/bash
+
+if [ "$IMAGE_TAG" != "" ]; then
+  echo "" >> kustomization.yaml
+  echo "images:" >> kustomization.yaml
+
+  echo_image() {
+      echo "  - name: $1" >> kustomization.yaml
+      echo "    newTag: $2" >> kustomization.yaml
+  }
+
+  echo_image "ghcr.io/sowers-io/bosca/documentation" $IMAGE_TAG
+fi
+
+kubectl kustomize | kubectl --kubeconfig config -n bosca apply -f -
+
+kubectl --kubeconfig config rollout status -n bosca deployment/documentation
