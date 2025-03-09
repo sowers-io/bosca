@@ -48,16 +48,6 @@ jobs:
           instance: ${{ env.INSTANCE }}
           docker-version: ${{ env.DOCKER_VERSION }}
 
-      - name: Build Documentation Image
-        uses: docker/build-push-action@v3
-        with:
-          context: .
-          file: Dockerfile
-          push: true
-          tags: |
-            ghcr.io/sowers-io/bosca/documentation:latest
-            ghcr.io/sowers-io/bosca/documentation:${{ github.sha }}
-
       - name: Save artifact with build results
         uses: actions/upload-artifact@v4
         with:
