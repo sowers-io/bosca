@@ -19,7 +19,7 @@ fi
 
 kubectl kustomize | kubectl --kubeconfig config -n bosca apply -f -
 
-kubectl --kubeconfig config rollout status -n bosca deployment/analytics-backend
+kubectl --kubeconfig config rollout status -n bosca statefulset/analytics-backend
 kubectl --kubeconfig config rollout status -n bosca deployment/analytics-frontend
 kubectl --kubeconfig config rollout status -n bosca deployment/server
 kubectl --kubeconfig config rollout status -n bosca deployment/workflow-server
