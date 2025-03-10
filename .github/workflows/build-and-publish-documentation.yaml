@@ -1,4 +1,4 @@
-name: Build & Publish
+name: Build & Publish Documentation
 
 on:
   push:
@@ -95,11 +95,6 @@ jobs:
 
       - name: Unzip artifact
         run: unzip -O UTF-8 -qq "artifacts/${{ needs.build.outputs.artifact }}" -d docs-build/out
-
-      - name: Override index.html
-        run: |
-          mkdir -p docs-build/out
-          cp docs-build/out/introduction.html docs-build/out/index.html
 
       - name: Build Documentation Image
         uses: docker/build-push-action@v3
