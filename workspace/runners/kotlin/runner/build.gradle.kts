@@ -56,6 +56,7 @@ graalvmNative {
             imageName.set("bosca-runner")
             mainClass.set("io.bosca.MainKt")
             buildArgs.addAll(
+                "-H:+StaticExecutableWithDynamicLibC",
                 "-H:+AllowDeprecatedBuilderClassesOnImageClasspath",
                 "-H:+UnlockExperimentalVMOptions",
                 "-O1",
