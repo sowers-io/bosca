@@ -12,5 +12,5 @@ delivering actionable insights and personalized user experiences that drive mean
 
 ## Getting Started:
 
-Discover how Bosca can elevate your content strategy. Visit the [Quickstart Guide](https://docs.bosca.io/quickstart) to 
+Discover how Bosca can elevate your content strategy. Visit the [Quickstart Guide](https://docs.bosca.io/quickstart.html) to 
 get started today.
