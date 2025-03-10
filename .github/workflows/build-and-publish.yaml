@@ -117,6 +117,7 @@ jobs:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
       IMAGE_TAG: ${{ github.sha }}
+      GITHUB_TOKEN: ${{ secrets.PRIVATE_PAT }}
     steps:
       - uses: actions/checkout@v4
         with:

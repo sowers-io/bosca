@@ -12,9 +12,6 @@ version = "1.0-SNAPSHOT"
 repositories {
     mavenLocal()
     mavenCentral()
-    maven {
-        url = uri("https://maven.pkg.github.com/sowers-io")
-    }
 }
 
 dependencies {
