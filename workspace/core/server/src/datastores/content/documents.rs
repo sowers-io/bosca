@@ -103,7 +103,7 @@ impl DocumentsDataStore {
         Ok(results.iter().map(|r| r.into()).collect())
     }
 
-    pub async fn add_template(
+    pub async fn add_template_txn(
         &self,
         txn: &Transaction<'_>,
         metadata_id: &Uuid,

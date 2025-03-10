@@ -21,7 +21,9 @@ data class EditorConfiguration(
     @SerialName("editor.type")
     val editorType: String,
     @SerialName("template.type")
-    val templateType: String? = null
+    val templateType: String? = null,
+    @SerialName("template.type.sub")
+    val subTemplateType: String? = null
 )
 
 class CollectionsInstaller(val client: Client) : Installer {

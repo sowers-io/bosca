@@ -676,7 +676,7 @@ impl MetadataDataStore {
         if let Some(document_template) = &metadata.document_template {
             ctx.content
                 .documents
-                .add_template(txn, &id, version, document_template)
+                .add_template_txn(txn, &id, version, document_template)
                 .await?;
         }
         if let Some(guide) = &metadata.guide {
@@ -701,11 +701,12 @@ impl MetadataDataStore {
         self.ensure_content_type_traits(&id, &metadata.content_type, txn)
             .await?;
 
-        update_metadata_etag(&txn, &id).await?;
+        update_metadata_etag(txn, &id).await?;
 
         Ok((id, version, active_version))
     }
 
+    #[allow(clippy::too_many_arguments)]
     async fn edit_txn<'a>(
         &'a self,
         ctx: &BoscaContext,

@@ -11,8 +11,7 @@ const { metaSymbol } = useShortcuts()
 const client = useBoscaClient()
 const openCommand = ref(false)
 const router = useRouter()
-const { data: storageSystems } = await client.workflows
-  .getStorageSystemsAsyncData()
+const { data: storageSystems, refresh } = await client.workflows.getStorageSystemsAsyncData()
 
 const search = ref('')
 const offset = ref(0)
@@ -58,6 +57,10 @@ function onResultSelected(
   router.push(getLink(item))
   openCommand.value = false
 }
+
+onMounted(() => {
+  refresh()
+})
 </script>
 
 <template>

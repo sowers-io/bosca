@@ -97,6 +97,7 @@ client.listeners.onMetadataSupplementaryChanged(async (id, key) => {
             class="flex items-center justify-center ms-2 size-5 p-0"
             variant="ghost"
             @click="onRunWorkflow()"
+            v-if="editor.isEditable"
           >
             <Icon
               name="i-lucide-sparkles"

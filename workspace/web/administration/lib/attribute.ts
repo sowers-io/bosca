@@ -58,6 +58,9 @@ export class AttributeState {
   }
 
   get dateTimeValue(): string {
+    if (this.key === 'published' && (!this._value || this._value === 0)) {
+      this._value = new Date().getTime()
+    }
     if (typeof this._value === 'number') {
       return new Date(this._value).toLocaleDateString('en-US', {
         year: 'numeric',
@@ -72,6 +75,9 @@ export class AttributeState {
   }
 
   set dateTimeValue(value: string) {
+    if (this.key === 'published' && (!this._value || this._value === 0)) {
+      this._value = new Date().getTime()
+    }
     try {
       const date = new Date(Date.parse(value))
       if (isNaN(date.getTime())) throw new Error('invalid date')
@@ -90,6 +96,9 @@ export class AttributeState {
   }
 
   get value(): any {
+    if (this.key === 'published' && (!this._value || this._value === 0)) {
+      this._value = new Date().getTime()
+    }
     return this._value
   }
 

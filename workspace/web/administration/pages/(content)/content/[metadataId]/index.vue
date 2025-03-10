@@ -20,40 +20,6 @@ const metadata = ref<MetadataFragment>()
 const relationships = ref<Array<MetadataRelationshipFragment>>()
 const parents = ref<Array<ParentCollectionFragment> | null>()
 
-async function loadMetadata(id: string) {
-  metadata.value = await client.metadata.get(id)
-  relationships.value = await client.metadata.getRelationships(id)
-  parents.value = await client.metadata.getParents(id)
-  console.log(id, metadata.value)
-}
-
-async function loadDocument(id: string) {
-  document.value = await client.metadata.getDocument(id)
-  documentTemplate.value =
-    document.value.template?.id && document.value.template?.version
-      ? await client.metadata.getDocumentTemplate(
-        document.value.template?.id,
-        document.value.template?.version,
-      )
-      : null
-}
-
-async function loadGuide(id: string) {
-  guide.value = await client.metadata.getGuide(
-    route.params.metadataId.toString(),
-  )
-  guideTemplate.value =
-    guide.value.template?.id && guide.value.template?.version
-      ? await client.metadata.getGuideTemplate(
-        guide.value.template?.id,
-        guide.value.template?.version,
-      )
-      : null
-  await loadDocument(id)
-}
-
-await loadMetadata(route.params.metadataId.toString())
-
 const document = ref<DocumentFragment>()
 const documentTemplate = ref<DocumentTemplateFragment | null>()
 const guide = ref<GuideFragment>()
@@ -61,25 +27,50 @@ const guideTemplate = ref<GuideTemplateFragment | null>()
 const currentStep = ref<GuideStepFragment | null>(null)
 const currentModule = ref<GuideStepModuleFragment | null>(null)
 
-if (metadata.value?.content.type === 'bosca/v-document') {
-  await loadDocument(route.params.metadataId.toString())
-} else if (metadata.value?.content.type === 'bosca/v-guide') {
-  await loadGuide(route.params.metadataId.toString())
+async function loadMetadata(id: string) {
+  metadata.value = await client.metadata.get(id)
+  relationships.value = await client.metadata.getRelationships(id)
+  parents.value = await client.metadata.getParents(id)
+}
+
+async function loadDocument(id: string) {
+  const d = await client.metadata.getDocument(id)
+  documentTemplate.value =
+    d.template?.id && d.template?.version
+      ? await client.metadata.getDocumentTemplate(
+        d.template?.id,
+        d.template?.version,
+      )
+      : null
+  document.value = d
+  await loadMetadata(id)
+}
+
+async function loadGuide(id: string) {
+  const g = await client.metadata.getGuide(id)
+  guideTemplate.value =
+    g.template?.id && g.template?.version
+      ? await client.metadata.getGuideTemplate(
+            g.template?.id,
+            g.template?.version,
+      )
+      : null
+  guide.value = g
+  await loadDocument(id)
 }
 
 watch(currentStep, async (step) => {
-  console.log('step', step)
   if (!step) {
     await loadDocument(route.params.metadataId.toString())
     await loadMetadata(route.params.metadataId.toString())
   } else if (step.metadata) {
+    console.log(step.metadata.id, step.metadata.name, step.metadata.type)
     await loadDocument(step.metadata.id)
     await loadMetadata(step.metadata.id)
   }
 })
 
 watch(currentModule, async (module) => {
-  console.log('module', module)
   if (!module && currentStep.value) {
     await loadDocument(currentStep.value.metadata!.id)
     await loadMetadata(currentStep.value.metadata!.id)
@@ -107,14 +98,19 @@ client.listeners.onMetadataChanged(async (id) => {
   }
 })
 
-onMounted(() => {
+onMounted(async () => {
+  await loadMetadata(route.params.metadataId.toString())
+  if (metadata.value?.content.type === 'bosca/v-document') {
+    await loadDocument(route.params.metadataId.toString())
+  } else if (metadata.value?.content.type === 'bosca/v-guide') {
+    await loadGuide(route.params.metadataId.toString())
+  }
   const items: BreadcrumbLink[] = [
     { title: 'Content', to: '/content' },
   ]
-  if (guide.value) {
-    items.push({ title: 'Edit Guide' })
-  } else {
-    items.push({ title: 'Edit Document' })
+  items.push({ title: 'Manage ' + (metadata.value?.attributes['type']) })
+  if (metadata.value?.name) {
+    items.push({ title: metadata.value?.name })
   }
   breadcrumbs.set(items)
 })

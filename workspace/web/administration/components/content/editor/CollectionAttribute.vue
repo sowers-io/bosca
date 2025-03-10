@@ -30,6 +30,10 @@ const { data } = client.search.searchAsyncData(
   limit,
   storageSystemId || '',
 )
+
+function onSelect(id: CollectionIdNameFragment) {
+  props.attribute!.value = id
+}
 </script>
 
 <template>
@@ -40,6 +44,7 @@ const { data } = client.search.searchAsyncData(
         <Combobox
           v-model:search-term="query"
           :display-value="(val: any) => attribute?.value?.name"
+          :reset-search-term-on-select="true"
           :filter-function="(val: any) => val"
         >
           <ComboboxAnchor
@@ -83,12 +88,7 @@ const { data } = client.search.searchAsyncData(
                 :key="collection.id!"
                 :value="collection.id!"
                 class="cursor-pointer"
-                @click="
-                  ;((e: any) => {
-                    attribute!.value = collection
-                    e.preventDefault()
-                  })
-                "
+                @click="onSelect(collection)"
               >
                 <CollectionItem
                   :collection="collection as CollectionIdNameFragment"

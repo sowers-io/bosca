@@ -14,13 +14,15 @@ suspend fun GuideTemplateDefinition.toInput(
     categories: Map<String, Category>
 ): Pair<GuideTemplateInput, DocumentTemplateInput?> {
     val steps = mutableListOf<GuideTemplateStepInput>()
-    for (step in guide.steps) {
+    for ((stepIndex, step) in guide.steps.withIndex()) {
         val modules = mutableListOf<GuideTemplateStepModuleInput>()
-        for (module in step.modules) {
+        for ((moduleIndex, module) in step.modules.withIndex()) {
             val metadata = module.template.toDocumentTemplateInput(
                 parentCollectionId,
                 collection,
-                categories
+                categories,
+                "Module",
+                moduleIndex
             )
             val current = client.get(metadata.slug.getOrThrow() ?: error("Missing slug"))?.metadata
             val template = if (current != null) {
@@ -40,7 +42,9 @@ suspend fun GuideTemplateDefinition.toInput(
         val stepMetadata = step.template?.toDocumentTemplateInput(
             parentCollectionId,
             collection,
-            categories
+            categories,
+            "Step",
+            stepIndex
         )
         val stepCurrent = stepMetadata?.let { client.get(it.slug.getOrThrow() ?: error("Missing slug"))?.metadata }
         val template = if (stepMetadata != null) {
@@ -62,11 +66,11 @@ suspend fun GuideTemplateDefinition.toInput(
             )
         )
     }
-    return Pair(
-        GuideTemplateInput(
-            rrule = guide.rrule,
-            type = GuideType.valueOf(guide.type),
-            steps = steps
-        ), guide.template?.toInput()
+    val guideTemplate = GuideTemplateInput(
+        rrule = guide.rrule,
+        type = GuideType.valueOf(guide.type),
+        steps = steps
     )
+    val documentTemplate = guide.template?.toInput()
+    return Pair(guideTemplate, documentTemplate)
 }

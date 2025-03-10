@@ -38,22 +38,26 @@ fun CollectionTemplateDefinition.toCollectionTemplateInput(
 fun DocumentTemplateDefinition.toDocumentTemplateInput(
     parentCollectionId: String,
     collection: CollectionDefinition,
-    categories: Map<String, Category>
+    categories: Map<String, Category>,
+    subTemplateType: String? = null,
+    index: Int? = null,
 ) = MetadataInput(
-    name = collection.name + " Document Template",
+    name = collection.name + (subTemplateType?.let { " $it" } ?: "") + " Document Template",
     attributes = (EditorConfiguration(
         editorType = "Template",
         templateType = collection.editorType,
+        subTemplateType = subTemplateType,
     ).encode() as Map<String, Any> + collection.attributes).toOptional(),
     categoryIds = (collection.categories ?: emptyList()).map { categoryName ->
         categories[categoryName]?.id ?: error("Category `$categoryName` not found")
     }.toOptional(),
-    documentTemplate = collection.templates?.guide?.guide?.template?.toInput().toOptional(),
+    documentTemplate = toInput().toOptional(),
     contentType = "bosca/v-document-template",
     languageTag = "en",
     metadataType = MetadataType.STANDARD.toOptional(),
     parentCollectionId = parentCollectionId.toOptional(),
-    slug = (collection.slug + "-document-template").toOptional(),
+    slug = (collection.slug + (subTemplateType?.lowercase()?.let { "$it-" }
+        ?: "") + "-document-template" + (index?.let { "-$it" } ?: "")).toOptional(),
 )
 
 @Suppress("UNCHECKED_CAST")

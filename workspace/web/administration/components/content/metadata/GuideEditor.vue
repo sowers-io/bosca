@@ -11,6 +11,7 @@ import {
   type ParentCollectionFragment,
   WorkflowStateType,
 } from '~/lib/graphql/graphql.ts'
+import {TooltipRoot} from "radix-vue";
 
 const router = useRouter()
 const client = useBoscaClient()
@@ -27,7 +28,7 @@ const props = defineProps<{
   currentModule: GuideStepModuleFragment | null | undefined
 }>()
 
-const currentStep = defineModel('currentStep', { type: Object, default: null })
+const currentStep = defineModel('currentStep', {type: Object, default: null})
 const currentModule = defineModel('currentModule', {
   type: Object,
   default: null,
@@ -40,22 +41,22 @@ const metadata = defineModel<MetadataFragment>('metadata', {
 
 const guideCollection = computed(() => {
   return props.parents?.find((c) => c.attributes['editor.type'] === 'Guide') as
-    | ParentCollectionFragment
-    | undefined
+      | ParentCollectionFragment
+      | undefined
 })
 const parentCollections = computed(() => {
   return props.parents?.filter((c) =>
-    c.attributes['editor.type'] !== 'Guide'
+      c.attributes['editor.type'] !== 'Guide'
   ) || []
 })
 
-const { data: states } = client.workflows.getStatesAsyncData()
+const {data: states} = client.workflows.getStatesAsyncData()
 const stateName = computed(() => {
   return states.value?.find((s) => s.id === props.metadata.workflow.state)?.name
 })
 const pendingStateName = computed(() => {
   return states.value?.find((s) => s.id === props.metadata.workflow.pending)
-    ?.name
+      ?.name
 })
 
 const hasChanges = ref(false)
@@ -83,18 +84,18 @@ async function onPublish() {
   }
   const states = await client.workflows.getStates() || []
   const published =
-    states.find((s) => s.type === WorkflowStateType.Published)?.id || ''
+      states.find((s) => s.type === WorkflowStateType.Published)?.id || ''
   let stateValid: Date | null = null
   if (props.metadata.attributes['published']) {
     stateValid = new Date(Date.parse(props.metadata.attributes['published']))
   }
   if (props.metadata.workflow.state !== published) {
     await client.metadata.beginTransition(
-      props.metadata.id,
-      props.metadata.version,
-      published,
-      'Publishing Guide',
-      stateValid,
+        props.metadata.id,
+        props.metadata.version,
+        published,
+        'Publishing Guide',
+        stateValid,
     )
   }
   if (!props.metadata.public) {
@@ -109,11 +110,11 @@ async function onPublish() {
     }
     if (relationship.metadata.workflow.state !== published) {
       await client.metadata.beginTransition(
-        relationship.metadata.id,
-        relationship.metadata.version,
-        published,
-        'Publishing Guide',
-        stateValid,
+          relationship.metadata.id,
+          relationship.metadata.version,
+          published,
+          'Publishing Guide',
+          stateValid,
       )
     }
     if (!relationship.metadata.public) {
@@ -129,27 +130,27 @@ async function onUnpublish() {
   const states = await client.workflows.getStates() || []
   if (props.metadata.workflow.stateValid) {
     await client.metadata.cancelTransition(
-      props.metadata.id,
-      props.metadata.version,
+        props.metadata.id,
+        props.metadata.version,
     )
   } else {
     await client.metadata.beginTransition(
-      props.metadata.id,
-      props.metadata.version,
-      states.find((s) => s.type === WorkflowStateType.Draft)?.id || '',
-      'Unpublishing Guide',
+        props.metadata.id,
+        props.metadata.version,
+        states.find((s) => s.type === WorkflowStateType.Draft)?.id || '',
+        'Unpublishing Guide',
     )
   }
 }
 
 async function onPreview() {
   const configuration = await client.configurations.getConfiguration(
-    'preview.url',
+      'preview.url',
   )
   if (!configuration || !props.metadata?.slug) return
   window.open(
-    configuration.value.value + '?slug=' + props.metadata!.slug,
-    '_blank',
+      configuration.value.value + '?slug=' + props.metadata!.slug,
+      '_blank',
   )
 }
 
@@ -182,6 +183,7 @@ function onBackClick() {
 }
 
 const selected = ref('guide')
+const currentPage = ref(1)
 
 watch(currentStep, (step) => {
   selected.value = step ? 'guide' : 'steps'
@@ -189,154 +191,127 @@ watch(currentStep, (step) => {
 watch(currentModule, (module) => {
   selected.value = module ? 'guide' : 'modules'
 })
+
+watch(currentPage, (page) => {
+  if (page === 1) {
+    currentStep.value = null
+    currentModule.value = null
+  } else if (page > 1) {
+    currentStep.value = props.guide.steps[page - 2]
+  }
+})
 </script>
 <template>
   <div>
-    <Tabs
-      v-model:model-value="selected"
-      class="h-full space-y-6"
-    >
-      <div class="flex items-center">
-        <div class="flex">
-          <div>
-            <Badge variant="secondary">{{ stateName }}
-              <span v-if="metadata.workflow.pending">*</span></Badge>
-            <Badge variant="secondary" class="ms-4" v-if="pendingStateName">{{
+    <div class="flex items-center">
+      <div class="flex">
+        <div>
+          <Badge variant="secondary">{{ stateName }}
+            <span v-if="metadata.workflow.pending">*</span></Badge>
+          <Badge variant="secondary" class="ms-4" v-if="pendingStateName">{{
               pendingStateName
-            }}</Badge>
-            <Badge
+            }}
+          </Badge>
+          <Badge
               variant="outline"
               :class="
                 'ms-2 text-gray-400 ' +
                 (!hasChanges ? ' invisible' : '')
               "
-            >Has Changes
-            </Badge>
-            <Badge
+          >Has Changes
+          </Badge>
+          <Badge
               variant="destructive"
               :class="'ms-2 ' + (!outOfDate ? ' invisible' : '')"
-            >Out of Date</Badge>
-          </div>
+          >Out of Date
+          </Badge>
         </div>
-        <div class="grow">
-          <div class="w-full flex items-center justify-center">
-            <TabsList
-              v-if="
-                guide.steps && guide.steps.length > 0 &&
-                !currentStep
-              "
-            >
-              <TabsTrigger value="guide" :disabled="hasChanges || !document">
-                Guide Document
-              </TabsTrigger>
-              <TabsTrigger value="steps" :disabled="hasChanges">
-                Guide Steps
-              </TabsTrigger>
-            </TabsList>
-            <div v-if="currentStep">
-              <Button variant="ghost" @click="onBackClick" class="mr-2">
-                <Icon name="i-lucide-arrow-left" class="size-4" />
-              </Button>
-            </div>
-            <TabsList v-if="currentStep && !currentModule">
-              <TabsTrigger value="guide" :disabled="hasChanges">
-                Guide Step
-              </TabsTrigger>
-              <TabsTrigger value="modules" :disabled="hasChanges">
-                Guide Modules
-              </TabsTrigger>
-            </TabsList>
-            <TabsList v-if="currentStep && currentModule">
-              <TabsTrigger value="guide" :disabled="hasChanges">
-                Guide Module
-              </TabsTrigger>
-            </TabsList>
-          </div>
-        </div>
-        <div class="flex gap-2">
-          <Tooltip v-if="metadata?.workflow?.state === 'draft'">
-            <TooltipTrigger as-child>
-              <Button
+      </div>
+      <div class="grow"/>
+      <div class="flex gap-2">
+        <Tooltip v-if="metadata?.workflow?.state === 'draft'">
+          <TooltipTrigger as-child>
+            <Button
                 @click="reset"
                 class="flex gap-2"
                 variant="secondary"
                 :disabled="!hasChanges"
-              >
-                <Icon name="i-lucide-rotate-ccw" class="size-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Reset Guide</p>
-            </TooltipContent>
-          </Tooltip>
-          <Tooltip v-if="metadata?.workflow?.state === 'draft'">
-            <TooltipTrigger as-child>
-              <Button
+            >
+              <Icon name="i-lucide-rotate-ccw" class="size-4"/>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Reset Guide</p>
+          </TooltipContent>
+        </Tooltip>
+        <Tooltip v-if="metadata?.workflow?.state === 'draft'">
+          <TooltipTrigger as-child>
+            <Button
                 @click="onSave"
                 class="flex gap-2"
                 variant="secondary"
                 :disabled="!hasChanges"
-              >
-                <Icon name="i-lucide-save" class="size-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Save Guide</p>
-            </TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger as-child>
-              <Button
+            >
+              <Icon name="i-lucide-save" class="size-4"/>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Save Guide</p>
+          </TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger as-child>
+            <Button
                 @click="onPreview"
                 :disabled="hasChanges"
                 class="flex gap-2"
                 variant="secondary"
-              >
-                <Icon name="i-lucide-screen-share" class="size-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Preview Guide</p>
-            </TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger as-child>
-              <Button @click="onDelete" class="flex gap-2" variant="secondary">
-                <Icon name="i-lucide-trash" class="size-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Delete Guide</p>
-            </TooltipContent>
-          </Tooltip>
-          <Tooltip
+            >
+              <Icon name="i-lucide-screen-share" class="size-4"/>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Preview Guide</p>
+          </TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger as-child>
+            <Button @click="onDelete" class="flex gap-2" variant="secondary">
+              <Icon name="i-lucide-trash" class="size-4"/>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Delete Guide</p>
+          </TooltipContent>
+        </Tooltip>
+        <Tooltip
             v-if="
               metadata?.workflow?.state === 'draft' &&
               !metadata?.workflow?.stateValid
             "
-          >
-            <TooltipTrigger as-child>
-              <Button
+        >
+          <TooltipTrigger as-child>
+            <Button
                 @click="onPublish"
                 :disabled="hasChanges || metadata?.workflow?.pending"
                 class="flex gap-2"
                 variant="secondary"
-              >
-                <Icon name="i-lucide-square-play" class="size-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Publish Guide</p>
-            </TooltipContent>
-          </Tooltip>
-          <Tooltip
+            >
+              <Icon name="i-lucide-square-play" class="size-4"/>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Publish Guide</p>
+          </TooltipContent>
+        </Tooltip>
+        <Tooltip
             v-if="
               metadata?.workflow?.state === 'published' ||
               metadata?.workflow?.stateValid
             "
-          >
-            <TooltipTrigger as-child>
-              <Button
+        >
+          <TooltipTrigger as-child>
+            <Button
                 @click="onUnpublish"
                 :disabled="
                   metadata?.workflow?.pending &&
@@ -344,17 +319,17 @@ watch(currentModule, (module) => {
                 "
                 class="flex gap-2"
                 variant="secondary"
-              >
-                <Icon name="i-lucide-square-square" class="size-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Unpublish Guide</p>
-            </TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger as-child>
-              <Button
+            >
+              <Icon name="i-lucide-square-square" class="size-4"/>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Unpublish Guide</p>
+          </TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger as-child>
+            <Button
                 :disabled="hasChanges"
                 @click="
                   router.push(
@@ -364,23 +339,56 @@ watch(currentModule, (module) => {
                 "
                 class="flex gap-2"
                 variant="secondary"
-              >
-                <Icon name="i-lucide-bolt" class="size-4" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Advanced Settings</p>
-            </TooltipContent>
-          </Tooltip>
-        </div>
+            >
+              <Icon name="i-lucide-bolt" class="size-4"/>
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Advanced Settings</p>
+          </TooltipContent>
+        </Tooltip>
       </div>
-      <div class="border-none p-0 outline-none mt-4">
-        <TabsContent
-          value="guide"
-          class="border-none p-0 outline-none"
-          v-if="document"
-        >
-          <ContentMetadataEditor
+    </div>
+    <div class="border-none p-0 outline-none mt-4">
+      <div class="flex gap-4">
+        <TooltipRoot>
+          <Pagination v-slot="{ page }" :items-per-page="1" :total="(guide.steps?.length || 0) + 1" :sibling-count="6" show-edges :default-page="1" v-model:page="currentPage">
+            <PaginationList v-slot="{ items }" class="flex items-center gap-1">
+              <PaginationFirst/>
+              <PaginationPrev/>
+              <template v-for="(item, index) in items">
+                <PaginationListItem v-if="item.type === 'page'" :key="index" :value="item.value" as-child>
+                  <Tooltip>
+                    <TooltipTrigger as-child>
+                      <Button class="h-9" :variant="item.value === page ? 'default' : 'outline'" @click="currentPage = item.value">
+                        <template v-if="item.value === 1">
+                          <Icon name="i-lucide-info" class="size-4"/>
+                        </template>
+                        <template v-else>
+                          {{ item.value - 1 }}
+                        </template>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <template v-if="item.value === 1">
+                        Introduction
+                      </template>
+                      <template v-else>
+                        {{ guide.steps[item.value - 2]?.metadata?.name || 'Step ' + (item.value - 2) }}
+                      </template>
+                    </TooltipContent>
+                  </Tooltip>
+                </PaginationListItem>
+                <PaginationEllipsis v-else :key="item.type" :index="index"/>
+              </template>
+              <PaginationNext/>
+              <PaginationLast/>
+            </PaginationList>
+          </Pagination>
+        </TooltipRoot>
+      </div>
+      <div class="mt-5" v-if="document">
+        <ContentMetadataEditor
             :key="metadata.id"
             :documentCollection="guideCollection"
             :parents="parentCollections"
@@ -389,75 +397,15 @@ watch(currentModule, (module) => {
             :template="documentTemplate"
             v-model:metadata="metadata"
             v-model:has-changes="hasChanges"
-          />
-        </TabsContent>
-        <TabsContent
-          value="steps"
-          class="border-none p-0 outline-none"
-          v-if="!currentStep && guide.steps && guide.steps.length > 0"
-        >
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <TableRow
-                v-for="(step, index) in guide.steps || []"
-                :key="step.metadata?.id || index.toString()"
-                @click="currentStep = step"
-                class="cursor-pointer"
-              >
-                <TableCell>
-                  {{
-                    step.metadata?.name ||
-                    ('Step ' + (index + 1))
-                  }}
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        </TabsContent>
-        <TabsContent
-          value="modules"
-          class="border-none p-0 outline-none"
-          v-if="
-            currentStep && currentStep.modules &&
-            currentStep.modules.length > 0
-          "
-        >
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <TableRow
-                v-for="(module, index) in currentStep.modules || []"
-                :key="module.metadata?.id || index.toString()"
-                @click="currentModule = module"
-                class="cursor-pointer"
-              >
-                <TableCell>
-                  {{
-                    module.metadata?.name ||
-                    ('Module ' + (index + 1))
-                  }}
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        </TabsContent>
+        />
       </div>
-    </Tabs>
+    </div>
     <Dialog v-model:open="confirmDelete">
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Delete Guide</DialogTitle>
           <DialogDescription>
-            Are you sure you want to delete this guide?<br />
+            Are you sure you want to delete this guide?<br/>
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
@@ -476,7 +424,7 @@ watch(currentModule, (module) => {
         <DialogHeader>
           <DialogTitle>Reset Guide</DialogTitle>
           <DialogDescription>
-            Are you sure you want to reset this guide?<br />
+            Are you sure you want to reset this guide?<br/>
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>

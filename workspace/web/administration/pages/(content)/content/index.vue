@@ -19,14 +19,28 @@ import {
   PaginationNext,
   PaginationPrev,
 } from '~/components/ui/pagination'
+import { useStorage } from '@vueuse/core'
 
 const client = useBoscaClient()
 const router = useRouter()
 
+const currentContentPage = useStorage('selected-content-page', 1)
+const selectedContentTab = useStorage('selected-content-tab', '')
 const selectedId = ref('')
 const currentPage = ref(1)
 const limit = ref(12)
 const offset = computed(() => (currentPage.value - 1) * limit.value)
+
+watch(selectedId, () => {
+  if (selectedContentTab.value != selectedId.value) {
+    selectedContentTab.value = selectedId.value
+    currentPage.value = 1
+  }
+})
+
+watch(currentPage, () => {
+  currentContentPage.value = currentPage.value
+})
 
 const { data: collection } = client.collections.findAsyncData({
   attributes: [{
@@ -58,7 +72,7 @@ const categoryIds = computed(() => {
 const contentTypes = computed(() => {
   for (const collection of collectionItems.value || []) {
     if (collection.id === selectedId.value) {
-      return 'bosca/v-' + collection.attributes['editor.type'].toLowerCase()
+      return ['bosca/v-' + collection.attributes['editor.type'].toLowerCase()]
     }
   }
   return []
@@ -281,6 +295,8 @@ const breadcrumbs = useBreadcrumbs()
 
 onMounted(() => {
   breadcrumbs.set([{ title: 'Content' }])
+  selectedId.value = selectedContentTab.value
+  currentPage.value = currentContentPage.value
 })
 </script>
 

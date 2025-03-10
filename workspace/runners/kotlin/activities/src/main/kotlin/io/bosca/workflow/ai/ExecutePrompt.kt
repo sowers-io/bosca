@@ -44,6 +44,7 @@ class ExecutePrompt(client: Client) : Activity(client) {
     }
 
     override suspend fun execute(context: ActivityContext, job: WorkflowJob) {
+        println("Executing prompt: ${job.prompts.firstOrNull()?.prompt?.prompt?.name}")
         val promptContext = getContext<PromptContext>(job).let {
             it.copy(tries = it.tries + 1)
         }
@@ -72,7 +73,7 @@ class ExecutePrompt(client: Client) : Activity(client) {
 
         var chatRequestBuilder: ChatRequest.Builder = ChatRequest.builder()
 
-        if (prompt.schema != null) {
+        if (prompt.schema != null && (prompt.schema as? Map<*, *>)?.isNotEmpty() == true) {
             prompt.schema.decode<JsonSchema>()?.let {
                 chatRequestBuilder = chatRequestBuilder
                     .parameters(
@@ -93,9 +94,13 @@ class ExecutePrompt(client: Client) : Activity(client) {
             .messages(systemMessage, userMessage)
             .build()
 
+        println("Sending Request for: ${job.prompts.firstOrNull()?.prompt?.prompt?.name}...")
+
         val chatModel: ChatLanguageModel = model.toChatLanguageModel(client)
         val chatResponse = chatModel.chat(chatRequest)
         val text = chatResponse.aiMessage().text().takeIf { it.isNotEmpty() && it != "null" } ?: ""
+
+        println("Got response for: ${job.prompts.firstOrNull()?.prompt?.prompt?.name}...")
 
         setSupplementaryContents(
             job,

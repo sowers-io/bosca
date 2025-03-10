@@ -1,0 +1,12 @@
+fragment Guide on Guide {
+    template {
+        id
+        version
+    }
+    rrule
+    type
+    steps {
+        ...GuideStep
+    }
+}
+
