@@ -129,6 +129,8 @@ jobs:
           java-version: '23.0.2'
           distribution: 'graalvm-community'
 
+      - run: cd workspace/runners/enterprise/bible && ./gradlew publishToMavenLocal
+
       - run: cd workspace/runners/kotlin && ./gradlew nativeBuild
 
       - name: Set up Docker Buildx
