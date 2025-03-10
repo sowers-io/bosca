@@ -23,9 +23,9 @@ services:
       DATABASE_URL: postgres://bosca:bosca@postgres:5432/bosca
       REDIS_JOBS_QUEUE_URL: redis://dragonfly:6379
       REDIS_NOTIFIER_PUBSUB_URL: redis://dragonfly:6379
-      JWT_AUDIENCE: bosca.io
-      JWT_ISSUER: bosca-graphql
-      JWT_SECRET: bosca1234*
+      JWT_AUDIENCE: bosca.local
+      JWT_ISSUER: bosca.local
+      JWT_SECRET: QuujwfwQKbdn2GkV64Ri
       SEARCH_KEY: p8JcB_HuMHRxN7uVXfrG2wU06b5k7oTvaAAYo6nsi9M
       SEARCH_URL: http://meilisearch:7700
       STORAGE: s3
@@ -42,8 +42,27 @@ services:
     restart: always
     networks:
       - boscanet
+    healthcheck:
+      test: ["NONE"] # TODO: add something to the image to make this work
+      start_period: 3s
     depends_on:
       database-migration:
         condition: service_started
       postgres:
         condition: service_healthy
+
+  runner:
+    image: ghcr.io/sowers-io/bosca/kotlin-runner-community:latest
+    platform: linux/amd64
+    environment:
+      BOSCA_QUEUES: "default,10;media-transcription,1;media-upload,5;metadata,50;search-index,100;traits,100;transition,100"
+      BOSCA_GRAPHQL_URL: http://server:8000/graphql
+      BOSCA_WS_URL: ws://server:8000/ws
+    ports:
+      - '9000:9000'
+    restart: always
+    networks:
+      - boscanet
+    depends_on:
+      server:
+        condition: service_started

@@ -10,6 +10,7 @@ use deadpool_postgres::{GenericClient, Object, Pool};
 use serde_json::Value;
 use std::sync::Arc;
 use chrono::{DateTime, Utc};
+use log::warn;
 use uuid::Uuid;
 
 #[derive(Clone)]
@@ -121,6 +122,7 @@ impl SecurityDataStore {
         if let Some(result) = results.first() {
             let expires: DateTime<Utc> = result.get("expires");
             if expires > Utc::now() {
+                warn!("refresh token expired");
                 let principal_id: Uuid = result.get("principal_id");
                 return Ok(Some(principal_id));
             }

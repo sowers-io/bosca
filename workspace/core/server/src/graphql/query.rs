@@ -8,6 +8,7 @@ use uuid::Uuid;
 use crate::context::BoscaContext;
 use crate::graphql::configuration::configurations::ConfigurationsObject;
 use crate::graphql::profiles::profiles::ProfilesObject;
+use crate::graphql::server::ServerObject;
 use crate::models::content::search::{SearchDocument, SearchQuery, SearchResultObject};
 use crate::models::security::permission::PermissionAction;
 
@@ -15,6 +16,10 @@ pub struct QueryObject;
 
 #[Object(name = "Query")]
 impl QueryObject {
+    async fn server(&self) -> ServerObject {
+        ServerObject {}
+    }
+
     async fn content(&self) -> ContentObject {
         ContentObject {}
     }

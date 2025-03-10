@@ -27,7 +27,9 @@ impl Keys {
     }
 
     pub fn encode(&self, claims: &Claims) -> Result<String, Error> {
-        encode(&Header::default(), claims, &self.encoding)
+        let mut hdr = Header::default();
+        hdr.alg = Algorithm::HS256;
+        encode(&hdr, claims, &self.encoding)
     }
 }
 
@@ -99,11 +101,12 @@ pub struct Claims {
 
 impl Claims {
     pub fn new(principal: &Principal, audience: &str, issuer: &str) -> Self {
-        let now = Utc::now().naive_utc();
+        let now = Utc::now();
+        let exp = now + chrono::Duration::days(1);
         Self {
             sub: principal.id.to_string(),
-            exp: (now + chrono::naive::Days::new(1)).and_utc().timestamp() as usize,
-            iat: now.and_utc().timestamp() as usize,
+            exp: exp.timestamp() as usize,
+            iat: now.timestamp() as usize,
             iss: issuer.to_owned(),
             aud: audience.to_owned(),
         }
