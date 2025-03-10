@@ -28,6 +28,7 @@ use log::info;
 use std::env;
 use std::process::exit;
 use std::time::Duration;
+use http::StatusCode;
 use tokio::net::TcpListener;
 
 use crate::context::BoscaContext;
@@ -51,6 +52,9 @@ use crate::initialization::telemetry::new_telemetry;
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
 
+async fn health() -> Result<(StatusCode, String), (StatusCode, String)> {
+    Ok((StatusCode::OK, "OK".to_owned()))
+}
 #[tokio::main(flavor = "multi_thread")]
 async fn main() {
     structured_logger::Builder::with_level("info")
@@ -95,6 +99,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/", get(graphiql_handler))
+        .route("/health", get(health))
         .nest("/files", files)
         .nest("/content", content)
         .route("/graphql", post(graphql_handler))
