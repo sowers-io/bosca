@@ -1,0 +1,3 @@
+fromState: Pending
+toState: Processing
+description: Content is ready, begin processing

@@ -1,0 +1,6 @@
+id: published
+name: Published
+description: Published
+type: PUBLISHED
+configuration: {}
+workflowId: metadata.published

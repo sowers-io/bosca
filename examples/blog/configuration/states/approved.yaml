@@ -1,0 +1,5 @@
+id: approved
+name: Approved
+description: Approved
+type: APPROVAL
+configuration: {}

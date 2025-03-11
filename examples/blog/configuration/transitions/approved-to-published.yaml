@@ -1,0 +1,3 @@
+fromState: Approved
+toState: Published
+description: Approve

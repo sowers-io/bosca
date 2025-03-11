@@ -1,0 +1,5 @@
+id: pending
+name: Pending
+description: Pending
+type: PENDING
+configuration: {}

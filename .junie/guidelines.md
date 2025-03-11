@@ -23,6 +23,7 @@ The Bosca repository is organized as follows:
 - **kubernetes/** - Kubernetes deployment configurations
 - **services/** - Service definitions and configurations
 - **scripts/** - Utility scripts for development and deployment
+- **examples/** - Example sites and configuration files
 
 ## Development Guidelines
 

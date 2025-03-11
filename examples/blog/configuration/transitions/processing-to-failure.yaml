@@ -1,0 +1,3 @@
+fromState: Processing
+toState: Failure
+description: Processing failed

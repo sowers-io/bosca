@@ -14,3 +14,15 @@ delivering actionable insights and personalized user experiences that drive mean
 
 Discover how Bosca can elevate your content strategy. Visit the [Quickstart Guide](https://docs.bosca.io/quickstart.html) to 
 get started today.
+
+## Configuration:
+
+Bosca supports configuration through YAML files for various components:
+
+- **Models**: Define AI/ML models in `/configuration/models/`
+- **States**: Define workflow states in `/configuration/states/`
+- **Transitions**: Define state transitions in `/configuration/transitions/`
+- **Workflows**: Define content processing workflows in `/configuration/workflows/`
+- **Storage Systems**: Define storage backends in `/configuration/storagesystems/`
+
+See the `examples/blog/configuration/` directory for sample configurations.

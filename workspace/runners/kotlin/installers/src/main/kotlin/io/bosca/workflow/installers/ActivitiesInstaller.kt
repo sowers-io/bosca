@@ -15,6 +15,7 @@ import io.bosca.workflow.metadata.SetPublic as MetadataSetPublic
 import io.bosca.workflow.metadata.SetReady as MetadataSetReady
 import io.bosca.workflow.metadata.DownloadSourceUrl as MetadataDownloadSourceUrl
 import io.bosca.workflow.metadata.PermanentlyDelete as MetadataPermanentlyDelete
+import io.bosca.workflow.metadata.PublishGuide as MetadataPublishGuide
 
 import io.bosca.workflow.collection.Traits as CollectionTraits
 import io.bosca.workflow.collection.BeginTransitionTo as CollectionBeginTransitionTo
@@ -47,6 +48,7 @@ class ActivitiesInstaller(client: Client) : Installer, ActivityRegistry {
         MetadataSetReady(client),
         MetadataDownloadSourceUrl(client),
         MetadataPermanentlyDelete(client),
+        MetadataPublishGuide(client),
 
         DeleteSupplementary(client),
         DeleteAllSupplementary(client),

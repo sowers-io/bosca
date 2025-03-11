@@ -1,0 +1,3 @@
+fromState: Pending Approval
+toState: Approved
+description: Approve

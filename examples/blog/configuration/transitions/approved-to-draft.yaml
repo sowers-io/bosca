@@ -1,0 +1,3 @@
+fromState: Approved
+toState: Draft
+description: Move back to draft

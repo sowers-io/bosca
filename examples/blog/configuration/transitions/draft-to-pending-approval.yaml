@@ -1,0 +1,3 @@
+fromState: Draft
+toState: Pending Approval
+description: Move draft to pending approval

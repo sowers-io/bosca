@@ -1,0 +1,5 @@
+id: pending-approval
+name: Pending Approval
+description: Pending Approval
+type: APPROVAL
+configuration: {}

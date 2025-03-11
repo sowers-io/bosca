@@ -1,0 +1,6 @@
+id: processing
+name: Processing
+description: Initial Processing after Metadata Creation
+type: PROCESSING
+configuration: {}
+workflowId: metadata.process

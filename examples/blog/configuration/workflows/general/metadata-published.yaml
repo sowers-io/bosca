@@ -1,0 +1,8 @@
+id: metadata.published
+name: Publish Metadata
+description: Publish Metadata
+queue: metadata
+activities:
+  - queue: metadata
+    activity: metadata.publish.guide
+    description: If Guide, Publish the Guide

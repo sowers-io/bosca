@@ -1,0 +1,5 @@
+id: failure
+name: Failure
+description: Failure
+type: FAILURE
+configuration: {}

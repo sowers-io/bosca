@@ -1,0 +1,3 @@
+fromState: Draft
+toState: Published
+description: Publish a draft
