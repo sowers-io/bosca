@@ -35,26 +35,24 @@ async function loadMetadata(id: string) {
 
 async function loadDocument(id: string) {
   const d = await client.metadata.getDocument(id)
-  documentTemplate.value =
-    d.template?.id && d.template?.version
-      ? await client.metadata.getDocumentTemplate(
-        d.template?.id,
-        d.template?.version,
-      )
-      : null
+  documentTemplate.value = d.template?.id && d.template?.version
+    ? await client.metadata.getDocumentTemplate(
+      d.template?.id,
+      d.template?.version,
+    )
+    : null
   document.value = d
   await loadMetadata(id)
 }
 
 async function loadGuide(id: string) {
   const g = await client.metadata.getGuide(id)
-  guideTemplate.value =
-    g.template?.id && g.template?.version
-      ? await client.metadata.getGuideTemplate(
-            g.template?.id,
-            g.template?.version,
-      )
-      : null
+  guideTemplate.value = g.template?.id && g.template?.version
+    ? await client.metadata.getGuideTemplate(
+      g.template?.id,
+      g.template?.version,
+    )
+    : null
   guide.value = g
   await loadDocument(id)
 }

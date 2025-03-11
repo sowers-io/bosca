@@ -11,7 +11,8 @@ const { metaSymbol } = useShortcuts()
 const client = useBoscaClient()
 const openCommand = ref(false)
 const router = useRouter()
-const { data: storageSystems, refresh } = await client.workflows.getStorageSystemsAsyncData()
+const { data: storageSystems, refresh } = await client.workflows
+  .getStorageSystemsAsyncData()
 
 const search = ref('')
 const offset = ref(0)

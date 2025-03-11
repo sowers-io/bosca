@@ -1,0 +1,10 @@
+key: description
+name: Description
+description: Description of the Document
+workflows:
+  - autoRun: false
+    workflow: document.description.generate
+type: STRING
+supplementaryKey: description.text
+ui: TEXTAREA
+list: false

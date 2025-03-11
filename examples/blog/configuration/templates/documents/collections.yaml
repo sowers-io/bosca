@@ -1,0 +1,6 @@
+slug: documents
+name: Documents
+type: SYSTEM
+editorType: DocumentsAndGuides
+collections:
+  - $ref: ./documents/blog-posts.yaml

@@ -73,7 +73,11 @@ async function onPublish() {
     states.find((s) => s.type === WorkflowStateType.Published)?.id || ''
   let stateValid: Date | null = null
   if (props.metadata.attributes['published']) {
-    stateValid = new Date(Date.parse(props.metadata.attributes['published']))
+    if (typeof props.metadata.attributes['published'] === 'number') {
+      stateValid = new Date(props.metadata.attributes['published'])
+    } else {
+      stateValid = new Date(Date.parse(props.metadata.attributes['published']))
+    }
   }
   if (props.metadata.workflow.state !== published) {
     await client.metadata.beginTransition(

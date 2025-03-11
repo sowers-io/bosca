@@ -1,0 +1,16 @@
+slug: blog-post-documents
+name: Blog Posts
+type: SYSTEM
+editorType: Document
+attributes:
+  collection: Blog Post
+categories:
+  - Blog Post Document
+ordering:
+  - order: DESCENDING
+    path:
+      - published
+    type: DATE_TIME
+templates:
+  document:
+    $ref: ./documents/templates/blog-post.yaml

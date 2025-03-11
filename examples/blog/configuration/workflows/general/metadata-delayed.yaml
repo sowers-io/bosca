@@ -1,0 +1,8 @@
+id: metadata.delayed.transition
+name: Process a Delayed Transition
+description: Process a Delayed Transition
+queue: metadata
+activities:
+  - queue: transition
+    activity: metadata.restart.transition.to
+    description: Restart the Transition

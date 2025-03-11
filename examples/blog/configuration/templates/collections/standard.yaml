@@ -1,0 +1,32 @@
+slug: standard
+name: Standard
+type: SYSTEM
+editorType: Collection
+attributes:
+  collection: Standard
+categories:
+  - Standard Collection
+templates:
+  collection:
+    name: Standard
+    description: Default Standard Collection Template
+    collection:
+      defaultAttributes:
+        type: Standard
+      collectionsFilter:
+        options:
+          - name: Standard
+            query:
+              attributes:
+                - attributes:
+                    type: Standard
+      metadataFilter:
+        options:
+          - name: Blog Posts
+            query:
+              attributes:
+                - attributes:
+                    type: Blog Post
+      attributes:
+        - $ref: ./attributes/simple-description.yaml
+        - $ref: ./attributes/featured-image.yaml

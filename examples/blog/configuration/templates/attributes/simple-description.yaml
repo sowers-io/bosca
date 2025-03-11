@@ -1,0 +1,8 @@
+key: description
+name: Description
+description: Description
+workflows: [ ]
+type: STRING
+supplementaryKey: description.text
+ui: TEXTAREA
+list: false

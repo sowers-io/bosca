@@ -1,0 +1,32 @@
+slug: topics
+name: Topics
+type: SYSTEM
+editorType: Collection
+attributes:
+  collection: Topic
+categories:
+  - Topic Collection
+templates:
+  collection:
+    name: Topic
+    description: Default Topic Template
+    collection:
+      defaultAttributes:
+        type: Topic
+      collectionsFilter:
+        options:
+          - name: Blog Posts
+            query:
+              attributes:
+                - attributes:
+                    type: Blog Post
+      metadataFilter:
+        options:
+          - name: Blog Posts
+            query:
+              attributes:
+                - attributes:
+                    type: Blog Post
+      attributes:
+        - $ref: ./attributes/simple-description.yaml
+        - $ref: ./attributes/featured-image.yaml

@@ -1,0 +1,10 @@
+key: topics
+name: Topics
+description: Topics of the Document
+workflows: [ ]
+type: COLLECTION
+ui: COLLECTION
+list: true
+configuration:
+  searchFilter: "type = \"Topic\""
+  type: Topic

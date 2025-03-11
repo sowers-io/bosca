@@ -1,0 +1,5 @@
+name: Public Search Index
+description: Public Search Index
+type: SEARCH
+models: [ ]
+configuration: { }

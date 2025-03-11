@@ -1,0 +1,5 @@
+name: gemini-1.5-pro
+description: gemini-1.5-pro
+type: google-llm
+configuration:
+  temperature: 0.7

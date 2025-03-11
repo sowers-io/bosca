@@ -1,0 +1,10 @@
+key: author
+name: Author
+description: Author of the Document
+workflows: [ ]
+type: COLLECTION
+ui: COLLECTION
+list: false
+configuration:
+  searchFilter: "type = \"Author\""
+  type: Author

@@ -1,0 +1,40 @@
+id: document.description.generate
+name: Generate Description
+description: Generate Description
+queue: media
+activities:
+  - queue: metadata
+    activity: metadata.document.to.text
+    description: Extract Text from Document
+    executionGroup: 1
+    outputs:
+      - name: text
+        supplementary: text
+
+  - queue: ai
+    activity: ai.prompt
+    description: Generate Description
+    executionGroup: 2
+    models:
+      - name: gpt-4o
+    prompts:
+      - name: Generate Description
+    inputs:
+      - name: document
+        supplementary: text
+    outputs:
+      - name: supplementary
+        supplementary: description
+
+  - queue: metadata
+    activity: data.jq
+    description: Extract Description
+    executionGroup: 3
+    configuration:
+      query: .description
+    inputs:
+      - name: supplementary
+        supplementary: description
+    outputs:
+      - name: supplementary
+        supplementary: description.text

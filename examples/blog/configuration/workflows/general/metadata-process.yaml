@@ -1,0 +1,19 @@
+id: metadata.process
+name: Process Metadata
+description: Process Metadata
+queue: metadata
+activities:
+  - queue: metadata
+    activity: metadata.download.source.url
+    description: Download Contents if Available
+
+  - queue: traits
+    activity: metadata.traits.process
+    description: Process Metadata Traits
+
+  - queue: transition
+    activity: metadata.transition.to
+    description: Transition Metadata to Draft
+    configuration:
+      state: draft
+      status: moving to draft

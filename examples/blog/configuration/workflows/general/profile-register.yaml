@@ -1,0 +1,12 @@
+id: profile.register
+name: Register a new Profile
+description: Register a new Profile
+queue: profile
+activities:
+  - queue: transition
+    activity: collection.transition.to
+    description: Transition Collection to Published
+    executionGroup: 1
+    configuration:
+      state: published
+      status: moving to published

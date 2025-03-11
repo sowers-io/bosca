@@ -1,0 +1,9 @@
+id: media.send.to.mux
+name: Send Video to Mux
+description: Send Video to Mux
+queue: media
+activities:
+  - queue: media
+    activity: video.mux.uploader
+    description: Upload video to Mux
+    executionGroup: 1

@@ -1,0 +1,24 @@
+name: Blog Post
+description: Default Blog Post Template
+document:
+  configuration:
+    content: heading block+
+  containers:
+    - id: MAIN_CONTENT
+      name: Main Content
+      description: A container that represents the main content of the document
+  content:
+    document:
+      content:
+        - type: heading
+          attributes:
+            level: 1
+        - type: paragraph
+  defaultAttributes:
+    type: Blog Post
+  attributes:
+    - $ref: ./attributes/published.yaml
+    - $ref: ./attributes/document-description.yaml
+    - $ref: ./attributes/document-topics.yaml
+    - $ref: ./attributes/featured-image.yaml
+    - $ref: ./attributes/document-author.yaml

@@ -1,0 +1,6 @@
+name: gpt-4o
+description: gpt-4o
+type: openai-llm
+configuration:
+  temperature: 0.7
+  dimension: 1536

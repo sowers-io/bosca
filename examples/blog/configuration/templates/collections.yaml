@@ -1,0 +1,3 @@
+collections:
+  - $ref: ./documents/collections.yaml
+  - $ref: ./collections/collections.yaml

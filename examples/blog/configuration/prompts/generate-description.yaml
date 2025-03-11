@@ -1,0 +1,20 @@
+name: Generate Description
+description: Generate Description
+inputType: text/plain
+outputType: application/json
+systemPrompt: |
+  Based on the text provided, summarize the text into a concise, clear, uplifting and informative 
+  description that can be used for the HTML Meta Description. 
+  
+  Important: Ensure the JSON output is formatted cleanly and contains no additional text or explanation.
+userPrompt: |
+  Text:
+  {document}
+schema:
+  name: Document Description
+  rootElement: !<object>
+    definitions:
+      description: !<string>
+        description: Description of the text
+    required:
+      - description

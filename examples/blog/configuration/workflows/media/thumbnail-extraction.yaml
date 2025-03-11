@@ -1,0 +1,9 @@
+id: video.thumbnail.extraction
+name: Extract Video Thumbnails
+description: Extract Thumbnails from a Video
+queue: media
+activities:
+  - queue: media
+    activity: video.thumbnail.extractor
+    description: Extract Thumbnails from a Video
+    executionGroup: 1

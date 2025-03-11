@@ -1,0 +1,9 @@
+key: image.featured
+name: Featured Image
+description: Featured Image
+workflows: [ ]
+type: METADATA
+ui: IMAGE
+list: false
+configuration:
+  relationship: image.featured

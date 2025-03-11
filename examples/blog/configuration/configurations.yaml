@@ -1,0 +1,47 @@
+configurations:
+  - key: ai.openai.key
+    description: OpenAI API Key
+    value:
+      env.variable: OPENAI_KEY
+
+  - key: ai.ollama.url
+    description: Ollama URL
+    value: {}
+
+  - key: ai.ollama.key
+    description: Ollama Key
+    value:
+      value: ollama
+  - key: ai.ollama.model.default
+    description: Ollama Default Model
+    value:
+      value: phi4
+
+  - key: mux.token.id
+    description: Mux Token ID
+    value:
+      env.variable: MUX_TOKEN_ID
+  - key: mux.token.secret
+    description: Mux Token Secret
+    value:
+      env.variable: MUX_TOKEN_SECRET
+  - key: mux.test
+    description: Mux Test Mode
+    value:
+      env.variable: MUX_TEST
+
+  - key: preview.url
+    description: Preview Content URL
+    value:
+      value: http://localhost:3000/preview
+
+  - key: qdrant.host
+    description: Qdrant Host
+    value:
+      env.variable: QDRANT_HOST
+  - key: qdrant.port
+    description: Qdrant Port
+    value:
+      env.variable: QDRANT_PORT
+
+

@@ -1,0 +1,5 @@
+name: llama3.3:70b-instruct-q8_0
+description: llama3.3:70b-instruct-q8_0
+type: ollama-llm
+configuration:
+  temperature: 0.7

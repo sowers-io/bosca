@@ -1,0 +1,4 @@
+id: bosca.profiles.email
+name: Email
+description: Email Address
+visibility: USER

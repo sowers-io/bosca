@@ -1,0 +1,4 @@
+id: bosca.profiles.author
+name: Author
+description: Is this profile an author?
+visibility: PUBLIC

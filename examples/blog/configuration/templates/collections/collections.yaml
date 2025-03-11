@@ -1,0 +1,8 @@
+slug: collections-collections
+name: Collections
+type: SYSTEM
+editorType: Collections
+collections:
+  - $ref: ./collections/authors.yaml
+  - $ref: ./collections/topics.yaml
+  - $ref: ./collections/standard.yaml

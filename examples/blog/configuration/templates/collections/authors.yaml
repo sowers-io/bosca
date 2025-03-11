@@ -1,0 +1,32 @@
+slug: authors
+name: Authors
+type: SYSTEM
+editorType: Collection
+attributes:
+  collection: Author
+categories:
+  - Author Collection
+templates:
+  collection:
+    name: Author
+    description: Default Author Template
+    collection:
+      defaultAttributes:
+        type: Author
+      collectionsFilter:
+        options:
+          - name: Standard
+            query:
+              attributes:
+                - attributes:
+                    type: Standard
+      metadataFilter:
+        options:
+          - name: Blog Posts
+            query:
+              attributes:
+                - attributes:
+                    type: Blog Post
+      attributes:
+        - $ref: ./attributes/bio.yaml
+        - $ref: ./attributes/featured-image.yaml

@@ -1,0 +1,13 @@
+id: collection.delete.finalize
+name: Finalize Deleting Collection
+description: Finalize Deleting Collection
+queue: metadata
+activities:
+  - queue: metadata
+    activity: workflow.general.delay
+    description: Delay the deletion of the metadata
+    configuration:
+      delayFor: 30 # 30 Seconds
+  - queue: metadata
+    activity: collection.delete.permanently
+    description: Finalize Deleting Collection

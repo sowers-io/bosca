@@ -1,0 +1,22 @@
+traits:
+  - id: profile
+    name: Profile
+    description: Process a new Profile Collection
+    workflowIds:
+      - profile.register
+    contentTypes: []
+
+  - id: media.video
+    name: Video MP4
+    description: Video MP4
+    workflowIds:
+      - video.thumbnail.extraction
+    contentTypes:
+      - video/mp4
+
+  - id: media.video.mux
+    name: Send Video to Mux
+    description: Send Video to Mux
+    workflowIds:
+      - media.send.to.mux
+    contentTypes: []

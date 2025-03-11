@@ -295,7 +295,7 @@ const breadcrumbs = useBreadcrumbs()
 
 onMounted(() => {
   breadcrumbs.set([{ title: 'Content' }])
-  selectedId.value = selectedContentTab.value
+  selectedId.value = selectedContentTab.value || ''
   currentPage.value = currentContentPage.value
 })
 </script>
