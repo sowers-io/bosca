@@ -35,13 +35,20 @@ async function loadMetadata(id: string) {
 
 async function loadDocument(id: string) {
   const d = await client.metadata.getDocument(id)
-  documentTemplate.value = d.template?.id && d.template?.version
-    ? await client.metadata.getDocumentTemplate(
-      d.template?.id,
-      d.template?.version,
-    )
-    : null
-  document.value = d
+  if (d) {
+    documentTemplate.value = d.template?.id && d.template?.version
+      ? await client.metadata.getDocumentTemplate(
+        d.template?.id,
+        d.template?.version,
+      )
+      : null
+    document.value = d
+  } else {
+    document.value = {
+      title: 'Empty Document',
+      content: [],
+    }
+  }
   await loadMetadata(id)
 }
 

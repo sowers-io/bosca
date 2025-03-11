@@ -3231,6 +3231,7 @@ export type FindCollectionsQuery = {
         workflow: {
           __typename?: 'CollectionWorkflow'
           state: string
+          stateValid?: any | null
           pending?: string | null
         }
       }
@@ -3501,6 +3502,7 @@ export type GetCollectionQuery = {
       workflow: {
         __typename?: 'CollectionWorkflow'
         state: string
+        stateValid?: any | null
         pending?: string | null
       }
     } | null
@@ -3553,6 +3555,7 @@ export type GetCollectionChildrenCollectionsQuery = {
           workflow: {
             __typename?: 'CollectionWorkflow'
             state: string
+            stateValid?: any | null
             pending?: string | null
           }
         }
@@ -3767,6 +3770,7 @@ export type GetCollectionListQuery = {
           workflow: {
             __typename?: 'CollectionWorkflow'
             state: string
+            stateValid?: any | null
             pending?: string | null
           }
         } | {
@@ -3912,6 +3916,7 @@ export type GetCollectionListQuery = {
       workflow: {
         __typename?: 'CollectionWorkflow'
         state: string
+        stateValid?: any | null
         pending?: string | null
       }
     } | null
@@ -6005,6 +6010,7 @@ export type NextJobQuery = {
         workflow: {
           __typename?: 'CollectionWorkflow'
           state: string
+          stateValid?: any | null
           pending?: string | null
         }
       } | null
@@ -6790,6 +6796,7 @@ export type CollectionListFragment = {
       workflow: {
         __typename?: 'CollectionWorkflow'
         state: string
+        stateValid?: any | null
         pending?: string | null
       }
     } | {
@@ -6927,6 +6934,7 @@ export type CollectionListFragment = {
   workflow: {
     __typename?: 'CollectionWorkflow'
     state: string
+    stateValid?: any | null
     pending?: string | null
   }
 }
@@ -6957,6 +6965,7 @@ export type CollectionFragment = {
   workflow: {
     __typename?: 'CollectionWorkflow'
     state: string
+    stateValid?: any | null
     pending?: string | null
   }
 }
@@ -7029,6 +7038,7 @@ export type CollectionDetailFragment = {
       workflow: {
         __typename?: 'CollectionWorkflow'
         state: string
+        stateValid?: any | null
         pending?: string | null
       }
     } | {
@@ -7166,6 +7176,7 @@ export type CollectionDetailFragment = {
   workflow: {
     __typename?: 'CollectionWorkflow'
     state: string
+    stateValid?: any | null
     pending?: string | null
   }
 }
@@ -7251,6 +7262,7 @@ export type CollectionTemplateFragment = {
 export type CollectionWorkflowFragment = {
   __typename?: 'CollectionWorkflow'
   state: string
+  stateValid?: any | null
   pending?: string | null
 }
 
@@ -9371,10 +9383,11 @@ export const CollectionWorkflowFragmentDoc = {
     },
     'selectionSet': {
       'kind': 'SelectionSet',
-      'selections': [{
-        'kind': 'Field',
-        'name': { 'kind': 'Name', 'value': 'state' },
-      }, { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'pending' } }],
+      'selections': [
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'state' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'stateValid' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'pending' } },
+      ],
     },
   }],
 } as unknown as DocumentNode<CollectionWorkflowFragment, unknown>
@@ -9498,10 +9511,11 @@ export const CollectionFragmentDoc = {
     },
     'selectionSet': {
       'kind': 'SelectionSet',
-      'selections': [{
-        'kind': 'Field',
-        'name': { 'kind': 'Name', 'value': 'state' },
-      }, { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'pending' } }],
+      'selections': [
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'state' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'stateValid' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'pending' } },
+      ],
     },
   }],
 } as unknown as DocumentNode<CollectionFragment, unknown>
@@ -10397,10 +10411,11 @@ export const CollectionListFragmentDoc = {
     },
     'selectionSet': {
       'kind': 'SelectionSet',
-      'selections': [{
-        'kind': 'Field',
-        'name': { 'kind': 'Name', 'value': 'state' },
-      }, { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'pending' } }],
+      'selections': [
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'state' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'stateValid' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'pending' } },
+      ],
     },
   }, {
     'kind': 'FragmentDefinition',
@@ -11140,10 +11155,11 @@ export const CollectionDetailFragmentDoc = {
     },
     'selectionSet': {
       'kind': 'SelectionSet',
-      'selections': [{
-        'kind': 'Field',
-        'name': { 'kind': 'Name', 'value': 'state' },
-      }, { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'pending' } }],
+      'selections': [
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'state' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'stateValid' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'pending' } },
+      ],
     },
   }, {
     'kind': 'FragmentDefinition',
@@ -19597,7 +19613,7 @@ export const ExecuteSearchDocument = {
   }],
 } as unknown as DocumentNode<ExecuteSearchQuery, ExecuteSearchQueryVariables>
 export const FindCollectionsDocument = {
-  '__meta__': { 'hash': 'a492665cef696ca34a7a97f6458cef66286cddc6' },
+  '__meta__': { 'hash': 'd9acbaba3a050a974a862a9ebe681a1716e205fd' },
   'kind': 'Document',
   'definitions': [{
     'kind': 'OperationDefinition',
@@ -19683,10 +19699,11 @@ export const FindCollectionsDocument = {
     },
     'selectionSet': {
       'kind': 'SelectionSet',
-      'selections': [{
-        'kind': 'Field',
-        'name': { 'kind': 'Name', 'value': 'state' },
-      }, { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'pending' } }],
+      'selections': [
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'state' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'stateValid' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'pending' } },
+      ],
     },
   }, {
     'kind': 'FragmentDefinition',
@@ -20517,7 +20534,7 @@ export const GetActivityDocument = {
   }],
 } as unknown as DocumentNode<GetActivityQuery, GetActivityQueryVariables>
 export const GetCollectionDocument = {
-  '__meta__': { 'hash': 'c2466c18cf3b287ffe718708af72bc4ab000f7b1' },
+  '__meta__': { 'hash': '8ba021c25fe311f99f2eb751f5b487a43feca202' },
   'kind': 'Document',
   'definitions': [{
     'kind': 'OperationDefinition',
@@ -20600,10 +20617,11 @@ export const GetCollectionDocument = {
     },
     'selectionSet': {
       'kind': 'SelectionSet',
-      'selections': [{
-        'kind': 'Field',
-        'name': { 'kind': 'Name', 'value': 'state' },
-      }, { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'pending' } }],
+      'selections': [
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'state' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'stateValid' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'pending' } },
+      ],
     },
   }, {
     'kind': 'FragmentDefinition',
@@ -20689,7 +20707,7 @@ export const GetCollectionDocument = {
   }],
 } as unknown as DocumentNode<GetCollectionQuery, GetCollectionQueryVariables>
 export const GetCollectionChildrenCollectionsDocument = {
-  '__meta__': { 'hash': '513acfb99fa02aaca5ba05af46525538c6d34d14' },
+  '__meta__': { 'hash': '6fe75ef1902ae844957d8d8d7be3ed95bd1a00fc' },
   'kind': 'Document',
   'definitions': [{
     'kind': 'OperationDefinition',
@@ -20826,10 +20844,11 @@ export const GetCollectionChildrenCollectionsDocument = {
     },
     'selectionSet': {
       'kind': 'SelectionSet',
-      'selections': [{
-        'kind': 'Field',
-        'name': { 'kind': 'Name', 'value': 'state' },
-      }, { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'pending' } }],
+      'selections': [
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'state' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'stateValid' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'pending' } },
+      ],
     },
   }, {
     'kind': 'FragmentDefinition',
@@ -21404,7 +21423,7 @@ export const GetCollectionChildrenMetadataDocument = {
   GetCollectionChildrenMetadataQueryVariables
 >
 export const GetCollectionListDocument = {
-  '__meta__': { 'hash': 'e872fba5d00d621cb991d239b790857dae79c949' },
+  '__meta__': { 'hash': 'f2f0ee828ce77c93432c66ad36642324eefc651f' },
   'kind': 'Document',
   'definitions': [{
     'kind': 'OperationDefinition',
@@ -21487,10 +21506,11 @@ export const GetCollectionListDocument = {
     },
     'selectionSet': {
       'kind': 'SelectionSet',
-      'selections': [{
-        'kind': 'Field',
-        'name': { 'kind': 'Name', 'value': 'state' },
-      }, { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'pending' } }],
+      'selections': [
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'state' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'stateValid' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'pending' } },
+      ],
     },
   }, {
     'kind': 'FragmentDefinition',
@@ -28273,7 +28293,7 @@ export const LoginDocument = {
   }],
 } as unknown as DocumentNode<LoginMutation, LoginMutationVariables>
 export const NextJobDocument = {
-  '__meta__': { 'hash': '14fe654c691d51435d4bfb86e50ab29acdb56078' },
+  '__meta__': { 'hash': '3980ee397b032ce9a19b6d31b2c5fc6b82893333' },
   'kind': 'Document',
   'definitions': [{
     'kind': 'OperationDefinition',
@@ -28488,10 +28508,11 @@ export const NextJobDocument = {
     },
     'selectionSet': {
       'kind': 'SelectionSet',
-      'selections': [{
-        'kind': 'Field',
-        'name': { 'kind': 'Name', 'value': 'state' },
-      }, { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'pending' } }],
+      'selections': [
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'state' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'stateValid' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'pending' } },
+      ],
     },
   }, {
     'kind': 'FragmentDefinition',

@@ -12,6 +12,7 @@ use crate::models::security::permission::PermissionAction;
 use async_graphql::*;
 use std::str::FromStr;
 use uuid::Uuid;
+use crate::graphql::content::guide_templates::GuideTemplatesObject;
 use crate::models::content::find_query::FindQueryInput;
 
 pub struct ContentObject {}
@@ -174,6 +175,10 @@ impl ContentObject {
 
     async fn document_templates(&self) -> DocumentTemplatesObject {
         DocumentTemplatesObject {}
+    }
+
+    async fn guide_templates(&self) -> GuideTemplatesObject {
+        GuideTemplatesObject {}
     }
 
     async fn collection_templates(&self) -> CollectionTemplatesObject {

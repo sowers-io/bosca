@@ -26,20 +26,24 @@ class PublishGuide(client: Client) : Activity(client) {
         val guide = client.metadata.getGuide(metadata.id, metadata.version) ?: return
         for (step in guide.steps) {
             step.guideStep.metadata?.metadata?.let {
+                if (it.workflow.metadataWorkflow.state == "published") return@let
                 client.workflows.beginMetadataTransition(
                     it.id,
                     it.version,
                     "published",
-                    "Publishing Guide from Workflow"
+                    "Publishing Guide from Workflow",
+                    true
                 )
             }
             for (module in step.guideStep.modules) {
                 module.guideStepModule.metadata?.metadata?.let {
+                    if (it.workflow.metadataWorkflow.state == "published") return@let
                     client.workflows.beginMetadataTransition(
                         it.id,
                         it.version,
                         "published",
-                        "Publishing Guide Module from Workflow"
+                        "Publishing Guide Module from Workflow",
+                        true
                     )
                 }
             }

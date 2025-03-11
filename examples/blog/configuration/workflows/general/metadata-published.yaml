@@ -6,3 +6,10 @@ activities:
   - queue: metadata
     activity: metadata.publish.guide
     description: If Guide, Publish the Guide
+
+  - queue: transition
+    activity: metadata.transition.to
+    description: Transition Metadata to Published
+    configuration:
+      state: published
+      status: moving to published

@@ -115,6 +115,12 @@ async function onSave() {
             {{ pending }}
           </span>
         </Label>
+        <Label class="flex flex-col space-y-1 mt-4">
+          <span>State Valid</span>
+          <span class="font-normal leading-snug text-muted-foreground">
+            {{ content.workflow.stateValid || '--' }}
+          </span>
+        </Label>
       </div>
     </CardContent>
     <CardFooter>

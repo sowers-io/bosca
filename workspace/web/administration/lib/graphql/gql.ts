@@ -292,7 +292,7 @@ type Documents = {
     typeof types.CollectionMetadataRelationshipFragmentDoc
   'fragment CollectionTemplate on CollectionTemplate {\n  configuration\n  defaultAttributes\n  collectionFilter {\n    options {\n      ...FindQueryOption\n    }\n  }\n  attributes {\n    key\n    name\n    description\n    type\n    supplementaryKey\n    ui\n    list\n    configuration\n    workflows {\n      workflow {\n        ...Workflow\n      }\n      autoRun\n    }\n  }\n}':
     typeof types.CollectionTemplateFragmentDoc
-  'fragment CollectionWorkflow on CollectionWorkflow {\n  state\n  pending\n}':
+  'fragment CollectionWorkflow on CollectionWorkflow {\n  state\n  stateValid\n  pending\n}':
     typeof types.CollectionWorkflowFragmentDoc
   'fragment Configuration on Configuration {\n  id\n  key\n  description\n  value\n  permissions {\n    action\n    group {\n      id\n      name\n    }\n  }\n}':
     typeof types.ConfigurationFragmentDoc
@@ -648,7 +648,7 @@ const documents: Documents = {
     types.CollectionMetadataRelationshipFragmentDoc,
   'fragment CollectionTemplate on CollectionTemplate {\n  configuration\n  defaultAttributes\n  collectionFilter {\n    options {\n      ...FindQueryOption\n    }\n  }\n  attributes {\n    key\n    name\n    description\n    type\n    supplementaryKey\n    ui\n    list\n    configuration\n    workflows {\n      workflow {\n        ...Workflow\n      }\n      autoRun\n    }\n  }\n}':
     types.CollectionTemplateFragmentDoc,
-  'fragment CollectionWorkflow on CollectionWorkflow {\n  state\n  pending\n}':
+  'fragment CollectionWorkflow on CollectionWorkflow {\n  state\n  stateValid\n  pending\n}':
     types.CollectionWorkflowFragmentDoc,
   'fragment Configuration on Configuration {\n  id\n  key\n  description\n  value\n  permissions {\n    action\n    group {\n      id\n      name\n    }\n  }\n}':
     types.ConfigurationFragmentDoc,
@@ -1971,9 +1971,9 @@ export function graphql(
  */
 export function graphql(
   source:
-    'fragment CollectionWorkflow on CollectionWorkflow {\n  state\n  pending\n}',
+    'fragment CollectionWorkflow on CollectionWorkflow {\n  state\n  stateValid\n  pending\n}',
 ): (typeof documents)[
-  'fragment CollectionWorkflow on CollectionWorkflow {\n  state\n  pending\n}'
+  'fragment CollectionWorkflow on CollectionWorkflow {\n  state\n  stateValid\n  pending\n}'
 ]
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.

@@ -18,7 +18,7 @@ fun CollectionTemplateDefinition.toCollectionTemplateInput(
     collection: CollectionDefinition,
     categories: Map<String, Category>
 ) = MetadataInput(
-    name = collection.name + " Collection Template",
+    name = name,
     attributes = (EditorConfiguration(
         editorType = "Template",
         templateType = collection.editorType,
@@ -42,7 +42,7 @@ fun DocumentTemplateDefinition.toDocumentTemplateInput(
     subTemplateType: String? = null,
     index: Int? = null,
 ) = MetadataInput(
-    name = collection.name + (subTemplateType?.let { " $it" } ?: "") + " Document Template",
+    name = name,
     attributes = (EditorConfiguration(
         editorType = "Template",
         templateType = collection.editorType,
@@ -69,7 +69,7 @@ suspend fun GuideTemplateDefinition.toGuideTemplateInput(
 ): MetadataInput {
     val input = collection.templates?.guide?.toInput(client, parentCollectionId, collection, categories)
     return MetadataInput(
-        name = collection.name + " Guide Template",
+        name = name,
         attributes = (EditorConfiguration(
             editorType = "Template",
             templateType = collection.editorType,

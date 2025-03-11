@@ -14,7 +14,7 @@ data class Content(
 data class Document(
     @SerialName("attrs")
     override val attributes: DocumentAttributes = EmptyDocumentAttributes(),
-    override val content: List<DocumentNode>,
+    override val content: List<DocumentNode> = emptyList(),
     override val marks: List<Mark> = emptyList(),
 ) : DocumentNode
 

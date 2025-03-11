@@ -27,7 +27,6 @@ class TransitionTo(client: Client) : Activity(client) {
 
     override suspend fun execute(context: ActivityContext, job: WorkflowJob) {
         val configuration = job.workflowActivity.workflowActivity.configuration as Map<*, *>
-        if (job.metadata?.metadata?.workflow?.metadataWorkflow?.state != "pending") return
         val state = configuration["state"] as String
         val status = if (configuration.containsKey("status")) configuration["status"] as String else ""
         client.workflows.setMetadataWorkflowStateComplete(job.metadata?.metadata?.id ?: error("missing metadata id"), status)
