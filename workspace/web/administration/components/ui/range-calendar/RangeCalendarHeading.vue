@@ -4,12 +4,16 @@ import {
   RangeCalendarHeading,
   type RangeCalendarHeadingProps,
   useForwardProps,
-} from 'radix-vue'
+} from 'reka-ui'
 import { computed, type HTMLAttributes } from 'vue'
 
 const props = defineProps<
   RangeCalendarHeadingProps & { class?: HTMLAttributes['class'] }
 >()
+
+defineSlots<{
+  default: (props: { headingValue: string }) => any
+}>()
 
 const delegatedProps = computed(() => {
   const { class: _, ...delegated } = props

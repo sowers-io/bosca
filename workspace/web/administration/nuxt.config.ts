@@ -13,12 +13,11 @@ export default defineNuxtConfig({
   },
 
   modules: [
-    '@unocss/nuxt',
-    'shadcn-nuxt',
-    '@vueuse/nuxt',
-    '@nuxt/icon',
-    '@pinia/nuxt',
     '@nuxtjs/color-mode',
+    '@nuxtjs/tailwindcss',
+    '@vueuse/nuxt',
+    'shadcn-nuxt',
+    '@nuxt/icon',
   ],
 
   vue: {
@@ -27,21 +26,17 @@ export default defineNuxtConfig({
     },
   },
 
+  shadcn: {
+    prefix: '',
+    componentDir: './components/ui',
+  },
+
   vite: {
     plugins: [vidstack()],
   },
 
-  css: [
-    '@unocss/reset/tailwind.css',
-  ],
-
   colorMode: {
     classSuffix: '',
-  },
-
-  features: {
-    // For UnoCSS
-    inlineStyles: false,
   },
 
   routeRules: {

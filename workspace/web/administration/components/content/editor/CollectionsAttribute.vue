@@ -2,26 +2,12 @@
 import type { CollectionIdNameFragment } from '~/lib/graphql/graphql.ts'
 
 import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandItem,
-  CommandList,
-} from '~/components/ui/command'
-import {
   TagsInput,
   TagsInputInput,
   TagsInputItem,
   TagsInputItemDelete,
   TagsInputItemText,
 } from '~/components/ui/tags-input'
-import {
-  ComboboxAnchor,
-  ComboboxContent,
-  ComboboxInput,
-  ComboboxPortal,
-  ComboboxRoot,
-} from 'radix-vue'
 import { computed, ref } from 'vue'
 import type { AttributeState } from '~/lib/attribute.ts'
 
@@ -59,6 +45,7 @@ function onSelect(id: CollectionIdNameFragment) {
   const attr = props.attribute
   if (!attr) return
   const newCollections = [...(attr.value as CollectionIdNameFragment[] || [])]
+    .filter((c) => c.id !== id.id)
   newCollections.push(id)
   attr.value = newCollections
   open.value = false
@@ -75,65 +62,64 @@ function onRemove(id: CollectionIdNameFragment) {
 <template>
   <div v-if="attribute">
     <label class="block font-bold mt-4 mb-2">{{ attribute.name }}</label>
-    <div class="flex items-center justify-center" v-if="editable">
-      <TagsInput
-        class="px-0 min-h-10 py-2.5 gap-0 w-full"
+    <div class="flex items-center justify-center w-full" v-if="editable">
+      <Combobox
         v-model="attribute.value"
+        v-model:open="open"
+        :ignore-filter="true"
+        :reset-search-term-on-select="true"
+        :filter-function="(val: any) => val"
+        class="w-full"
       >
-        <div class="flex gap-2 flex-wrap items-center px-3">
-          <TagsInputItem
-            v-for="(item, index) in attribute.value"
-            :value="item.name"
+        <ComboboxAnchor as-child class="w-full" @click.prevent="open = true">
+          <TagsInput
+            v-model="attribute.value"
+            class="px-2 gap-2 w-full shadow-sm"
           >
-            <TagsInputItemText />
-            <TagsInputItemDelete @click="onRemove(item)" />
-          </TagsInputItem>
-        </div>
-        <ComboboxRoot
-          v-model:open="open"
-          v-model:search-term="query"
-          class="w-full"
-          :filter-function="(val) => val"
-        >
-          <ComboboxAnchor as-child>
-            <ComboboxInput placeholder="Select Items..." as-child>
-              <TagsInputInput
-                @focus="open = true"
-                class="w-full px-3"
-                :class="attribute.value.length > 0 ? 'mt-2' : ''"
-                @keydown.enter.prevent
-              />
-            </ComboboxInput>
-          </ComboboxAnchor>
-          <ComboboxPortal>
-            <ComboboxContent>
-              <CommandList
-                position="popper"
-                class="w-[--radix-popper-anchor-width] rounded-md mt-2 border bg-popover text-popover-foreground shadow-md outline-none data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2"
+            <div>
+              <div class="flex gap-2 flex-wrap items-center">
+                <TagsInputItem
+                  v-for="item in attribute.value"
+                  :key="item.id"
+                  :value="item.name"
+                  class="h-7 bg-primary text-secondary"
+                >
+                  <TagsInputItemText />
+                  <TagsInputItemDelete @click.prevent="onRemove(item)" />
+                </TagsInputItem>
+              </div>
+              <div>
+                <ComboboxInput v-model="query" as-child class="w-full block">
+                  <TagsInputInput
+                    placeholder="Select Items..."
+                    class="min-w-[200px] w-full p-2 border-none shadow-none focus-visible:ring-0 h-auto"
+                    @keydown.enter.prevent
+                  />
+                </ComboboxInput>
+              </div>
+            </div>
+          </TagsInput>
+
+          <ComboboxList class="w-[--reka-popper-anchor-width]">
+            <ComboboxEmpty />
+            <ComboboxGroup>
+              <ComboboxItem
+                v-for="item in data"
+                :key="item.id"
+                :value="item.name"
+                @select.prevent="
+                  (ev) => {
+                    onSelect(item as CollectionIdNameFragment)
+                    open = false
+                  }
+                "
               >
-                <CommandEmpty />
-                <CommandGroup>
-                  <CommandItem
-                    v-for="c in data || []"
-                    :key="c.id!"
-                    :value="c.id!"
-                    @select.prevent="
-                      (ev) => {
-                        onSelect(
-                          c as CollectionIdNameFragment,
-                        )
-                        query = ''
-                      }
-                    "
-                  >
-                    {{ c.name }}
-                  </CommandItem>
-                </CommandGroup>
-              </CommandList>
-            </ComboboxContent>
-          </ComboboxPortal>
-        </ComboboxRoot>
-      </TagsInput>
+                {{ item.name }}
+              </ComboboxItem>
+            </ComboboxGroup>
+          </ComboboxList>
+        </ComboboxAnchor>
+      </Combobox>
       <Tooltip v-if="editable && attribute.hasWorkflows">
         <TooltipTrigger as-child>
           <Button

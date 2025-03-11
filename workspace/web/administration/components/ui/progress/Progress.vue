@@ -4,7 +4,7 @@ import {
   ProgressIndicator,
   ProgressRoot,
   type ProgressRootProps,
-} from 'radix-vue'
+} from 'reka-ui'
 import { computed, type HTMLAttributes } from 'vue'
 
 const props = withDefaults(
@@ -33,7 +33,7 @@ const delegatedProps = computed(() => {
   >
     <ProgressIndicator
       class="h-full w-full flex-1 bg-primary transition-all"
-      :style="'transform: translateX(-' + (100 - (modelValue ?? 0)) + '%);'"
+      :style=";`transform: translateX(-${100 - (props.modelValue ?? 0)}%);`"
     />
   </ProgressRoot>
 </template>

@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import type { DropdownMenuCheckboxItemProps } from 'radix-vue'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -23,14 +22,12 @@ const modelValue = useVModel(props, 'modelValue', emits, {
   passive: true,
 })
 
-type Checked = DropdownMenuCheckboxItemProps['checked']
-
-const jpg = ref<Checked>(true)
-const png = ref<Checked>(true)
-const webp = ref<Checked>(true)
-const mp4 = ref<Checked>(true)
-const mp3 = ref<Checked>(true)
-const webm = ref<Checked>(true)
+const jpg = ref(true)
+const png = ref(true)
+const webp = ref(true)
+const mp4 = ref(true)
+const mp3 = ref(true)
+const webm = ref(true)
 const selected = ref('')
 
 function updateSelected() {

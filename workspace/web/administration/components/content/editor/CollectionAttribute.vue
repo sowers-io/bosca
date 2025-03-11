@@ -23,6 +23,7 @@ const limit = ref(15)
 const storageSystemId = (await client.workflows.getStorageSystems()).find((s) =>
   s.name === 'Default Search'
 )?.id
+const open = ref(false)
 const { data } = client.search.searchAsyncData(
   query,
   filter,
@@ -33,6 +34,7 @@ const { data } = client.search.searchAsyncData(
 
 function onSelect(id: CollectionIdNameFragment) {
   props.attribute!.value = id
+  query.value = ''
 }
 </script>
 
@@ -42,63 +44,45 @@ function onSelect(id: CollectionIdNameFragment) {
     <div class="flex items-center justify-center" v-if="editable">
       <div class="w-full">
         <Combobox
-          v-model:search-term="query"
-          :display-value="(val: any) => attribute?.value?.name"
+          class="w-full cursor-pointer"
+          v-model:open="open"
+          v-model="attribute.value"
+          @click="open = true"
+          :ignore-filter="true"
           :reset-search-term-on-select="true"
           :filter-function="(val: any) => val"
         >
-          <ComboboxAnchor
-            as-child
-            class="w-full h-12 bg-background hover:bg-background"
-          >
-            <ComboboxTrigger as-child>
-              <Button
-                variant="outline"
-                class="justify-between text-gray-400 p-3"
-              >
-                <CollectionItem
-                  v-if="attribute.value"
-                  :collection="attribute.value"
-                />
-                <span v-else>Select an Item...</span>
-              </Button>
-            </ComboboxTrigger>
-          </ComboboxAnchor>
-          <ComboboxList>
-            <div class="relative w-full max-w-sm items-center">
-              <ComboboxInput
-                class="pl-9 focus-visible:ring-0 border-0 border-b rounded-none h-10"
-                placeholder="Search..."
+          <ComboboxAnchor class="w-full">
+            <div
+              class="relative w-full items-center bg-background border shadow-sm rounded-md h-14"
+            >
+              <CollectionItem
+                :collection="attribute.value"
+                class="p-3"
+                v-if="!open && attribute.value"
               />
-              <span
-                class="absolute start-0 inset-y-0 flex items-center justify-center px-3"
-              >
-                <Icon
-                  name="i-lucide-search"
-                  class="size-4 text-muted-foreground"
-                />
-              </span>
+              <ComboboxInput
+                v-model="query"
+                class="w-full h-full p-4 border-none shadow-none"
+                placeholder="Select an Item..."
+                v-else
+              />
             </div>
+          </ComboboxAnchor>
+          <ComboboxList class="w-[--reka-popper-anchor-width]">
             <ComboboxEmpty>
               No items found.
             </ComboboxEmpty>
             <ComboboxGroup>
               <ComboboxItem
-                v-for="collection in data"
-                :key="collection.id!"
-                :value="collection.id!"
-                class="cursor-pointer"
-                @click="onSelect(collection)"
+                v-for="item in data"
+                :key="item.id"
+                :value="item"
+                @click.prevent="onSelect(item as CollectionIdNameFragment)"
               >
                 <CollectionItem
-                  :collection="collection as CollectionIdNameFragment"
+                  :collection="item as CollectionIdNameFragment"
                 />
-                <ComboboxItemIndicator>
-                  <Icon
-                    name="i-lucide-check"
-                    class="size-4 text-success-foreground"
-                  />
-                </ComboboxItemIndicator>
               </ComboboxItem>
             </ComboboxGroup>
           </ComboboxList>

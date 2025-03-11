@@ -50,7 +50,7 @@ onBeforeUnmount(() => {
   <media-player
     v-if="$src"
     keep-alive
-    class="player"
+    class="player shadow-sm"
     :title="metadata?.name"
     :src="$src"
     ref="$player"

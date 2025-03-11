@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import Skeleton from '@/components/ui/skeleton/Skeleton.vue'
 import { cn } from '@/lib/utils'
+import { Skeleton } from '@/components/ui/skeleton'
 import { computed, type HTMLAttributes } from 'vue'
 
 const props = defineProps<{
@@ -25,7 +25,7 @@ const width = computed(() => {
     />
 
     <Skeleton
-      class="h-4 max-w-[--skeleton-width] flex-1"
+      class="h-4 flex-1 max-w-[--skeleton-width]"
       data-sidebar="menu-skeleton-text"
       :style="{ '--skeleton-width': width }"
     />

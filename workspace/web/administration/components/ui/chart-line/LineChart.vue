@@ -1,12 +1,16 @@
 <script setup lang="ts" generic="T extends Record<string, any>">
 import type { BaseChartProps } from '.'
 import { cn } from '@/lib/utils'
+import {
+  ChartCrosshair,
+  ChartLegend,
+  defaultColors,
+} from '@/components/ui/chart'
 import { type BulletLegendItemInterface, CurveType } from '@unovis/ts'
 import { Axis, Line } from '@unovis/ts'
 import { VisAxis, VisLine, VisXYContainer } from '@unovis/vue'
 import { useMounted } from '@vueuse/core'
 import { type Component, computed, ref } from 'vue'
-import { ChartCrosshair, ChartLegend, defaultColors } from '../chart'
 
 const props = withDefaults(
   defineProps<
@@ -62,12 +66,7 @@ function handleLegendItemClick(d: BulletLegendItemInterface, i: number) {
 
 <template>
   <div
-    :class="
-      cn(
-        'w-full h-[400px] flex flex-col items-end',
-        $attrs.class ?? '',
-      )
-    "
+    :class="cn('w-full h-[400px] flex flex-col items-end', $attrs.class ?? '')"
   >
     <ChartLegend
       v-if="showLegend"
@@ -114,7 +113,7 @@ function handleLegendItemClick(d: BulletLegendItemInterface, i: number) {
         :tick-format="xFormatter ?? ((v: number) => data[v]?.[index])"
         :grid-line="false"
         :tick-line="false"
-        tick-text-color="hsl(var(--muted-foreground))"
+        tick-text-color="hsl(var(--vis-text-color))"
       />
       <VisAxis
         v-if="showYAxis"
@@ -130,7 +129,7 @@ function handleLegendItemClick(d: BulletLegendItemInterface, i: number) {
             },
           }
         "
-        tick-text-color="hsl(var(--muted-foreground))"
+        tick-text-color="hsl(var(--vis-text-color))"
       />
 
       <slot />

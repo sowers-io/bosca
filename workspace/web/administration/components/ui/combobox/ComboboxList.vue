@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import type { ComboboxContentEmits, ComboboxContentProps } from 'radix-vue'
+import type { ComboboxContentEmits, ComboboxContentProps } from 'reka-ui'
 import { cn } from '@/lib/utils'
 import {
   ComboboxContent,
   ComboboxPortal,
   ComboboxViewport,
   useForwardPropsEmits,
-} from 'radix-vue'
+} from 'reka-ui'
 import { computed, type HTMLAttributes } from 'vue'
 
 const props = withDefaults(

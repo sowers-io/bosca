@@ -8,7 +8,7 @@ import {
   type CollectionFragment,
   type CollectionInput,
   type CollectionMetadataRelationshipFragment,
-  CollectionMetadataRelationshipInput,
+  type CollectionMetadataRelationshipInput,
   CollectionType,
   DeleteCollectionDocument,
   EditCollectionDocument,

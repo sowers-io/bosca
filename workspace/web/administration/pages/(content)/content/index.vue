@@ -376,7 +376,9 @@ onMounted(() => {
             class="cursor-pointer"
           >
             <TableCell class="font-medium flex content-center">
-              <NuxtLink :to="'/content/' + item.id">{{ item.name }}</NuxtLink>
+              <NuxtLink :to="'/content/' + item.id">
+                <ContentListItem :item="item" />
+              </NuxtLink>
             </TableCell>
           </TableRow>
         </TableBody>

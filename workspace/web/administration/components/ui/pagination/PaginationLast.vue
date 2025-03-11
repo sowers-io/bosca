@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { PaginationLast, type PaginationLastProps } from 'radix-vue'
+import { Button } from '@/components/ui/button'
+import { ChevronsRight } from 'lucide-vue-next'
+import { PaginationLast, type PaginationLastProps } from 'reka-ui'
 import { computed, type HTMLAttributes } from 'vue'
 
 const props = withDefaults(
@@ -22,7 +23,7 @@ const delegatedProps = computed(() => {
   <PaginationLast v-bind="delegatedProps">
     <Button :class="cn('w-9 h-9 p-0', props.class)" variant="outline">
       <slot>
-        <Icon name="i-radix-icons-double-arrow-right" />
+        <ChevronsRight />
       </slot>
     </Button>
   </PaginationLast>

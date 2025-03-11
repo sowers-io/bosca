@@ -2,6 +2,11 @@
 import type { BulletLegendItemInterface } from '@unovis/ts'
 import type { BaseChartProps } from '.'
 import { cn } from '@/lib/utils'
+import {
+  ChartCrosshair,
+  ChartLegend,
+  defaultColors,
+} from '@/components/ui/chart'
 import { Axis, GroupedBar, StackedBar } from '@unovis/ts'
 import {
   VisAxis,
@@ -11,7 +16,6 @@ import {
 } from '@unovis/vue'
 import { useMounted } from '@vueuse/core'
 import { type Component, computed, ref } from 'vue'
-import { ChartCrosshair, ChartLegend, defaultColors } from '../chart'
 
 const props = withDefaults(
   defineProps<
@@ -79,12 +83,7 @@ const selectorsBar = computed(() =>
 
 <template>
   <div
-    :class="
-      cn(
-        'w-full h-[400px] flex flex-col items-end',
-        $attrs.class ?? '',
-      )
-    "
+    :class="cn('w-full h-[400px] flex flex-col items-end', $attrs.class ?? '')"
   >
     <ChartLegend
       v-if="showLegend"
@@ -129,7 +128,7 @@ const selectorsBar = computed(() =>
         :tick-format="xFormatter ?? ((v: number) => data[v]?.[index])"
         :grid-line="false"
         :tick-line="false"
-        tick-text-color="hsl(var(--muted-foreground))"
+        tick-text-color="hsl(var(--vis-text-color))"
       />
       <VisAxis
         v-if="showYAxis"
@@ -145,7 +144,7 @@ const selectorsBar = computed(() =>
             },
           }
         "
-        tick-text-color="hsl(var(--muted-foreground))"
+        tick-text-color="hsl(var(--vis-text-color))"
       />
 
       <slot />

@@ -62,7 +62,7 @@ async function onMetadataSelected(id: string) {
     <div
       v-if="editable && !attribute.value"
       ref="dropzone"
-      class="cursor-pointer overflow-hidden bg-background rounded-md"
+      class="cursor-pointer overflow-hidden bg-background rounded-md shadow-sm"
       @click="dialogOpen = true"
     >
       <div

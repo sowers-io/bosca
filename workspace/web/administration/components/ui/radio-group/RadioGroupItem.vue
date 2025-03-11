@@ -1,12 +1,10 @@
 <script setup lang="ts">
+import type { RadioGroupItemProps } from 'reka-ui'
+import type { HTMLAttributes } from 'vue'
 import { cn } from '@/lib/utils'
-import {
-  RadioGroupIndicator,
-  RadioGroupItem,
-  type RadioGroupItemProps,
-  useForwardProps,
-} from 'radix-vue'
-import { computed, type HTMLAttributes } from 'vue'
+import { Check } from 'lucide-vue-next'
+import { RadioGroupIndicator, RadioGroupItem, useForwardProps } from 'reka-ui'
+import { computed } from 'vue'
 
 const props = defineProps<
   RadioGroupItemProps & { class?: HTMLAttributes['class'] }
@@ -26,13 +24,13 @@ const forwardedProps = useForwardProps(delegatedProps)
     v-bind="forwardedProps"
     :class="
       cn(
-        'aspect-square h-4 w-4 rounded-full border border-primary text-primary shadow focus:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50',
+        'peer aspect-square h-4 w-4 rounded-full border border-primary text-primary shadow focus:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50',
         props.class,
       )
     "
   >
     <RadioGroupIndicator class="flex items-center justify-center">
-      <Icon name="i-radix-icons-check" class="h-3.5 w-3.5 fill-primary" />
+      <Check class="h-3.5 w-3.5 text-primary" />
     </RadioGroupIndicator>
   </RadioGroupItem>
 </template>

@@ -14,6 +14,7 @@ const props = defineProps<{
   count: number
 }>()
 
+const offset = defineModel('offset', { type: Number, default: 0 })
 const count = defineModel('count', { type: Number, default: 0 })
 
 const router = useRouter()
@@ -21,7 +22,7 @@ const client = useBoscaClient()
 const { metadata, count: collectionCount } = await client.collections
   .getCollectionChildMetadata(
     props.collection.id,
-    props.offset,
+    offset,
     props.limit,
   )
 

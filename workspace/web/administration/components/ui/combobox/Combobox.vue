@@ -4,7 +4,7 @@ import {
   type ComboboxRootEmits,
   type ComboboxRootProps,
   useForwardPropsEmits,
-} from 'radix-vue'
+} from 'reka-ui'
 
 const props = defineProps<ComboboxRootProps>()
 const emits = defineEmits<ComboboxRootEmits>()

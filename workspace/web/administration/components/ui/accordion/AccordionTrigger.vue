@@ -5,7 +5,7 @@ import {
   AccordionHeader,
   AccordionTrigger,
   type AccordionTriggerProps,
-} from 'radix-vue'
+} from 'reka-ui'
 import { computed, type HTMLAttributes } from 'vue'
 
 const props = defineProps<
@@ -33,7 +33,7 @@ const delegatedProps = computed(() => {
       <slot />
       <slot name="icon">
         <ChevronDown
-          class="h-4 w-4 shrink-0 transition-transform duration-200"
+          class="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200"
         />
       </slot>
     </AccordionTrigger>

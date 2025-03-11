@@ -5,8 +5,8 @@ import {
   type CollectionIdNameFragment,
   type CollectionMetadataRelationshipFragment,
   type CollectionTemplateFragment,
-  type DocumentTemplateAttribute,
   type ParentCollectionFragment,
+  type TemplateAttribute,
 } from '@/lib/graphql/graphql'
 import { toast } from '~/components/ui/toast'
 import { Uploader } from '@/lib/uploader'
@@ -115,7 +115,7 @@ async function updateAttributes() {
   for (const attribute of props.template?.attributes || []) {
     let attr = attributes.get(attribute.key)
     if (!attr) {
-      attr = newAttributeState(attribute as DocumentTemplateAttribute)
+      attr = newAttributeState(attribute as TemplateAttribute)
       attributes.set(attribute.key, reactive(attr) as AttributeState)
       const attrRef = attributes.get(attribute.key) as unknown as WatchSource<
         AttributeState
@@ -398,8 +398,8 @@ async function onAddItem() {
           >
             <ContentCollectionsEditorCollectionsList
               :collection="collection"
-              :offset="offset"
               :limit="limit"
+              v-model:offset="offset"
               v-model:count="count"
             />
           </TabsContent>
@@ -409,8 +409,8 @@ async function onAddItem() {
           >
             <ContentCollectionsEditorMetadataList
               :collection="collection"
-              :offset="offset"
               :limit="limit"
+              v-model:offset="offset"
               v-model:count="count"
             />
           </TabsContent>

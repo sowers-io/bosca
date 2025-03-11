@@ -60,7 +60,7 @@ const imageId = computed(() => {
       :src="'/content/file?id=' + imageId"
       :alt="item?.name || ''"
       :class="
-        'w-8 h-8 bg-background mr-3 overflow-hidden' +
+        'w-8 h-8 bg-background mr-3 overflow-hidden object-cover' +
         (imageRelationship?.relationship === 'image.avatar'
           ? ' rounded-full'
           : ' rounded-md')

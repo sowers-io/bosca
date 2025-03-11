@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { AppConfigInput } from 'nuxt/schema'
+import { cn } from '@/lib/utils'
 import { useEventListener, useMediaQuery, useVModel } from '@vueuse/core'
-import { TooltipProvider } from 'radix-vue'
+import { TooltipProvider } from 'reka-ui'
 import { computed, type HTMLAttributes, type Ref, ref } from 'vue'
 import {
   provideSidebarContext,
@@ -57,8 +57,7 @@ function toggleSidebar() {
 
 useEventListener('keydown', (event: KeyboardEvent) => {
   if (
-    event.key === SIDEBAR_KEYBOARD_SHORTCUT &&
-    (event.metaKey || event.ctrlKey)
+    event.key === SIDEBAR_KEYBOARD_SHORTCUT && (event.metaKey || event.ctrlKey)
   ) {
     event.preventDefault()
     toggleSidebar()
@@ -68,8 +67,6 @@ useEventListener('keydown', (event: KeyboardEvent) => {
 // We add a state so that we can do data-state="expanded" or "collapsed".
 // This makes it easier to style the sidebar with Tailwind classes.
 const state = computed(() => open.value ? 'expanded' : 'collapsed')
-
-const sidebar = useAppConfig().sidebar as AppConfigInput['sidebar']
 
 provideSidebarContext({
   state,
@@ -93,13 +90,11 @@ provideSidebarContext({
       "
       :class="
         cn(
-          `group/sidebar-wrapper flex min-h-svh w-full text-sidebar-foreground has-[[data-variant=inset]]:bg-sidebar`,
-          [
-            props.class,
-            sidebar?.side === 'right' ? 'flex-row-reverse' : '',
-          ],
+          'group/sidebar-wrapper flex min-h-svh w-full has-[[data-variant=inset]]:bg-sidebar',
+          props.class,
         )
       "
+      v-bind="$attrs"
     >
       <slot />
     </div>

@@ -6,7 +6,7 @@ import {
   type SplitterResizeHandleEmits,
   type SplitterResizeHandleProps,
   useForwardPropsEmits,
-} from 'radix-vue'
+} from 'reka-ui'
 import { computed, type HTMLAttributes } from 'vue'
 
 const props = defineProps<
@@ -37,7 +37,7 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits)
   >
     <template v-if="props.withHandle">
       <div
-        class="z-10 h-4 w-3 flex items-center justify-center border rounded-sm bg-border"
+        class="z-10 flex h-4 w-3 items-center justify-center rounded-sm border bg-border"
       >
         <GripVertical class="h-2.5 w-2.5" />
       </div>

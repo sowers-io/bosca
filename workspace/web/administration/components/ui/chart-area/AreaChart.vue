@@ -1,12 +1,17 @@
 <script setup lang="ts" generic="T extends Record<string, any>">
 import type { BaseChartProps } from '.'
 import { cn } from '@/lib/utils'
+import {
+  ChartCrosshair,
+  ChartLegend,
+  defaultColors,
+} from '@/components/ui/chart'
 import { type BulletLegendItemInterface, CurveType } from '@unovis/ts'
 import { Area, Axis, Line } from '@unovis/ts'
 import { VisArea, VisAxis, VisLine, VisXYContainer } from '@unovis/vue'
 import { useMounted } from '@vueuse/core'
+import { useId } from 'reka-ui'
 import { type Component, computed, ref } from 'vue'
-import { ChartCrosshair, ChartLegend, defaultColors } from '../chart'
 
 const props = withDefaults(
   defineProps<
@@ -46,6 +51,8 @@ const emits = defineEmits<{
 type KeyOfT = Extract<keyof T, string>
 type Data = typeof props.data[number]
 
+const chartRef = useId()
+
 const index = computed(() => props.index as KeyOfT)
 const colors = computed(() =>
   props.colors?.length ? props.colors : defaultColors(props.categories.length)
@@ -68,12 +75,7 @@ function handleLegendItemClick(d: BulletLegendItemInterface, i: number) {
 
 <template>
   <div
-    :class="
-      cn(
-        'w-full h-[400px] flex flex-col items-end',
-        $attrs.class ?? '',
-      )
-    "
+    :class="cn('w-full h-[400px] flex flex-col items-end', $attrs.class ?? '')"
   >
     <ChartLegend
       v-if="showLegend"
@@ -90,7 +92,7 @@ function handleLegendItemClick(d: BulletLegendItemInterface, i: number) {
         <defs>
           <linearGradient
             v-for="(color, i) in colors"
-            :id="`color-${i}`"
+            :id="`${chartRef}-color-${i}`"
             :key="i"
             x1="0"
             y1="0"
@@ -98,16 +100,8 @@ function handleLegendItemClick(d: BulletLegendItemInterface, i: number) {
             y2="1"
           >
             <template v-if="showGradiant">
-              <stop
-                offset="5%"
-                :stop-color="color"
-                stop-opacity="0.4"
-              />
-              <stop
-                offset="95%"
-                :stop-color="color"
-                stop-opacity="0"
-              />
+              <stop offset="5%" :stop-color="color" stop-opacity="0.4" />
+              <stop offset="95%" :stop-color="color" stop-opacity="0" />
             </template>
             <template v-else>
               <stop offset="0%" :stop-color="color" />
@@ -133,7 +127,7 @@ function handleLegendItemClick(d: BulletLegendItemInterface, i: number) {
           :attributes="
             {
               [Area.selectors.area]: {
-                fill: `url(#color-${i})`,
+                fill: `url(#${chartRef}-color-${i})`,
               },
             }
           "
@@ -172,7 +166,7 @@ function handleLegendItemClick(d: BulletLegendItemInterface, i: number) {
         :tick-format="xFormatter ?? ((v: number) => data[v]?.[index])"
         :grid-line="false"
         :tick-line="false"
-        tick-text-color="hsl(var(--muted-foreground))"
+        tick-text-color="hsl(var(--vis-text-color))"
       />
       <VisAxis
         v-if="showYAxis"
@@ -188,7 +182,7 @@ function handleLegendItemClick(d: BulletLegendItemInterface, i: number) {
             },
           }
         "
-        tick-text-color="hsl(var(--muted-foreground))"
+        tick-text-color="hsl(var(--vis-text-color))"
       />
 
       <slot />

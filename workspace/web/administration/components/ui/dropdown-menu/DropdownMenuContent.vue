@@ -6,13 +6,11 @@ import {
   type DropdownMenuContentProps,
   DropdownMenuPortal,
   useForwardPropsEmits,
-} from 'radix-vue'
+} from 'reka-ui'
 import { computed, type HTMLAttributes } from 'vue'
 
 const props = withDefaults(
-  defineProps<
-    DropdownMenuContentProps & { class?: HTMLAttributes['class'] }
-  >(),
+  defineProps<DropdownMenuContentProps & { class?: HTMLAttributes['class'] }>(),
   {
     sideOffset: 4,
   },

@@ -11,12 +11,6 @@ import { FORM_ITEM_INJECTION_KEY } from './injectionKeys'
 export function useFormField() {
   const fieldContext = inject(FieldContextKey)
   const fieldItemContext = inject(FORM_ITEM_INJECTION_KEY)
-  const fieldState = {
-    valid: useIsFieldValid(),
-    isDirty: useIsFieldDirty(),
-    isTouched: useIsFieldTouched(),
-    error: useFieldError(),
-  }
 
   if (!fieldContext) {
     throw new Error('useFormField should be used within <FormField>')
@@ -24,6 +18,13 @@ export function useFormField() {
 
   const { name } = fieldContext
   const id = fieldItemContext
+
+  const fieldState = {
+    valid: useIsFieldValid(name),
+    isDirty: useIsFieldDirty(name),
+    isTouched: useIsFieldTouched(name),
+    error: useFieldError(name),
+  }
 
   return {
     id,

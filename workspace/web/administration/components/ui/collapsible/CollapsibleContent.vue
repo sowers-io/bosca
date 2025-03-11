@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { CollapsibleContent, type CollapsibleContentProps } from 'radix-vue'
+import { CollapsibleContent, type CollapsibleContentProps } from 'reka-ui'
 
 const props = defineProps<CollapsibleContentProps>()
 </script>
@@ -7,7 +7,7 @@ const props = defineProps<CollapsibleContentProps>()
 <template>
   <CollapsibleContent
     v-bind="props"
-    class="overflow-hidden transition-all data-[state=open]:animate-collapsible-down data-[state=closed]:animate-collapsible-up"
+    class="overflow-hidden transition-all data-[state=closed]:animate-collapsible-up data-[state=open]:animate-collapsible-down"
   >
     <slot />
   </CollapsibleContent>

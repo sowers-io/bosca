@@ -15,7 +15,7 @@ defineProps<{
     <div class="flex items-center justify-center">
       <div class="w-full">
         <Input
-          class="w-full border rounded-md p-2"
+          class="w-full border rounded-md p-2 shadow-sm"
           v-model:model-value="attribute.dateTimeValue"
           :disabled="!editable"
         />

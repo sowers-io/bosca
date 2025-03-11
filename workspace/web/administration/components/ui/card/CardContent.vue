@@ -8,9 +8,7 @@ const props = defineProps<{
 </script>
 
 <template>
-  <div :class="cn('p-6 pt-0 grow', props.class)">
-    <div class="flex flex-col gap-y-4">
-      <slot />
-    </div>
+  <div :class="cn('p-6 pt-0', props.class)">
+    <slot />
   </div>
 </template>

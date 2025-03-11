@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import type { NumberFieldRootEmits, NumberFieldRootProps } from 'radix-vue'
+import type { NumberFieldRootEmits, NumberFieldRootProps } from 'reka-ui'
 import { cn } from '@/lib/utils'
-import { NumberFieldRoot, useForwardPropsEmits } from 'radix-vue'
+import { NumberFieldRoot, useForwardPropsEmits } from 'reka-ui'
 import { computed, type HTMLAttributes } from 'vue'
 
 const props = defineProps<
@@ -19,10 +19,7 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits)
 </script>
 
 <template>
-  <NumberFieldRoot
-    v-bind="forwarded"
-    :class="cn('grid gap-1.5', props.class)"
-  >
+  <NumberFieldRoot v-bind="forwarded" :class="cn('grid gap-1.5', props.class)">
     <slot />
   </NumberFieldRoot>
 </template>

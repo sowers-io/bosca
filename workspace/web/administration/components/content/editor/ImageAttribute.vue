@@ -55,7 +55,7 @@ async function onMetadataSelected(id: string) {
       <div
         ref="dropzone"
         @click="dialogOpen = true"
-        class="cursor-pointer overflow-hidden bg-background rounded-md"
+        class="cursor-pointer overflow-hidden bg-background rounded-md shadow-sm"
       >
         <img
           v-if="attribute.value?.metadata?.id"
@@ -77,7 +77,7 @@ async function onMetadataSelected(id: string) {
       </div>
     </div>
     <div v-else-if="attribute.value">
-      <div class="overflow-hidden bg-background rounded-md">
+      <div class="overflow-hidden bg-background rounded-md shadow-sm">
         <img
           :src="'/content/image?id=' + attribute.value.metadata.id"
           :alt="attribute.name"

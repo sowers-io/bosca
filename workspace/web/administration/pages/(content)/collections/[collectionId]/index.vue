@@ -26,14 +26,14 @@ const parents = ref(
 )
 const collectionCollection = computed(() => {
   return parents.value?.find((c) =>
-    c.attributes['editor.type'] === 'Collection'
+    c.attributes && c.attributes['editor.type'] === 'Collection'
   ) as
     | ParentCollectionFragment
     | undefined
 })
 const parentCollections = computed(() => {
   return parents.value?.filter((c) =>
-    c.attributes['editor.type'] !== 'Document'
+    !c.attributes || c.attributes['editor.type'] !== 'Document'
   ) || []
 })
 const template = ref(

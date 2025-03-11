@@ -1,11 +1,12 @@
 <script setup lang="ts">
 import { cn } from '@/lib/utils'
+import { ChevronDown } from 'lucide-vue-next'
 import {
   SelectIcon,
   SelectTrigger,
   type SelectTriggerProps,
   useForwardProps,
-} from 'radix-vue'
+} from 'reka-ui'
 import { computed, type HTMLAttributes } from 'vue'
 
 const props = defineProps<
@@ -26,14 +27,14 @@ const forwardedProps = useForwardProps(delegatedProps)
     v-bind="forwardedProps"
     :class="
       cn(
-        'flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1',
+        'flex h-9 w-full items-center justify-between whitespace-nowrap rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm ring-offset-background data-[placeholder]:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-ring disabled:cursor-not-allowed disabled:opacity-50 [&>span]:truncate text-start',
         props.class,
       )
     "
   >
     <slot />
     <SelectIcon as-child>
-      <Icon name="i-radix-icons-caret-sort" class="h-4 w-4 opacity-50" />
+      <ChevronDown class="w-4 h-4 opacity-50 shrink-0" />
     </SelectIcon>
   </SelectTrigger>
 </template>

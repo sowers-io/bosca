@@ -1,6 +1,8 @@
 <script setup lang="ts">
 const client = useBoscaClient()
-const adminOverrides = await client.configurations.getConfiguration('admin.overrides')
+const adminOverrides = await client.configurations.getConfiguration(
+  'admin.overrides',
+)
 </script>
 
 <template>
@@ -19,7 +21,10 @@ const adminOverrides = await client.configurations.getConfiguration('admin.overr
           class="w-6 h-6"
           v-else
         />
-        <span class="ml-3 font-bold">{{ adminOverrides?.value?.title || 'Bosca' }}</span>
+        <span class="ml-3 font-bold">{{
+          adminOverrides?.value?.title?.replace(' ', '&nbsp;') ||
+          'Bosca'
+        }}</span>
       </div>
     </SidebarMenuItem>
   </SidebarMenu>

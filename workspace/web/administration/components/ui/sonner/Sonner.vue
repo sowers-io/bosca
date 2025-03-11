@@ -6,7 +6,7 @@ const props = defineProps<ToasterProps>()
 
 <template>
   <Sonner
-    class="group toaster"
+    class="toaster group"
     v-bind="props"
     :toast-options="
       {

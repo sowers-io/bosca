@@ -1,6 +1,6 @@
-import type { Spacing } from '@unovis/ts'
-
 export { default as DonutChart } from './DonutChart.vue'
+
+import type { Spacing } from '@unovis/ts'
 
 type KeyOf<T extends Record<string, any>> = Extract<keyof T, string>
 

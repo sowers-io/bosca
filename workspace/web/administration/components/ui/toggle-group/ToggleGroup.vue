@@ -7,7 +7,7 @@ import {
   type ToggleGroupRootEmits,
   type ToggleGroupRootProps,
   useForwardPropsEmits,
-} from 'radix-vue'
+} from 'reka-ui'
 import { computed, type HTMLAttributes, provide } from 'vue'
 
 type ToggleGroupVariants = VariantProps<typeof toggleVariants>

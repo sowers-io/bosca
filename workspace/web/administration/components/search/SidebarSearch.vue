@@ -7,7 +7,6 @@ import type {
 import { getLink } from '~/lib/link.ts'
 import { toast } from '~/components/ui/toast'
 
-const { metaSymbol } = useShortcuts()
 const client = useBoscaClient()
 const openCommand = ref(false)
 const router = useRouter()
@@ -79,8 +78,6 @@ onMounted(() => {
       <div
         class="ml-auto flex items-center space-x-0.5 group-data-[collapsible=icon]:hidden"
       >
-        <BaseKbd>{{ metaSymbol }}</BaseKbd>
-        <BaseKbd>K</BaseKbd>
       </div>
     </Button>
   </SidebarMenuButton>
@@ -89,8 +86,6 @@ onMounted(() => {
     <CommandInput placeholder="Type a command or search..." />
     <CommandList>
       <CommandEmpty>No results found.</CommandEmpty>
-      <CommandGroup heading="Suggestions"></CommandGroup>
-      <CommandSeparator />
       <CommandGroup heading="Search Results">
         <CommandItem
           v-for="result in results || []"

@@ -14,7 +14,7 @@ defineProps<{
     <label class="block font-bold mt-4 mb-2">{{ attribute.name }}</label>
     <div class="flex items-center justify-center">
       <Input
-        class="w-full border rounded-md p-2"
+        class="w-full border rounded-md p-2 shadow-sm"
         v-model:model-value="attribute.value"
         :disabled="!editable"
       />

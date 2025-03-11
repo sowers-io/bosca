@@ -1,12 +1,12 @@
 <script lang="ts" setup>
 import { cn } from '@/lib/utils'
+import { buttonVariants } from '@/components/ui/button'
 import {
   CalendarCellTrigger,
   type CalendarCellTriggerProps,
   useForwardProps,
-} from 'radix-vue'
+} from 'reka-ui'
 import { computed, type HTMLAttributes } from 'vue'
-import { buttonVariants } from '../button'
 
 const props = defineProps<
   CalendarCellTriggerProps & { class?: HTMLAttributes['class'] }
@@ -35,7 +35,7 @@ const forwardedProps = useForwardProps(delegatedProps)
         // Unavailable
         'data-[unavailable]:text-destructive-foreground data-[unavailable]:line-through',
         // Outside months
-        'data-[outside-month]:pointer-events-none data-[outside-month]:text-muted-foreground data-[outside-month]:opacity-50 [&[data-outside-month][data-selected]]:bg-accent/50 [&[data-outside-month][data-selected]]:text-muted-foreground [&[data-outside-month][data-selected]]:opacity-30',
+        'data-[outside-view]:text-muted-foreground data-[outside-view]:opacity-50 [&[data-outside-view][data-selected]]:bg-accent/50 [&[data-outside-view][data-selected]]:text-muted-foreground [&[data-outside-view][data-selected]]:opacity-30',
         props.class,
       )
     "

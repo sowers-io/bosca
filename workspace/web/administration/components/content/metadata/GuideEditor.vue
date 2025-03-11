@@ -11,7 +11,6 @@ import {
   type ParentCollectionFragment,
   WorkflowStateType,
 } from '~/lib/graphql/graphql.ts'
-import { TooltipRoot } from 'radix-vue'
 
 const router = useRouter()
 const client = useBoscaClient()
@@ -355,67 +354,65 @@ watch(currentPage, (page) => {
     </div>
     <div class="border-none p-0 outline-none mt-4">
       <div class="flex gap-4">
-        <TooltipRoot>
-          <Pagination
-            v-slot="{ page }"
-            :items-per-page="1"
-            :total="(guide.steps?.length || 0) + 1"
-            :sibling-count="6"
-            show-edges
-            :default-page="1"
-            v-model:page="currentPage"
-          >
-            <PaginationList v-slot="{ items }" class="flex items-center gap-1">
-              <PaginationFirst />
-              <PaginationPrev />
-              <template v-for="(item, index) in items">
-                <PaginationListItem
-                  v-if="item.type === 'page'"
-                  :key="index"
-                  :value="item.value"
-                  as-child
-                >
-                  <Tooltip>
-                    <TooltipTrigger as-child>
-                      <Button
-                        class="h-9"
-                        :variant="
-                          item.value === page
-                          ? 'default'
-                          : 'outline'
-                        "
-                        @click="currentPage = item.value"
-                      >
-                        <template v-if="item.value === 1">
-                          <Icon name="i-lucide-info" class="size-4" />
-                        </template>
-                        <template v-else>
-                          {{ item.value - 1 }}
-                        </template>
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
+        <Pagination
+          v-slot="{ page }"
+          :items-per-page="1"
+          :total="(guide.steps?.length || 0) + 1"
+          :sibling-count="6"
+          show-edges
+          :default-page="1"
+          v-model:page="currentPage"
+        >
+          <PaginationList v-slot="{ items }" class="flex items-center gap-1">
+            <PaginationFirst />
+            <PaginationPrev />
+            <template v-for="(item, index) in items">
+              <PaginationListItem
+                v-if="item.type === 'page'"
+                :key="index"
+                :value="item.value"
+                as-child
+              >
+                <Tooltip>
+                  <TooltipTrigger as-child>
+                    <Button
+                      class="h-9"
+                      :variant="
+                        item.value === page
+                        ? 'default'
+                        : 'outline'
+                      "
+                      @click="currentPage = item.value"
+                    >
                       <template v-if="item.value === 1">
-                        Introduction
+                        <Icon name="i-lucide-info" class="size-4" />
                       </template>
                       <template v-else>
-                        {{
-                          guide.steps[item.value - 2]
-                          ?.metadata?.name ||
-                          'Step ' +
-                            (item.value - 2)
-                        }}
+                        {{ item.value - 1 }}
                       </template>
-                    </TooltipContent>
-                  </Tooltip>
-                </PaginationListItem>
-                <PaginationEllipsis v-else :key="item.type" :index="index" />
-              </template>
-              <PaginationNext />
-              <PaginationLast />
-            </PaginationList>
-          </Pagination>
-        </TooltipRoot>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <template v-if="item.value === 1">
+                      Introduction
+                    </template>
+                    <template v-else>
+                      {{
+                        guide.steps[item.value - 2]
+                        ?.metadata?.name ||
+                        'Step ' +
+                          (item.value - 2)
+                      }}
+                    </template>
+                  </TooltipContent>
+                </Tooltip>
+              </PaginationListItem>
+              <PaginationEllipsis v-else :key="item.type" :index="index" />
+            </template>
+            <PaginationNext />
+            <PaginationLast />
+          </PaginationList>
+        </Pagination>
       </div>
       <div class="mt-5" v-if="document">
         <ContentMetadataEditor

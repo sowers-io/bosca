@@ -4,7 +4,7 @@ import {
   RangeCalendarGridRow,
   type RangeCalendarGridRowProps,
   useForwardProps,
-} from 'radix-vue'
+} from 'reka-ui'
 import { computed, type HTMLAttributes } from 'vue'
 
 const props = defineProps<
@@ -22,7 +22,7 @@ const forwardedProps = useForwardProps(delegatedProps)
 
 <template>
   <RangeCalendarGridRow
-    :class="cn('flex mt-2 w-full', props.class)"
+    :class="cn('flex', props.class)"
     v-bind="forwardedProps"
   >
     <slot />

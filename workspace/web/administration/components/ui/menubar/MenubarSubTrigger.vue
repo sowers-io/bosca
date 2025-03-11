@@ -1,17 +1,15 @@
 <script setup lang="ts">
 import { cn } from '@/lib/utils'
+import { ChevronRight } from 'lucide-vue-next'
 import {
   MenubarSubTrigger,
   type MenubarSubTriggerProps,
   useForwardProps,
-} from 'radix-vue'
+} from 'reka-ui'
 import { computed, type HTMLAttributes } from 'vue'
 
 const props = defineProps<
-  MenubarSubTriggerProps & {
-    class?: HTMLAttributes['class']
-    inset?: boolean
-  }
+  MenubarSubTriggerProps & { class?: HTMLAttributes['class']; inset?: boolean }
 >()
 
 const delegatedProps = computed(() => {
@@ -35,6 +33,6 @@ const forwardedProps = useForwardProps(delegatedProps)
     "
   >
     <slot />
-    <Icon name="i-radix-icons-chevron-right" class="ml-auto h-4 w-4" />
+    <ChevronRight class="ml-auto h-4 w-4" />
   </MenubarSubTrigger>
 </template>

@@ -5,7 +5,7 @@ import {
   type RangeCalendarRootEmits,
   type RangeCalendarRootProps,
   useForwardPropsEmits,
-} from 'radix-vue'
+} from 'reka-ui'
 import { computed, type HTMLAttributes } from 'vue'
 import {
   RangeCalendarCell,
@@ -48,11 +48,8 @@ const forwarded = useForwardPropsEmits(delegatedProps, emits)
       <RangeCalendarNextButton />
     </RangeCalendarHeader>
 
-    <div class="mt-4 flex flex-col gap-y-4 sm:flex-row sm:gap-x-4 sm:gap-y-0">
-      <RangeCalendarGrid
-        v-for="month in grid"
-        :key="month.value.toString()"
-      >
+    <div class="flex flex-col gap-y-4 mt-4 sm:flex-row sm:gap-x-4 sm:gap-y-0">
+      <RangeCalendarGrid v-for="month in grid" :key="month.value.toString()">
         <RangeCalendarGridHead>
           <RangeCalendarGridRow>
             <RangeCalendarHeadCell

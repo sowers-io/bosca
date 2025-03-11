@@ -4,13 +4,11 @@ import {
   ScrollAreaScrollbar,
   type ScrollAreaScrollbarProps,
   ScrollAreaThumb,
-} from 'radix-vue'
+} from 'reka-ui'
 import { computed, type HTMLAttributes } from 'vue'
 
 const props = withDefaults(
-  defineProps<
-    ScrollAreaScrollbarProps & { class?: HTMLAttributes['class'] }
-  >(),
+  defineProps<ScrollAreaScrollbarProps & { class?: HTMLAttributes['class'] }>(),
   {
     orientation: 'vertical',
   },
