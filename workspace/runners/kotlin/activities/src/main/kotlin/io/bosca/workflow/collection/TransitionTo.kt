@@ -26,12 +26,12 @@ class TransitionTo(client: Client) : Activity(client) {
     }
 
     override suspend fun execute(context: ActivityContext, job: WorkflowJob) {
+        val collection = job.collection?.collection ?: return
         val configuration = job.workflowActivity.workflowActivity.configuration as Map<*, *>
         val state = configuration["state"] as String
-        if (job.collection?.collection?.workflow?.collectionWorkflow?.state != "pending") return
         val status = if (configuration.containsKey("status")) configuration["status"] as String else ""
-        client.workflows.setCollectionWorkflowStateComplete(job.collection?.collection?.id ?: error("missing collection id"), status)
-        client.workflows.setCollectionWorkflowState(job.collection!!.collection.id, state, status, true)
+        client.workflows.setCollectionWorkflowStateComplete(collection.id, status)
+        client.workflows.setCollectionWorkflowState(collection.id, state, status, true)
     }
 
     companion object {

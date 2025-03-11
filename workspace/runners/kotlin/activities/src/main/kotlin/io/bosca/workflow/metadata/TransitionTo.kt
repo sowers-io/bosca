@@ -26,11 +26,12 @@ class TransitionTo(client: Client) : Activity(client) {
     }
 
     override suspend fun execute(context: ActivityContext, job: WorkflowJob) {
+        val metadata = job.metadata?.metadata ?: return
         val configuration = job.workflowActivity.workflowActivity.configuration as Map<*, *>
         val state = configuration["state"] as String
         val status = if (configuration.containsKey("status")) configuration["status"] as String else ""
-        client.workflows.setMetadataWorkflowStateComplete(job.metadata?.metadata?.id ?: error("missing metadata id"), status)
-        client.workflows.setMetadataWorkflowState(job.metadata!!.metadata.id, state, status, true)
+        client.workflows.setMetadataWorkflowStateComplete(metadata.id, status)
+        client.workflows.setMetadataWorkflowState(metadata.id, state, status, true)
     }
 
     companion object {
