@@ -11,6 +11,13 @@ export default defineEventHandler(async (e) => {
   network.token = cookies._bat
   const client = new BoscaClient(network)
   const id = url.search.split('?id=')[1]
-  const metadata = await client.metadata.get(id)
-  return fetch(metadata.content.urls.download.url)
+  if (id) {
+    const metadata = await client.metadata.get(id)
+    return fetch(metadata.content.urls.download.url)
+  } else {
+    const slug = url.search.split('?slug=')[1]
+    const item = await client.get(slug)
+    if (item?.__typename != 'Metadata') throw new Error('Not found')
+    return fetch(item.content.urls.download.url)
+  }
 })

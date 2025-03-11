@@ -228,6 +228,11 @@ class ContentMetadata(network: NetworkClient) : Api(network) {
         response.validate()
     }
 
+    suspend fun setPublicContent(id: String, ready: Boolean) {
+        val response = network.graphql.mutation(SetMetadataPublicContentMutation(id, ready)).execute()
+        response.validate()
+    }
+
     suspend fun deletePermanently(id: String) {
         val response = network.graphql.mutation(PermanentlyDeleteMetadataMutation(id)).execute()
         response.validate()

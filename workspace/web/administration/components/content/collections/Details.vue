@@ -26,6 +26,14 @@ defineProps<{
     <CardContent class="grid gap-6">
       <div class="flex flex-col">
         <Label class="flex flex-col space-y-1">
+          <span>Slug</span>
+          <span class="font-normal leading-snug text-muted-foreground">
+            {{ collection.slug || '--' }}
+          </span>
+        </Label>
+      </div>
+      <div class="flex flex-col">
+        <Label class="flex flex-col space-y-1">
           <span>Created</span>
           <span class="font-normal leading-snug text-muted-foreground">
             {{ formatDateTime(collection.created) }}

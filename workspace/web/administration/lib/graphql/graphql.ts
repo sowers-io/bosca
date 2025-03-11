@@ -5474,6 +5474,178 @@ export type GetPromptsQuery = {
   }
 }
 
+export type GetSlugQueryVariables = Exact<{
+  slug: Scalars['String']['input']
+}>
+
+export type GetSlugQuery = {
+  __typename?: 'Query'
+  content: {
+    __typename?: 'Content'
+    slug?:
+      | {
+        __typename: 'Collection'
+        id: string
+        slug?: string | null
+        traitIds: Array<string>
+        name: string
+        description?: string | null
+        labels: Array<string>
+        created: any
+        modified: any
+        attributes?: any | null
+        systemAttributes?: any | null
+        ready?: any | null
+        public: boolean
+        publicList: boolean
+        collectionType: CollectionType
+        templateMetadata?: {
+          __typename?: 'Metadata'
+          id: string
+          version: number
+        } | null
+        ordering?:
+          | Array<
+            { __typename?: 'Ordering'; path: Array<string>; order: Order }
+          >
+          | null
+        categories: Array<{ __typename?: 'Category'; id: string; name: string }>
+        workflow: {
+          __typename?: 'CollectionWorkflow'
+          state: string
+          stateValid?: any | null
+          pending?: string | null
+        }
+      }
+      | {
+        __typename: 'Metadata'
+        id: string
+        version: number
+        slug?: string | null
+        name: string
+        labels: Array<string>
+        languageTag: string
+        public: boolean
+        publicContent: boolean
+        publicSupplementary: boolean
+        parentId?: string | null
+        type: MetadataType
+        created: any
+        modified: any
+        uploaded?: any | null
+        ready?: any | null
+        attributes?: any | null
+        systemAttributes?: any | null
+        traitIds: Array<string>
+        source: {
+          __typename?: 'MetadataSource'
+          id?: string | null
+          identifier?: string | null
+        }
+        categories: Array<{ __typename?: 'Category'; id: string; name: string }>
+        content: {
+          __typename?: 'MetadataContent'
+          type: string
+          length?: number | null
+          urls: {
+            __typename?: 'MetadataContentUrls'
+            download: {
+              __typename?: 'SignedUrl'
+              url: string
+              headers: Array<
+                { __typename?: 'SignedUrlHeader'; name: string; value: string }
+              >
+            }
+          }
+        }
+        workflow: {
+          __typename?: 'MetadataWorkflow'
+          state: string
+          stateValid?: any | null
+          pending?: string | null
+        }
+        supplementary: Array<
+          {
+            __typename?: 'MetadataSupplementary'
+            key: string
+            name: string
+            uploaded?: string | null
+            attributes?: any | null
+            content: {
+              __typename?: 'MetadataSupplementaryContent'
+              type: string
+              length?: number | null
+              urls: {
+                __typename?: 'MetadataSupplementaryContentUrls'
+                download: {
+                  __typename?: 'SignedUrl'
+                  url: string
+                  headers: Array<
+                    {
+                      __typename?: 'SignedUrlHeader'
+                      name: string
+                      value: string
+                    }
+                  >
+                }
+              }
+            }
+            source: {
+              __typename?: 'MetadataSupplementarySource'
+              id: string
+              identifier?: string | null
+            }
+          }
+        >
+        profiles: Array<
+          {
+            __typename?: 'MetadataProfile'
+            relationship: string
+            profile?: {
+              __typename: 'Profile'
+              id: string
+              slug?: string | null
+              name: string
+              visibility: ProfileVisibility
+              attributes: Array<
+                {
+                  __typename?: 'ProfileAttribute'
+                  id: string
+                  typeId: string
+                  visibility: ProfileVisibility
+                  attributes?: any | null
+                  metadata?: {
+                    __typename?: 'Metadata'
+                    id: string
+                    content: {
+                      __typename?: 'MetadataContent'
+                      urls: {
+                        __typename?: 'MetadataContentUrls'
+                        download: {
+                          __typename?: 'SignedUrl'
+                          url: string
+                          headers: Array<
+                            {
+                              __typename?: 'SignedUrlHeader'
+                              name: string
+                              value: string
+                            }
+                          >
+                        }
+                      }
+                    }
+                  } | null
+                }
+              >
+            } | null
+          }
+        >
+      }
+      | { __typename?: 'Profile' }
+      | null
+  }
+}
+
 export type GetStateQueryVariables = Exact<{
   id: Scalars['String']['input']
 }>
@@ -26573,6 +26745,571 @@ export const GetPromptsDocument = {
     },
   }],
 } as unknown as DocumentNode<GetPromptsQuery, GetPromptsQueryVariables>
+export const GetSlugDocument = {
+  '__meta__': { 'hash': '0ab8c8c7379a6a98fa881962fd68b744c89ba1ba' },
+  'kind': 'Document',
+  'definitions': [{
+    'kind': 'OperationDefinition',
+    'operation': 'query',
+    'name': { 'kind': 'Name', 'value': 'GetSlug' },
+    'variableDefinitions': [{
+      'kind': 'VariableDefinition',
+      'variable': {
+        'kind': 'Variable',
+        'name': { 'kind': 'Name', 'value': 'slug' },
+      },
+      'type': {
+        'kind': 'NonNullType',
+        'type': {
+          'kind': 'NamedType',
+          'name': { 'kind': 'Name', 'value': 'String' },
+        },
+      },
+    }],
+    'selectionSet': {
+      'kind': 'SelectionSet',
+      'selections': [{
+        'kind': 'Field',
+        'name': { 'kind': 'Name', 'value': 'content' },
+        'selectionSet': {
+          'kind': 'SelectionSet',
+          'selections': [{
+            'kind': 'Field',
+            'name': { 'kind': 'Name', 'value': 'slug' },
+            'arguments': [{
+              'kind': 'Argument',
+              'name': { 'kind': 'Name', 'value': 'slug' },
+              'value': {
+                'kind': 'Variable',
+                'name': { 'kind': 'Name', 'value': 'slug' },
+              },
+            }],
+            'selectionSet': {
+              'kind': 'SelectionSet',
+              'selections': [{
+                'kind': 'InlineFragment',
+                'typeCondition': {
+                  'kind': 'NamedType',
+                  'name': { 'kind': 'Name', 'value': 'Metadata' },
+                },
+                'selectionSet': {
+                  'kind': 'SelectionSet',
+                  'selections': [{
+                    'kind': 'FragmentSpread',
+                    'name': { 'kind': 'Name', 'value': 'Metadata' },
+                  }],
+                },
+              }, {
+                'kind': 'InlineFragment',
+                'typeCondition': {
+                  'kind': 'NamedType',
+                  'name': { 'kind': 'Name', 'value': 'Collection' },
+                },
+                'selectionSet': {
+                  'kind': 'SelectionSet',
+                  'selections': [{
+                    'kind': 'FragmentSpread',
+                    'name': { 'kind': 'Name', 'value': 'Collection' },
+                  }],
+                },
+              }],
+            },
+          }],
+        },
+      }],
+    },
+  }, {
+    'kind': 'FragmentDefinition',
+    'name': { 'kind': 'Name', 'value': 'Category' },
+    'typeCondition': {
+      'kind': 'NamedType',
+      'name': { 'kind': 'Name', 'value': 'Category' },
+    },
+    'selectionSet': {
+      'kind': 'SelectionSet',
+      'selections': [{
+        'kind': 'Field',
+        'name': { 'kind': 'Name', 'value': 'id' },
+      }, { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'name' } }],
+    },
+  }, {
+    'kind': 'FragmentDefinition',
+    'name': { 'kind': 'Name', 'value': 'MetadataContent' },
+    'typeCondition': {
+      'kind': 'NamedType',
+      'name': { 'kind': 'Name', 'value': 'MetadataContent' },
+    },
+    'selectionSet': {
+      'kind': 'SelectionSet',
+      'selections': [
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'type' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'length' } },
+        {
+          'kind': 'Field',
+          'name': { 'kind': 'Name', 'value': 'urls' },
+          'selectionSet': {
+            'kind': 'SelectionSet',
+            'selections': [{
+              'kind': 'Field',
+              'name': { 'kind': 'Name', 'value': 'download' },
+              'selectionSet': {
+                'kind': 'SelectionSet',
+                'selections': [{
+                  'kind': 'Field',
+                  'name': { 'kind': 'Name', 'value': 'url' },
+                }, {
+                  'kind': 'Field',
+                  'name': { 'kind': 'Name', 'value': 'headers' },
+                  'selectionSet': {
+                    'kind': 'SelectionSet',
+                    'selections': [{
+                      'kind': 'Field',
+                      'name': { 'kind': 'Name', 'value': 'name' },
+                    }, {
+                      'kind': 'Field',
+                      'name': { 'kind': 'Name', 'value': 'value' },
+                    }],
+                  },
+                }],
+              },
+            }],
+          },
+        },
+      ],
+    },
+  }, {
+    'kind': 'FragmentDefinition',
+    'name': { 'kind': 'Name', 'value': 'MetadataWorkflow' },
+    'typeCondition': {
+      'kind': 'NamedType',
+      'name': { 'kind': 'Name', 'value': 'MetadataWorkflow' },
+    },
+    'selectionSet': {
+      'kind': 'SelectionSet',
+      'selections': [
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'state' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'stateValid' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'pending' } },
+      ],
+    },
+  }, {
+    'kind': 'FragmentDefinition',
+    'name': { 'kind': 'Name', 'value': 'MetadataSupplementaryContent' },
+    'typeCondition': {
+      'kind': 'NamedType',
+      'name': { 'kind': 'Name', 'value': 'MetadataSupplementaryContent' },
+    },
+    'selectionSet': {
+      'kind': 'SelectionSet',
+      'selections': [
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'type' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'length' } },
+        {
+          'kind': 'Field',
+          'name': { 'kind': 'Name', 'value': 'urls' },
+          'selectionSet': {
+            'kind': 'SelectionSet',
+            'selections': [{
+              'kind': 'Field',
+              'name': { 'kind': 'Name', 'value': 'download' },
+              'selectionSet': {
+                'kind': 'SelectionSet',
+                'selections': [{
+                  'kind': 'Field',
+                  'name': { 'kind': 'Name', 'value': 'url' },
+                }, {
+                  'kind': 'Field',
+                  'name': { 'kind': 'Name', 'value': 'headers' },
+                  'selectionSet': {
+                    'kind': 'SelectionSet',
+                    'selections': [{
+                      'kind': 'Field',
+                      'name': { 'kind': 'Name', 'value': 'name' },
+                    }, {
+                      'kind': 'Field',
+                      'name': { 'kind': 'Name', 'value': 'value' },
+                    }],
+                  },
+                }],
+              },
+            }],
+          },
+        },
+      ],
+    },
+  }, {
+    'kind': 'FragmentDefinition',
+    'name': { 'kind': 'Name', 'value': 'MetadataSupplementary' },
+    'typeCondition': {
+      'kind': 'NamedType',
+      'name': { 'kind': 'Name', 'value': 'MetadataSupplementary' },
+    },
+    'selectionSet': {
+      'kind': 'SelectionSet',
+      'selections': [
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'key' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'name' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'uploaded' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'attributes' } },
+        {
+          'kind': 'Field',
+          'name': { 'kind': 'Name', 'value': 'content' },
+          'selectionSet': {
+            'kind': 'SelectionSet',
+            'selections': [{
+              'kind': 'FragmentSpread',
+              'name': {
+                'kind': 'Name',
+                'value': 'MetadataSupplementaryContent',
+              },
+            }],
+          },
+        },
+        {
+          'kind': 'Field',
+          'name': { 'kind': 'Name', 'value': 'source' },
+          'selectionSet': {
+            'kind': 'SelectionSet',
+            'selections': [{
+              'kind': 'Field',
+              'name': { 'kind': 'Name', 'value': 'id' },
+            }, {
+              'kind': 'Field',
+              'name': { 'kind': 'Name', 'value': 'identifier' },
+            }],
+          },
+        },
+      ],
+    },
+  }, {
+    'kind': 'FragmentDefinition',
+    'name': { 'kind': 'Name', 'value': 'Profile' },
+    'typeCondition': {
+      'kind': 'NamedType',
+      'name': { 'kind': 'Name', 'value': 'Profile' },
+    },
+    'selectionSet': {
+      'kind': 'SelectionSet',
+      'selections': [
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': '__typename' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'id' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'slug' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'name' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'visibility' } },
+        {
+          'kind': 'Field',
+          'name': { 'kind': 'Name', 'value': 'attributes' },
+          'selectionSet': {
+            'kind': 'SelectionSet',
+            'selections': [{
+              'kind': 'Field',
+              'name': { 'kind': 'Name', 'value': 'id' },
+            }, {
+              'kind': 'Field',
+              'name': { 'kind': 'Name', 'value': 'typeId' },
+            }, {
+              'kind': 'Field',
+              'name': { 'kind': 'Name', 'value': 'visibility' },
+            }, {
+              'kind': 'Field',
+              'name': { 'kind': 'Name', 'value': 'attributes' },
+            }, {
+              'kind': 'Field',
+              'name': { 'kind': 'Name', 'value': 'metadata' },
+              'selectionSet': {
+                'kind': 'SelectionSet',
+                'selections': [{
+                  'kind': 'Field',
+                  'name': { 'kind': 'Name', 'value': 'id' },
+                }, {
+                  'kind': 'Field',
+                  'name': { 'kind': 'Name', 'value': 'content' },
+                  'selectionSet': {
+                    'kind': 'SelectionSet',
+                    'selections': [{
+                      'kind': 'Field',
+                      'name': { 'kind': 'Name', 'value': 'urls' },
+                      'selectionSet': {
+                        'kind': 'SelectionSet',
+                        'selections': [{
+                          'kind': 'Field',
+                          'name': { 'kind': 'Name', 'value': 'download' },
+                          'selectionSet': {
+                            'kind': 'SelectionSet',
+                            'selections': [{
+                              'kind': 'Field',
+                              'name': { 'kind': 'Name', 'value': 'url' },
+                            }, {
+                              'kind': 'Field',
+                              'name': { 'kind': 'Name', 'value': 'headers' },
+                              'selectionSet': {
+                                'kind': 'SelectionSet',
+                                'selections': [{
+                                  'kind': 'Field',
+                                  'name': { 'kind': 'Name', 'value': 'name' },
+                                }, {
+                                  'kind': 'Field',
+                                  'name': { 'kind': 'Name', 'value': 'value' },
+                                }],
+                              },
+                            }],
+                          },
+                        }],
+                      },
+                    }],
+                  },
+                }],
+              },
+            }],
+          },
+        },
+      ],
+    },
+  }, {
+    'kind': 'FragmentDefinition',
+    'name': { 'kind': 'Name', 'value': 'MetadataProfile' },
+    'typeCondition': {
+      'kind': 'NamedType',
+      'name': { 'kind': 'Name', 'value': 'MetadataProfile' },
+    },
+    'selectionSet': {
+      'kind': 'SelectionSet',
+      'selections': [{
+        'kind': 'Field',
+        'name': { 'kind': 'Name', 'value': 'relationship' },
+      }, {
+        'kind': 'Field',
+        'name': { 'kind': 'Name', 'value': 'profile' },
+        'selectionSet': {
+          'kind': 'SelectionSet',
+          'selections': [{
+            'kind': 'FragmentSpread',
+            'name': { 'kind': 'Name', 'value': 'Profile' },
+          }],
+        },
+      }],
+    },
+  }, {
+    'kind': 'FragmentDefinition',
+    'name': { 'kind': 'Name', 'value': 'Ordering' },
+    'typeCondition': {
+      'kind': 'NamedType',
+      'name': { 'kind': 'Name', 'value': 'Ordering' },
+    },
+    'selectionSet': {
+      'kind': 'SelectionSet',
+      'selections': [{
+        'kind': 'Field',
+        'name': { 'kind': 'Name', 'value': 'path' },
+      }, { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'order' } }],
+    },
+  }, {
+    'kind': 'FragmentDefinition',
+    'name': { 'kind': 'Name', 'value': 'CollectionWorkflow' },
+    'typeCondition': {
+      'kind': 'NamedType',
+      'name': { 'kind': 'Name', 'value': 'CollectionWorkflow' },
+    },
+    'selectionSet': {
+      'kind': 'SelectionSet',
+      'selections': [
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'state' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'stateValid' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'pending' } },
+      ],
+    },
+  }, {
+    'kind': 'FragmentDefinition',
+    'name': { 'kind': 'Name', 'value': 'Metadata' },
+    'typeCondition': {
+      'kind': 'NamedType',
+      'name': { 'kind': 'Name', 'value': 'Metadata' },
+    },
+    'selectionSet': {
+      'kind': 'SelectionSet',
+      'selections': [
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': '__typename' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'id' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'version' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'slug' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'name' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'labels' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'languageTag' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'public' } },
+        {
+          'kind': 'Field',
+          'name': { 'kind': 'Name', 'value': 'publicContent' },
+        },
+        {
+          'kind': 'Field',
+          'name': { 'kind': 'Name', 'value': 'publicSupplementary' },
+        },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'parentId' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'type' } },
+        {
+          'kind': 'Field',
+          'name': { 'kind': 'Name', 'value': 'source' },
+          'selectionSet': {
+            'kind': 'SelectionSet',
+            'selections': [{
+              'kind': 'Field',
+              'name': { 'kind': 'Name', 'value': 'id' },
+            }, {
+              'kind': 'Field',
+              'name': { 'kind': 'Name', 'value': 'identifier' },
+            }],
+          },
+        },
+        {
+          'kind': 'Field',
+          'name': { 'kind': 'Name', 'value': 'categories' },
+          'selectionSet': {
+            'kind': 'SelectionSet',
+            'selections': [{
+              'kind': 'FragmentSpread',
+              'name': { 'kind': 'Name', 'value': 'Category' },
+            }],
+          },
+        },
+        {
+          'kind': 'Field',
+          'name': { 'kind': 'Name', 'value': 'content' },
+          'selectionSet': {
+            'kind': 'SelectionSet',
+            'selections': [{
+              'kind': 'FragmentSpread',
+              'name': { 'kind': 'Name', 'value': 'MetadataContent' },
+            }],
+          },
+        },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'created' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'modified' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'uploaded' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'ready' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'attributes' } },
+        {
+          'kind': 'Field',
+          'name': { 'kind': 'Name', 'value': 'systemAttributes' },
+        },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'traitIds' } },
+        {
+          'kind': 'Field',
+          'name': { 'kind': 'Name', 'value': 'workflow' },
+          'selectionSet': {
+            'kind': 'SelectionSet',
+            'selections': [{
+              'kind': 'FragmentSpread',
+              'name': { 'kind': 'Name', 'value': 'MetadataWorkflow' },
+            }],
+          },
+        },
+        {
+          'kind': 'Field',
+          'name': { 'kind': 'Name', 'value': 'supplementary' },
+          'selectionSet': {
+            'kind': 'SelectionSet',
+            'selections': [{
+              'kind': 'FragmentSpread',
+              'name': { 'kind': 'Name', 'value': 'MetadataSupplementary' },
+            }],
+          },
+        },
+        {
+          'kind': 'Field',
+          'name': { 'kind': 'Name', 'value': 'profiles' },
+          'selectionSet': {
+            'kind': 'SelectionSet',
+            'selections': [{
+              'kind': 'FragmentSpread',
+              'name': { 'kind': 'Name', 'value': 'MetadataProfile' },
+            }],
+          },
+        },
+      ],
+    },
+  }, {
+    'kind': 'FragmentDefinition',
+    'name': { 'kind': 'Name', 'value': 'Collection' },
+    'typeCondition': {
+      'kind': 'NamedType',
+      'name': { 'kind': 'Name', 'value': 'Collection' },
+    },
+    'selectionSet': {
+      'kind': 'SelectionSet',
+      'selections': [
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': '__typename' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'id' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'slug' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'traitIds' } },
+        {
+          'kind': 'Field',
+          'alias': { 'kind': 'Name', 'value': 'collectionType' },
+          'name': { 'kind': 'Name', 'value': 'type' },
+        },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'name' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'description' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'labels' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'created' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'modified' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'attributes' } },
+        {
+          'kind': 'Field',
+          'name': { 'kind': 'Name', 'value': 'systemAttributes' },
+        },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'ready' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'public' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'publicList' } },
+        {
+          'kind': 'Field',
+          'name': { 'kind': 'Name', 'value': 'templateMetadata' },
+          'selectionSet': {
+            'kind': 'SelectionSet',
+            'selections': [{
+              'kind': 'Field',
+              'name': { 'kind': 'Name', 'value': 'id' },
+            }, {
+              'kind': 'Field',
+              'name': { 'kind': 'Name', 'value': 'version' },
+            }],
+          },
+        },
+        {
+          'kind': 'Field',
+          'name': { 'kind': 'Name', 'value': 'ordering' },
+          'selectionSet': {
+            'kind': 'SelectionSet',
+            'selections': [{
+              'kind': 'FragmentSpread',
+              'name': { 'kind': 'Name', 'value': 'Ordering' },
+            }],
+          },
+        },
+        {
+          'kind': 'Field',
+          'name': { 'kind': 'Name', 'value': 'categories' },
+          'selectionSet': {
+            'kind': 'SelectionSet',
+            'selections': [{
+              'kind': 'FragmentSpread',
+              'name': { 'kind': 'Name', 'value': 'Category' },
+            }],
+          },
+        },
+        {
+          'kind': 'Field',
+          'name': { 'kind': 'Name', 'value': 'workflow' },
+          'selectionSet': {
+            'kind': 'SelectionSet',
+            'selections': [{
+              'kind': 'FragmentSpread',
+              'name': { 'kind': 'Name', 'value': 'CollectionWorkflow' },
+            }],
+          },
+        },
+      ],
+    },
+  }],
+} as unknown as DocumentNode<GetSlugQuery, GetSlugQueryVariables>
 export const GetStateDocument = {
   '__meta__': { 'hash': 'e375fef52c15901145fcb9c2dd7796c8b4055fa8' },
   'kind': 'Document',

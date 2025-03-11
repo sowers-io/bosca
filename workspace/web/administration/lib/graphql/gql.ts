@@ -182,6 +182,8 @@ type Documents = {
     typeof types.GetPromptDocument
   'query GetPrompts {\n  workflows {\n    prompts {\n      all {\n        ...Prompt\n      }\n    }\n  }\n}':
     typeof types.GetPromptsDocument
+  'query GetSlug($slug: String!) {\n  content {\n    slug(slug: $slug) {\n      ... on Metadata {\n        ...Metadata\n      }\n      ... on Collection {\n        ...Collection\n      }\n    }\n  }\n}':
+    typeof types.GetSlugDocument
   'query GetState($id: String!) {\n  workflows {\n    states {\n      state(id: $id) {\n        ...WorkflowState\n      }\n    }\n  }\n}':
     typeof types.GetStateDocument
   'query GetStates {\n  workflows {\n    states {\n      all {\n        ...WorkflowState\n      }\n    }\n  }\n}':
@@ -543,6 +545,8 @@ const documents: Documents = {
     types.GetPromptDocument,
   'query GetPrompts {\n  workflows {\n    prompts {\n      all {\n        ...Prompt\n      }\n    }\n  }\n}':
     types.GetPromptsDocument,
+  'query GetSlug($slug: String!) {\n  content {\n    slug(slug: $slug) {\n      ... on Metadata {\n        ...Metadata\n      }\n      ... on Collection {\n        ...Collection\n      }\n    }\n  }\n}':
+    types.GetSlugDocument,
   'query GetState($id: String!) {\n  workflows {\n    states {\n      state(id: $id) {\n        ...WorkflowState\n      }\n    }\n  }\n}':
     types.GetStateDocument,
   'query GetStates {\n  workflows {\n    states {\n      all {\n        ...WorkflowState\n      }\n    }\n  }\n}':
@@ -1498,6 +1502,15 @@ export function graphql(
     'query GetPrompts {\n  workflows {\n    prompts {\n      all {\n        ...Prompt\n      }\n    }\n  }\n}',
 ): (typeof documents)[
   'query GetPrompts {\n  workflows {\n    prompts {\n      all {\n        ...Prompt\n      }\n    }\n  }\n}'
+]
+/**
+ * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
+ */
+export function graphql(
+  source:
+    'query GetSlug($slug: String!) {\n  content {\n    slug(slug: $slug) {\n      ... on Metadata {\n        ...Metadata\n      }\n      ... on Collection {\n        ...Collection\n      }\n    }\n  }\n}',
+): (typeof documents)[
+  'query GetSlug($slug: String!) {\n  content {\n    slug(slug: $slug) {\n      ... on Metadata {\n        ...Metadata\n      }\n      ... on Collection {\n        ...Collection\n      }\n    }\n  }\n}'
 ]
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.

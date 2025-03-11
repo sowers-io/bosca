@@ -3,9 +3,9 @@ import { Sonner } from '@/components/ui/sonner'
 import { ConfigProvider } from 'radix-vue'
 
 const colorMode = useColorMode()
-
 const color = computed(() => colorMode.value === 'dark' ? '#09090b' : '#ffffff')
-
+const client = useBoscaClient()
+const adminOverrides = await client.configurations.getConfiguration('admin.overrides')
 const { theme, radius } = useCustomize()
 
 useHead({
@@ -23,7 +23,9 @@ useHead({
   },
   bodyAttrs: {
     class: computed(() => `theme-${theme.value}`),
-    style: computed(() => `--radius: ${radius.value}rem;`),
+    style: computed(() =>
+        `--radius: ${radius.value}rem;\n` + adminOverrides?.value?.css || ''
+    ),
   },
 })
 

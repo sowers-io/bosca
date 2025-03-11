@@ -7,6 +7,11 @@ import { Workflows } from '~/lib/bosca/workflows'
 import { Search } from '~/lib/bosca/search'
 import { Profiles } from '~/lib/bosca/profiles'
 import { Configurations } from '~/lib/bosca/configurations'
+import {
+  type CollectionFragment,
+  GetSlugDocument,
+  type MetadataFragment,
+} from '~/lib/graphql/graphql.ts'
 
 export class BoscaClient<T extends NetworkClient> {
   readonly security: Security<T>
@@ -18,7 +23,7 @@ export class BoscaClient<T extends NetworkClient> {
   readonly listeners: Listeners<T>
   readonly configurations: Configurations<T>
 
-  constructor(network: T) {
+  constructor(private readonly network: T) {
     this.profiles = new Profiles<T>(network)
     this.security = new Security<T>(network)
     this.collections = new ContentCollections<T>(network)
@@ -27,5 +32,17 @@ export class BoscaClient<T extends NetworkClient> {
     this.search = new Search<T>(network)
     this.listeners = new Listeners<T>(network)
     this.configurations = new Configurations<T>(network)
+  }
+
+  async get(
+    slug: string,
+  ): Promise<MetadataFragment | CollectionFragment | null> {
+    const response = await this.network.execute(GetSlugDocument, {
+      slug: slug,
+    })
+    return response?.content?.slug as
+      | MetadataFragment
+      | CollectionFragment
+      | null
   }
 }

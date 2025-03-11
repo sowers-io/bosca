@@ -21,6 +21,7 @@ object InstallerExecutorFactory {
             TraitsInstaller(),
             CollectionsInstaller(client),
             ProfileAttributeTypesInstaller(),
+            AssetsInstaller()
         )
     ): InstallerExecutor {
         EnterpriseActivityRegistryFactory.createInstaller(client)?.let {
