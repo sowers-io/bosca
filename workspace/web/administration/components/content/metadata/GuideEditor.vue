@@ -6,7 +6,7 @@ import {
   type GuideStepFragment,
   type GuideStepModuleFragment,
   type GuideTemplateFragment,
-  type MetadataFragment,
+  type MetadataFragment, type MetadataInput,
   type MetadataRelationshipFragment,
   type ParentCollectionFragment,
   WorkflowStateType,
@@ -203,6 +203,38 @@ watch(currentPage, (page) => {
     currentStep.value = props.guide.steps[page - 2]
   }
 })
+
+async function onAddStep() {
+  if (!props.guideTemplate) return
+  const step = props.guideTemplate.steps[0]
+  if (!step.metadata) return
+  const contentType = 'bosca/v-' + step.metadata!.attributes['editor.type'].toLowerCase()
+  const attrs: { [key: string]: string } = {
+    'editor.type': step.metadata!.attributes['editor.type'],
+  }
+  const documentTemplate = await client.metadata.getDocumentTemplate(step.metadata!.id!, step.metadata!.version!)
+  const newMetadata: MetadataInput = {
+    parentCollectionId: guideCollection.value?.id,
+    name: step.metadata?.name || '',
+    contentType: contentType,
+    languageTag: 'en',
+    attributes: attrs,
+    document: {
+      templateMetadataId: step.metadata.id,
+      templateMetadataVersion: step.metadata.version,
+      title: step.metadata!.name,
+      content: documentTemplate.content,
+    },
+    profiles: [
+      {
+        profileId: (await client.profiles.getCurrentProfile()).id!,
+        relationship: 'author',
+      },
+    ],
+    categoryIds: step.metadata.categories.map(c => c.id),
+  }
+  console.log(newMetadata)
+}
 </script>
 <template>
   <div>
@@ -413,6 +445,9 @@ watch(currentPage, (page) => {
             <PaginationLast />
           </PaginationList>
         </Pagination>
+        <Button @click="onAddStep" class="flex gap-2">
+          <Icon name="i-lucide-plus" class="size-4" />
+        </Button>
       </div>
       <div class="mt-5" v-if="document">
         <ContentMetadataEditor

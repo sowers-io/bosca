@@ -145,7 +145,7 @@ async function newDocumentFromTemplate(
   return metadataId
 }
 
-async function onAddDocument(
+async function ?onAddDocument(
   template: MetadataFragment,
   contentType: string,
   attributes: {

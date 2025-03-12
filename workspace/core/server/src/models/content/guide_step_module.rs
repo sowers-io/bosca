@@ -10,7 +10,7 @@ pub struct GuideStepModule {
     pub module_metadata_version: i32,
 }
 
-#[derive(InputObject, Clone, Serialize)]
+#[derive(InputObject, Clone, Default, Serialize)]
 pub struct GuideStepModuleInput {
     pub module_metadata_id: String,
     pub module_metadata_version: i32,

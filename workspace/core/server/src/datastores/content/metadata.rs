@@ -353,7 +353,7 @@ impl MetadataDataStore {
             .prepare_cached("update metadata set public = $1, modified = now() where id = $2")
             .await?;
         txn.execute(&stmt, &[&public, id]).await?;
-        update_metadata_etag(&txn, &id).await?;
+        update_metadata_etag(&txn, id).await?;
         txn.commit().await?;
         self.on_metadata_changed(id).await?;
         Ok(())
@@ -536,7 +536,7 @@ impl MetadataDataStore {
             )
             .await?;
         txn.execute(&stmt, &[&attributes, &metadata_id]).await?;
-        update_metadata_etag(&txn, &metadata_id).await?;
+        update_metadata_etag(&txn, metadata_id).await?;
         txn.commit().await?;
         self.on_metadata_changed(metadata_id).await?;
         Ok(())
@@ -567,7 +567,7 @@ impl MetadataDataStore {
             self.ensure_content_type_traits(metadata_id, content_type, &txn)
                 .await?;
         }
-        update_metadata_etag(&txn, &metadata_id).await?;
+        update_metadata_etag(&txn, metadata_id).await?;
         txn.commit().await?;
         self.on_metadata_changed(metadata_id).await?;
         Ok(())
@@ -772,38 +772,38 @@ impl MetadataDataStore {
         if let Some(document) = &metadata.document {
             ctx.content
                 .documents
-                .edit_document_txn(txn, &id, version, document)
+                .edit_document_txn(txn, id, version, document)
                 .await?;
         }
         if let Some(document_template) = &metadata.document_template {
             ctx.content
                 .documents
-                .edit_template_txn(txn, &id, version, document_template)
+                .edit_template_txn(txn, id, version, document_template)
                 .await?;
         }
         if let Some(guide) = &metadata.guide {
             ctx.content
                 .guides
-                .edit_guide(txn, &id, version, guide)
+                .edit_guide(txn, id, version, guide)
                 .await?;
         }
         if let Some(guide_template) = &metadata.guide_template {
             ctx.content
                 .guides
-                .edit_template_txn(txn, &id, version, guide_template)
+                .edit_template_txn(txn, id, version, guide_template)
                 .await?;
         }
         if let Some(collection_template) = &metadata.collection_template {
             ctx.content
                 .collection_templates
-                .edit_template_txn(txn, &id, version, collection_template)
+                .edit_template_txn(txn, id, version, collection_template)
                 .await?;
         }
 
         self.ensure_content_type_traits(id, &metadata.content_type, txn)
             .await?;
 
-        update_metadata_etag(&txn, &id).await?;
+        update_metadata_etag(txn, id).await?;
 
         Ok(())
     }

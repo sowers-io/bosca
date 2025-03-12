@@ -27,8 +27,7 @@ impl Keys {
     }
 
     pub fn encode(&self, claims: &Claims) -> Result<String, Error> {
-        let mut hdr = Header::default();
-        hdr.alg = Algorithm::HS256;
+        let hdr = Header::default();
         encode(&hdr, claims, &self.encoding)
     }
 }

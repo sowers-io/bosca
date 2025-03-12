@@ -887,7 +887,7 @@ impl CollectionsDataStore {
                     )
                     .await?;
             }
-            update_collection_etag(&txn, &id).await?;
+            update_collection_etag(txn, &id).await?;
             if collection.index.unwrap_or(true) {
                 search_documents.push(SearchDocumentInput {
                     collection_id: Some(id.to_string()),

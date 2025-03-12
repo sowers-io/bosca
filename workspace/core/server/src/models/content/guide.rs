@@ -16,7 +16,7 @@ pub struct Guide {
     pub guide_type: GuideType,
 }
 
-#[derive(InputObject, Clone, Serialize)]
+#[derive(InputObject, Default, Clone, Serialize)]
 pub struct GuideInput {
     pub guide_type: GuideType,
     pub rrule: Option<String>,

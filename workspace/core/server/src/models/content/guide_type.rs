@@ -4,8 +4,9 @@ use postgres_types::{to_sql_checked, FromSql, IsNull, ToSql, Type};
 use serde::{Deserialize, Serialize};
 use std::error::Error;
 
-#[derive(Enum, Debug, Copy, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Enum, Debug, Copy, Clone, Eq, PartialEq, Serialize, Deserialize, Default)]
 pub enum GuideType {
+    #[default]
     Linear,
     LinearProgress,
     Calendar,

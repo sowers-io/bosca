@@ -123,7 +123,7 @@ impl DocumentsDataStore {
             ],
         )
         .await?;
-        self.add_template_items_txn(&txn, metadata_id, version, template)
+        self.add_template_items_txn(txn, metadata_id, version, template)
             .await?;
         Ok(())
     }

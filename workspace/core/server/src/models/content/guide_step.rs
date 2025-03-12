@@ -13,7 +13,7 @@ pub struct GuideStep {
     pub step_metadata_version: Option<i32>,
 }
 
-#[derive(InputObject, Clone, Serialize)]
+#[derive(InputObject, Clone, Default, Serialize)]
 pub struct GuideStepInput {
     pub step_metadata_id: Option<String>,
     pub step_metadata_version: Option<i32>,

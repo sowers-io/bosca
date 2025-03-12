@@ -1,4 +1,6 @@
 use crate::context::BoscaContext;
+use crate::graphql::content::guide_step::GuideStepObject;
+use crate::graphql::content::guide_step_module::GuideStepModuleObject;
 use crate::graphql::content::metadata::MetadataObject;
 use crate::graphql::content::metadata_relationship::MetadataRelationshipObject;
 use crate::graphql::content::permission::PermissionObject;
@@ -6,7 +8,13 @@ use crate::graphql::content::supplementary::MetadataSupplementaryObject;
 use crate::graphql::workflows::workflow_execution_plan::WorkflowExecutionPlanObject;
 use crate::models::content::collection::MetadataChildInput;
 use crate::models::content::document::DocumentInput;
-use crate::models::content::metadata::MetadataInput;
+use crate::models::content::guide::GuideInput;
+use crate::models::content::guide_step::GuideStepInput;
+use crate::models::content::guide_step_module::GuideStepModuleInput;
+use crate::models::content::guide_template_step::GuideTemplateStep;
+use crate::models::content::guide_template_step_module::GuideTemplateStepModule;
+use crate::models::content::metadata::{Metadata, MetadataInput};
+use crate::models::content::metadata_profile::MetadataProfileInput;
 use crate::models::content::metadata_relationship::MetadataRelationshipInput;
 use crate::models::content::metadata_workflow_state::{
     MetadataWorkflowCompleteState, MetadataWorkflowState,
@@ -20,6 +28,7 @@ use async_graphql::*;
 use bytes::Bytes;
 use futures_util::AsyncReadExt;
 use object_store::MultipartUpload;
+use serde_json::json;
 use uuid::Uuid;
 
 #[derive(InputObject)]
@@ -57,6 +66,237 @@ impl MetadataMutationObject {
                 .unwrap()
         };
         Ok(new_metadata.into())
+    }
+
+    async fn add_document(
+        &self,
+        ctx: &Context<'_>,
+        parent_collection_id: String,
+        template_id: String,
+        template_version: i32,
+    ) -> Result<Option<MetadataObject>, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let parent_collection_id = Uuid::parse_str(parent_collection_id.as_str())?;
+        let template_id = Uuid::parse_str(template_id.as_str())?;
+        ctx.check_collection_action(&parent_collection_id, PermissionAction::Edit)
+            .await?;
+        Ok(add_document_impl(
+            ctx,
+            &parent_collection_id,
+            &template_id,
+            template_version,
+            "New Document",
+        )
+        .await?
+        .map(MetadataObject::new))
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    async fn add_guide_step(
+        &self,
+        ctx: &Context<'_>,
+        parent_collection_id: String,
+        metadata_id: String,
+        version: i32,
+        template_id: String,
+        template_version: i32,
+        template_step_id: i64,
+        sort: i32,
+    ) -> Result<GuideStepObject, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let parent_collection_id = Uuid::parse_str(parent_collection_id.as_str())?;
+        let template_id = Uuid::parse_str(template_id.as_str())?;
+        ctx.check_collection_action(&parent_collection_id, PermissionAction::Edit)
+            .await?;
+        let metadata_id = Uuid::parse_str(&metadata_id)?;
+        ctx.check_metadata_version_action(&metadata_id, version, PermissionAction::View)
+            .await?;
+        let template = ctx
+            .check_metadata_version_action(&template_id, template_version, PermissionAction::View)
+            .await?;
+        if template.content_type != "bosca/v-guide-step" {
+            return Err(Error::new("invalid template"));
+        }
+        let template_step = ctx
+            .content
+            .guides
+            .get_template_step(&template.id, template.version, template_step_id)
+            .await?;
+        if template_step.is_none() {
+            return Err(Error::new("invalid step"));
+        }
+        let template_step = template_step.unwrap();
+        let step = add_study_step_impl(
+            ctx,
+            &parent_collection_id,
+            &template_id,
+            template_version,
+            0,
+            &template_step,
+        )
+        .await?;
+        let new_step = ctx
+            .content
+            .guides
+            .add_guide_step(&metadata_id, version, &step, sort)
+            .await?;
+        Ok(GuideStepObject::new(new_step))
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    async fn add_guide_module(
+        &self,
+        ctx: &Context<'_>,
+        parent_collection_id: String,
+        metadata_id: String,
+        version: i32,
+        template_id: String,
+        template_version: i32,
+        template_step_id: i64,
+        template_module_id: i64,
+        sort: i32,
+    ) -> Result<GuideStepModuleObject, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let parent_collection_id = Uuid::parse_str(parent_collection_id.as_str())?;
+        let template_id = Uuid::parse_str(template_id.as_str())?;
+        ctx.check_collection_action(&parent_collection_id, PermissionAction::Edit)
+            .await?;
+        let metadata_id = Uuid::parse_str(&metadata_id)?;
+        ctx.check_metadata_version_action(&metadata_id, version, PermissionAction::View)
+            .await?;
+        let template = ctx
+            .check_metadata_version_action(&template_id, template_version, PermissionAction::View)
+            .await?;
+        if template.content_type != "bosca/v-guide-module" {
+            return Err(Error::new("invalid template"));
+        }
+        let template_module = ctx
+            .content
+            .guides
+            .get_template_step_module(
+                &template_id,
+                template_version,
+                template_step_id,
+                template_module_id,
+            )
+            .await?;
+        if template_module.is_none() {
+            return Err(Error::new("invalid module"));
+        }
+        let template_module = template_module.unwrap();
+        let module = add_study_module_impl(ctx, &parent_collection_id, 0, &template_module).await?;
+        let new_module = ctx
+            .content
+            .guides
+            .add_guide_step_module(&metadata_id, version, template_step_id, sort, &module)
+            .await?;
+        Ok(GuideStepModuleObject::new(new_module))
+    }
+
+    async fn add_guide(
+        &self,
+        ctx: &Context<'_>,
+        parent_collection_id: String,
+        template_id: String,
+        template_version: i32,
+    ) -> Result<Option<MetadataObject>, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let parent_collection_id = Uuid::parse_str(parent_collection_id.as_str())?;
+        let template_id = Uuid::parse_str(template_id.as_str())?;
+        ctx.check_collection_action(&parent_collection_id, PermissionAction::Edit)
+            .await?;
+        let template = ctx
+            .check_metadata_version_action(&template_id, template_version, PermissionAction::View)
+            .await?;
+        if template.content_type != "bosca/v-guide" {
+            return Err(Error::new("invalid template"));
+        }
+        let Some(template_document) = ctx
+            .content
+            .documents
+            .get_template(&template.id, template.version)
+            .await?
+        else {
+            return Err(Error::new("missing template"));
+        };
+        let Some(template_guide) = ctx
+            .content
+            .guides
+            .get_template(&template.id, template.version)
+            .await?
+        else {
+            return Err(Error::new("missing guide"));
+        };
+        let mut attrs = json!({
+            "editor.type": "Guide",
+        });
+        if let Some(default_attributes) = &template_document.default_attributes {
+            if let serde_json::Value::Object(ref mut attrs_obj) = attrs {
+                if let serde_json::Value::Object(default_obj) = default_attributes.clone() {
+                    attrs_obj.extend(default_obj.into_iter());
+                }
+            }
+        }
+        let profile = ctx.profile.get_by_principal(&ctx.principal.id).await?;
+        let categories = ctx
+            .content
+            .metadata
+            .get_categories(&parent_collection_id)
+            .await?;
+        let template_steps = ctx
+            .content
+            .guides
+            .get_template_steps(&template.id, template.version)
+            .await?;
+        let mut steps = Vec::new();
+        for (index, template_step) in template_steps.iter().enumerate() {
+            let step = add_study_step_impl(
+                ctx,
+                &parent_collection_id,
+                &template_id,
+                template_version,
+                index,
+                template_step,
+            )
+            .await?;
+            steps.push(step);
+        }
+        let metadata = MetadataInput {
+            parent_collection_id: Some(parent_collection_id.to_string()),
+            category_ids: Some(categories.iter().map(|c| c.id.to_string()).collect()),
+            name: "New Guide".to_string(),
+            content_type: "bosca/v-guide".to_string(),
+            language_tag: template.language_tag,
+            attributes: Some(attrs),
+            guide: Some(GuideInput {
+                guide_type: template_guide.guide_type,
+                rrule: template_guide.rrule.map(|rrule| rrule.to_string()),
+                template_metadata_id: Some(template.id.to_string()),
+                template_metadata_version: Some(template.version),
+                steps,
+            }),
+            document: Some(DocumentInput {
+                template_metadata_id: Some(template.id.to_string()),
+                template_metadata_version: Some(template.version),
+                title: "New Guide".to_string(),
+                content: template_document.content.clone(),
+            }),
+            profiles: profile.map(|p| {
+                vec![MetadataProfileInput {
+                    profile_id: p.id.to_string(),
+                    relationship: "author".to_string(),
+                }]
+            }),
+            ..Default::default()
+        };
+        let mut add = vec![MetadataChildInput {
+            metadata,
+            attributes: None,
+        }];
+        let ids = ctx.content.metadata.add_all(ctx, &mut add).await?;
+        let id = ids.first().unwrap();
+        let metadata = ctx.content.metadata.get(&id.0).await?;
+        Ok(metadata.map(MetadataObject::new))
     }
 
     async fn edit(
@@ -109,17 +349,20 @@ impl MetadataMutationObject {
     async fn delete(&self, ctx: &Context<'_>, metadata_id: String) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::parse_str(metadata_id.as_str())?;
-        let metadata = ctx.check_metadata_action(&id, PermissionAction::Delete)
+        let metadata = ctx
+            .check_metadata_action(&id, PermissionAction::Delete)
             .await?;
         ctx.content.metadata.mark_deleted(&metadata.id).await?;
-        ctx.workflow.enqueue_metadata_workflow(
-            "metadata.delete.finalize",
-            &metadata.id,
-            &metadata.version,
-            None,
-            None,
-            None
-        ).await?;
+        ctx.workflow
+            .enqueue_metadata_workflow(
+                "metadata.delete.finalize",
+                &metadata.id,
+                &metadata.version,
+                None,
+                None,
+                None,
+            )
+            .await?;
         Ok(true)
     }
 
@@ -773,4 +1016,150 @@ impl MetadataMutationObject {
             .await?;
         Ok(true)
     }
+}
+
+async fn add_study_step_impl(
+    ctx: &BoscaContext,
+    parent_collection_id: &Uuid,
+    template_id: &Uuid,
+    template_version: i32,
+    step_index: usize,
+    step: &GuideTemplateStep,
+) -> Result<GuideStepInput, Error> {
+    let new_metadata = if let Some(template_id) = step.template_metadata_id {
+        if let Some(template_version) = step.template_metadata_version {
+            let title = if step_index == 0 {
+                "New Step".to_string()
+            } else {
+                format!("New Step {}", step_index + 1)
+            };
+            add_document_impl(
+                ctx,
+                parent_collection_id,
+                &template_id,
+                template_version,
+                &title,
+            )
+            .await?
+        } else {
+            None
+        }
+    } else {
+        None
+    };
+
+    let modules = ctx
+        .content
+        .guides
+        .get_template_step_modules(template_id, template_version, step_index as i64)
+        .await?;
+
+    let mut new_modules = Vec::new();
+    for (index, module) in modules.iter().enumerate() {
+        let module = add_study_module_impl(ctx, parent_collection_id, index, module).await?;
+        new_modules.push(module);
+    }
+
+    Ok(GuideStepInput {
+        step_metadata_id: new_metadata.as_ref().map(|m| m.id.to_string()),
+        step_metadata_version: new_metadata.map(|m| m.version),
+        modules: new_modules,
+    })
+}
+
+async fn add_study_module_impl(
+    ctx: &BoscaContext,
+    parent_collection_id: &Uuid,
+    module_index: usize,
+    module: &GuideTemplateStepModule,
+) -> Result<GuideStepModuleInput, Error> {
+    let title = if module_index == 0 {
+        "New Module".to_string()
+    } else {
+        format!("New Module {}", module_index + 1)
+    };
+    let Some(metadata) = add_document_impl(
+        ctx,
+        parent_collection_id,
+        &module.template_metadata_id,
+        module.template_metadata_version,
+        &title,
+    )
+    .await?
+    else {
+        return Err(Error::new("Error creating metadata"));
+    };
+    Ok(GuideStepModuleInput {
+        module_metadata_id: metadata.id.to_string(),
+        module_metadata_version: metadata.version,
+    })
+}
+
+async fn add_document_impl(
+    ctx: &BoscaContext,
+    parent_collection_id: &Uuid,
+    template_id: &Uuid,
+    template_version: i32,
+    title: &str,
+) -> Result<Option<Metadata>, Error> {
+    let template = ctx
+        .check_metadata_version_action(template_id, template_version, PermissionAction::View)
+        .await?;
+    if template.content_type != "bosca/v-document" {
+        return Err(Error::new("invalid template"));
+    }
+    let Some(template_document) = ctx
+        .content
+        .documents
+        .get_template(&template.id, template.version)
+        .await?
+    else {
+        return Err(Error::new("missing template"));
+    };
+    let editor_type = template.attributes.get("editor.type").unwrap();
+    let content_type = format!("bosca/v-{}", editor_type.to_string().to_lowercase());
+    let mut attrs = json!({
+        "editor.type": editor_type.to_string(),
+    });
+    if let Some(default_attributes) = &template_document.default_attributes {
+        if let serde_json::Value::Object(ref mut attrs_obj) = attrs {
+            if let serde_json::Value::Object(default_obj) = default_attributes.clone() {
+                attrs_obj.extend(default_obj.into_iter());
+            }
+        }
+    }
+    let profile = ctx.profile.get_by_principal(&ctx.principal.id).await?;
+    let categories = ctx
+        .content
+        .metadata
+        .get_categories(parent_collection_id)
+        .await?;
+    let metadata = MetadataInput {
+        parent_collection_id: Some(parent_collection_id.to_string()),
+        category_ids: Some(categories.iter().map(|c| c.id.to_string()).collect()),
+        name: title.to_string(),
+        content_type: content_type.to_string(),
+        language_tag: template.language_tag,
+        attributes: Some(attrs),
+        document: Some(DocumentInput {
+            template_metadata_id: Some(template.id.to_string()),
+            template_metadata_version: Some(template.version),
+            title: title.to_string(),
+            content: template_document.content.clone(),
+        }),
+        profiles: profile.map(|p| {
+            vec![MetadataProfileInput {
+                profile_id: p.id.to_string(),
+                relationship: "author".to_string(),
+            }]
+        }),
+        ..Default::default()
+    };
+    let mut add = vec![MetadataChildInput {
+        metadata,
+        attributes: None,
+    }];
+    let ids = ctx.content.metadata.add_all(ctx, &mut add).await?;
+    let id = ids.first().unwrap();
+    ctx.content.metadata.get(&id.0).await
 }

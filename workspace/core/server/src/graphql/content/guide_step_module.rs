@@ -29,6 +29,6 @@ impl GuideStepModuleObject {
                 PermissionAction::View,
             )
             .await?;
-        return Ok(Some(MetadataObject::new(metadata)));
+        Ok(Some(MetadataObject::new(metadata)))
     }
 }
