@@ -114,7 +114,7 @@ impl MetadataMutationObject {
         let template = ctx
             .check_metadata_version_action(&template_id, template_version, PermissionAction::View)
             .await?;
-        if template.content_type != "bosca/v-guide-step" {
+        if template.content_type != "bosca/v-guide-step-template" {
             return Err(Error::new("invalid template"));
         }
         let template_step = ctx
@@ -144,7 +144,7 @@ impl MetadataMutationObject {
     }
 
     #[allow(clippy::too_many_arguments)]
-    async fn add_guide_module(
+    async fn add_guide_step_module(
         &self,
         ctx: &Context<'_>,
         parent_collection_id: String,
@@ -167,7 +167,7 @@ impl MetadataMutationObject {
         let template = ctx
             .check_metadata_version_action(&template_id, template_version, PermissionAction::View)
             .await?;
-        if template.content_type != "bosca/v-guide-module" {
+        if template.content_type != "bosca/v-guide-module-template" {
             return Err(Error::new("invalid template"));
         }
         let template_module = ctx
@@ -208,7 +208,7 @@ impl MetadataMutationObject {
         let template = ctx
             .check_metadata_version_action(&template_id, template_version, PermissionAction::View)
             .await?;
-        if template.content_type != "bosca/v-guide" {
+        if template.content_type != "bosca/v-guide-template" {
             return Err(Error::new("invalid template"));
         }
         let Some(template_document) = ctx
@@ -1105,7 +1105,7 @@ async fn add_document_impl(
     let template = ctx
         .check_metadata_version_action(template_id, template_version, PermissionAction::View)
         .await?;
-    if template.content_type != "bosca/v-document" {
+    if template.content_type != "bosca/v-document-template" {
         return Err(Error::new("invalid template"));
     }
     let Some(template_document) = ctx
@@ -1116,8 +1116,9 @@ async fn add_document_impl(
     else {
         return Err(Error::new("missing template"));
     };
-    let editor_type = template.attributes.get("editor.type").unwrap();
-    let content_type = format!("bosca/v-{}", editor_type.to_string().to_lowercase());
+    let editor_type = template.attributes.get("editor.type").unwrap().as_str().unwrap().to_string();
+    let template_type = template.attributes.get("template.type").unwrap().as_str().unwrap().to_string();
+    let content_type = format!("bosca/v-{}", template_type.to_lowercase());
     let mut attrs = json!({
         "editor.type": editor_type.to_string(),
     });

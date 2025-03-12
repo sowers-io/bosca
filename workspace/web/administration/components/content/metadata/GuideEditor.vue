@@ -6,7 +6,7 @@ import {
   type GuideStepFragment,
   type GuideStepModuleFragment,
   type GuideTemplateFragment,
-  type MetadataFragment, type MetadataInput,
+  type MetadataFragment,
   type MetadataRelationshipFragment,
   type ParentCollectionFragment,
   WorkflowStateType,
@@ -27,7 +27,7 @@ const props = defineProps<{
   currentModule: GuideStepModuleFragment | null | undefined
 }>()
 
-const currentStep = defineModel('currentStep', { type: Object, default: null })
+const currentStep = defineModel('currentStep', {type: Object, default: null})
 const currentModule = defineModel('currentModule', {
   type: Object,
   default: null,
@@ -40,28 +40,29 @@ const metadata = defineModel<MetadataFragment>('metadata', {
 
 const guideCollection = computed(() => {
   return props.parents?.find((c) => c.attributes['editor.type'] === 'Guide') as
-    | ParentCollectionFragment
-    | undefined
+      | ParentCollectionFragment
+      | undefined
 })
 const parentCollections = computed(() => {
   return props.parents?.filter((c) =>
-    c.attributes['editor.type'] !== 'Guide'
+      c.attributes['editor.type'] !== 'Guide'
   ) || []
 })
 
-const { data: states } = client.workflows.getStatesAsyncData()
+const {data: states} = client.workflows.getStatesAsyncData()
 const stateName = computed(() => {
   return states.value?.find((s) => s.id === props.metadata.workflow.state)?.name
 })
 const pendingStateName = computed(() => {
   return states.value?.find((s) => s.id === props.metadata.workflow.pending)
-    ?.name
+      ?.name
 })
 
 const hasChanges = ref(false)
 const confirmDelete = ref(false)
 const confirmReset = ref(false)
 const outOfDate = ref(false)
+const slidesInView = ref([])
 
 function onSave() {
   window.dispatchEvent(new Event('save-document'))
@@ -83,7 +84,7 @@ async function onPublish() {
   }
   const states = await client.workflows.getStates() || []
   const published =
-    states.find((s) => s.type === WorkflowStateType.Published)?.id || ''
+      states.find((s) => s.type === WorkflowStateType.Published)?.id || ''
   let stateValid: Date | null = null
   if (props.metadata.attributes['published']) {
     if (typeof props.metadata.attributes['published'] === 'number') {
@@ -94,11 +95,11 @@ async function onPublish() {
   }
   if (props.metadata.workflow.state !== published) {
     await client.metadata.beginTransition(
-      props.metadata.id,
-      props.metadata.version,
-      published,
-      'Publishing Guide',
-      stateValid,
+        props.metadata.id,
+        props.metadata.version,
+        published,
+        'Publishing Guide',
+        stateValid,
     )
   }
   if (!props.metadata.public) {
@@ -113,11 +114,11 @@ async function onPublish() {
     }
     if (relationship.metadata.workflow.state !== published) {
       await client.metadata.beginTransition(
-        relationship.metadata.id,
-        relationship.metadata.version,
-        published,
-        'Publishing Guide',
-        stateValid,
+          relationship.metadata.id,
+          relationship.metadata.version,
+          published,
+          'Publishing Guide',
+          stateValid,
       )
     }
     if (!relationship.metadata.public) {
@@ -133,27 +134,27 @@ async function onUnpublish() {
   const states = await client.workflows.getStates() || []
   if (props.metadata.workflow.stateValid) {
     await client.metadata.cancelTransition(
-      props.metadata.id,
-      props.metadata.version,
+        props.metadata.id,
+        props.metadata.version,
     )
   } else {
     await client.metadata.beginTransition(
-      props.metadata.id,
-      props.metadata.version,
-      states.find((s) => s.type === WorkflowStateType.Draft)?.id || '',
-      'Unpublishing Guide',
+        props.metadata.id,
+        props.metadata.version,
+        states.find((s) => s.type === WorkflowStateType.Draft)?.id || '',
+        'Unpublishing Guide',
     )
   }
 }
 
 async function onPreview() {
   const configuration = await client.configurations.getConfiguration(
-    'preview.url',
+      'preview.url',
   )
   if (!configuration || !props.metadata?.slug) return
   window.open(
-    configuration.value.value + '?slug=' + props.metadata!.slug,
-    '_blank',
+      configuration.value.value + '?slug=' + props.metadata!.slug,
+      '_blank',
   )
 }
 
@@ -187,9 +188,33 @@ function onBackClick() {
 
 const selected = ref('guide')
 const currentPage = ref(1)
+const modules = ref([])
+
+async function buildModules() {
+  const modulesParts = []
+  if (props.document) {
+    modulesParts.push({
+      metadata: props.metadata,
+      document: props.document,
+      documentTemplate: props.documentTemplate,
+    })
+  }
+  for (const module of currentStep.value?.modules || []) {
+    const metadata = module.metadata
+    const document = await client.metadata.getDocument(metadata.id)
+    const documentTemplate = document.template ? await client.metadata.getDocumentTemplate(document.template.id, document.template.version) : null
+    modulesParts.push({
+      metadata: metadata,
+      document: document,
+      documentTemplate: documentTemplate,
+    })
+  }
+  modules.value = modulesParts
+}
 
 watch(currentStep, (step) => {
   selected.value = step ? 'guide' : 'steps'
+  buildModules()
 })
 watch(currentModule, (module) => {
   selected.value = module ? 'guide' : 'modules'
@@ -204,36 +229,15 @@ watch(currentPage, (page) => {
   }
 })
 
+onMounted(() => {
+  buildModules()
+})
+
 async function onAddStep() {
   if (!props.guideTemplate) return
   const step = props.guideTemplate.steps[0]
   if (!step.metadata) return
-  const contentType = 'bosca/v-' + step.metadata!.attributes['editor.type'].toLowerCase()
-  const attrs: { [key: string]: string } = {
-    'editor.type': step.metadata!.attributes['editor.type'],
-  }
-  const documentTemplate = await client.metadata.getDocumentTemplate(step.metadata!.id!, step.metadata!.version!)
-  const newMetadata: MetadataInput = {
-    parentCollectionId: guideCollection.value?.id,
-    name: step.metadata?.name || '',
-    contentType: contentType,
-    languageTag: 'en',
-    attributes: attrs,
-    document: {
-      templateMetadataId: step.metadata.id,
-      templateMetadataVersion: step.metadata.version,
-      title: step.metadata!.name,
-      content: documentTemplate.content,
-    },
-    profiles: [
-      {
-        profileId: (await client.profiles.getCurrentProfile()).id!,
-        relationship: 'author',
-      },
-    ],
-    categoryIds: step.metadata.categories.map(c => c.id),
-  }
-  console.log(newMetadata)
+
 }
 </script>
 <template>
@@ -248,31 +252,31 @@ async function onAddStep() {
             }}
           </Badge>
           <Badge
-            variant="outline"
-            :class="
+              variant="outline"
+              :class="
               'ms-2 text-gray-400 ' +
               (!hasChanges ? ' invisible' : '')
             "
           >Has Changes
           </Badge>
           <Badge
-            variant="destructive"
-            :class="'ms-2 ' + (!outOfDate ? ' invisible' : '')"
+              variant="destructive"
+              :class="'ms-2 ' + (!outOfDate ? ' invisible' : '')"
           >Out of Date
           </Badge>
         </div>
       </div>
-      <div class="grow" />
+      <div class="grow"/>
       <div class="flex gap-2">
         <Tooltip v-if="metadata?.workflow?.state === 'draft'">
           <TooltipTrigger as-child>
             <Button
-              @click="reset"
-              class="flex gap-2"
-              variant="secondary"
-              :disabled="!hasChanges"
+                @click="reset"
+                class="flex gap-2"
+                variant="secondary"
+                :disabled="!hasChanges"
             >
-              <Icon name="i-lucide-rotate-ccw" class="size-4" />
+              <Icon name="i-lucide-rotate-ccw" class="size-4"/>
             </Button>
           </TooltipTrigger>
           <TooltipContent>
@@ -282,12 +286,12 @@ async function onAddStep() {
         <Tooltip v-if="metadata?.workflow?.state === 'draft'">
           <TooltipTrigger as-child>
             <Button
-              @click="onSave"
-              class="flex gap-2"
-              variant="secondary"
-              :disabled="!hasChanges"
+                @click="onSave"
+                class="flex gap-2"
+                variant="secondary"
+                :disabled="!hasChanges"
             >
-              <Icon name="i-lucide-save" class="size-4" />
+              <Icon name="i-lucide-save" class="size-4"/>
             </Button>
           </TooltipTrigger>
           <TooltipContent>
@@ -297,12 +301,12 @@ async function onAddStep() {
         <Tooltip>
           <TooltipTrigger as-child>
             <Button
-              @click="onPreview"
-              :disabled="hasChanges"
-              class="flex gap-2"
-              variant="secondary"
+                @click="onPreview"
+                :disabled="hasChanges"
+                class="flex gap-2"
+                variant="secondary"
             >
-              <Icon name="i-lucide-screen-share" class="size-4" />
+              <Icon name="i-lucide-screen-share" class="size-4"/>
             </Button>
           </TooltipTrigger>
           <TooltipContent>
@@ -312,7 +316,7 @@ async function onAddStep() {
         <Tooltip>
           <TooltipTrigger as-child>
             <Button @click="onDelete" class="flex gap-2" variant="secondary">
-              <Icon name="i-lucide-trash" class="size-4" />
+              <Icon name="i-lucide-trash" class="size-4"/>
             </Button>
           </TooltipTrigger>
           <TooltipContent>
@@ -320,19 +324,19 @@ async function onAddStep() {
           </TooltipContent>
         </Tooltip>
         <Tooltip
-          v-if="
+            v-if="
             metadata?.workflow?.state === 'draft' &&
             !metadata?.workflow?.stateValid
           "
         >
           <TooltipTrigger as-child>
             <Button
-              @click="onPublish"
-              :disabled="hasChanges || metadata?.workflow?.pending"
-              class="flex gap-2"
-              variant="secondary"
+                @click="onPublish"
+                :disabled="hasChanges || metadata?.workflow?.pending"
+                class="flex gap-2"
+                variant="secondary"
             >
-              <Icon name="i-lucide-square-play" class="size-4" />
+              <Icon name="i-lucide-square-play" class="size-4"/>
             </Button>
           </TooltipTrigger>
           <TooltipContent>
@@ -340,22 +344,22 @@ async function onAddStep() {
           </TooltipContent>
         </Tooltip>
         <Tooltip
-          v-if="
+            v-if="
             metadata?.workflow?.state === 'published' ||
             metadata?.workflow?.stateValid
           "
         >
           <TooltipTrigger as-child>
             <Button
-              @click="onUnpublish"
-              :disabled="
+                @click="onUnpublish"
+                :disabled="
                 metadata?.workflow?.pending &&
                 !(metadata?.workflow?.stateValid)
               "
-              class="flex gap-2"
-              variant="secondary"
+                class="flex gap-2"
+                variant="secondary"
             >
-              <Icon name="i-lucide-square-square" class="size-4" />
+              <Icon name="i-lucide-square-square" class="size-4"/>
             </Button>
           </TooltipTrigger>
           <TooltipContent>
@@ -365,17 +369,17 @@ async function onAddStep() {
         <Tooltip>
           <TooltipTrigger as-child>
             <Button
-              :disabled="hasChanges"
-              @click="
+                :disabled="hasChanges"
+                @click="
                 router.push(
                   '/metadata/edit/' + metadata.id +
                     '?guide=true',
                 )
               "
-              class="flex gap-2"
-              variant="secondary"
+                class="flex gap-2"
+                variant="secondary"
             >
-              <Icon name="i-lucide-bolt" class="size-4" />
+              <Icon name="i-lucide-bolt" class="size-4"/>
             </Button>
           </TooltipTrigger>
           <TooltipContent>
@@ -387,37 +391,37 @@ async function onAddStep() {
     <div class="border-none p-0 outline-none mt-4">
       <div class="flex gap-4">
         <Pagination
-          v-slot="{ page }"
-          :items-per-page="1"
-          :total="(guide.steps?.length || 0) + 1"
-          :sibling-count="6"
-          show-edges
-          :default-page="1"
-          v-model:page="currentPage"
+            v-slot="{ page }"
+            :items-per-page="1"
+            :total="(guide.steps?.length || 0) + 1"
+            :sibling-count="6"
+            show-edges
+            :default-page="1"
+            v-model:page="currentPage"
         >
           <PaginationList v-slot="{ items }" class="flex items-center gap-1">
-            <PaginationFirst />
-            <PaginationPrev />
+            <PaginationFirst/>
+            <PaginationPrev/>
             <template v-for="(item, index) in items">
               <PaginationListItem
-                v-if="item.type === 'page'"
-                :key="index"
-                :value="item.value"
-                as-child
+                  v-if="item.type === 'page'"
+                  :key="index"
+                  :value="item.value"
+                  as-child
               >
                 <Tooltip>
                   <TooltipTrigger as-child>
                     <Button
-                      class="h-9"
-                      :variant="
+                        class="h-9"
+                        :variant="
                         item.value === page
                         ? 'default'
                         : 'outline'
                       "
-                      @click="currentPage = item.value"
+                        @click="currentPage = item.value"
                     >
                       <template v-if="item.value === 1">
-                        <Icon name="i-lucide-info" class="size-4" />
+                        <Icon name="i-lucide-info" class="size-4"/>
                       </template>
                       <template v-else>
                         {{ item.value - 1 }}
@@ -431,34 +435,55 @@ async function onAddStep() {
                     <template v-else>
                       {{
                         guide.steps[item.value - 2]
-                        ?.metadata?.name ||
+                            ?.metadata?.name ||
                         'Step ' +
-                          (item.value - 2)
+                        (item.value - 2)
                       }}
                     </template>
                   </TooltipContent>
                 </Tooltip>
               </PaginationListItem>
-              <PaginationEllipsis v-else :key="item.type" :index="index" />
+              <PaginationEllipsis v-else :key="item.type" :index="index"/>
             </template>
-            <PaginationNext />
-            <PaginationLast />
+            <PaginationNext/>
+            <PaginationLast/>
           </PaginationList>
         </Pagination>
         <Button @click="onAddStep" class="flex gap-2">
-          <Icon name="i-lucide-plus" class="size-4" />
+          <Icon name="i-lucide-plus" class="size-4"/>
         </Button>
       </div>
-      <div class="mt-5" v-if="document">
+      <div class="flex mt-5 justify-center" v-if="document">
+        <Carousel class="relative w-[calc(100dvw-400px)] h-[calc(100dvh-170px)]"
+                  v-if="modules && modules.length > 1"
+        >
+          <CarouselContent>
+            <CarouselItem v-for="(module, index) in modules" :key="index">
+              <ContentMetadataEditor
+                  :key="module.metadata.id"
+                  :documentCollection="guideCollection"
+                  :parents="parentCollections"
+                  :relationships="relationships"
+                  :document="module.document"
+                  :template="module.documentTemplate"
+                  v-model:metadata="module.metadata"
+                  v-model:has-changes="hasChanges"
+              />
+            </CarouselItem>
+          </CarouselContent>
+          <CarouselPrevious/>
+          <CarouselNext/>
+        </Carousel>
         <ContentMetadataEditor
-          :key="metadata.id"
-          :documentCollection="guideCollection"
-          :parents="parentCollections"
-          :relationships="relationships"
-          :document="document"
-          :template="documentTemplate"
-          v-model:metadata="metadata"
-          v-model:has-changes="hasChanges"
+            v-else
+            :key="metadata.id"
+            :documentCollection="guideCollection"
+            :parents="parentCollections"
+            :relationships="relationships"
+            :document="document"
+            :template="documentTemplate"
+            v-model:metadata="metadata"
+            v-model:has-changes="hasChanges"
         />
       </div>
     </div>
@@ -467,7 +492,7 @@ async function onAddStep() {
         <DialogHeader>
           <DialogTitle>Delete Guide</DialogTitle>
           <DialogDescription>
-            Are you sure you want to delete this guide?<br />
+            Are you sure you want to delete this guide?<br/>
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>
@@ -486,7 +511,7 @@ async function onAddStep() {
         <DialogHeader>
           <DialogTitle>Reset Guide</DialogTitle>
           <DialogDescription>
-            Are you sure you want to reset this guide?<br />
+            Are you sure you want to reset this guide?<br/>
           </DialogDescription>
         </DialogHeader>
         <DialogFooter>

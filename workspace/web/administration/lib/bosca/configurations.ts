@@ -30,8 +30,12 @@ export class Configurations<T extends NetworkClient> extends Api<T> {
   }
 
   async getConfigurations(): Promise<Array<ConfigurationFragment>> {
-    const response = await this.network.execute(GetConfigurationsDocument)
-    return response?.configurations.all as Array<ConfigurationFragment>
+    try {
+      const response = await this.network.execute(GetConfigurationsDocument)
+      return response?.configurations.all as Array<ConfigurationFragment>
+    } catch (e) {
+      return []
+    }
   }
 
   async getConfiguration(key: string): Promise<ConfigurationFragment | null> {

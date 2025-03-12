@@ -94,17 +94,18 @@ async function onMetadataSelected(id: string) {
         class="h-[calc(100dvh-100px)] w-[calc(100dvw-100px)] max-w-full overflow-y-auto"
       >
         <div class="flex flex-col gap-2 h-full">
-          <h1 class="font-bold">Click to Select Your Item</h1>
+          <h1 class="font-bold">Click to Select Your Image</h1>
           <ContentMedia
             :filter="
-              {
+              reactive({
                 mp4: false,
                 mp3: false,
                 webm: false,
                 jpg: true,
                 png: true,
                 webp: true,
-              }
+                youtube: false,
+              })
             "
             :on-selected="onMetadataSelected"
           />

@@ -359,12 +359,22 @@ const editable = computed(() =>
   props.metadata.workflow.state === 'draft' &&
   !props.metadata.workflow.stateValid
 )
+
+const addContainerSelection = ref()
+
+watch(addContainerSelection, () => {
+  if (addContainerSelection.value) {
+    onAddContainer(addContainerSelection.value)
+    addContainerSelection.value = null
+    newContainerOpen.value = false
+  }
+})
 </script>
 
 <template>
   <div class="w-full h-full" v-if="editor">
     <bubble-menu
-      class="flex border bg-background gap-1 rounded-md p-1 drop-shadow-xl ms-2 w-482px"
+      class="flex border bg-background gap-1 rounded-md p-1 drop-shadow-xl ms-2 w-[482px]"
       :tippy-options="{ duration: 100, offset: [0, 20] }"
       :editor="editor"
     >
@@ -413,14 +423,15 @@ const editable = computed(() =>
           <h1 class="font-bold">Click to Select Your Item</h1>
           <ContentMedia
             :filter="
-              {
+              reactive({
                 mp4: true,
                 webm: true,
                 jpg: true,
                 mp3: true,
                 png: true,
                 webp: true,
-              }
+                youtube: true
+              })
             "
             :on-selected="onAddMedia"
           />
@@ -429,17 +440,25 @@ const editable = computed(() =>
     </Dialog>
     <Dialog v-model:open="newContainerOpen">
       <DialogContent>
-        <div class="flex flex-col gap-2 h-full">
+        <div class="flex flex-col gap-2 h-full w-full">
           <h1 class="font-bold">Select the Container Type</h1>
-          <Select>
-            <SelectItem
-              v-for="(container, index) in template?.containers || []"
-              :key="index"
-              :value="container.id"
-              @click="onAddContainer(container.id)"
-            >
-              {{ container.name }}
-            </SelectItem>
+          <Select v-model:model-value="addContainerSelection" class="w-full">
+            <SelectTrigger class="w-full">
+              <SelectValue placeholder="Select the Container Type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectGroup>
+                <SelectLabel>Containers</SelectLabel>
+                <SelectItem
+                    v-for="(container, index) in template?.containers || []"
+                    :key="index"
+                    :value="container.id"
+                    @click.prevent="onAddContainer(container.id)"
+                >
+                  {{ container.name }}
+                </SelectItem>
+              </SelectGroup>
+            </SelectContent>
           </Select>
         </div>
       </DialogContent>

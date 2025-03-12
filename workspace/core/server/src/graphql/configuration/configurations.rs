@@ -17,6 +17,10 @@ impl ConfigurationsObject {
         let all = ctx.configuration.get_configurations().await?;
         let mut cfg = Vec::new();
         for c in all {
+            if c.public {
+                cfg.push(c);
+                continue;
+            }
             let permissions = ctx.configuration.get_permissions(&c.id).await?;
             if permissions.is_empty() && ctx.has_admin_account().await? {
                 cfg.push(c);
@@ -41,6 +45,9 @@ impl ConfigurationsObject {
             return Ok(None);
         }
         let configuration = configuration.unwrap();
+        if configuration.public {
+            return Ok(Some(ConfigurationObject::new(configuration)));
+        }
         let permissions = ctx.configuration.get_permissions(&configuration.id).await?;
         if permissions.is_empty() {
             ctx.check_has_admin_account().await?;

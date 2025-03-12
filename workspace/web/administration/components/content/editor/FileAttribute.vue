@@ -106,6 +106,7 @@ async function onMetadataSelected(id: string) {
                 jpg: false,
                 png: false,
                 webp: false,
+                youtube: true
               }
             "
             :on-selected="onMetadataSelected"

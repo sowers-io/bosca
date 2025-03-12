@@ -1,12 +1,7 @@
 <script setup lang="ts">
 import type { CollectionItem } from '~/lib/bosca/contentcollection'
+import type { MetadataFragment } from '~/lib/graphql/graphql'
 import { computedAsync } from '@vueuse/core'
-import type {
-  GuideStepInput,
-  GuideStepModuleInput,
-  MetadataFragment,
-  MetadataInput,
-} from '~/lib/graphql/graphql'
 import TableFooter from '~/components/ui/table/TableFooter.vue'
 import { toast } from '~/components/ui/toast'
 import {
@@ -100,175 +95,38 @@ const content = computed(() => {
   ) || []
 })
 
-async function newDocumentFromTemplate(
-  templateId: string,
-  templateVersion: number,
-  contentType: string,
-  attributes: { [key: string]: string },
+async function onAddDocument(
   parentCollectionId: string,
-  title: string,
-  categoryIds: string[],
+  template: MetadataFragment
 ) {
-  const templateDocument = await client.metadata.getDocumentTemplate(
-    templateId,
-    templateVersion,
+  const id = await client.metadata.addDocument(
+      parentCollectionId,
+      template.id,
+      template.version
   )
-  if (templateDocument.defaultAttributes) {
-    for (const key in templateDocument.defaultAttributes) {
-      attributes[key] = templateDocument.defaultAttributes[key]
-    }
-  }
-  const metadata: MetadataInput = {
-    parentCollectionId: parentCollectionId,
-    name: title,
-    contentType: contentType,
-    languageTag: 'en',
-    attributes: attributes,
-    document: {
-      templateMetadataId: templateId,
-      templateMetadataVersion: templateVersion,
-      title: title,
-      content: {
-        document: templateDocument.content.document,
-      },
-    },
-    profiles: [
-      {
-        profileId: (await client.profiles.getCurrentProfile()).id!,
-        relationship: 'author',
-      },
-    ],
-    categoryIds: categoryIds,
-  }
-  const metadataId = await client.metadata.add(metadata)
-  await client.metadata.setReady(metadataId)
-  return metadataId
-}
-
-async function ?onAddDocument(
-  template: MetadataFragment,
-  contentType: string,
-  attributes: {
-    [key: string]: string
-  },
-  item: CollectionItem,
-) {
-  const metadataId = await newDocumentFromTemplate(
-    template.id,
-    template.version,
-    contentType,
-    attributes,
-    item.id,
-    'New ' + item.attributes['editor.type'],
-    item.categories.map((c) => c.id),
-  )
-  await router.push(`/content/${metadataId}`)
+  await client.metadata.setReady(id)
+  await router.push(`/content/${id}`)
 }
 
 async function onAddGuide(
+  parentCollectionId: string,
   template: MetadataFragment,
-  contentType: string,
-  attributes: {
-    [key: string]: string
-  },
-  item: CollectionItem,
 ) {
-  const templateGuide = await client.metadata.getGuideTemplate(
-    template.id,
-    template.version,
+  const id = await client.metadata.addGuide(
+      parentCollectionId,
+      template.id,
+      template.version
   )
-  const templateDocument = await client.metadata.getDocumentTemplate(
-    template.id,
-    template.version,
-  )
-  const steps = []
-  for (const templateStep of templateGuide.steps) {
-    const modules: GuideStepModuleInput[] = []
-    const newStep = {
-      modules: modules,
-    } as GuideStepInput
-    if (templateStep.metadata) {
-      newStep.stepMetadataId = await newDocumentFromTemplate(
-        templateStep.metadata.id,
-        templateStep.metadata.version,
-        contentType + '-step',
-        {},
-        item.id,
-        'New Step ' + (steps.length + 1),
-        item.categories.map((c) => c.id),
-      )
-      newStep.stepMetadataVersion = 1
-    }
-    for (const module of templateStep.modules) {
-      if (!module.metadata) continue
-      modules.push({
-        moduleMetadataId: await newDocumentFromTemplate(
-          module.metadata.id,
-          module.metadata.version,
-          contentType + '-module',
-          {},
-          item.id,
-          'New Step Module ' + (modules.length + 1),
-          item.categories.map((c) => c.id),
-        ),
-        moduleMetadataVersion: 1,
-      } as GuideStepModuleInput)
-    }
-    steps.push(newStep)
-  }
-  if (templateDocument.defaultAttributes) {
-    for (const key in templateDocument.defaultAttributes) {
-      attributes[key] = templateDocument.defaultAttributes[key]
-    }
-  }
-  const metadata: MetadataInput = {
-    parentCollectionId: item.id,
-    name: 'New ' + item.attributes['editor.type'],
-    contentType: contentType,
-    languageTag: 'en',
-    attributes: attributes,
-    guide: {
-      templateMetadataId: template.id,
-      templateMetadataVersion: template.version,
-      guideType: templateGuide.type,
-      rrule: templateGuide.rrule && templateGuide.rrule.length > 0
-        ? templateGuide.rrule
-        : null,
-      steps: steps,
-    },
-    document: {
-      templateMetadataId: template.id,
-      templateMetadataVersion: template.version,
-      title: 'New ' + item.attributes['editor.type'],
-      content: {
-        document: templateDocument.content.document,
-      },
-    },
-    profiles: [
-      {
-        profileId: (await client.profiles.getCurrentProfile()).id!,
-        relationship: 'author',
-      },
-    ],
-    categoryIds: item.categories.map((c) => c.id),
-  }
-  const metadataId = await client.metadata.add(metadata)
-  await client.metadata.setReady(metadataId)
-  await router.push(`/content/${metadataId}`)
+  await client.metadata.setReady(id)
+  await router.push(`/content/${id}`)
 }
 
 async function onAdd() {
   for (const item of collectionItems.value || []) {
     if (item.id === selectedId.value) {
-      console.log(item)
-      const contentType = 'bosca/v-' +
-        item.attributes['editor.type'].toLowerCase()
-      const attrs: { [key: string]: string } = {
-        'editor.type': item.attributes['editor.type'],
-      }
       const templates = await client.metadata.find({
         attributes: [],
-        contentTypes: [contentType + '-template'],
+        contentTypes: ['bosca/v-' + item.attributes['editor.type'].toLowerCase() + '-template'],
         categoryIds: categoryIds,
         offset: 0,
         limit: 1,
@@ -276,15 +134,15 @@ async function onAdd() {
       const template = templates[0]
       if (!template) {
         toast({
-          title: 'No template found (' + contentType + ')',
+          title: 'No template found',
           description: 'Please create a template first',
         })
         return
       }
       if (item.attributes['editor.type'] === 'Document') {
-        await onAddDocument(template, contentType, attrs, item)
+        await onAddDocument(item.id, template)
       } else if (item.attributes['editor.type'] === 'Guide') {
-        await onAddGuide(template, contentType, attrs, item)
+        await onAddGuide(item.id, template)
       }
       break
     }

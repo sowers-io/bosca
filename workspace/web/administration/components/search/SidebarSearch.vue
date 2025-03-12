@@ -6,6 +6,7 @@ import type {
 } from '~/lib/graphql/graphql'
 import { getLink } from '~/lib/link.ts'
 import { toast } from '~/components/ui/toast'
+import {Command} from "~/components/ui/command";
 
 const client = useBoscaClient()
 const openCommand = ref(false)
@@ -82,8 +83,8 @@ onMounted(() => {
     </Button>
   </SidebarMenuButton>
 
-  <CommandDialog v-model:open="openCommand" v-model:search="search">
-    <CommandInput placeholder="Type a command or search..." />
+  <CommandDialog v-model:open="openCommand" :filter-function="(val) => val">
+    <CommandInput v-model:model-value="search" placeholder="Type a command or search..." />
     <CommandList>
       <CommandEmpty>No results found.</CommandEmpty>
       <CommandGroup heading="Search Results">

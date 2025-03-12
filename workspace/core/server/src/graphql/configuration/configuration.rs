@@ -51,12 +51,14 @@ impl ConfigurationObject {
             .configuration
             .get_permissions(&self.configuration.id)
             .await?;
-        if permission.is_empty() {
-            ctx.check_has_admin_account().await?;
-        } else {
-            let evaluator = Evaluator::new(permission);
-            if !evaluator.evaluate(&ctx.principal, &PermissionAction::View) {
-                return Ok(None);
+        if !self.configuration.public {
+            if permission.is_empty() {
+                ctx.check_has_admin_account().await?;
+            } else {
+                let evaluator = Evaluator::new(permission);
+                if !evaluator.evaluate(&ctx.principal, &PermissionAction::View) {
+                    return Ok(None);
+                }
             }
         }
         ctx

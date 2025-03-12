@@ -1,6 +1,8 @@
 import { Api } from '~/lib/bosca/api'
 import { NetworkClient } from '~/lib/bosca/networkclient'
 import {
+  AddDocumentDocument,
+  AddGuideDocument,
   AddMetadataDocument,
   AddMetadataPermissionDocument,
   AddMetadataRelationshipDocument,
@@ -53,6 +55,7 @@ import {
   type SignedUrl,
 } from '~/lib/graphql/graphql'
 import type { AsyncData } from '#app/composables/asyncData'
+import type {Reactive} from "vue";
 
 export interface ContentTypeFilter {
   jpg: boolean
@@ -61,6 +64,7 @@ export interface ContentTypeFilter {
   webm: boolean
   mp4: boolean
   mp3: boolean
+  youtube: boolean
 }
 
 export class ContentMetadata<T extends NetworkClient> extends Api<T> {
@@ -154,27 +158,28 @@ export class ContentMetadata<T extends NetworkClient> extends Api<T> {
     return response!.content!.metadata!.content!.urls.upload
   }
 
-  private getContentTypes(filter: Ref<ContentTypeFilter>) {
-    return computed<string[]>(() => {
-      const contentTypes = []
-      if (filter.value.jpg) contentTypes.push('image/jpeg')
-      if (filter.value.png) contentTypes.push('image/png')
-      if (filter.value.webp) contentTypes.push('image/webp')
-      if (filter.value.mp4) {
-        contentTypes.push('video/mp4')
-        contentTypes.push('video/mpeg')
-      }
-      if (filter.value.mp3) {
-        contentTypes.push('audio/mp3')
-        contentTypes.push('audio/mpeg')
-      }
-      if (filter.value.webm) contentTypes.push('video/webm')
-      return contentTypes
-    })
+  private getContentTypes(filter: Reactive<ContentTypeFilter>): string[] {
+    const contentTypes: string[] = []
+    if (filter.jpg) contentTypes.push('image/jpeg')
+    if (filter.png) contentTypes.push('image/png')
+    if (filter.webp) contentTypes.push('image/webp')
+    if (filter.mp4) {
+      contentTypes.push('video/mp4')
+      contentTypes.push('video/mpeg')
+    }
+    if (filter.mp3) {
+      contentTypes.push('audio/mp3')
+      contentTypes.push('audio/mpeg')
+    }
+    if (filter.youtube) {
+      contentTypes.push('bosca/x-youtube-video')
+    }
+    if (filter.webm) contentTypes.push('video/webm')
+    return contentTypes
   }
 
   getByContentType(
-    filter: Ref<ContentTypeFilter>,
+    filter: Reactive<ContentTypeFilter>,
     offset: Ref<number>,
     limit: Ref<number>,
   ): AsyncData<MetadataFragment[] | null, any> {
@@ -182,7 +187,7 @@ export class ContentMetadata<T extends NetworkClient> extends Api<T> {
     const query = computed(() => {
       return {
         attributes: [],
-        contentTypes: contentTypes.value,
+        contentTypes: contentTypes,
         offset: offset.value,
         limit: limit.value,
       }
@@ -198,13 +203,13 @@ export class ContentMetadata<T extends NetworkClient> extends Api<T> {
   }
 
   getByContentTypeCount(
-    filter: Ref<ContentTypeFilter>,
+      filter: Reactive<ContentTypeFilter>,
   ): AsyncData<number | null, any> {
     const contentTypes = this.getContentTypes(filter)
     const query = computed(() => {
       return {
         attributes: [],
-        contentTypes: contentTypes.value,
+        contentTypes: contentTypes,
       }
     })
     return this.executeAndTransformAsyncData(
@@ -338,6 +343,24 @@ export class ContentMetadata<T extends NetworkClient> extends Api<T> {
       metadata,
     })
     return response!.content.metadata.add.id
+  }
+
+  async addDocument(parentCollectionId: string, templateId: string, templateVersion: number): Promise<string> {
+    const response = await this.network.execute(AddDocumentDocument, {
+      parentCollectionId,
+      templateId,
+      templateVersion
+    })
+    return response!.content.metadata.addDocument!.id
+  }
+
+  async addGuide(parentCollectionId: string, templateId: string, templateVersion: number): Promise<string> {
+    const response = await this.network.execute(AddGuideDocument, {
+      parentCollectionId,
+      templateId,
+      templateVersion
+    })
+    return response!.content.metadata.addGuide!.id
   }
 
   async edit(id: string, metadata: MetadataInput): Promise<string> {

@@ -74,8 +74,8 @@ impl ConfigurationDataStore {
         let (value, nonce) = self.encrypt_value(&json)?;
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
-        let stmt = txn.prepare_cached("insert into configurations (key, description) values ($1, $2) on conflict (key) do update set description = $2 returning id").await?;
-        let result = txn.query_one(&stmt, &[&configuration.key, &configuration.description]).await?;
+        let stmt = txn.prepare_cached("insert into configurations (key, description, public) values ($1, $2, $3) on conflict (key) do update set description = $2, public = $3 returning id").await?;
+        let result = txn.query_one(&stmt, &[&configuration.key, &configuration.description, &configuration.public]).await?;
         let id: Uuid = result.get("id");
         let stmt = txn.prepare_cached("delete from configuration_values where configuration_id = $1").await?;
         txn.execute(&stmt, &[&id]).await?;

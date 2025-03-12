@@ -22,6 +22,7 @@ class ConfigurationsInstaller : Installer {
                 ConfigurationInput(
                     key = configuration.key,
                     description = configuration.description,
+                    public = configuration.public,
                     value = value,
                     permissions = emptyList()
                 )

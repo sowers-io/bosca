@@ -7,5 +7,6 @@ import kotlinx.serialization.Serializable
 data class ConfigurationDefinition(
     val key: String,
     val description: String,
+    val public: Boolean,
     val value: @Serializable(YamlAnyDeserializer::class) Any
 )

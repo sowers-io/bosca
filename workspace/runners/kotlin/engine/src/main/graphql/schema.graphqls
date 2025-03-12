@@ -68,6 +68,7 @@ type Collection {
     created: DateTime!
     deleted: Boolean!
     description: String
+    etag(addHeader: Boolean!): String
     id: String!
     itemAttributes: JSON
     items(limit: Int!, offset: Int!): [CollectionItem!]!
@@ -176,6 +177,7 @@ type Content {
     findCollectionsCount(query: FindQueryInput!): Int!
     findMetadata(query: FindQueryInput!): [Metadata!]!
     findMetadataCount(query: FindQueryInput!): Int!
+    guideTemplates: GuideTemplates!
     metadata(id: String!, version: Int): Metadata
     metadataSupplementary(id: String!, key: String!, version: Int): MetadataSupplementary
     slug(slug: String!): ContentItem
@@ -289,6 +291,10 @@ type GuideTemplateStepModule {
     metadata: Metadata
 }
 
+type GuideTemplates {
+    all: [GuideTemplate!]!
+}
+
 type Login {
     password(identifier: String!, password: String!): LoginResponse!
 }
@@ -314,6 +320,7 @@ type Metadata {
     deleted: Boolean!
     document: Document
     documentTemplate: DocumentTemplate
+    etag(addHeader: Boolean!): String
     guide: Guide
     guideTemplate: GuideTemplate
     id: String!
@@ -359,6 +366,10 @@ type MetadataMutation {
     add(collectionItemAttributes: JSON, metadata: MetadataInput!): Metadata!
     addBulk(metadatas: [MetadataChildInput!]!): [Metadata!]!
     addCategory(categoryId: String!, metadataId: String!): Boolean!
+    addDocument(parentCollectionId: String!, templateId: String!, templateVersion: Int!): Metadata
+    addGuide(parentCollectionId: String!, templateId: String!, templateVersion: Int!): Metadata
+    addGuideStep(metadataId: String!, parentCollectionId: String!, sort: Int!, templateId: String!, templateStepId: Int!, templateVersion: Int!, version: Int!): GuideStep!
+    addGuideStepModule(metadataId: String!, parentCollectionId: String!, sort: Int!, templateId: String!, templateModuleId: Int!, templateStepId: Int!, templateVersion: Int!, version: Int!): GuideStepModule!
     addPermission(permission: PermissionInput!): Permission!
     addRelationship(relationship: MetadataRelationshipInput!): MetadataRelationship!
     addSearchDocuments(documents: [SearchDocumentInput!]!, storageSystemId: String!): Boolean!
@@ -597,6 +608,7 @@ type Query {
     profiles: Profiles!
     search(query: SearchQuery!): SearchResultObject!
     security: Security!
+    server: Server!
     workflows: Workflows!
 }
 
@@ -625,6 +637,10 @@ type SecurityMutation {
     expireRefreshTokens: Boolean!
     login: LoginMutation!
     signup: SignupMutation!
+}
+
+type Server {
+    now: DateTime!
 }
 
 type SignedUrl {
@@ -1156,6 +1172,7 @@ input ConfigurationInput {
     description: String!
     key: String!
     permissions: [PermissionInput!]!
+    public: Boolean!
     value: JSON!
 }
 

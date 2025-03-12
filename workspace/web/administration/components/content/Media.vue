@@ -12,13 +12,13 @@ import {
   PaginationNext,
   PaginationPrev,
 } from '@/components/ui/pagination'
+import type {Reactive} from "vue";
 
 const props = defineProps<{
   onSelected?: (id: string) => void
-  filter: ContentTypeFilter
+  filter: Reactive<ContentTypeFilter>
 }>()
 
-const filter = ref<ContentTypeFilter>(props.filter)
 const dropZoneRef = ref<HTMLDivElement>()
 const currentPage = ref(1)
 const limit = ref(18)
@@ -29,14 +29,14 @@ const uploader = new Uploader(client)
 
 const { data: metadata, refresh: refreshList } = client.metadata
   .getByContentType(
-    filter,
+    props.filter,
     offset,
     limit,
   )
 
 const { data: count, refresh: refreshCount } = client.metadata
   .getByContentTypeCount(
-    filter,
+      props.filter,
   )
 
 async function onDrop(files: File[] | null) {
@@ -78,7 +78,7 @@ client.listeners.onMetadataChanged((id) => {
 <template>
   <div ref="dropZoneRef" class="h-full">
     <div class="flex justify-between items-center">
-      <ContentMultiContentTypeFilter v-model:model-value="filter" />
+      <ContentMultiContentTypeFilter :filter="filter" />
       <Pagination
         v-slot="{ page }"
         v-model:page="currentPage"

@@ -3,9 +3,6 @@ import { NetworkClient } from '~/lib/bosca/networkclient'
 
 export default defineEventHandler(async (e) => {
   const cookies = parseCookies(e)
-  if (!cookies._bat) {
-    return sendRedirect(e, '/login')
-  }
   const url = getRequestURL(e)
   const network = new NetworkClient()
   network.token = cookies._bat
