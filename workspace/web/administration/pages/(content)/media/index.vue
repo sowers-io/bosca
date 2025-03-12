@@ -9,6 +9,16 @@ onMounted(() => {
 </script>
 <template>
   <ContentMedia
-    :filter="{ jpg: true, png: true, webp: true, mp4: true, mp3: true, webm: true, youtube: true }"
+    :filter="
+      {
+        jpg: true,
+        png: true,
+        webp: true,
+        mp4: true,
+        mp3: true,
+        webm: true,
+        youtube: true,
+      }
+    "
   />
 </template>

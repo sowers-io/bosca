@@ -97,12 +97,12 @@ const content = computed(() => {
 
 async function onAddDocument(
   parentCollectionId: string,
-  template: MetadataFragment
+  template: MetadataFragment,
 ) {
   const id = await client.metadata.addDocument(
-      parentCollectionId,
-      template.id,
-      template.version
+    parentCollectionId,
+    template.id,
+    template.version,
   )
   await client.metadata.setReady(id)
   await router.push(`/content/${id}`)
@@ -113,9 +113,9 @@ async function onAddGuide(
   template: MetadataFragment,
 ) {
   const id = await client.metadata.addGuide(
-      parentCollectionId,
-      template.id,
-      template.version
+    parentCollectionId,
+    template.id,
+    template.version,
   )
   await client.metadata.setReady(id)
   await router.push(`/content/${id}`)
@@ -126,7 +126,10 @@ async function onAdd() {
     if (item.id === selectedId.value) {
       const templates = await client.metadata.find({
         attributes: [],
-        contentTypes: ['bosca/v-' + item.attributes['editor.type'].toLowerCase() + '-template'],
+        contentTypes: [
+          'bosca/v-' + item.attributes['editor.type'].toLowerCase() +
+          '-template',
+        ],
         categoryIds: categoryIds,
         offset: 0,
         limit: 1,

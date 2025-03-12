@@ -9,7 +9,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import type { ContentTypeFilter } from '~/lib/bosca/contentmetadata'
-import type {Reactive} from "vue";
+import type { Reactive } from 'vue'
 
 const props = defineProps<{
   filter: Reactive<ContentTypeFilter>

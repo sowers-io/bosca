@@ -22,7 +22,7 @@ const open = ref(false)
               png: true,
               webm: true,
               webp: true,
-              youtube: true
+              youtube: true,
             }
           "
           :on-selected="onSelected"

@@ -55,7 +55,7 @@ import {
   type SignedUrl,
 } from '~/lib/graphql/graphql'
 import type { AsyncData } from '#app/composables/asyncData'
-import type {Reactive} from "vue";
+import type { Reactive } from 'vue'
 
 export interface ContentTypeFilter {
   jpg: boolean
@@ -203,7 +203,7 @@ export class ContentMetadata<T extends NetworkClient> extends Api<T> {
   }
 
   getByContentTypeCount(
-      filter: Reactive<ContentTypeFilter>,
+    filter: Reactive<ContentTypeFilter>,
   ): AsyncData<number | null, any> {
     const contentTypes = this.getContentTypes(filter)
     const query = computed(() => {
@@ -345,20 +345,28 @@ export class ContentMetadata<T extends NetworkClient> extends Api<T> {
     return response!.content.metadata.add.id
   }
 
-  async addDocument(parentCollectionId: string, templateId: string, templateVersion: number): Promise<string> {
+  async addDocument(
+    parentCollectionId: string,
+    templateId: string,
+    templateVersion: number,
+  ): Promise<string> {
     const response = await this.network.execute(AddDocumentDocument, {
       parentCollectionId,
       templateId,
-      templateVersion
+      templateVersion,
     })
     return response!.content.metadata.addDocument!.id
   }
 
-  async addGuide(parentCollectionId: string, templateId: string, templateVersion: number): Promise<string> {
+  async addGuide(
+    parentCollectionId: string,
+    templateId: string,
+    templateVersion: number,
+  ): Promise<string> {
     const response = await this.network.execute(AddGuideDocument, {
       parentCollectionId,
       templateId,
-      templateVersion
+      templateVersion,
     })
     return response!.content.metadata.addGuide!.id
   }

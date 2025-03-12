@@ -12,7 +12,7 @@ import {
   PaginationNext,
   PaginationPrev,
 } from '@/components/ui/pagination'
-import type {Reactive} from "vue";
+import type { Reactive } from 'vue'
 
 const props = defineProps<{
   onSelected?: (id: string) => void
@@ -36,7 +36,7 @@ const { data: metadata, refresh: refreshList } = client.metadata
 
 const { data: count, refresh: refreshCount } = client.metadata
   .getByContentTypeCount(
-      props.filter,
+    props.filter,
   )
 
 async function onDrop(files: File[] | null) {

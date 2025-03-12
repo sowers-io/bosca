@@ -430,7 +430,7 @@ watch(addContainerSelection, () => {
                 mp3: true,
                 png: true,
                 webp: true,
-                youtube: true
+                youtube: true,
               })
             "
             :on-selected="onAddMedia"
@@ -450,10 +450,10 @@ watch(addContainerSelection, () => {
               <SelectGroup>
                 <SelectLabel>Containers</SelectLabel>
                 <SelectItem
-                    v-for="(container, index) in template?.containers || []"
-                    :key="index"
-                    :value="container.id"
-                    @click.prevent="onAddContainer(container.id)"
+                  v-for="(container, index) in template?.containers || []"
+                  :key="index"
+                  :value="container.id"
+                  @click.prevent="onAddContainer(container.id)"
                 >
                   {{ container.name }}
                 </SelectItem>
