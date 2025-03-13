@@ -1,15 +1,17 @@
 use crate::context::BoscaContext;
+use crate::datastores::content::tag::update_metadata_etag;
 use crate::datastores::notifier::Notifier;
 use crate::graphql::content::metadata_mutation::WorkflowConfigurationInput;
 use crate::models::content::metadata::Metadata;
 use crate::models::security::principal::Principal;
+use crate::models::workflow::enqueue_request::EnqueueRequest;
 use async_graphql::*;
 use chrono::DateTime;
 use deadpool_postgres::{GenericClient, Pool};
 use log::error;
 use std::sync::Arc;
 use uuid::Uuid;
-use crate::datastores::content::tag::update_metadata_etag;
+use crate::workflow::core_workflows::METADATA_PROCESS;
 
 #[derive(Clone)]
 pub struct MetadataWorkflowsDataStore {
@@ -135,9 +137,7 @@ impl MetadataWorkflowsDataStore {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
         let stmt = txn
-            .prepare_cached(
-                "update metadata set ready = now(), modified = now() where id = $1",
-            )
+            .prepare_cached("update metadata set ready = now(), modified = now() where id = $1")
             .await?;
         txn.execute(&stmt, &[id]).await?;
         update_metadata_etag(&txn, id).await?;
@@ -157,7 +157,6 @@ impl MetadataWorkflowsDataStore {
         }
         self.validate(ctx, &metadata.id, metadata.version).await?;
         let workflow = &ctx.workflow;
-        let process_id = "metadata.process".to_owned();
         self.set_metadata_workflow_state(
             &ctx.principal,
             metadata,
@@ -169,16 +168,14 @@ impl MetadataWorkflowsDataStore {
         )
         .await?;
         self.set_metadata_ready(&metadata.id).await?;
-        workflow
-            .enqueue_metadata_workflow(
-                &process_id,
-                &metadata.id,
-                &metadata.version,
-                configurations.as_ref(),
-                None,
-                None,
-            )
-            .await?;
+        let mut request = EnqueueRequest {
+            workflow_id: Some(METADATA_PROCESS.to_string()),
+            metadata_id: Some(metadata.id),
+            metadata_version: Some(metadata.version),
+            configurations,
+            ..Default::default()
+        };
+        workflow.enqueue_workflow(ctx, &mut request).await?;
         self.on_metadata_changed(&metadata.id).await?;
         Ok(true)
     }

@@ -55,7 +55,7 @@ pub async fn add_password_principal(
     };
     ctx.content.collection_permissions.add(&permission).await?;
     if set_ready {
-        ctx.content.collection_workflows.set_ready_and_enqueue(&ctx.workflow, &principal, &collection, None).await?;
+        ctx.content.collection_workflows.set_ready_and_enqueue(ctx, &principal, &collection, None).await?;
     }
 
     Ok(principal)

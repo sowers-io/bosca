@@ -499,7 +499,7 @@ impl CollectionMutationObject {
         }
         ctx.content
             .collection_workflows
-            .set_ready_and_enqueue(&ctx.workflow, &ctx.principal, &collection, None)
+            .set_ready_and_enqueue(ctx, &ctx.principal, &collection, None)
             .await?;
         Ok(true)
     }

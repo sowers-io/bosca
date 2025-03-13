@@ -7,6 +7,7 @@ import io.bosca.graphql.fragment.*
 import io.bosca.graphql.fragment.Category
 import io.bosca.graphql.fragment.Collection
 import io.bosca.graphql.fragment.Document
+import io.bosca.graphql.fragment.DocumentTemplate
 import io.bosca.graphql.fragment.Guide
 import io.bosca.graphql.fragment.Metadata
 import io.bosca.graphql.fragment.MetadataContent
@@ -30,6 +31,12 @@ class ContentMetadata(network: NetworkClient) : Api(network) {
         val response = network.graphql.query(GetMetadataDocumentQuery(id, version)).execute()
         response.validate()
         return response.data?.content?.metadata?.document?.document
+    }
+
+    suspend fun getDocumentTemplate(id: String, version: Int): DocumentTemplate? {
+        val response = network.graphql.query(GetMetadataDocumentTemplateQuery(id, version.toOptional())).execute()
+        response.validate()
+        return response.data?.content?.metadata?.documentTemplate?.documentTemplate
     }
 
     suspend fun getGuide(id: String, version: Int): Guide? {
@@ -103,7 +110,7 @@ class ContentMetadata(network: NetworkClient) : Api(network) {
     suspend fun getMetadataSupplementaryContent(id: String, key: String): MetadataSupplementaryContent? {
         val response = network.graphql.query(GetMetadataSupplementaryQuery(id)).execute()
         response.validate()
-        return response.data?.content?.metadata?.supplementary?.firstOrNull()?.metadataSupplementary?.content?.metadataSupplementaryContent
+        return response.data?.content?.metadata?.supplementary?.firstOrNull { it.metadataSupplementary.key == key }?.metadataSupplementary?.content?.metadataSupplementaryContent
     }
 
     suspend fun getSupplementaryTextContents(id: String, key: String): String? {

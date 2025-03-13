@@ -28,6 +28,14 @@ enum class Distance {
 }
 
 @Serializable
+data class QdrantConnectionConfiguration(
+    val host: String,
+    val port: Int,
+    val apiKey: String? = null,
+    val tls: Boolean = false,
+)
+
+@Serializable
 data class QdrantConfiguration(
     val collectionName: String,
     val distance: Distance
@@ -35,14 +43,10 @@ data class QdrantConfiguration(
 
     suspend fun initialize(client: Client, model: ModelConfiguration) {
         withContext(Dispatchers.IO) {
-            val host = client.configurations.get<KeyValue>(DefaultKeys.QDRANT_HOST)?.value ?: "localhost"
-            val port = (client.configurations.get<KeyValue>(DefaultKeys.QDRANT_PORT)?.value ?: "6334").toInt()
-            val qdrantClient = QdrantClient(
-                QdrantGrpcClient
-                    .newBuilder(host, port, false)
-                    .build()
-            )
-
+            val cfg = client.configurations.get<QdrantConnectionConfiguration>("qdrant") ?: error("missing qdrant configuration")
+            val builder = QdrantGrpcClient.newBuilder(cfg.host, cfg.port, cfg.tls)
+            cfg.apiKey?.let { builder.withApiKey(it) }
+            val qdrantClient = QdrantClient(builder.build())
             try {
                 qdrantClient.getCollectionInfoAsync(collectionName).get()
             } catch (e: Exception) {

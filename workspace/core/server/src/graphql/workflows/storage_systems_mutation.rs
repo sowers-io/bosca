@@ -18,7 +18,7 @@ impl StorageSystemsMutationObject {
     ) -> Result<Option<StorageSystemObject>, Error> {
         check_has_group(ctx, WORKFLOW_MANAGERS_GROUP).await?;
         let ctx = ctx.data::<BoscaContext>()?;
-        let id = ctx.workflow.add_storage_system(&storage_system).await?;
+        let id = ctx.workflow.add_storage_system(ctx, &storage_system).await?;
         Ok(ctx.workflow.get_storage_system(&id).await?.map(StorageSystemObject::new))
     }
 

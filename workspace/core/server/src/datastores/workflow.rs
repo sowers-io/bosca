@@ -1,3 +1,4 @@
+use crate::context::BoscaContext;
 use crate::datastores::notifier::Notifier;
 use crate::graphql::content::metadata_mutation::WorkflowConfigurationInput;
 use crate::models::workflow::activities::{
@@ -5,6 +6,7 @@ use crate::models::workflow::activities::{
     WorkflowActivityModel, WorkflowActivityParameter, WorkflowActivityPrompt,
     WorkflowActivityStorageSystem,
 };
+use crate::models::workflow::enqueue_request::EnqueueRequest;
 use crate::models::workflow::execution_plan::{
     WorkflowExecutionId, WorkflowExecutionPlan, WorkflowJob, WorkflowJobId,
 };
@@ -16,6 +18,8 @@ use crate::models::workflow::storage_systems::{StorageSystem, StorageSystemInput
 use crate::models::workflow::traits::{Trait, TraitInput};
 use crate::models::workflow::transitions::{Transition, TransitionInput};
 use crate::models::workflow::workflows::{Workflow, WorkflowInput};
+use crate::util::RUNNING_BACKGROUND;
+use crate::workflow::core_workflows::STORAGE_INDEX_INITIALIZE;
 use crate::workflow::queue::JobQueues;
 use async_graphql::*;
 use chrono::{DateTime, Utc};
@@ -24,12 +28,11 @@ use log::{error, warn};
 use meilisearch_sdk::client::Client;
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
-use std::sync::Arc;
 use std::sync::atomic::Ordering::Relaxed;
+use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::sleep;
 use uuid::Uuid;
-use crate::util::RUNNING_BACKGROUND;
 
 #[derive(Clone)]
 pub struct WorkflowDataStore {
@@ -706,7 +709,11 @@ impl WorkflowDataStore {
         Ok(rows.first().map(|r| r.into()))
     }
 
-    pub async fn add_storage_system(&self, system: &StorageSystemInput) -> Result<Uuid, Error> {
+    pub async fn add_storage_system(
+        &self,
+        ctx: &BoscaContext,
+        system: &StorageSystemInput,
+    ) -> Result<Uuid, Error> {
         let mut connection = self.pool.get().await?;
         let mut txn = connection.transaction().await?;
         let stmt = txn.prepare_cached("insert into storage_systems (type, name, description, configuration) values ($1, $2, $3, $4) returning id").await?;
@@ -733,7 +740,14 @@ impl WorkflowDataStore {
 
         let id_str = id.to_string();
         self.notifier.storage_system_changed(&id_str).await?;
-        // TODO: initialize storage system
+
+        let mut request = EnqueueRequest {
+            workflow_id: Some(STORAGE_INDEX_INITIALIZE.to_string()),
+            storage_system_ids: Some(vec![id]),
+            ..Default::default()
+        };
+        ctx.workflow.enqueue_workflow(ctx, &mut request).await?;
+
         Ok(id)
     }
 
@@ -1157,26 +1171,22 @@ impl WorkflowDataStore {
             return Err(Error::new("missing plan"));
         };
         let job = plan.jobs.get(job_id.index as usize).unwrap();
+        let mut request = EnqueueRequest {
+            collection_id: job
+                .collection_id
+                .as_ref()
+                .map(|id| Uuid::parse_str(id).unwrap()),
+            metadata_id: job
+                .metadata_id
+                .as_ref()
+                .map(|id| Uuid::parse_str(id).unwrap()),
+            metadata_version: job.metadata_version,
+            delay_until,
+            ..Default::default()
+        };
         for workflow_id in workflow_ids {
-            let workflow = self.get_workflow(workflow_id).await?;
-            if workflow.is_none() {
-                return Err(Error::new("workflow not found"));
-            }
-            let workflow = workflow.unwrap();
-            let plan = self
-                .get_new_execution_plan(
-                    &workflow,
-                    job.collection_id
-                        .as_ref()
-                        .map(|id| Uuid::parse_str(id).unwrap()),
-                    job.metadata_id
-                        .as_ref()
-                        .map(|id| Uuid::parse_str(id).unwrap()),
-                    job.metadata_version,
-                    None,
-                    delay_until,
-                )
-                .await?;
+            request.workflow_id = Some(workflow_id.clone());
+            let plan = self.get_new_execution_plan(&mut request).await?;
             plans.push(plan);
         }
         self.queues
@@ -1188,7 +1198,7 @@ impl WorkflowDataStore {
         &self,
         job_id: &WorkflowJobId,
         workflow_id: &str,
-        configurations: Option<&Vec<WorkflowConfigurationInput>>,
+        configurations: Option<Vec<WorkflowConfigurationInput>>,
         delay_until: Option<DateTime<Utc>>,
     ) -> Result<WorkflowExecutionId, Error> {
         let workflow_id = workflow_id.to_owned();
@@ -1205,21 +1215,16 @@ impl WorkflowDataStore {
             .collection_id
             .as_ref()
             .map(|id| Uuid::parse_str(id.as_str()).unwrap());
-        let workflow = self.get_workflow(&workflow_id).await?;
-        if workflow.is_none() {
-            return Err(Error::new("workflow not found"));
-        }
-        let workflow = workflow.unwrap();
-        let plan = self
-            .get_new_execution_plan(
-                &workflow,
-                collection_id,
-                metadata_id,
-                job.metadata_version,
-                configurations,
-                delay_until,
-            )
-            .await?;
+        let mut request = EnqueueRequest {
+            workflow_id: Some(workflow_id),
+            collection_id,
+            metadata_id,
+            metadata_version: job.metadata_version,
+            configurations,
+            delay_until,
+            ..Default::default()
+        };
+        let plan = self.get_new_execution_plan(&mut request).await?;
         plans.push(plan);
         Ok(self
             .queues
@@ -1252,19 +1257,25 @@ impl WorkflowDataStore {
 
     pub async fn get_new_execution_plan(
         &self,
-        workflow: &Workflow,
-        collection_id: Option<Uuid>,
-        metadata_id: Option<Uuid>,
-        metadata_version: Option<i32>,
-        configurations: Option<&Vec<WorkflowConfigurationInput>>,
-        delay_until: Option<DateTime<Utc>>,
+        request: &mut EnqueueRequest,
     ) -> Result<WorkflowExecutionPlan, Error> {
+        let workflow = if let Some(workflow) = request.workflow.take() {
+            workflow
+        } else if let Some(workflow_id) = &request.workflow_id {
+            if let Some(workflow) = self.get_workflow(workflow_id).await? {
+                workflow
+            } else {
+                return Err(Error::new("missing workflow"));
+            }
+        } else {
+            return Err(Error::new("missing workflow"));
+        };
         let mut jobs = Vec::<WorkflowJob>::new();
         let activities = self.get_workflow_activities(&workflow.id).await?;
         let mut pending = HashSet::<i32>::new();
         let mut current_execution_group = Vec::<i32>::new();
         let mut configuration_overrides = HashMap::new();
-        if let Some(overrides) = configurations {
+        if let Some(overrides) = &request.configurations {
             for o in overrides.iter() {
                 configuration_overrides
                     .insert(o.activity_id.to_owned(), o.configuration.to_owned());
@@ -1291,9 +1302,17 @@ impl WorkflowDataStore {
             let prompts = self
                 .get_workflow_activity_prompts(&workflow_activity.id)
                 .await?;
-            let storage_systems = self
+            let mut storage_systems = self
                 .get_workflow_activity_storage_systems(&workflow_activity.id)
                 .await?;
+            if let Some(systems) = &request.storage_system_ids {
+                for id in systems {
+                    storage_systems.push(WorkflowActivityStorageSystem {
+                        system_id: *id,
+                        configuration: None,
+                    })
+                }
+            }
             let activity = self
                 .get_activity(&workflow_activity.activity_id)
                 .await?
@@ -1319,8 +1338,8 @@ impl WorkflowDataStore {
                 id: id.clone(),
                 error: None,
                 workflow_id: workflow.id.to_string(),
-                metadata_id: metadata_id.map(|id| id.to_string()),
-                metadata_version,
+                metadata_id: request.metadata_id.map(|id| id.to_string()),
+                metadata_version: request.metadata_version,
                 workflow_activity,
                 workflow_inputs,
                 workflow_outputs,
@@ -1329,7 +1348,7 @@ impl WorkflowDataStore {
                 activity_outputs,
                 context: None,
                 supplementary_id: None,
-                collection_id: collection_id.map(|id| id.to_string()),
+                collection_id: request.collection_id.map(|id| id.to_string()),
                 models,
                 prompts,
                 storage_systems,
@@ -1351,105 +1370,56 @@ impl WorkflowDataStore {
                 queue: workflow.queue.to_owned(),
                 id: plan_id,
             },
-            delay_until,
+            delay_until: request.delay_until,
             enqueued: Utc::now(),
             error: None,
             active: HashSet::new(),
             complete: HashSet::new(),
             failed: HashSet::new(),
             cancelled: false,
-            metadata_id,
+            metadata_id: request.metadata_id,
             workflow: workflow.clone(),
             jobs,
             context: None,
             parent: None,
             supplementary_id: None,
-            metadata_version,
-            collection_id,
+            metadata_version: request.metadata_version,
+            collection_id: request.collection_id,
             finished: None,
         })
     }
 
-    pub async fn enqueue_metadata_workflow(
+    pub async fn enqueue_workflow(
         &self,
-        workflow_id: &str,
-        metadata_id: &Uuid,
-        version: &i32,
-        configurations: Option<&Vec<WorkflowConfigurationInput>>,
-        wait_for_completion: Option<bool>,
-        delay_until: Option<DateTime<Utc>>,
-    ) -> Result<WorkflowExecutionPlan, Error> {
-        if let Some(workflow) = self.get_workflow(workflow_id).await? {
-            let mut plan = self
-                .get_new_execution_plan(
-                    &workflow,
-                    None,
-                    Some(*metadata_id),
-                    Some(*version),
-                    configurations,
-                    delay_until,
-                )
-                .await?;
-            let id = self.queues.enqueue_plan(&mut plan).await?;
-            if wait_for_completion.is_some() && wait_for_completion.unwrap() {
-                self.wait_for_execution_plan(&id, delay_until).await?;
-            }
-            Ok(plan)
-        } else {
-            Err(Error::new(format!("workflow not found: {}", workflow_id)))
-        }
-    }
-
-    pub async fn enqueue_metadata_trait_workflow(
-        &self,
-        metadata_id: &Uuid,
-        version: &i32,
-        trait_id: &String,
+        ctx: &BoscaContext,
+        request: &mut EnqueueRequest,
     ) -> Result<Vec<WorkflowExecutionPlan>, Error> {
-        let mut plans = Vec::<WorkflowExecutionPlan>::new();
-        for workflow in self.get_workflows_by_trait(trait_id).await? {
-            let mut plan = self
-                .get_new_execution_plan(
-                    &workflow,
-                    None,
-                    Some(*metadata_id),
-                    Some(*version),
-                    None,
-                    None,
-                )
-                .await?;
-            self.queues.enqueue_plan(&mut plan).await?;
-            plans.push(plan);
+        if request.workflow.is_some() && request.trait_id.is_some() {
+            return Err(Error::new("cannot enqueue workflow and trait"));
         }
-        Ok(plans)
-    }
-
-    pub async fn enqueue_collection_workflow(
-        &self,
-        workflow_id: &str,
-        collection_id: &Uuid,
-        configurations: Option<&Vec<WorkflowConfigurationInput>>,
-        wait_for_completion: Option<bool>,
-        delay_until: Option<DateTime<Utc>>,
-    ) -> Result<WorkflowExecutionPlan, Error> {
-        if let Some(workflow) = self.get_workflow(workflow_id).await? {
-            let mut plan = self
-                .get_new_execution_plan(
-                    &workflow,
-                    Some(*collection_id),
-                    None,
-                    None,
-                    configurations,
-                    delay_until,
-                )
-                .await?;
-            let id = self.queues.enqueue_plan(&mut plan).await?;
-            if wait_for_completion.is_some() && wait_for_completion.unwrap() {
-                self.wait_for_execution_plan(&id, delay_until).await?;
+        if request.trait_id.is_some() {
+            let mut plans = Vec::new();
+            let trait_id = request.trait_id.take().unwrap();
+            for workflow in ctx.workflow.get_workflows_by_trait(&trait_id).await? {
+                request.workflow = Some(workflow);
+                let plan = self.get_new_execution_plan(request).await?;
+                if request.wait_for_completion.is_some() && request.wait_for_completion.unwrap() {
+                    self.wait_for_execution_plan(&plan.id, request.delay_until)
+                        .await?;
+                }
+                plans.push(plan);
             }
-            Ok(plan)
+            Ok(plans)
+        } else if request.workflow.is_some() {
+            let mut plan = self.get_new_execution_plan(request).await?;
+            let id = self.queues.enqueue_plan(&mut plan).await?;
+            if request.wait_for_completion.is_some() && request.wait_for_completion.unwrap() {
+                self.wait_for_execution_plan(&id, request.delay_until)
+                    .await?;
+            }
+            Ok(vec![plan])
         } else {
-            Err(Error::new("workflow not found"))
+            Err(Error::new("must enqueue workflow or trait"))
         }
     }
 
@@ -1460,12 +1430,9 @@ impl WorkflowDataStore {
         metadata_version: &Option<i32>,
         collection_id: &Option<Uuid>,
     ) -> Result<(), Error> {
-        self.queues.cancel_workflows(
-            workflow_id,
-            metadata_id,
-            metadata_version,
-            collection_id
-        ).await?;
+        self.queues
+            .cancel_workflows(workflow_id, metadata_id, metadata_version, collection_id)
+            .await?;
         Ok(())
     }
 

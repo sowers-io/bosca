@@ -123,13 +123,13 @@ onMounted(async () => {
 <template>
   <ContentMetadataGuideEditor
     v-if="metadata && guide && document"
-    v-model:metadata="metadata"
     :guide="guide"
     :guideTemplate="guideTemplate"
-    v-model:document="document"
-    v-model:documentTemplate="documentTemplate"
     :parents="parents || []"
     :relationships="relationships || []"
+    v-model:metadata="metadata"
+    v-model:document="document"
+    v-model:documentTemplate="documentTemplate"
     v-model:currentStep="currentStep"
     v-model:currentModule="currentModule"
   />

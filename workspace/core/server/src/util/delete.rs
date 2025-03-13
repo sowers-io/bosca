@@ -4,6 +4,8 @@ use crate::models::security::permission::PermissionAction;
 use crate::util::storage::storage_system_collection_delete;
 use async_graphql::Error;
 use uuid::Uuid;
+use crate::models::workflow::enqueue_request::EnqueueRequest;
+use crate::workflow::core_workflows::{COLLECTION_DELETE_FINALIZE, METADATA_DELETE_FINALIZE};
 
 pub async fn delete_collection(
     ctx: &BoscaContext,
@@ -40,14 +42,13 @@ pub async fn delete_collection(
                         ctx.content.metadata.delete(ctx, &item.id).await?;
                     } else {
                         ctx.content.metadata.mark_deleted(&item.id).await?;
-                        ctx.workflow.enqueue_metadata_workflow(
-                            "metadata.delete.finalize",
-                            &item.id,
-                            &item.version,
-                            None,
-                            None,
-                            None
-                        ).await?;
+                        let mut request = EnqueueRequest {
+                            workflow_id: Some(METADATA_DELETE_FINALIZE.to_string()),
+                            metadata_id: Some(item.id),
+                            metadata_version: Some(item.version),
+                          ..Default::default()
+                        };
+                        ctx.workflow.enqueue_workflow(ctx, &mut request).await?;
                     }
                 }
             }
@@ -73,13 +74,12 @@ pub async fn delete_collection(
         ctx.content.collections.delete(collection_id).await?;
     } else {
         ctx.content.collections.mark_deleted(collection_id).await?;
-        ctx.workflow.enqueue_collection_workflow(
-            "collection.delete.finalize",
-            collection_id,
-            None,
-            None,
-            None
-        ).await?;
+        let mut request = EnqueueRequest {
+            workflow_id: Some(COLLECTION_DELETE_FINALIZE.to_string()),
+            collection_id: Some(*collection_id),
+            ..Default::default()
+        };
+        ctx.workflow.enqueue_workflow(ctx, &mut request).await?;
     }
     Ok(())
 }

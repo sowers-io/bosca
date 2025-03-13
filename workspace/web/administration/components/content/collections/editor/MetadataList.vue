@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import type { CollectionFragment } from '~/lib/graphql/graphql.ts'
+import type {CollectionFragment, MetadataFragment} from '~/lib/graphql/graphql.ts'
 import Table from '~/components/ui/table/Table.vue'
 import TableHeader from '~/components/ui/table/TableHeader.vue'
 import TableHead from '~/components/ui/table/TableHead.vue'
@@ -14,23 +14,26 @@ const props = defineProps<{
   count: number
 }>()
 
-const offset = defineModel('offset', { type: Number, default: 0 })
+const offset = ref(props.offset)
 const count = defineModel('count', { type: Number, default: 0 })
 
 const router = useRouter()
 const client = useBoscaClient()
-const { metadata, count: collectionCount } = await client.collections
-  .getCollectionChildMetadata(
+const { data } = await client.collections
+  .getCollectionChildMetadataAsyncData(
     props.collection.id,
     offset,
     props.limit,
   )
 
 onUpdated(() => {
-  count.value = collectionCount
+  offset.value = props.offset
+  count.value = data.value?.count || 0
 })
+
 onMounted(() => {
-  count.value = collectionCount
+  offset.value = props.offset
+  count.value = data.value?.count || 0
 })
 </script>
 <template>
@@ -43,7 +46,7 @@ onMounted(() => {
       </TableHeader>
       <TableBody>
         <TableRow
-          v-for="item in metadata"
+          v-for="item in data?.metadata || []"
           :key="item.id"
           @click="router.push(`/content/${item.id}`)"
           class="cursor-pointer"
@@ -54,7 +57,7 @@ onMounted(() => {
         </TableRow>
       </TableBody>
       <TableFooter>
-        <TableRow v-if="metadata.length === 0">
+        <TableRow v-if="(data?.metadata?.length || 0) === 0">
           <TableCell class="font-medium flex content-center">
             No content found.
           </TableCell>

@@ -98,6 +98,30 @@ export class ContentCollections<T extends NetworkClient> extends Api<T> {
     return { metadata: [], count: 0 }
   }
 
+  getCollectionChildMetadataAsyncData(
+    id: string,
+    offset: number | Ref<number>,
+    limit: number | Ref<number>,
+  ): AsyncData<{ metadata: Array<MetadataFragment>; count: number } | null, any> {
+    return this.executeAndTransformAsyncData(
+      GetCollectionChildrenMetadataDocument,
+      {
+        id,
+        offset,
+        limit,
+      },
+      (data) => {
+        if (!data) return null
+        return {
+          metadata: data?.content?.collection?.metadata as Array<
+            MetadataFragment
+          >,
+          count: data?.content?.collection?.metadataCount || 0,
+        }
+      },
+    )
+  }
+
   async getCollectionParents(
     id: string,
   ): Promise<Array<ParentCollectionFragment> | null> {

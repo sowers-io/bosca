@@ -22,6 +22,7 @@ use crate::models::content::metadata_workflow_state::{
 use crate::models::content::search::SearchDocumentInput;
 use crate::models::content::supplementary::MetadataSupplementaryInput;
 use crate::models::security::permission::{Permission, PermissionAction, PermissionInput};
+use crate::models::workflow::enqueue_request::EnqueueRequest;
 use crate::models::workflow::execution_plan::WorkflowExecutionPlan;
 use crate::util::storage::{index_documents, storage_system_metadata_delete};
 use async_graphql::*;
@@ -30,8 +31,9 @@ use futures_util::AsyncReadExt;
 use object_store::MultipartUpload;
 use serde_json::json;
 use uuid::Uuid;
+use crate::workflow::core_workflows::METADATA_DELETE_FINALIZE;
 
-#[derive(InputObject)]
+#[derive(InputObject, Clone, Debug, Default)]
 pub struct WorkflowConfigurationInput {
     pub activity_id: String,
     pub configuration: serde_json::Value,
@@ -353,16 +355,13 @@ impl MetadataMutationObject {
             .check_metadata_action(&id, PermissionAction::Delete)
             .await?;
         ctx.content.metadata.mark_deleted(&metadata.id).await?;
-        ctx.workflow
-            .enqueue_metadata_workflow(
-                "metadata.delete.finalize",
-                &metadata.id,
-                &metadata.version,
-                None,
-                None,
-                None,
-            )
-            .await?;
+        let mut request = EnqueueRequest {
+            workflow_id: Some(METADATA_DELETE_FINALIZE.to_string()),
+            metadata_id: Some(metadata.id),
+            metadata_version: Some(metadata.version),
+            ..Default::default()
+        };
+        ctx.workflow.enqueue_workflow(ctx, &mut request).await?;
         Ok(true)
     }
 
@@ -456,10 +455,13 @@ impl MetadataMutationObject {
             .await?;
         ctx.content.metadata.add_trait(&id, &trait_id).await?;
         if metadata.ready.is_some() {
-            let plans = ctx
-                .workflow
-                .enqueue_metadata_trait_workflow(&metadata.id, &metadata.version, &trait_id)
-                .await?;
+            let mut request = EnqueueRequest {
+                trait_id: Some(trait_id),
+                metadata_id: Some(metadata.id),
+                metadata_version: Some(metadata.version),
+                ..Default::default()
+            };
+            let plans = ctx.workflow.enqueue_workflow(ctx, &mut request).await?;
             Ok(plans.into_iter().map(WorkflowExecutionPlan::into).collect())
         } else {
             Ok(vec![])
@@ -471,32 +473,31 @@ impl MetadataMutationObject {
         ctx: &Context<'_>,
         metadata_id: String,
         trait_id: String,
-    ) -> Result<Option<WorkflowExecutionPlanObject>, Error> {
+    ) -> Result<Vec<WorkflowExecutionPlanObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::parse_str(metadata_id.as_str())?;
         let t = ctx.workflow.get_trait(&trait_id).await?;
         if t.is_none() {
-            return Ok(None);
+            return Ok(Vec::new());
         }
         let metadata = ctx
             .check_metadata_action(&id, PermissionAction::Manage)
             .await?;
         ctx.content.metadata.delete_trait(&id, &trait_id).await?;
         if t.is_some() && t.as_ref().unwrap().delete_workflow_id.is_some() {
+            let mut request = EnqueueRequest {
+                workflow_id: t.unwrap().delete_workflow_id.clone(),
+                metadata_id: Some(metadata.id),
+                metadata_version: Some(metadata.version),
+                ..Default::default()
+            };
             let plan = ctx
                 .workflow
-                .enqueue_metadata_workflow(
-                    t.unwrap().delete_workflow_id.as_ref().unwrap(),
-                    &metadata.id,
-                    &metadata.version,
-                    None,
-                    None,
-                    None,
-                )
+                .enqueue_workflow(ctx, &mut request)
                 .await?;
-            return Ok(Some(plan.into()));
+            return Ok(plan.into_iter().map(WorkflowExecutionPlanObject::new).collect());
         }
-        Ok(None)
+        Ok(Vec::new())
     }
 
     async fn set_public(
@@ -1116,8 +1117,20 @@ async fn add_document_impl(
     else {
         return Err(Error::new("missing template"));
     };
-    let editor_type = template.attributes.get("editor.type").unwrap().as_str().unwrap().to_string();
-    let template_type = template.attributes.get("template.type").unwrap().as_str().unwrap().to_string();
+    let editor_type = template
+        .attributes
+        .get("editor.type")
+        .unwrap()
+        .as_str()
+        .unwrap()
+        .to_string();
+    let template_type = template
+        .attributes
+        .get("template.type")
+        .unwrap()
+        .as_str()
+        .unwrap()
+        .to_string();
     let content_type = format!("bosca/v-{}", template_type.to_lowercase());
     let mut attrs = json!({
         "editor.type": editor_type.to_string(),

@@ -1,6 +1,8 @@
 use crate::context::BoscaContext;
 use crate::models::content::supplementary::MetadataSupplementary;
 use crate::models::security::permission::PermissionAction;
+use crate::models::workflow::enqueue_request::EnqueueRequest;
+use crate::util::security::get_principal_from_headers;
 use async_graphql::Error;
 use axum::body::Body;
 use axum::extract::{Multipart, Query};
@@ -12,7 +14,7 @@ use object_store::MultipartUpload;
 use serde::Deserialize;
 use std::io::Write;
 use uuid::Uuid;
-use crate::util::security::get_principal_from_headers;
+use crate::workflow::core_workflows::METADATA_PROCESS;
 
 #[derive(Debug, Deserialize)]
 pub struct Params {
@@ -47,7 +49,8 @@ pub async fn download(
         .await
         .map_err(|_| (StatusCode::UNAUTHORIZED, "Unauthorized".to_owned()))?;
     let id_str = params.id.as_deref().unwrap_or("");
-    let id = Uuid::parse_str(id_str).map_err(|_| (StatusCode::BAD_REQUEST, "Bad Request".to_owned()))?;
+    let id =
+        Uuid::parse_str(id_str).map_err(|_| (StatusCode::BAD_REQUEST, "Bad Request".to_owned()))?;
     let url = format!("/files{}", request.uri().path_and_query().unwrap());
     let metadata = if ctx.security.verify_signed_url(&url) {
         let metadata = ctx
@@ -65,7 +68,12 @@ pub async fn download(
             .await
             .map_err(|_| (StatusCode::FORBIDDEN, "Forbidden".to_owned()))?
     };
-    if metadata.deleted && !ctx.has_admin_account().await.map_err(|_| (StatusCode::FORBIDDEN, "Forbidden".to_owned()))? {
+    if metadata.deleted
+        && !ctx
+            .has_admin_account()
+            .await
+            .map_err(|_| (StatusCode::FORBIDDEN, "Forbidden".to_owned()))?
+    {
         return Err((StatusCode::NOT_FOUND, "Not Found".to_owned()))?;
     }
     let supplementary = get_supplementary(&ctx, &params, &metadata.id)
@@ -154,20 +162,19 @@ pub async fn upload(
         let mut len = 0;
         let buf = BytesMut::with_capacity(5242880);
         let writer = &mut buf.writer();
-        while let Some(chunk) = field
-            .chunk()
-            .await
-            .map_err(|err| {
-                error!("Error getting chunk: {}", err);
-                (StatusCode::BAD_REQUEST, err.to_string())
-            })?
-        {
+        while let Some(chunk) = field.chunk().await.map_err(|err| {
+            error!("Error getting chunk: {}", err);
+            (StatusCode::BAD_REQUEST, err.to_string())
+        })? {
             let chunk_len = chunk.len();
             len += chunk_len;
             let write_len = writer.write(chunk.as_ref()).unwrap();
             if write_len != chunk_len {
                 error!("Error validating write {}, {}", write_len, chunk_len);
-                return Err((StatusCode::INTERNAL_SERVER_ERROR, "Invalid length".to_string()));
+                return Err((
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Invalid length".to_string(),
+                ));
             }
             // assert_eq!(write_len, chunk_len);
             let buf_len = writer.get_ref().len();
@@ -201,10 +208,15 @@ pub async fn upload(
                 .await
                 .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Server Error".to_owned()))?;
             if params.ready.is_some() && params.ready.unwrap() {
-                let process_id = "metadata.process".to_string();
-                let workflow = ctx.workflow;
-                workflow
-                    .enqueue_metadata_workflow(&process_id, &id, &metadata.version, None, None, None)
+                let mut request = EnqueueRequest {
+                    workflow_id: Some(METADATA_PROCESS.to_string()),
+                    metadata_id: Some(id),
+                    metadata_version: Some(metadata.version),
+                    ..Default::default()
+                };
+                ctx
+                    .workflow
+                    .enqueue_workflow(&ctx, &mut request)
                     .await
                     .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Server Error".to_owned()))?;
             }

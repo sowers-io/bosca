@@ -1,14 +1,16 @@
 use crate::datastores::notifier::Notifier;
-use crate::datastores::workflow::WorkflowDataStore;
 use crate::graphql::content::metadata_mutation::WorkflowConfigurationInput;
 use crate::models::content::collection::Collection;
 use crate::models::security::principal::Principal;
+use crate::models::workflow::enqueue_request::EnqueueRequest;
 use async_graphql::*;
+use chrono::{DateTime, Utc};
 use deadpool_postgres::{GenericClient, Pool};
 use log::error;
 use std::sync::Arc;
-use chrono::{DateTime, Utc};
 use uuid::Uuid;
+use crate::context::BoscaContext;
+use crate::workflow::core_workflows::COLLECTION_PROCESS;
 
 #[derive(Clone)]
 pub struct CollectionWorkflowsDataStore {
@@ -104,7 +106,7 @@ impl CollectionWorkflowsDataStore {
 
     pub async fn set_ready_and_enqueue(
         &self,
-        workflow: &WorkflowDataStore,
+        ctx: &BoscaContext,
         principal: &Principal,
         collection: &Collection,
         configurations: Option<Vec<WorkflowConfigurationInput>>,
@@ -112,7 +114,6 @@ impl CollectionWorkflowsDataStore {
         if collection.ready.is_some() {
             return Err(Error::new("collection already ready"));
         }
-        let process_id = "collection.process".to_owned();
         self.set_state(
             principal,
             collection,
@@ -123,9 +124,13 @@ impl CollectionWorkflowsDataStore {
             false,
         )
         .await?;
-        workflow
-            .enqueue_collection_workflow(&process_id, &collection.id, configurations.as_ref(), None, None)
-            .await?;
+        let mut request = EnqueueRequest {
+            workflow_id: Some(COLLECTION_PROCESS.to_string()),
+            collection_id: Some(collection.id),
+            configurations,
+            ..Default::default()
+        };
+        ctx.workflow.enqueue_workflow(ctx, &mut request).await?;
         self.set_ready(&collection.id).await?;
         self.on_collection_changed(&collection.id).await?;
         Ok(())

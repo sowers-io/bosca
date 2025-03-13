@@ -12,6 +12,8 @@ use crate::graphql::workflows::workflow::WorkflowObject;
 use crate::graphql::workflows::workflow_execution_id::WorkflowExecutionIdObject;
 use crate::graphql::workflows::workflow_schedules_mutation::WorkflowSchedulesMutationObject;
 use crate::models::content::find_query::FindQueryInput;
+use crate::models::security::permission::PermissionAction;
+use crate::models::workflow::enqueue_request::EnqueueRequest;
 use crate::models::workflow::execution_plan::{WorkflowExecutionIdInput, WorkflowJobIdInput};
 use crate::models::workflow::transitions::BeginTransitionInput;
 use crate::models::workflow::workflows::WorkflowInput;
@@ -21,7 +23,6 @@ use async_graphql::{Context, Error, Object};
 use chrono::{DateTime, Utc};
 use serde_json::Value;
 use uuid::Uuid;
-use crate::models::security::permission::PermissionAction;
 
 pub(crate) struct WorkflowsMutationObject {}
 
@@ -118,7 +119,7 @@ impl WorkflowsMutationObject {
         configurations: Option<Vec<WorkflowConfigurationInput>>,
     ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        begin_transition(ctx, &request, configurations.as_ref()).await?;
+        begin_transition(ctx, &request, configurations).await?;
         Ok(true)
     }
 
@@ -242,7 +243,7 @@ impl WorkflowsMutationObject {
                 .enqueue_job_child_workflow(
                     &job_id.into(),
                     &workflow_id,
-                    configurations.as_ref(),
+                    configurations,
                     delay_until,
                 )
                 .await?,
@@ -260,37 +261,29 @@ impl WorkflowsMutationObject {
         let ctx = ctx.data::<BoscaContext>()?;
         ctx.check_has_service_account().await?;
         let mut ids = Vec::new();
+        let mut request = EnqueueRequest {
+            workflow_id: Some(workflow_id),
+            configurations,
+            delay_until,
+            ..Default::default()
+        };
         // TODO: page through items
         for metadata in ctx.content.metadata.find(&mut query).await? {
-            let id = ctx
-                .workflow
-                .enqueue_metadata_workflow(
-                    &workflow_id,
-                    &metadata.id,
-                    &metadata.version,
-                    configurations.as_ref(),
-                    None,
-                    delay_until,
-                )
-                .await?;
+            request.metadata_id = Some(metadata.id);
+            request.metadata_version = Some(metadata.version);
+            let id = ctx.workflow.enqueue_workflow(ctx, &mut request).await?;
             ids.push(id);
         }
+        request.metadata_id = None;
+        request.metadata_version = None;
         for collection in ctx.content.collections.find(&mut query).await? {
-            let id = ctx
-                .workflow
-                .enqueue_collection_workflow(
-                    &workflow_id,
-                    &collection.id,
-                    configurations.as_ref(),
-                    None,
-                    delay_until,
-                )
-                .await?;
+            request.collection_id = Some(collection.id);
+            let id = ctx.workflow.enqueue_workflow(ctx, &mut request).await?;
             ids.push(id);
         }
         Ok(ids
             .into_iter()
-            .map(|plan| WorkflowExecutionIdObject::new(plan.id.clone()))
+            .map(|plan| WorkflowExecutionIdObject::new(plan.first().unwrap().id.clone()))
             .collect())
     }
 
@@ -307,40 +300,19 @@ impl WorkflowsMutationObject {
     ) -> Result<WorkflowExecutionIdObject, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         ctx.check_has_service_account().await?;
-        let workflow = if let Some(metadata_id) = metadata_id {
-            let id = Uuid::parse_str(metadata_id.as_str())?;
-            if version.is_none() {
-                return Err(Error::new("a version is required"));
-            }
-
-            ctx.workflow
-                .enqueue_metadata_workflow(
-                    &workflow_id,
-                    &id,
-                    version.as_ref().unwrap(),
-                    configurations.as_ref(),
-                    None,
-                    delay_until,
-                )
-                .await?
-        } else if let Some(collection_id) = collection_id {
-            let id = Uuid::parse_str(collection_id.as_str())?;
-
-            ctx.workflow
-                .enqueue_collection_workflow(
-                    &workflow_id,
-                    &id,
-                    configurations.as_ref(),
-                    None,
-                    delay_until,
-                )
-                .await?
-        } else {
-            return Err(Error::new(
-                "you must provide either a collection_id or a metadata_id",
-            ));
+        let mut request = EnqueueRequest {
+            workflow_id: Some(workflow_id),
+            metadata_id: metadata_id.map(|id| Uuid::parse_str(&id).unwrap()),
+            metadata_version: version,
+            collection_id: collection_id.map(|id| Uuid::parse_str(&id).unwrap()),
+            configurations,
+            delay_until,
+            ..Default::default()
         };
-        Ok(WorkflowExecutionIdObject::new(workflow.id.clone()))
+        let workflow = ctx.workflow.enqueue_workflow(ctx, &mut request).await?;
+        Ok(WorkflowExecutionIdObject::new(
+            workflow.first().unwrap().id.clone(),
+        ))
     }
 
     async fn set_execution_plan_context(

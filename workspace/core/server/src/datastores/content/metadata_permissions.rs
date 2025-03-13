@@ -46,6 +46,7 @@ impl MetadataPermissionsDataStore {
         if action == PermissionAction::View
             && metadata.public
             && metadata.workflow_state_id == "published"
+            && !metadata.deleted
         {
             return Ok(true);
         }
@@ -65,6 +66,7 @@ impl MetadataPermissionsDataStore {
         if action == PermissionAction::View
             && metadata.public_content
             && metadata.workflow_state_id == "published"
+            && !metadata.deleted
         {
             return Ok(true);
         }

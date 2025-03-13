@@ -1,6 +1,7 @@
 package io.bosca.workflow
 
 import com.apollographql.apollo.api.Optional
+import com.apollographql.apollo.api.toUpload
 import io.bosca.api.Client
 import io.bosca.graphql.fragment.Metadata
 import io.bosca.graphql.fragment.WorkflowJob
@@ -63,13 +64,18 @@ abstract class Activity(protected val client: Client) {
     protected suspend fun getContentFile(context: ActivityContext, job: WorkflowJob): File =
         getContentFile(context, job.id, job.metadata?.metadata ?: error("missing metadata"))
 
+    protected suspend fun newTemporaryFile(context: ActivityContext, jobId: WorkflowJob.Id, suffix: String): File {
+        val file = withContext(Dispatchers.IO) {
+            File.createTempFile(jobId.id, ".$suffix")
+        }
+        context.addFile(file)
+        return file
+    }
+
     protected suspend fun getContentFile(context: ActivityContext, jobId: WorkflowJob.Id, metadata: Metadata): File {
         val content = client.metadata.getMetadataContent(metadata.id)
             ?: error("missing content")
-        val file = withContext(Dispatchers.IO) {
-            File.createTempFile(jobId.id, "." + content.type.split("/").last())
-        }
-        context.addFile(file)
+        val file = newTemporaryFile(context, jobId, content.type.split("/").last())
         client.files.download(content.urls.download, file)
         return file
     }
@@ -109,7 +115,7 @@ abstract class Activity(protected val client: Client) {
             it.metadataSupplementary.key == supplementaryKey
         }?.metadataSupplementary ?: error("missing supplementary: $key")
         val file = withContext(Dispatchers.IO) {
-            File.createTempFile(job.id.id, supplementary.content.metadataSupplementaryContent.type.split("/").last())
+            File.createTempFile(job.id.id, ".${supplementary.content.metadataSupplementaryContent.type.split("/").last()}")
         }
         context.addFile(file)
         client.files.download(supplementary.content.metadataSupplementaryContent.urls.download, file)
@@ -175,6 +181,36 @@ abstract class Activity(protected val client: Client) {
             supplementary.key,
             contentType,
             value
+        )
+    }
+
+    protected suspend fun setSupplementaryContents(
+        job: WorkflowJob,
+        output: String,
+        name: String,
+        file: File,
+        contentType: String,
+        sourceId: String? = null,
+        sourceIdentifier: String? = null
+    ) {
+        val metadataId = job.metadata?.metadata?.id ?: error("missing metadata id")
+        val key = getOutputParameterValue(job, output) ?: name
+        val supplementary =
+            job.metadata.metadata.supplementary.firstOrNull { it.metadataSupplementary.key == key }?.metadataSupplementary
+                ?: client.metadata.addSupplementary(
+                    MetadataSupplementaryInput(
+                        name = name,
+                        contentType = contentType,
+                        key = key,
+                        metadataId = metadataId,
+                        sourceId = Optional.presentIfNotNull(sourceId),
+                        sourceIdentifier = Optional.presentIfNotNull(sourceIdentifier)
+                    )
+                ) ?: error("missing supplementary: $name")
+        client.metadata.setSupplementaryContents(
+            metadataId,
+            supplementary.key,
+            file.toUpload(contentType)
         )
     }
 
