@@ -14,7 +14,7 @@ use object_store::MultipartUpload;
 use serde::Deserialize;
 use std::io::Write;
 use uuid::Uuid;
-use crate::workflow::core_workflows::METADATA_PROCESS;
+use crate::workflow::core_workflow_ids::METADATA_PROCESS;
 
 #[derive(Debug, Deserialize)]
 pub struct Params {
@@ -204,7 +204,7 @@ pub async fn upload(
             let file_name = field.file_name().map(|s| s.to_owned());
             ctx.content
                 .metadata
-                .set_uploaded(&id, &file_name, &content_type, len)
+                .set_uploaded(&ctx, &id, &file_name, &content_type, len)
                 .await
                 .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Server Error".to_owned()))?;
             if params.ready.is_some() && params.ready.unwrap() {

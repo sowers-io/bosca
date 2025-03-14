@@ -7,6 +7,8 @@ use uuid::Uuid;
 pub struct EnqueueRequest {
     pub trait_id: Option<String>,
 
+    pub profile_id: Option<Uuid>,
+
     pub workflow_id: Option<String>,
     pub workflow: Option<Workflow>,
 

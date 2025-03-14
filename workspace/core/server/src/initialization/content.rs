@@ -34,8 +34,8 @@ async fn initialize_collection(
         },
         ..Default::default()
     };
-    let collection_id = ctx.content.collections.add(&input).await.unwrap();
-    let group = ctx.security.get_administrators_group().await.unwrap();
+    let collection_id = ctx.content.collections.add(ctx, &input).await?;
+    let group = ctx.security.get_administrators_group().await?;
     let permission = Permission {
         entity_id: collection_id,
         group_id: group.id,

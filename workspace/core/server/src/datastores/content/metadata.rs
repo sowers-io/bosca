@@ -10,12 +10,12 @@ use crate::models::content::metadata_profile::MetadataProfile;
 use crate::models::content::metadata_relationship::{
     MetadataRelationship, MetadataRelationshipInput,
 };
-use crate::models::content::search::SearchDocumentInput;
 use crate::models::content::supplementary::{MetadataSupplementary, MetadataSupplementaryInput};
 use crate::models::security::permission::{Permission, PermissionAction};
-use crate::util::storage::{index_documents, storage_system_metadata_delete};
+use crate::models::workflow::enqueue_request::EnqueueRequest;
+use crate::workflow::core_workflow_ids::{METADATA_DELETE_FINALIZE, METADATA_INDEX};
 use async_graphql::*;
-use deadpool_postgres::{GenericClient, Pool, Transaction};
+use deadpool_postgres::{Pool, Transaction};
 use log::error;
 use serde_json::{Map, Value};
 use std::sync::Arc;
@@ -269,12 +269,19 @@ impl MetadataDataStore {
         Ok(())
     }
 
-    pub async fn mark_deleted(&self, metadata_id: &Uuid) -> Result<(), Error> {
+    pub async fn mark_deleted(&self, ctx: &BoscaContext, metadata_id: &Uuid) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
-            .prepare_cached("update metadata set deleted = true, modified = now() where id = $1")
+            .prepare_cached("update metadata set deleted = true, modified = now() where id = $1 returning version")
             .await?;
-        connection.execute(&stmt, &[metadata_id]).await?;
+        let row = connection.query_one(&stmt, &[metadata_id]).await?;
+        let mut request = EnqueueRequest {
+            workflow_id: Some(METADATA_DELETE_FINALIZE.to_string()),
+            metadata_id: Some(metadata_id.clone()),
+            metadata_version: Some(row.get("version")),
+            ..Default::default()
+        };
+        ctx.workflow.enqueue_workflow(ctx, &mut request).await?;
         Ok(())
     }
 
@@ -282,10 +289,6 @@ impl MetadataDataStore {
         let Some(metadata) = self.get(metadata_id).await? else {
             return Ok(());
         };
-
-        let storage_systems = ctx.workflow.get_storage_systems().await?;
-        storage_system_metadata_delete(&ctx.storage, &metadata, &storage_systems, &ctx.search)
-            .await?;
 
         let supplementaries = ctx
             .content
@@ -321,16 +324,25 @@ impl MetadataDataStore {
             .await?;
         txn.execute(&stmt, &[&metadata_id]).await?;
         txn.commit().await?;
+
+        let mut request = EnqueueRequest {
+            workflow_id: Some(METADATA_DELETE_FINALIZE.to_string()),
+            metadata_id: Some(metadata.id),
+            metadata_version: Some(metadata.version),
+            ..Default::default()
+        };
+        ctx.workflow.enqueue_workflow(ctx, &mut request).await?;
+
         self.on_metadata_changed(metadata_id).await?;
         for collection_id in collection_ids {
             self.on_collection_changed(&collection_id).await?;
         }
-
         Ok(())
     }
 
     pub async fn delete_supplementary(
         &self,
+        ctx: &BoscaContext,
         metadata_id: &Uuid,
         key: &String,
     ) -> Result<(), Error> {
@@ -341,8 +353,8 @@ impl MetadataDataStore {
             )
             .await?;
         connection.execute(&stmt, &[&metadata_id, &key]).await?;
-        self.on_metadata_supplementary_changed(metadata_id, key)
-            .await?;
+        self.index_metadata(ctx, metadata_id, None).await?;
+        self.on_metadata_supplementary_changed(metadata_id, key).await?;
         Ok(())
     }
 
@@ -423,14 +435,14 @@ impl MetadataDataStore {
             )
             .await
         {
-            Ok(value) => {
+            Ok(version) => {
                 txn.commit().await?;
-                self.index_document(ctx, id, metadata);
+                self.index_metadata(ctx, id, Some(version)).await?;
                 self.on_metadata_changed(id).await?;
                 for collection_id in collection_ids {
                     self.on_collection_changed(&collection_id).await?;
                 }
-                Ok(value)
+                Ok(())
             }
             Err(err) => {
                 txn.rollback().await?;
@@ -439,92 +451,23 @@ impl MetadataDataStore {
         }
     }
 
-    async fn new_search_document(
-        id: &Uuid,
-        _: &MetadataInput,
-    ) -> Result<SearchDocumentInput, Error> {
-        Ok(SearchDocumentInput {
-            metadata_id: Some(id.to_string()),
-            collection_id: None,
-            profile_id: None,
-            content: "".to_owned(),
-        })
-    }
-
-    fn index_documents(&self, ctx: &BoscaContext, documents: Vec<SearchDocumentInput>) {
-        let new_ctx = ctx.clone();
-        tokio::spawn(async move {
-            if let Ok(Some(storage_system)) =
-                new_ctx.workflow.get_default_search_storage_system().await
-            {
-                if let Err(err) = index_documents(&new_ctx, &documents, &storage_system).await {
-                    error!("failed to index documents: {:?}", err);
-                }
-            } else {
-                error!("failed to index documents, missing storage system");
-            }
-        });
-    }
-
-    fn index_document(&self, ctx: &BoscaContext, id: &Uuid, metadata: &MetadataInput) {
-        let new_ctx = ctx.clone();
-        let id = *id;
-        let metadata = metadata.clone();
-        tokio::spawn(async move {
-            if metadata.index.unwrap_or(true) {
-                if let Ok(Some(storage_system)) =
-                    new_ctx.workflow.get_default_search_storage_system().await
-                {
-                    let mut search_documents = Vec::new();
-                    if let Ok(metadata) =
-                        MetadataDataStore::new_search_document(&id, &metadata).await
-                    {
-                        search_documents.push(metadata);
-                    }
-                    if let Err(err) =
-                        index_documents(&new_ctx, &search_documents, &storage_system).await
-                    {
-                        error!("failed to index documents: {:?}", err);
-                    }
-                } else {
-                    error!("failed to index documents, missing storage system");
-                }
-            } else if let Ok(Some(metadata)) = new_ctx.content.metadata.get(&id).await {
-                if let Ok(storage_systems) = new_ctx.workflow.get_storage_systems().await {
-                    if let Err(e) = storage_system_metadata_delete(
-                        &new_ctx.storage,
-                        &metadata,
-                        &storage_systems,
-                        &new_ctx.search,
-                    )
-                    .await
-                    {
-                        error!("failed to delete documents: {:?}", e);
-                    }
-                } else {
-                    error!("failed to delete documents, failed to get storage systems");
-                }
-            } else {
-                error!("failed to delete documents, failed to get metadata");
-            }
-        });
-    }
-
-    pub async fn set_attributes(&self, metadata_id: &Uuid, attributes: Value) -> Result<(), Error> {
+    pub async fn set_attributes(&self, ctx: &BoscaContext, metadata_id: &Uuid, attributes: Value) -> Result<(), Error> {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
         let stmt = txn
-            .prepare_cached("update metadata set attributes = $1, modified = now() where id = $2")
+            .prepare_cached("update metadata set attributes = $1, modified = now() where id = $2 returning version")
             .await?;
-        txn.execute(&stmt, &[&attributes, &metadata_id]).await?;
+        let row = txn.query_one(&stmt, &[&attributes, &metadata_id]).await?;
         update_metadata_etag(&txn, metadata_id).await?;
         txn.commit().await?;
+        self.index_metadata(ctx, metadata_id, row.get("version")).await?;
         self.on_metadata_changed(metadata_id).await?;
         Ok(())
     }
 
     pub async fn set_system_attributes(
         &self,
+        ctx: &BoscaContext,
         metadata_id: &Uuid,
         attributes: Value,
     ) -> Result<(), Error> {
@@ -532,18 +475,20 @@ impl MetadataDataStore {
         let txn = connection.transaction().await?;
         let stmt = txn
             .prepare_cached(
-                "update metadata set system_attributes = $1, modified = now() where id = $2",
+                "update metadata set system_attributes = $1, modified = now() where id = $2 returning version",
             )
             .await?;
-        txn.execute(&stmt, &[&attributes, &metadata_id]).await?;
+        let row = txn.query_one(&stmt, &[&attributes, &metadata_id]).await?;
         update_metadata_etag(&txn, metadata_id).await?;
         txn.commit().await?;
+        self.index_metadata(ctx, metadata_id, row.get("version")).await?;
         self.on_metadata_changed(metadata_id).await?;
         Ok(())
     }
 
     pub async fn set_uploaded(
         &self,
+        ctx: &BoscaContext,
         metadata_id: &Uuid,
         original_file_name: &Option<String>,
         content_type: &Option<String>,
@@ -552,7 +497,7 @@ impl MetadataDataStore {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
         let stmt = txn
-            .prepare_cached("update metadata set uploaded = now(), system_attributes = $1, modified = now(), content_type = $2, content_length = $3 where id = $4")
+            .prepare_cached("update metadata set uploaded = now(), system_attributes = $1, modified = now(), content_type = $2, content_length = $3 where id = $4 returning version")
             .await?;
         let len = len as i64;
         let mut attrs = Map::new();
@@ -561,7 +506,7 @@ impl MetadataDataStore {
             Value::String(original_file_name.clone().unwrap_or("--".to_owned())),
         );
         let attrs = Value::Object(attrs);
-        txn.execute(&stmt, &[&attrs, content_type, &len, metadata_id])
+        let row = txn.query_one(&stmt, &[&attrs, content_type, &len, metadata_id])
             .await?;
         if let Some(content_type) = content_type {
             self.ensure_content_type_traits(metadata_id, content_type, &txn)
@@ -569,6 +514,7 @@ impl MetadataDataStore {
         }
         update_metadata_etag(&txn, metadata_id).await?;
         txn.commit().await?;
+        self.index_metadata(ctx, metadata_id, row.get("version")).await?;
         self.on_metadata_changed(metadata_id).await?;
         Ok(())
     }
@@ -595,12 +541,13 @@ impl MetadataDataStore {
         Ok(())
     }
 
-    pub async fn set_upload_removed(&self, metadata_id: &Uuid) -> Result<(), Error> {
+    pub async fn set_upload_removed(&self, ctx: &BoscaContext, metadata_id: &Uuid) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
-            .prepare_cached("update metadata set uploaded = null, modified = now(), content_length = 0 where id = $1")
+            .prepare_cached("update metadata set uploaded = null, modified = now(), content_length = 0 where id = $1 returning version")
             .await?;
-        connection.execute(&stmt, &[&metadata_id]).await?;
+        let row = connection.query_one(&stmt, &[&metadata_id]).await?;
+        self.index_metadata(ctx, metadata_id, row.get("version")).await?;
         self.on_metadata_changed(metadata_id).await?;
         Ok(())
     }
@@ -716,7 +663,7 @@ impl MetadataDataStore {
         source_id: &Option<Uuid>,
         source_identifier: &Option<String>,
         source_url: &Option<String>,
-    ) -> Result<(), Error> {
+    ) -> Result<i32, Error> {
         let stmt = txn.prepare("update metadata set name = $1, labels = $2, attributes = $3, language_tag = $4, source_id = $5, source_identifier = $6, source_url = $7, content_type = $8, modified = now() where id = $9 returning version").await?;
         let labels = metadata.labels.clone().unwrap_or_default();
         let result = txn
@@ -784,7 +731,7 @@ impl MetadataDataStore {
         if let Some(guide) = &metadata.guide {
             ctx.content
                 .guides
-                .edit_guide(txn, id, version, guide)
+                .edit_guide_txn(txn, id, version, guide)
                 .await?;
         }
         if let Some(guide_template) = &metadata.guide_template {
@@ -800,12 +747,11 @@ impl MetadataDataStore {
                 .await?;
         }
 
-        self.ensure_content_type_traits(id, &metadata.content_type, txn)
-            .await?;
+        self.ensure_content_type_traits(id, &metadata.content_type, txn).await?;
 
         update_metadata_etag(txn, id).await?;
 
-        Ok(())
+        Ok(version)
     }
 
     async fn add_profile_txn<'a>(
@@ -906,7 +852,7 @@ impl MetadataDataStore {
         Ok(())
     }
 
-    pub async fn add_category(&self, id: &Uuid, category_id: &Uuid) -> Result<(), Error> {
+    pub async fn add_category(&self, ctx: &BoscaContext, id: &Uuid, category_id: &Uuid) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached(
@@ -914,11 +860,12 @@ impl MetadataDataStore {
             )
             .await?;
         connection.execute(&stmt, &[id, category_id]).await?;
+        self.index_metadata(ctx, id, None).await?;
         self.on_metadata_changed(id).await?;
         Ok(())
     }
 
-    pub async fn delete_category(&self, id: &Uuid, category_id: &Uuid) -> Result<(), Error> {
+    pub async fn delete_category(&self, ctx: &BoscaContext, id: &Uuid, category_id: &Uuid) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached(
@@ -926,12 +873,14 @@ impl MetadataDataStore {
             )
             .await?;
         connection.execute(&stmt, &[id, category_id]).await?;
+        self.index_metadata(ctx, id, None).await?;
         self.on_metadata_changed(id).await?;
         Ok(())
     }
 
     pub async fn add_relationship(
         &self,
+        ctx: &BoscaContext,
         relationship: &MetadataRelationshipInput,
     ) -> Result<(), Error> {
         let id1 = Uuid::parse_str(relationship.id1.as_str())?;
@@ -949,6 +898,8 @@ impl MetadataDataStore {
                 ],
             )
             .await?;
+        self.index_metadata(ctx, &id1, None).await?;
+        self.index_metadata(ctx, &id2, None).await?;
         self.on_metadata_changed(&id1).await?;
         self.on_metadata_changed(&id2).await?;
         Ok(())
@@ -979,6 +930,7 @@ impl MetadataDataStore {
 
     pub async fn edit_relationship(
         &self,
+        ctx: &BoscaContext,
         id1: &Uuid,
         id2: &Uuid,
         relationship: &Option<String>,
@@ -990,6 +942,8 @@ impl MetadataDataStore {
         connection
             .query(&stmt, &[&relationship, &attributes, id1, id2])
             .await?;
+        self.index_metadata(ctx, id1, None).await?;
+        self.index_metadata(ctx, id2, None).await?;
         self.on_metadata_changed(id1).await?;
         self.on_metadata_changed(id2).await?;
         Ok(())
@@ -997,6 +951,7 @@ impl MetadataDataStore {
 
     pub async fn delete_relationship(
         &self,
+        ctx: &BoscaContext,
         id1: &Uuid,
         id2: &Uuid,
         relationship: &str,
@@ -1011,6 +966,8 @@ impl MetadataDataStore {
         connection
             .execute(&stmt, &[id1, id2, &relationship])
             .await?;
+        self.index_metadata(ctx, id1, None).await?;
+        self.index_metadata(ctx, id2, None).await?;
         self.on_metadata_changed(id1).await?;
         self.on_metadata_changed(id2).await?;
         Ok(())
@@ -1023,25 +980,20 @@ impl MetadataDataStore {
     ) -> Result<Vec<(Uuid, i32, i32)>, Error> {
         let mut conn = self.pool.get().await?;
         let txn = conn.transaction().await?;
-        let mut search_documents = Vec::new();
-        let ids = self
-            .add_all_txn(ctx, &txn, metadatas, &mut search_documents, false, None)
-            .await?;
+        let ids = self.add_all_txn(ctx, &txn, metadatas, false, None).await?;
         txn.commit().await?;
-        self.index_documents(ctx, search_documents);
-        for (id, _, _) in &ids {
+        for (id, version, _) in &ids {
+            self.index_metadata(ctx, id, Some(*version)).await?;
             self.on_metadata_changed(id).await?
         }
         Ok(ids)
     }
 
-    #[allow(clippy::too_many_arguments)]
     pub async fn add_all_txn(
         &self,
         ctx: &BoscaContext,
         txn: &Transaction<'_>,
         metadatas: &[MetadataChildInput],
-        search_documents: &mut Vec<SearchDocumentInput>,
         ignore_permission_check: bool,
         permissions: Option<Vec<Permission>>,
     ) -> Result<Vec<(Uuid, i32, i32)>, Error> {
@@ -1083,16 +1035,24 @@ impl MetadataDataStore {
                     .add_child_metadata_txn(txn, &collection_id, &id, &metadata_child.attributes)
                     .await?;
             }
-            if metadata.index.unwrap_or(true) {
-                search_documents.push(SearchDocumentInput {
-                    metadata_id: Some(id.to_string()),
-                    collection_id: None,
-                    profile_id: None,
-                    content: "".to_owned(),
-                });
-            }
             new_metadatas.push((id, version, active_version));
         }
         Ok(new_metadatas)
+    }
+
+    pub async fn index_metadata(
+        &self,
+        ctx: &BoscaContext,
+        id: &Uuid,
+        version: Option<i32>,
+    ) -> Result<(), Error> {
+        let mut request = EnqueueRequest {
+            workflow_id: Some(METADATA_INDEX.to_string()),
+            metadata_id: Some(*id),
+            metadata_version: version,
+            ..Default::default()
+        };
+        ctx.workflow.enqueue_workflow(ctx, &mut request).await?;
+        Ok(())
     }
 }

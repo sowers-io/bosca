@@ -3,10 +3,7 @@ use crate::graphql::content::category_mutation::CategoryMutationObject;
 use crate::graphql::content::collection_mutation::CollectionMutationObject;
 use crate::graphql::content::metadata_mutation::MetadataMutationObject;
 use crate::graphql::content::source_mutation::SourceMutationObject;
-use crate::models::content::search::SearchDocumentInput;
-use crate::util::storage::index_documents;
 use async_graphql::{Context, Error, Object};
-use log::error;
 
 pub struct ContentMutationObject {}
 
@@ -33,8 +30,6 @@ impl ContentMutationObject {
         }
         const LIMIT: i64 = 100;
         let mut offset = 0;
-        let storage_system = ctx.workflow.get_default_search_storage_system().await?;
-        let mut search_documents = Vec::new();
         loop {
             let items = ctx.content.collections.get_all(offset, LIMIT).await?;
             if items.is_empty() {
@@ -42,19 +37,8 @@ impl ContentMutationObject {
             }
             offset += LIMIT;
             for item in items {
-                search_documents.push(SearchDocumentInput {
-                    collection_id: Some(item.id.to_string()),
-                    metadata_id: None,
-                    profile_id: None,
-                    content: "".to_owned(),
-                });
+                ctx.content.collections.index_collection(ctx, &item.id).await?;
             }
-            if let Some(storage_system) = &storage_system {
-                index_documents(ctx, &search_documents, storage_system).await?;
-            } else {
-                error!("error, failed to index, no storage system")
-            }
-            search_documents.clear();
         }
         offset = 0;
         loop {
@@ -64,19 +48,8 @@ impl ContentMutationObject {
             }
             offset += LIMIT;
             for item in items {
-                search_documents.push(SearchDocumentInput {
-                    collection_id: None,
-                    metadata_id: Some(item.id.to_string()),
-                    profile_id: None,
-                    content: "".to_owned(),
-                });
+                ctx.content.metadata.index_metadata(ctx, &item.id, Some(item.version)).await?;
             }
-            if let Some(storage_system) = &storage_system {
-                index_documents(ctx, &search_documents, storage_system).await?;
-            } else {
-                error!("error, failed to index, no storage system")
-            }
-            search_documents.clear();
         }
         offset = 0;
         loop {
@@ -86,19 +59,8 @@ impl ContentMutationObject {
             }
             offset += LIMIT;
             for item in items {
-                search_documents.push(SearchDocumentInput {
-                    collection_id: None,
-                    metadata_id: None,
-                    profile_id: Some(item.id.to_string()),
-                    content: "".to_owned(),
-                });
+                ctx.profile.index_profile(ctx, &item.id).await?;
             }
-            if let Some(storage_system) = &storage_system {
-                index_documents(ctx, &search_documents, storage_system).await?;
-            } else {
-                error!("error, failed to index, no storage system")
-            }
-            search_documents.clear();
         }
         Ok(true)
     }

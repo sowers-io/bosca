@@ -1,11 +1,10 @@
 use crate::context::BoscaContext;
 use crate::models::content::collection::CollectionType;
 use crate::models::security::permission::PermissionAction;
-use crate::util::storage::storage_system_collection_delete;
 use async_graphql::Error;
 use uuid::Uuid;
 use crate::models::workflow::enqueue_request::EnqueueRequest;
-use crate::workflow::core_workflows::{COLLECTION_DELETE_FINALIZE, METADATA_DELETE_FINALIZE};
+use crate::workflow::core_workflow_ids::{COLLECTION_DELETE_FINALIZE, METADATA_DELETE_FINALIZE};
 
 pub async fn delete_collection(
     ctx: &BoscaContext,
@@ -41,7 +40,7 @@ pub async fn delete_collection(
                     if permanently {
                         ctx.content.metadata.delete(ctx, &item.id).await?;
                     } else {
-                        ctx.content.metadata.mark_deleted(&item.id).await?;
+                        ctx.content.metadata.mark_deleted(ctx, &item.id).await?;
                         let mut request = EnqueueRequest {
                             workflow_id: Some(METADATA_DELETE_FINALIZE.to_string()),
                             metadata_id: Some(item.id),
@@ -66,9 +65,6 @@ pub async fn delete_collection(
                 Box::pin(delete_collection(ctx, &item.id, recursive, permanently)).await?;
             }
         }
-    }
-    if let Some(storage_system) = ctx.workflow.get_default_search_storage_system().await? {
-        storage_system_collection_delete(&collection, &storage_system, &ctx.search).await?;
     }
     if permanently {
         ctx.content.collections.delete(collection_id).await?;

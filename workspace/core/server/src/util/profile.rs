@@ -28,7 +28,7 @@ pub async fn add_password_principal(
     let collection_name = format!("Collection for {}", identifier);
     let collection_id = ctx.content
         .collections
-        .add(&CollectionInput {
+        .add(ctx, &CollectionInput {
             name: collection_name,
             collection_type: Some(CollectionType::System),
             trait_ids: Some(vec!["profile".to_string()]),

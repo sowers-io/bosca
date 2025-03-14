@@ -10,7 +10,7 @@ use log::error;
 use std::sync::Arc;
 use uuid::Uuid;
 use crate::context::BoscaContext;
-use crate::workflow::core_workflows::COLLECTION_PROCESS;
+use crate::workflow::core_workflow_ids::COLLECTION_PROCESS;
 
 #[derive(Clone)]
 pub struct CollectionWorkflowsDataStore {
