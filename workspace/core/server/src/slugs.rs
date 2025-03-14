@@ -31,7 +31,7 @@ async fn get_supplementary(
         None
     } else {
         ctx.content
-            .metadata
+            .metadata_supplementary
             .get_supplementary(metadata_id, params.key.as_ref().unwrap())
             .await?
     })

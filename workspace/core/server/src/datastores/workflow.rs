@@ -19,7 +19,7 @@ use crate::models::workflow::traits::{Trait, TraitInput};
 use crate::models::workflow::transitions::{Transition, TransitionInput};
 use crate::models::workflow::workflows::{Workflow, WorkflowInput};
 use crate::util::RUNNING_BACKGROUND;
-use crate::workflow::core_workflows::STORAGE_INDEX_INITIALIZE;
+use crate::workflow::core_workflow_ids::STORAGE_INDEX_INITIALIZE;
 use crate::workflow::queue::JobQueues;
 use async_graphql::*;
 use chrono::{DateTime, Utc};
@@ -691,15 +691,6 @@ impl WorkflowDataStore {
         Ok(rows.iter().map(StorageSystem::from).collect())
     }
 
-    pub async fn get_default_search_storage_system(&self) -> Result<Option<StorageSystem>, Error> {
-        let connection = self.pool.get().await?;
-        let stmt = connection
-            .prepare_cached("select * from storage_systems where name = 'Default Search'")
-            .await?;
-        let rows = connection.query(&stmt, &[]).await?;
-        Ok(rows.first().map(|r| r.into()))
-    }
-
     pub async fn get_storage_system(&self, id: &Uuid) -> Result<Option<StorageSystem>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -738,15 +729,17 @@ impl WorkflowDataStore {
         }
         txn.commit().await?;
 
-        let id_str = id.to_string();
-        self.notifier.storage_system_changed(&id_str).await?;
-
         let mut request = EnqueueRequest {
             workflow_id: Some(STORAGE_INDEX_INITIALIZE.to_string()),
             storage_system_ids: Some(vec![id]),
             ..Default::default()
         };
-        ctx.workflow.enqueue_workflow(ctx, &mut request).await?;
+        if let Err(e) = ctx.workflow.enqueue_workflow(ctx, &mut request).await {
+            log::error!("Failed to initialize storage system: {:?}", e);
+        }
+
+        let id_str = id.to_string();
+        self.notifier.storage_system_changed(&id_str).await?;
 
         Ok(id)
     }
@@ -781,6 +774,7 @@ impl WorkflowDataStore {
 
     pub async fn edit_storage_system(
         &self,
+        ctx: &BoscaContext,
         id: &Uuid,
         system: &StorageSystemInput,
     ) -> Result<(), Error> {
@@ -807,9 +801,19 @@ impl WorkflowDataStore {
                 .await?;
         }
         txn.commit().await?;
-        // TODO: initialize storage system
+
+        let mut request = EnqueueRequest {
+            workflow_id: Some(STORAGE_INDEX_INITIALIZE.to_string()),
+            storage_system_ids: Some(vec![*id]),
+            ..Default::default()
+        };
+        if let Err(e) = ctx.workflow.enqueue_workflow(ctx, &mut request).await {
+            log::error!("Failed to initialize storage system: {:?}", e);
+        }
+
         let id_str = id.to_string();
         self.notifier.storage_system_changed(&id_str).await?;
+
         Ok(())
     }
 
@@ -1340,6 +1344,7 @@ impl WorkflowDataStore {
                 workflow_id: workflow.id.to_string(),
                 metadata_id: request.metadata_id.map(|id| id.to_string()),
                 metadata_version: request.metadata_version,
+                profile_id: request.profile_id.map(|id| id.to_string()),
                 workflow_activity,
                 workflow_inputs,
                 workflow_outputs,
@@ -1377,14 +1382,15 @@ impl WorkflowDataStore {
             complete: HashSet::new(),
             failed: HashSet::new(),
             cancelled: false,
-            metadata_id: request.metadata_id,
             workflow: workflow.clone(),
             jobs,
             context: None,
             parent: None,
             supplementary_id: None,
+            metadata_id: request.metadata_id,
             metadata_version: request.metadata_version,
             collection_id: request.collection_id,
+            profile_id: request.profile_id,
             finished: None,
         })
     }
@@ -1394,13 +1400,12 @@ impl WorkflowDataStore {
         ctx: &BoscaContext,
         request: &mut EnqueueRequest,
     ) -> Result<Vec<WorkflowExecutionPlan>, Error> {
-        if request.workflow.is_some() && request.trait_id.is_some() {
+        if (request.workflow_id.is_some() || request.workflow.is_some()) && request.trait_id.is_some() {
             return Err(Error::new("cannot enqueue workflow and trait"));
         }
-        if request.trait_id.is_some() {
+        if let Some(trait_id) = &request.trait_id {
             let mut plans = Vec::new();
-            let trait_id = request.trait_id.take().unwrap();
-            for workflow in ctx.workflow.get_workflows_by_trait(&trait_id).await? {
+            for workflow in ctx.workflow.get_workflows_by_trait(trait_id).await? {
                 request.workflow = Some(workflow);
                 let plan = self.get_new_execution_plan(request).await?;
                 if request.wait_for_completion.is_some() && request.wait_for_completion.unwrap() {
@@ -1411,6 +1416,15 @@ impl WorkflowDataStore {
             }
             Ok(plans)
         } else if request.workflow.is_some() {
+            let mut plan = self.get_new_execution_plan(request).await?;
+            let id = self.queues.enqueue_plan(&mut plan).await?;
+            if request.wait_for_completion.is_some() && request.wait_for_completion.unwrap() {
+                self.wait_for_execution_plan(&id, request.delay_until)
+                    .await?;
+            }
+            Ok(vec![plan])
+        } else if let Some(workflow_id) = &request.workflow_id {
+            request.workflow = self.get_workflow(workflow_id).await?;
             let mut plan = self.get_new_execution_plan(request).await?;
             let id = self.queues.enqueue_plan(&mut plan).await?;
             if request.wait_for_completion.is_some() && request.wait_for_completion.unwrap() {

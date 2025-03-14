@@ -11,7 +11,7 @@ use deadpool_postgres::{GenericClient, Pool};
 use log::error;
 use std::sync::Arc;
 use uuid::Uuid;
-use crate::workflow::core_workflows::METADATA_PROCESS;
+use crate::workflow::core_workflow_ids::METADATA_PROCESS;
 
 #[derive(Clone)]
 pub struct MetadataWorkflowsDataStore {

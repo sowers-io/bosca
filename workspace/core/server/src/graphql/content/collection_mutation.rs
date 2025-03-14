@@ -7,12 +7,9 @@ use crate::models::content::collection_metadata_relationship::CollectionMetadata
 use crate::models::content::collection_workflow_state::{
     CollectionWorkflowCompleteState, CollectionWorkflowState,
 };
-use crate::models::content::search::SearchDocumentInput;
 use crate::models::security::permission::{Permission, PermissionAction, PermissionInput};
 use crate::util::delete::delete_collection;
-use crate::util::storage::index_documents;
 use async_graphql::*;
-use log::error;
 use uuid::Uuid;
 
 pub struct CollectionMutationObject {}
@@ -117,22 +114,8 @@ impl CollectionMutationObject {
             .await?;
         ctx.content
             .collections
-            .edit(&collection_id, &collection)
+            .edit(ctx, &collection_id, &collection)
             .await?;
-        if collection.index.unwrap_or(true) {
-            let storage_system = ctx.workflow.get_default_search_storage_system().await?;
-            let documents = vec![SearchDocumentInput {
-                metadata_id: None,
-                collection_id: Some(collection_id.to_string()),
-                profile_id: None,
-                content: "".to_owned(),
-            }];
-            if let Some(storage_system) = storage_system {
-                index_documents(ctx, &documents, &storage_system).await?;
-            } else {
-                error!("failed to index, default search storage system not configured");
-            }
-        }
         match ctx.content.collections.get(&collection_id).await? {
             Some(collection) => Ok(collection.into()),
             None => Err(Error::new("Error creating collection")),
@@ -246,7 +229,7 @@ impl CollectionMutationObject {
         let mut collection = ctx
             .check_collection_action(&id, PermissionAction::Manage)
             .await?;
-        ctx.content.collections.set_public(&id, public).await?;
+        ctx.content.collections.set_public(ctx, &id, public).await?;
         collection.public = public;
         Ok(collection.into())
     }
@@ -262,7 +245,7 @@ impl CollectionMutationObject {
         let mut collection = ctx
             .check_collection_action(&id, PermissionAction::Manage)
             .await?;
-        ctx.content.collections.set_public_list(&id, public).await?;
+        ctx.content.collections.set_public_list(ctx, &id, public).await?;
         collection.public_list = public;
         Ok(collection.into())
     }
@@ -466,7 +449,7 @@ impl CollectionMutationObject {
             .await?;
         ctx.content
             .collections
-            .set_attributes(&collection_id, attributes)
+            .set_attributes(ctx, &collection_id, attributes)
             .await?;
         Ok(true)
     }

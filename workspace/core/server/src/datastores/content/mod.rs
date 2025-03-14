@@ -14,3 +14,4 @@ pub mod sources;
 pub mod workflow_schedules;
 pub mod guides;
 mod tag;
+mod metadata_supplementary;

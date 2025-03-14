@@ -160,7 +160,7 @@ impl ContentObject {
         };
         let supplementary = ctx
             .content
-            .metadata
+            .metadata_supplementary
             .get_supplementary(&metadata.id, &key)
             .await?;
         if let Some(supplementary) = supplementary {

@@ -6,7 +6,7 @@ use crate::models::workflow::enqueue_request::EnqueueRequest;
 use crate::models::workflow::execution_plan::WorkflowExecutionPlan;
 use crate::models::workflow::states::WorkflowStateType;
 use crate::models::workflow::transitions::BeginTransitionInput;
-use crate::workflow::core_workflows::{COLLECTION_DELAYED_TRANSITION, METADATA_DELAYED_TRANSITION};
+use crate::workflow::core_workflow_ids::{COLLECTION_DELAYED_TRANSITION, METADATA_DELAYED_TRANSITION};
 use async_graphql::Error;
 use chrono::{DateTime, Utc};
 use uuid::Uuid;

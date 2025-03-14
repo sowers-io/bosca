@@ -19,19 +19,16 @@ use crate::models::content::metadata_relationship::MetadataRelationshipInput;
 use crate::models::content::metadata_workflow_state::{
     MetadataWorkflowCompleteState, MetadataWorkflowState,
 };
-use crate::models::content::search::SearchDocumentInput;
 use crate::models::content::supplementary::MetadataSupplementaryInput;
 use crate::models::security::permission::{Permission, PermissionAction, PermissionInput};
 use crate::models::workflow::enqueue_request::EnqueueRequest;
 use crate::models::workflow::execution_plan::WorkflowExecutionPlan;
-use crate::util::storage::{index_documents, storage_system_metadata_delete};
 use async_graphql::*;
 use bytes::Bytes;
 use futures_util::AsyncReadExt;
 use object_store::MultipartUpload;
 use serde_json::json;
 use uuid::Uuid;
-use crate::workflow::core_workflows::METADATA_DELETE_FINALIZE;
 
 #[derive(InputObject, Clone, Debug, Default)]
 pub struct WorkflowConfigurationInput {
@@ -354,14 +351,7 @@ impl MetadataMutationObject {
         let metadata = ctx
             .check_metadata_action(&id, PermissionAction::Delete)
             .await?;
-        ctx.content.metadata.mark_deleted(&metadata.id).await?;
-        let mut request = EnqueueRequest {
-            workflow_id: Some(METADATA_DELETE_FINALIZE.to_string()),
-            metadata_id: Some(metadata.id),
-            metadata_version: Some(metadata.version),
-            ..Default::default()
-        };
-        ctx.workflow.enqueue_workflow(ctx, &mut request).await?;
+        ctx.content.metadata.mark_deleted(ctx, &metadata.id).await?;
         Ok(true)
     }
 
@@ -383,30 +373,11 @@ impl MetadataMutationObject {
         let metadata = ctx
             .check_metadata_action(&id, PermissionAction::Delete)
             .await?;
-        let storage_systems = ctx.workflow.get_storage_systems().await?;
         if metadata.uploaded.is_some() {
-            storage_system_metadata_delete(&ctx.storage, &metadata, &storage_systems, &ctx.search)
-                .await?;
-            ctx.content.metadata.set_upload_removed(&id).await?;
+            ctx.content.metadata.set_upload_removed(ctx, &id).await?;
             return Ok(true);
         }
         Ok(false)
-    }
-
-    async fn add_search_documents(
-        &self,
-        ctx: &Context<'_>,
-        storage_system_id: String,
-        documents: Vec<SearchDocumentInput>,
-    ) -> Result<bool, Error> {
-        let ctx = ctx.data::<BoscaContext>()?;
-        let storage_system_id = Uuid::parse_str(storage_system_id.as_str())?;
-        let storage_system = ctx.workflow.get_storage_system(&storage_system_id).await?;
-        if storage_system.is_none() {
-            return Err(Error::new("invalid storage system"));
-        }
-        index_documents(ctx, &documents, storage_system.as_ref().unwrap()).await?;
-        Ok(true)
     }
 
     async fn add_category(
@@ -420,7 +391,7 @@ impl MetadataMutationObject {
         ctx.check_metadata_action(&id, PermissionAction::Edit)
             .await?;
         let category_id = Uuid::parse_str(category_id.as_str())?;
-        ctx.content.metadata.add_category(&id, &category_id).await?;
+        ctx.content.metadata.add_category(ctx, &id, &category_id).await?;
         Ok(true)
     }
 
@@ -437,7 +408,7 @@ impl MetadataMutationObject {
         let category_id = Uuid::parse_str(category_id.as_str())?;
         ctx.content
             .metadata
-            .delete_category(&id, &category_id)
+            .delete_category(ctx, &id, &category_id)
             .await?;
         Ok(true)
     }
@@ -544,7 +515,7 @@ impl MetadataMutationObject {
             .check_metadata_action(&id, PermissionAction::Manage)
             .await?;
         ctx.content
-            .metadata
+            .metadata_supplementary
             .set_supplementary_public(&id, public)
             .await?;
         metadata.public = public;
@@ -594,12 +565,12 @@ impl MetadataMutationObject {
             .check_metadata_action(&id, PermissionAction::Manage)
             .await?;
         ctx.content
-            .metadata
+            .metadata_supplementary
             .add_supplementary(&supplementary)
             .await?;
         match ctx
             .content
-            .metadata
+            .metadata_supplementary
             .get_supplementary(&id, &supplementary.key)
             .await?
         {
@@ -618,7 +589,7 @@ impl MetadataMutationObject {
         let id = Uuid::parse_str(id.as_str())?;
         ctx.check_metadata_action(&id, PermissionAction::Manage)
             .await?;
-        ctx.content.metadata.delete_supplementary(&id, &key).await?;
+        ctx.content.metadata_supplementary.delete_supplementary(ctx, &id, &key).await?;
         Ok(true)
     }
 
@@ -635,7 +606,7 @@ impl MetadataMutationObject {
         ctx.check_metadata_action(&id, PermissionAction::Manage)
             .await?;
         ctx.content
-            .metadata
+            .metadata_supplementary
             .set_supplementary_uploaded(&id, &supplementary_key, content_type.as_str(), len)
             .await?;
         Ok(true)
@@ -653,7 +624,7 @@ impl MetadataMutationObject {
         let id2 = Uuid::parse_str(relationship.id2.as_str())?;
         ctx.check_metadata_action(&id2, PermissionAction::Edit)
             .await?;
-        ctx.content.metadata.add_relationship(&relationship).await?;
+        ctx.content.metadata.add_relationship(ctx, &relationship).await?;
         match ctx.content.metadata.get_relationship(&id1, &id2).await? {
             Some(relationship) => Ok(relationship.into()),
             None => Err(Error::new("error creating relationship")),
@@ -675,6 +646,7 @@ impl MetadataMutationObject {
         ctx.content
             .metadata
             .edit_relationship(
+                ctx,
                 &id1,
                 &id2,
                 &relationship.relationship,
@@ -700,7 +672,7 @@ impl MetadataMutationObject {
             .await?;
         ctx.content
             .metadata
-            .delete_relationship(&id1, &id2, &relationship)
+            .delete_relationship(ctx, &id1, &id2, &relationship)
             .await?;
         Ok(true)
     }
@@ -775,7 +747,7 @@ impl MetadataMutationObject {
             .await?;
         ctx.content
             .metadata
-            .set_attributes(&metadata_id, attributes)
+            .set_attributes(ctx, &metadata_id, attributes)
             .await?;
         Ok(true)
     }
@@ -792,7 +764,7 @@ impl MetadataMutationObject {
             .await?;
         ctx.content
             .metadata
-            .set_system_attributes(&metadata_id, attributes)
+            .set_system_attributes(ctx, &metadata_id, attributes)
             .await?;
         Ok(true)
     }
@@ -828,7 +800,7 @@ impl MetadataMutationObject {
         }
         ctx.content
             .metadata
-            .set_uploaded(&metadata_id, &None, &content_type, len)
+            .set_uploaded(ctx, &metadata_id, &None, &content_type, len)
             .await?;
         Ok(true)
     }
@@ -867,7 +839,7 @@ impl MetadataMutationObject {
             }
         }
         ctx.content
-            .metadata
+            .metadata_supplementary
             .set_supplementary_uploaded(&metadata_id, &key, &content_type, len)
             .await?;
         Ok(true)
@@ -891,7 +863,7 @@ impl MetadataMutationObject {
         ctx.storage.put(&path, bytes).await?;
         ctx.content
             .metadata
-            .set_uploaded(&metadata_id, &None, &content_type, len)
+            .set_uploaded(ctx, &metadata_id, &None, &content_type, len)
             .await?;
         Ok(true)
     }
@@ -917,7 +889,7 @@ impl MetadataMutationObject {
         let len = bytes.len();
         ctx.storage.put(&path, bytes).await?;
         ctx.content
-            .metadata
+            .metadata_supplementary
             .set_supplementary_uploaded(&metadata_id, &key, &content_type, len)
             .await?;
         Ok(true)
@@ -942,7 +914,7 @@ impl MetadataMutationObject {
         ctx.storage.put(&path, bytes).await?;
         ctx.content
             .metadata
-            .set_uploaded(&metadata_id, &None, &content_type, len)
+            .set_uploaded(ctx, &metadata_id, &None, &content_type, len)
             .await?;
         Ok(true)
     }
@@ -963,7 +935,7 @@ impl MetadataMutationObject {
             .await?;
         ctx.content
             .metadata
-            .set_uploaded(&metadata_id, &None, &content_type, len)
+            .set_uploaded(ctx, &metadata_id, &None, &content_type, len)
             .await?;
         if ready.is_some()
             && ready.unwrap()

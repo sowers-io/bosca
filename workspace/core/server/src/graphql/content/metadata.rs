@@ -284,7 +284,7 @@ impl MetadataObject {
         if key.is_some() {
             return Ok(ctx
                 .content
-                .metadata
+                .metadata_supplementary
                 .get_supplementaries(&self.metadata.id)
                 .await?
                 .into_iter()
@@ -294,7 +294,7 @@ impl MetadataObject {
         }
         Ok(ctx
             .content
-            .metadata
+            .metadata_supplementary
             .get_supplementaries(&self.metadata.id)
             .await?
             .into_iter()

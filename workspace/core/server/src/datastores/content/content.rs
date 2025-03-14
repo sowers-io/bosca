@@ -14,6 +14,7 @@ use uuid::Uuid;
 use crate::datastores::content::categories::CategoriesDataStore;
 use crate::datastores::content::collection_templates::CollectionTemplatesDataStore;
 use crate::datastores::content::guides::GuidesDataStore;
+use crate::datastores::content::metadata_supplementary::MetadataSupplementaryDataStore;
 use crate::datastores::content::sources::SourcesDataStore;
 
 #[derive(Clone)]
@@ -26,6 +27,7 @@ pub struct ContentDataStore {
     pub collection_workflows: CollectionWorkflowsDataStore,
     pub collection_templates: CollectionTemplatesDataStore,
     pub metadata: MetadataDataStore,
+    pub metadata_supplementary: MetadataSupplementaryDataStore,
     pub metadata_permissions: MetadataPermissionsDataStore,
     pub metadata_workflows: MetadataWorkflowsDataStore,
     pub documents: DocumentsDataStore,
@@ -50,6 +52,7 @@ impl ContentDataStore {
                 Arc::clone(&pool),
             ),
             metadata: MetadataDataStore::new(Arc::clone(&pool), Arc::clone(&notifier)),
+            metadata_supplementary: MetadataSupplementaryDataStore::new(Arc::clone(&pool), Arc::clone(&notifier)),
             metadata_permissions: MetadataPermissionsDataStore::new(
                 Arc::clone(&pool),
                 Arc::clone(&notifier),
