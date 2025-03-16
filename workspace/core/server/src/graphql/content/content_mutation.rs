@@ -4,6 +4,8 @@ use crate::graphql::content::collection_mutation::CollectionMutationObject;
 use crate::graphql::content::metadata_mutation::MetadataMutationObject;
 use crate::graphql::content::source_mutation::SourceMutationObject;
 use async_graphql::{Context, Error, Object};
+use crate::models::workflow::enqueue_request::EnqueueRequest;
+use crate::workflow::core_workflow_ids::REBUILD_STORAGE;
 
 pub struct ContentMutationObject {}
 
@@ -22,46 +24,17 @@ impl ContentMutationObject {
         SourceMutationObject {}
     }
 
-    async fn reindex(&self, ctx: &Context<'_>) -> async_graphql::Result<bool, Error> {
+    async fn rebuild_storage_system_content(&self, ctx: &Context<'_>) -> async_graphql::Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let admin_group = ctx.security.get_administrators_group().await?;
         if !ctx.principal.has_group(&admin_group.id) {
             return Err(Error::new("invalid permissions"));
         }
-        const LIMIT: i64 = 100;
-        let mut offset = 0;
-        loop {
-            let items = ctx.content.collections.get_all(offset, LIMIT).await?;
-            if items.is_empty() {
-                break;
-            }
-            offset += LIMIT;
-            for item in items {
-                ctx.content.collections.index_collection(ctx, &item.id).await?;
-            }
-        }
-        offset = 0;
-        loop {
-            let items = ctx.content.metadata.get_all(offset, LIMIT).await?;
-            if items.is_empty() {
-                break;
-            }
-            offset += LIMIT;
-            for item in items {
-                ctx.content.metadata.index_metadata(ctx, &item.id, Some(item.version)).await?;
-            }
-        }
-        offset = 0;
-        loop {
-            let items = ctx.profile.get_all(offset, LIMIT).await?;
-            if items.is_empty() {
-                break;
-            }
-            offset += LIMIT;
-            for item in items {
-                ctx.profile.index_profile(ctx, &item.id).await?;
-            }
-        }
+        let mut request = EnqueueRequest {
+            workflow_id: Some(REBUILD_STORAGE.to_string()),
+            ..Default::default()
+        };
+        ctx.workflow.enqueue_workflow(ctx, &mut request).await?;
         Ok(true)
     }
 }

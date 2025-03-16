@@ -1,5 +1,5 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="Runner" type="JetRunConfigurationType" singleton="false">
+  <configuration default="false" name="Runner" type="JetRunConfigurationType" singleton="true">
     <option name="ALTERNATIVE_JRE_PATH" value="graalvm-jdk-23" />
     <option name="ALTERNATIVE_JRE_PATH_ENABLED" value="true" />
     <envs>
@@ -12,6 +12,7 @@
     <module name="bosca-runner.runner.main" />
     <option name="PROGRAM_PARAMETERS" value="run" />
     <shortenClasspath name="NONE" />
+    <option name="VM_PARAMETERS" value="-Djava.rmi.server.hostname=localhost  " />
     <method v="2">
       <option name="Make" enabled="true" />
     </method>

@@ -42,6 +42,7 @@ type Activity {
 
 type ActivityParameter {
     name: String!
+    scope: ActivityParameterScope!
     type: ActivityParameterType!
 }
 
@@ -84,8 +85,10 @@ type Collection {
     permissions: [Permission!]!
     public: Boolean!
     publicList: Boolean!
+    publicSupplementary: Boolean!
     ready: DateTime
     slug: String
+    supplementary(key: String): [CollectionSupplementary!]!
     systemAttributes: JSON
     templateMetadata: Metadata
     traitIds: [String!]!
@@ -106,9 +109,11 @@ type CollectionMutation {
     addChildMetadata(attributes: JSON, id: String!, metadataId: String!): Collection!
     addMetadataRelationship(relationship: CollectionMetadataRelationshipInput!): CollectionMetadataRelationship!
     addPermission(permission: PermissionInput!): Permission!
+    addSupplementary(supplementary: CollectionSupplementaryInput!): CollectionSupplementary!
     delete(id: String!, recursive: Boolean): Boolean!
     deleteMetadataRelationship(id: String!, metadataId: String!, relationship: String!): Boolean!
     deletePermission(permission: PermissionInput!): Permission!
+    deleteSupplementary(id: String!, key: String!): Boolean!
     edit(collection: CollectionInput!, id: String!): Collection!
     editMetadataRelationship(relationship: CollectionMetadataRelationshipInput!): Boolean!
     permanentlyDelete(collectionId: String!, recursive: Boolean): Boolean!
@@ -119,9 +124,44 @@ type CollectionMutation {
     setCollectionOrdering(id: String!, ordering: JSON!): Boolean!
     setPublic(id: String!, public: Boolean!): Collection!
     setPublicList(id: String!, public: Boolean!): Collection!
+    setPublicSupplementary(id: String!, public: Boolean!): Collection!
     setReady(id: String!): Boolean!
+    setSupplementaryContents(contentType: String!, file: Upload!, id: String!, key: String!): Boolean!
+    setSupplementaryTextContents(content: String!, contentType: String!, id: String!, key: String!): Boolean!
+    setSupplementaryUploaded(colelctionId: String!, contentType: String!, len: Int!, supplementaryKey: String!): Boolean!
     setWorkflowState(state: CollectionWorkflowState!): Boolean!
     setWorkflowStateComplete(state: CollectionWorkflowCompleteState!): Boolean!
+}
+
+type CollectionSupplementary {
+    attributes: JSON
+    collectionId: String!
+    content: CollectionSupplementaryContent!
+    created: String!
+    key: String!
+    modified: String!
+    name: String!
+    planId: String
+    source: CollectionSupplementarySource!
+    uploaded: String
+}
+
+type CollectionSupplementaryContent {
+    json: JSON!
+    length: Int
+    text: String!
+    type: String!
+    urls: CollectionSupplementaryContentUrls!
+}
+
+type CollectionSupplementaryContentUrls {
+    download: SignedUrl!
+    upload: SignedUrl!
+}
+
+type CollectionSupplementarySource {
+    id: String!
+    identifier: String
 }
 
 type CollectionTemplate {
@@ -188,7 +228,7 @@ type ContentMutation {
     category: CategoryMutation!
     collection: CollectionMutation!
     metadata: MetadataMutation!
-    reindex: Boolean!
+    rebuildStorageSystemContent: Boolean!
     sources: SourceMutation!
 }
 
@@ -372,7 +412,6 @@ type MetadataMutation {
     addGuideStepModule(metadataId: String!, parentCollectionId: String!, sort: Int!, templateId: String!, templateModuleId: Int!, templateStepId: Int!, templateVersion: Int!, version: Int!): GuideStepModule!
     addPermission(permission: PermissionInput!): Permission!
     addRelationship(relationship: MetadataRelationshipInput!): MetadataRelationship!
-    addSearchDocuments(documents: [SearchDocumentInput!]!, storageSystemId: String!): Boolean!
     addSupplementary(supplementary: MetadataSupplementaryInput!): MetadataSupplementary!
     addTrait(metadataId: String!, traitId: String!): [WorkflowExecutionPlan!]!
     delete(metadataId: String!): Boolean!
@@ -381,7 +420,7 @@ type MetadataMutation {
     deletePermission(permission: PermissionInput!): Permission!
     deleteRelationship(id1: String!, id2: String!, relationship: String!): Boolean!
     deleteSupplementary(id: String!, key: String!): Boolean!
-    deleteTrait(metadataId: String!, traitId: String!): WorkflowExecutionPlan
+    deleteTrait(metadataId: String!, traitId: String!): [WorkflowExecutionPlan!]!
     edit(id: String!, metadata: MetadataInput!): Metadata!
     editRelationship(relationship: MetadataRelationshipInput!): Boolean!
     permanentlyDelete(metadataId: String!): Boolean!
@@ -429,6 +468,7 @@ type MetadataSupplementary {
     metadataId: String!
     modified: String!
     name: String!
+    planId: String
     source: MetadataSupplementarySource!
     uploaded: String
 }
@@ -444,11 +484,6 @@ type MetadataSupplementaryContent {
 type MetadataSupplementaryContentUrls {
     download: SignedUrl!
     upload: SignedUrl!
-}
-
-type MetadataSupplementaryIdObject {
-    id: String!
-    supplementary: String!
 }
 
 type MetadataSupplementarySource {
@@ -614,7 +649,6 @@ type Query {
 
 type SearchDocument {
     collection: Collection
-    content: String!
     metadata: Metadata
     profile: Profile
 }
@@ -704,9 +738,10 @@ type Subscription {
     activity: String!
     category: String!
     collection: String!
+    collectionSupplementary: SupplementaryIdObject!
     configuration: String!
     metadata: String!
-    metadataSupplementary: MetadataSupplementaryIdObject!
+    metadataSupplementary: SupplementaryIdObject!
     model: String!
     prompt: String!
     state: String!
@@ -717,6 +752,11 @@ type Subscription {
     workflowPlanFailed: WorkflowExecutionId!
     workflowPlanFinished: WorkflowExecutionId!
     workflowSchedule: String!
+}
+
+type SupplementaryIdObject {
+    id: String!
+    supplementary: String!
 }
 
 type TemplateAttribute {
@@ -814,6 +854,7 @@ type WorkflowActivityModel {
 
 type WorkflowActivityParameter {
     name: String!
+    scope: ActivityParameterScope!
     value: String!
 }
 
@@ -864,6 +905,7 @@ type WorkflowJob {
     metadataVersion: Int
     models: [WorkflowActivityModel!]!
     planId: WorkflowExecutionId!
+    profile: Profile
     prompts: [WorkflowActivityPrompt!]!
     storageSystems: [WorkflowActivityStorageSystem!]!
     supplementaryId: String
@@ -967,6 +1009,11 @@ type WorkflowsMutation {
     storageSystems: StorageSystemsMutation!
     traits: TraitsMutation!
     transitions: TransitionsMutation!
+}
+
+enum ActivityParameterScope {
+    CONTENT
+    PLAN
 }
 
 enum ActivityParameterType {
@@ -1088,6 +1135,7 @@ input ActivityInput {
 
 input ActivityParameterInput {
     name: String!
+    scope: ActivityParameterScope
     type: ActivityParameterType!
 }
 
@@ -1123,7 +1171,6 @@ input CollectionInput {
     collectionType: CollectionType
     collections: [CollectionChildInput!]
     description: String
-    index: Boolean
     labels: [String!]
     metadata: [MetadataChildInput!]
     name: String!
@@ -1141,6 +1188,18 @@ input CollectionMetadataRelationshipInput {
     id: String!
     metadataId: String!
     relationship: String
+}
+
+input CollectionSupplementaryInput {
+    attributes: JSON
+    collectionId: String!
+    contentLength: Int
+    contentType: String!
+    key: String!
+    name: String!
+    planId: String
+    sourceId: String
+    sourceIdentifier: String
 }
 
 input CollectionTemplateInput {
@@ -1279,7 +1338,6 @@ input MetadataInput {
     documentTemplate: DocumentTemplateInput
     guide: GuideInput
     guideTemplate: GuideTemplateInput
-    index: Boolean
     labels: [String!]
     languageTag: String!
     metadataType: MetadataType
@@ -1319,6 +1377,7 @@ input MetadataSupplementaryInput {
     key: String!
     metadataId: String!
     name: String!
+    planId: String
     sourceId: String
     sourceIdentifier: String
 }
@@ -1401,13 +1460,6 @@ input PromptInput {
     userPrompt: String!
 }
 
-input SearchDocumentInput {
-    collectionId: String
-    content: String!
-    metadataId: String
-    profileId: String
-}
-
 input SearchQuery {
     filter: String
     limit: Int
@@ -1487,6 +1539,7 @@ input WorkflowActivityModelInput {
 
 input WorkflowActivityParameterInput {
     name: String!
+    scope: ActivityParameterScope
     value: String!
 }
 

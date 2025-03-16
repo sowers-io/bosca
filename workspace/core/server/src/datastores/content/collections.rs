@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use crate::context::BoscaContext;
 use crate::datastores::content::tag::update_collection_etag;
 use crate::datastores::content::util::{build_find_args, build_ordering, build_ordering_names};
@@ -14,12 +13,13 @@ use crate::models::content::find_query::FindQueryInput;
 use crate::models::content::metadata::Metadata;
 use crate::models::security::permission::{Permission, PermissionAction};
 use crate::models::workflow::enqueue_request::EnqueueRequest;
-use crate::workflow::core_workflow_ids::COLLECTION_INDEX;
+use crate::workflow::core_workflow_ids::COLLECTION_UPDATE_STORAGE;
 use async_graphql::*;
 use deadpool_postgres::{GenericClient, Pool, Transaction};
 use log::error;
 use postgres_types::ToSql;
 use serde_json::Value;
+use std::collections::HashSet;
 use std::sync::Arc;
 use tokio_postgres::Statement;
 use uuid::Uuid;
@@ -35,14 +35,16 @@ impl CollectionsDataStore {
         Self { pool, notifier }
     }
 
-    async fn on_collection_changed(&self, id: &Uuid) -> Result<(), Error> {
+    async fn on_collection_changed(&self, ctx: &BoscaContext, id: &Uuid) -> Result<(), Error> {
+        self.update_storage(ctx, id).await?;
         if let Err(e) = self.notifier.collection_changed(id).await {
             error!("Failed to notify collection changes: {:?}", e);
         }
         Ok(())
     }
 
-    async fn on_metadata_changed(&self, id: &Uuid) -> Result<(), Error> {
+    async fn on_metadata_changed(&self, ctx: &BoscaContext, id: &Uuid) -> Result<(), Error> {
+        ctx.content.metadata.update_storage(ctx, id).await?;
         if let Err(e) = self.notifier.metadata_changed(id).await {
             error!("Failed to notify metadata changes: {:?}", e);
         }
@@ -121,17 +123,6 @@ impl CollectionsDataStore {
             .collect())
     }
 
-    pub async fn get_all(&self, offset: i64, limit: i64) -> Result<Vec<Collection>, Error> {
-        let connection = self.pool.get().await?;
-        let stmt = connection
-            .prepare_cached(
-                "select * from collections where deleted = false order by name offset $1 limit $2",
-            )
-            .await?;
-        let rows = connection.query(&stmt, &[&offset, &limit]).await?;
-        Ok(rows.iter().map(|r| r.into()).collect())
-    }
-
     pub async fn get(&self, id: &Uuid) -> Result<Option<Collection>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -176,6 +167,7 @@ impl CollectionsDataStore {
 
     pub async fn set_child_item_attributes(
         &self,
+        ctx: &BoscaContext,
         collection_id: &Uuid,
         child_collection_id: Option<Uuid>,
         child_metadata_id: Option<Uuid>,
@@ -204,10 +196,20 @@ impl CollectionsDataStore {
         }
         update_collection_etag(&txn, collection_id).await?;
         txn.commit().await?;
+        if let Some(child_id) = child_collection_id {
+            self.on_collection_changed(ctx, &child_id).await?;
+        } else if let Some(child_id) = child_metadata_id {
+            self.on_metadata_changed(ctx, &child_id).await?;
+        }
         Ok(())
     }
 
-    pub async fn set_public(&self, ctx: &BoscaContext, id: &Uuid, public: bool) -> Result<(), Error> {
+    pub async fn set_public(
+        &self,
+        ctx: &BoscaContext,
+        id: &Uuid,
+        public: bool,
+    ) -> Result<(), Error> {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
         let stmt = txn
@@ -216,12 +218,16 @@ impl CollectionsDataStore {
         txn.execute(&stmt, &[&public, id]).await?;
         update_collection_etag(&txn, id).await?;
         txn.commit().await?;
-        self.on_collection_changed(id).await?;
-        self.index_collection(ctx, id).await?;
+        self.on_collection_changed(ctx, id).await?;
         Ok(())
     }
 
-    pub async fn set_public_list(&self, ctx: &BoscaContext, id: &Uuid, public: bool) -> Result<(), Error> {
+    pub async fn set_public_list(
+        &self,
+        ctx: &BoscaContext,
+        id: &Uuid,
+        public: bool,
+    ) -> Result<(), Error> {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
         let stmt = txn
@@ -232,22 +238,21 @@ impl CollectionsDataStore {
         txn.execute(&stmt, &[&public, id]).await?;
         update_collection_etag(&txn, id).await?;
         txn.commit().await?;
-        self.on_collection_changed(id).await?;
-        self.index_collection(ctx, id).await?;
+        self.on_collection_changed(ctx, id).await?;
         Ok(())
     }
 
-    pub async fn mark_deleted(&self, id: &Uuid) -> Result<(), Error> {
+    pub async fn mark_deleted(&self, ctx: &BoscaContext, id: &Uuid) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached("update collections set deleted = true, modified = now() where id = $1")
             .await?;
         connection.execute(&stmt, &[id]).await?;
-        self.on_collection_changed(id).await?;
+        self.on_collection_changed(ctx, id).await?;
         Ok(())
     }
 
-    pub async fn delete(&self, id: &Uuid) -> Result<(), Error> {
+    pub async fn delete(&self, ctx: &BoscaContext, id: &Uuid) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached(
@@ -260,9 +265,9 @@ impl CollectionsDataStore {
             .prepare_cached("delete from collections where id = $1")
             .await?;
         connection.execute(&stmt, &[id]).await?;
-        self.on_collection_changed(id).await?;
+        self.on_collection_changed(ctx, id).await?;
         for collection_id in collection_ids {
-            self.on_collection_changed(&collection_id).await?;
+            self.on_collection_changed(ctx, &collection_id).await?;
         }
         Ok(())
     }
@@ -405,7 +410,11 @@ impl CollectionsDataStore {
         Ok(rows.get(0))
     }
 
-    pub async fn add(&self, ctx: &BoscaContext, collection: &CollectionInput) -> Result<Uuid, Error> {
+    pub async fn add(
+        &self,
+        ctx: &BoscaContext,
+        collection: &CollectionInput,
+    ) -> Result<Uuid, Error> {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
         let parent_id = if let Some(id) = &collection.parent_collection_id {
@@ -416,9 +425,8 @@ impl CollectionsDataStore {
         match self.add_txn(&txn, collection, true).await {
             Ok(value) => {
                 txn.commit().await?;
-                self.on_collection_changed(&value).await?;
-                self.on_collection_changed(&parent_id).await?;
-                self.index_collection(ctx, &value).await?;
+                self.on_collection_changed(ctx, &value).await?;
+                self.on_collection_changed(ctx, &parent_id).await?;
                 Ok(value)
             }
             Err(err) => {
@@ -428,15 +436,19 @@ impl CollectionsDataStore {
         }
     }
 
-    pub async fn edit(&self, ctx: &BoscaContext, id: &Uuid, collection: &CollectionInput) -> Result<(), Error> {
+    pub async fn edit(
+        &self,
+        ctx: &BoscaContext,
+        id: &Uuid,
+        collection: &CollectionInput,
+    ) -> Result<(), Error> {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
 
         match self.edit_txn(&txn, id, collection).await {
             Ok(value) => {
                 txn.commit().await?;
-                self.on_collection_changed(id).await?;
-                self.index_collection(ctx, id).await?;
+                self.on_collection_changed(ctx, id).await?;
                 Ok(value)
             }
             Err(err) => {
@@ -626,22 +638,18 @@ impl CollectionsDataStore {
 
     pub async fn add_child_collection(
         &self,
+        ctx: &BoscaContext,
         id: &Uuid,
         collection_id: &Uuid,
         attributes: &Option<Value>,
     ) -> Result<(), Error> {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
-        let stmt = txn
-            .prepare_cached(
-                "insert into collection_items (collection_id, child_collection_id, attributes) values ($1, $2, $3)",
-            )
+        self.add_child_collection_txn(&txn, id, collection_id, attributes)
             .await?;
-        txn.execute(&stmt, &[id, collection_id, attributes]).await?;
-        update_collection_etag(&txn, id).await?;
         txn.commit().await?;
-        self.on_collection_changed(id).await?;
-        self.on_collection_changed(collection_id).await?;
+        self.on_collection_changed(ctx, id).await?;
+        self.on_collection_changed(ctx, collection_id).await?;
         Ok(())
     }
 
@@ -654,27 +662,24 @@ impl CollectionsDataStore {
     ) -> Result<(), Error> {
         let stmt = txn.prepare_cached("insert into collection_items (collection_id, child_collection_id, attributes) values ($1, $2, $3)").await?;
         txn.execute(&stmt, &[id, collection_id, attributes]).await?;
+        update_collection_etag(txn, id).await?;
         Ok(())
     }
 
     pub async fn add_child_metadata(
         &self,
+        ctx: &BoscaContext,
         id: &Uuid,
         metadata_id: &Uuid,
         attributes: &Option<Value>,
     ) -> Result<(), Error> {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
-        let stmt = txn
-            .prepare_cached(
-                "insert into collection_items (collection_id, child_metadata_id, attributes) values ($1, $2, $3)",
-            )
+        self.add_child_metadata_txn(&txn, id, metadata_id, attributes)
             .await?;
-        txn.execute(&stmt, &[id, metadata_id, attributes]).await?;
-        update_collection_etag(&txn, id).await?;
         txn.commit().await?;
-        self.on_collection_changed(id).await?;
-        self.on_metadata_changed(metadata_id).await?;
+        self.on_collection_changed(ctx, id).await?;
+        self.on_metadata_changed(ctx, metadata_id).await?;
         Ok(())
     }
 
@@ -691,13 +696,13 @@ impl CollectionsDataStore {
             )
             .await?;
         txn.execute(&stmt, &[id, metadata_id, attributes]).await?;
-        self.on_collection_changed(id).await?;
-        self.on_metadata_changed(metadata_id).await?;
+        update_collection_etag(&txn, id).await?;
         Ok(())
     }
 
     pub async fn remove_child_collection(
         &self,
+        ctx: &BoscaContext,
         id: &Uuid,
         collection_id: &Uuid,
     ) -> Result<(), Error> {
@@ -711,12 +716,17 @@ impl CollectionsDataStore {
         txn.execute(&stmt, &[id, collection_id]).await?;
         update_collection_etag(&txn, id).await?;
         txn.commit().await?;
-        self.on_collection_changed(collection_id).await?;
-        self.on_collection_changed(id).await?;
+        self.on_collection_changed(ctx, collection_id).await?;
+        self.on_collection_changed(ctx, id).await?;
         Ok(())
     }
 
-    pub async fn remove_child_metadata(&self, id: &Uuid, metadata_id: &Uuid) -> Result<(), Error> {
+    pub async fn remove_child_metadata(
+        &self,
+        ctx: &BoscaContext,
+        id: &Uuid,
+        metadata_id: &Uuid,
+    ) -> Result<(), Error> {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
         let stmt = txn
@@ -727,8 +737,8 @@ impl CollectionsDataStore {
         txn.execute(&stmt, &[id, metadata_id]).await?;
         update_collection_etag(&txn, id).await?;
         txn.commit().await?;
-        self.on_collection_changed(id).await?;
-        self.on_metadata_changed(metadata_id).await?;
+        self.on_collection_changed(ctx, id).await?;
+        self.on_metadata_changed(ctx, metadata_id).await?;
         Ok(())
     }
 
@@ -748,12 +758,11 @@ impl CollectionsDataStore {
         txn.execute(&stmt, &[&attributes, &collection_id]).await?;
         update_collection_etag(&txn, collection_id).await?;
         txn.commit().await?;
-        self.on_collection_changed(collection_id).await?;
-        self.index_collection(ctx, collection_id).await?;
+        self.on_collection_changed(ctx, collection_id).await?;
         Ok(())
     }
 
-    pub async fn set_ordering(&self, collection_id: &Uuid, ordering: Value) -> Result<(), Error> {
+    pub async fn set_ordering(&self, ctx: &BoscaContext, collection_id: &Uuid, ordering: Value) -> Result<(), Error> {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
         let stmt = txn
@@ -762,7 +771,7 @@ impl CollectionsDataStore {
         txn.execute(&stmt, &[&ordering, &collection_id]).await?;
         update_collection_etag(&txn, collection_id).await?;
         txn.commit().await?;
-        self.on_collection_changed(collection_id).await?;
+        self.on_collection_changed(ctx, collection_id).await?;
         Ok(())
     }
 
@@ -782,19 +791,14 @@ impl CollectionsDataStore {
         };
         let mut indexed = HashSet::new();
         for (id1, id2, metadata_ids) in &ids {
-            for (metadata_id, version, _) in metadata_ids {
-                ctx.content
-                    .metadata
-                    .index_metadata(ctx, metadata_id, Some(*version))
-                    .await?;
+            for (metadata_id, _, _) in metadata_ids {
+                self.on_metadata_changed(ctx, metadata_id).await?;
             }
             if !indexed.contains(id1) {
-                self.index_collection(ctx, id1).await?;
-                self.on_collection_changed(id1).await?;
+                self.on_collection_changed(ctx, id1).await?;
             }
             if !indexed.contains(id2) {
-                self.index_collection(ctx, id2).await?;
-                self.on_collection_changed(id2).await?;
+                self.on_collection_changed(ctx, id2).await?;
             }
             indexed.insert(id1);
             indexed.insert(id2);
@@ -909,6 +913,7 @@ impl CollectionsDataStore {
 
     pub async fn add_metadata_relationship(
         &self,
+        ctx: &BoscaContext,
         relationship: &CollectionMetadataRelationshipInput,
     ) -> Result<(), Error> {
         let id = Uuid::parse_str(relationship.id.as_str())?;
@@ -926,13 +931,14 @@ impl CollectionsDataStore {
                 ],
             )
             .await?;
-        self.on_collection_changed(&id).await?;
-        self.on_metadata_changed(&metadata_id).await?;
+        self.on_collection_changed(ctx, &id).await?;
+        self.on_metadata_changed(ctx, &metadata_id).await?;
         Ok(())
     }
 
     pub async fn edit_metadata_relationship(
         &self,
+        ctx: &BoscaContext,
         relationship: &CollectionMetadataRelationshipInput,
     ) -> Result<(), Error> {
         let id = Uuid::parse_str(relationship.id.as_str())?;
@@ -951,13 +957,14 @@ impl CollectionsDataStore {
                 ],
             )
             .await?;
-        self.on_collection_changed(&id).await?;
-        self.on_metadata_changed(&metadata_id).await?;
+        self.on_collection_changed(ctx, &id).await?;
+        self.on_metadata_changed(ctx, &metadata_id).await?;
         Ok(())
     }
 
     pub async fn delete_metadata_relationship(
         &self,
+        ctx: &BoscaContext,
         id: &Uuid,
         metadata_id: &Uuid,
         relationship: &str,
@@ -972,14 +979,14 @@ impl CollectionsDataStore {
         connection
             .execute(&stmt, &[id, metadata_id, &relationship])
             .await?;
-        self.on_collection_changed(id).await?;
-        self.on_metadata_changed(metadata_id).await?;
+        self.on_collection_changed(ctx, id).await?;
+        self.on_metadata_changed(ctx, metadata_id).await?;
         Ok(())
     }
 
-    pub async fn index_collection(&self, ctx: &BoscaContext, id: &Uuid) -> Result<(), Error> {
+    pub async fn update_storage(&self, ctx: &BoscaContext, id: &Uuid) -> Result<(), Error> {
         let mut request = EnqueueRequest {
-            workflow_id: Some(COLLECTION_INDEX.to_string()),
+            workflow_id: Some(COLLECTION_UPDATE_STORAGE.to_string()),
             collection_id: Some(*id),
             ..Default::default()
         };

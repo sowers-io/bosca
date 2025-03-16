@@ -1,6 +1,6 @@
 use crate::graphql::content::signed_url::SignedUrlObject;
 use crate::models::content::metadata::Metadata;
-use crate::models::content::supplementary::MetadataSupplementary;
+use crate::models::content::metadata_supplementary::MetadataSupplementary;
 use async_graphql::{Context, Error, Object};
 use serde_json::Value;
 use uuid::Uuid;
@@ -111,9 +111,12 @@ impl MetadataSupplementarySourceObject {
 
 #[Object(name = "MetadataSupplementary")]
 impl MetadataSupplementaryObject {
+    async fn plan_id(&self) -> Option<String> { self.supplementary.plan_id.map(|id| id.to_string()) }
+
     async fn metadata_id(&self) -> String {
         self.metadata.id.to_string()
     }
+
     async fn key(&self) -> &String {
         &self.supplementary.key
     }

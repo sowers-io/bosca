@@ -1,4 +1,4 @@
-use crate::models::workflow::activities::WorkflowActivityParameter;
+use crate::models::workflow::activities::{ActivityParameterScope, WorkflowActivityParameter};
 use async_graphql::Object;
 
 pub struct WorkflowActivityParameterObject {
@@ -19,6 +19,10 @@ impl WorkflowActivityParameterObject {
 
     async fn value(&self) -> &String {
         &self.parameter.value
+    }
+
+    async fn scope(&self) -> ActivityParameterScope {
+        self.parameter.scope
     }
 }
 

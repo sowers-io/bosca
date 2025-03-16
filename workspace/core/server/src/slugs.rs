@@ -1,6 +1,6 @@
 use crate::context::BoscaContext;
 use crate::models::content::slug::{Slug, SlugType};
-use crate::models::content::supplementary::MetadataSupplementary;
+use crate::models::content::metadata_supplementary::MetadataSupplementary;
 use crate::models::security::permission::PermissionAction;
 use crate::util::security::get_principal_from_headers;
 use async_graphql::Error;
@@ -20,6 +20,7 @@ pub struct PathParams {
 #[derive(Debug, Deserialize)]
 pub struct Params {
     key: Option<String>,
+    plan_id: Option<String>,
 }
 
 async fn get_supplementary(
@@ -32,7 +33,7 @@ async fn get_supplementary(
     } else {
         ctx.content
             .metadata_supplementary
-            .get_supplementary(metadata_id, params.key.as_ref().unwrap())
+            .get_supplementary(metadata_id, params.key.as_ref().unwrap(), params.plan_id.as_ref().map(|p| Uuid::parse_str(p.as_str()).unwrap()))
             .await?
     })
 }

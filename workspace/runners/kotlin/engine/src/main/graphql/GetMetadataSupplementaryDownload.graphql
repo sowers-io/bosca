@@ -1,0 +1,11 @@
+query GetMetadataSupplementaryDownload($id: String!, $key: String!) {
+    content {
+        metadata(id: $id) {
+            supplementary(key: $key) {
+                content {
+                    ...MetadataSupplementaryContentDownload
+                }
+            }
+        }
+    }
+}

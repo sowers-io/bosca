@@ -23,7 +23,8 @@ impl CollectionWorkflowsDataStore {
         Self { pool, notifier }
     }
 
-    async fn on_collection_changed(&self, id: &Uuid) -> Result<(), Error> {
+    async fn on_collection_changed(&self, ctx: &BoscaContext, id: &Uuid) -> Result<(), Error> {
+        ctx.content.collections.update_storage(ctx, id).await?;
         if let Err(e) = self.notifier.collection_changed(id).await {
             error!("Failed to notify collection changes: {:?}", e);
         }
@@ -49,6 +50,7 @@ impl CollectionWorkflowsDataStore {
     #[allow(clippy::too_many_arguments)]
     pub async fn set_state(
         &self,
+        ctx: &BoscaContext,
         principal: &Principal,
         collection: &Collection,
         to_state_id: &str,
@@ -90,17 +92,17 @@ impl CollectionWorkflowsDataStore {
             txn.execute(&stmt, &[&state, &valid, &collection.id]).await?;
         }
         txn.commit().await?;
-        self.on_collection_changed(&collection.id).await?;
+        self.on_collection_changed(ctx, &collection.id).await?;
         Ok(())
     }
 
-    pub async fn set_ready(&self, id: &Uuid) -> Result<(), Error> {
+    pub async fn set_ready(&self, ctx: &BoscaContext, id: &Uuid) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached("update collections set ready = now() where id = $1")
             .await?;
         connection.execute(&stmt, &[id]).await?;
-        self.on_collection_changed(id).await?;
+        self.on_collection_changed(ctx, id).await?;
         Ok(())
     }
 
@@ -115,6 +117,7 @@ impl CollectionWorkflowsDataStore {
             return Err(Error::new("collection already ready"));
         }
         self.set_state(
+            ctx,
             principal,
             collection,
             "draft",
@@ -124,6 +127,7 @@ impl CollectionWorkflowsDataStore {
             false,
         )
         .await?;
+        self.set_ready(ctx, &collection.id).await?;
         let mut request = EnqueueRequest {
             workflow_id: Some(COLLECTION_PROCESS.to_string()),
             collection_id: Some(collection.id),
@@ -131,8 +135,6 @@ impl CollectionWorkflowsDataStore {
             ..Default::default()
         };
         ctx.workflow.enqueue_workflow(ctx, &mut request).await?;
-        self.set_ready(&collection.id).await?;
-        self.on_collection_changed(&collection.id).await?;
         Ok(())
     }
 }

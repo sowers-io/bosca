@@ -1,0 +1,32 @@
+fragment CollectionSupplementary on CollectionSupplementary {
+    key
+    name
+    uploaded
+    attributes
+    content {
+        ...CollectionSupplementaryContent
+    }
+    source {
+        id
+        identifier
+    }
+}
+
+fragment CollectionSupplementaryContent on CollectionSupplementaryContent {
+    type
+    length
+}
+
+fragment CollectionSupplementaryContentDownload on CollectionSupplementaryContent {
+    type
+    length
+    urls {
+        download {
+            url
+            headers {
+                name
+                value
+            }
+        }
+    }
+}

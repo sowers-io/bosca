@@ -4,7 +4,9 @@ import com.apollographql.apollo.api.Optional
 import com.apollographql.apollo.api.toUpload
 import io.bosca.api.Client
 import io.bosca.graphql.fragment.Metadata
+import io.bosca.graphql.fragment.WorkflowActivityParameter
 import io.bosca.graphql.fragment.WorkflowJob
+import io.bosca.graphql.type.CollectionSupplementaryInput
 import io.bosca.graphql.type.MetadataSupplementaryInput
 import io.bosca.util.toAny
 import io.bosca.util.toJsonElement
@@ -36,13 +38,26 @@ abstract class Activity(protected val client: Client) {
 
     abstract suspend fun toActivityDefinition(): ActivityDefintion
 
-    protected fun getInputParameterValue(job: WorkflowJob, name: String): String {
+    protected fun getInputParameter(job: WorkflowJob, name: String): WorkflowActivityParameter {
         val parameter = job.workflowActivity
             .workflowActivity
             .inputs
             .firstOrNull { it.workflowActivityParameter.name == name }
             ?: error("missing input: $name -> options: ${job.workflowActivity.workflowActivity.inputs.map { it.workflowActivityParameter.name }}")
-        return parameter.workflowActivityParameter.value
+        return parameter.workflowActivityParameter
+    }
+
+    protected fun getInputParameterValue(job: WorkflowJob, name: String): String {
+        val parameter = getInputParameter(job, name)
+        return parameter.value
+    }
+
+    protected suspend fun deleteSupplementary(job: WorkflowJob, name: String) {
+        val parameter = getInputParameter(job, name)
+        client.metadata.deleteSupplementary(
+            job.metadata?.metadata?.id ?: error("metadata id missing"),
+            parameter.value
+        )
     }
 
     protected fun getOutputParameterValue(job: WorkflowJob, name: String): String? {
@@ -73,7 +88,7 @@ abstract class Activity(protected val client: Client) {
     }
 
     protected suspend fun getContentFile(context: ActivityContext, jobId: WorkflowJob.Id, metadata: Metadata): File {
-        val content = client.metadata.getMetadataContent(metadata.id)
+        val content = client.metadata.getMetadataContentDownload(metadata.id)
             ?: error("missing content")
         val file = newTemporaryFile(context, jobId, content.type.split("/").last())
         client.files.download(content.urls.download, file)
@@ -111,15 +126,33 @@ abstract class Activity(protected val client: Client) {
         val supplementaryKey = job.workflowActivity.workflowActivity.inputs.firstOrNull {
             it.workflowActivityParameter.name == key
         }?.workflowActivityParameter?.value ?: key
-        val supplementary = job.metadata?.metadata?.supplementary?.firstOrNull {
-            it.metadataSupplementary.key == supplementaryKey
-        }?.metadataSupplementary ?: error("missing supplementary: $key")
-        val file = withContext(Dispatchers.IO) {
-            File.createTempFile(job.id.id, ".${supplementary.content.metadataSupplementaryContent.type.split("/").last()}")
+        job.metadata?.metadata?.let {
+            val supplementary = client.metadata.getSupplementaryContentDownload(it.id, supplementaryKey)
+                ?: error("missing supplementary: ${job.planId} -> $key -> $supplementaryKey")
+            val file = withContext(Dispatchers.IO) {
+                File.createTempFile(
+                    job.id.id,
+                    ".${supplementary.type.split("/").last()}"
+                )
+            }
+            context.addFile(file)
+            client.files.download(supplementary.urls.download, file)
+            return file
         }
-        context.addFile(file)
-        client.files.download(supplementary.content.metadataSupplementaryContent.urls.download, file)
-        return file
+        job.collection?.collection?.let {
+            val supplementary = client.collections.getSupplementaryContentDownload(it.id, supplementaryKey)
+                ?: error("missing supplementary: ${job.planId} -> $key -> $supplementaryKey")
+            val file = withContext(Dispatchers.IO) {
+                File.createTempFile(
+                    job.id.id,
+                    ".${supplementary.type.split("/").last()}"
+                )
+            }
+            context.addFile(file)
+            client.files.download(supplementary.urls.download, file)
+            return file
+        }
+        error("missing collection or metadata: $key")
     }
 
     protected suspend fun getInputSupplementaryText(
@@ -162,26 +195,53 @@ abstract class Activity(protected val client: Client) {
         sourceId: String? = null,
         sourceIdentifier: String? = null
     ) {
-        val metadataId = job.metadata?.metadata?.id ?: error("missing metadata id")
-        val key = getOutputParameterValue(job, output) ?: name
-        val supplementary =
-            job.metadata.metadata.supplementary.firstOrNull { it.metadataSupplementary.key == key }?.metadataSupplementary
-                ?: client.metadata.addSupplementary(
-                    MetadataSupplementaryInput(
-                        name = name,
-                        contentType = contentType,
-                        key = key,
-                        metadataId = metadataId,
-                        sourceId = Optional.presentIfNotNull(sourceId),
-                        sourceIdentifier = Optional.presentIfNotNull(sourceIdentifier)
-                    )
-                ) ?: error("missing supplementary: $name")
-        client.metadata.setSupplementaryTextContent(
-            metadataId,
-            supplementary.key,
-            contentType,
-            value
-        )
+        job.metadata?.metadata?.let {
+            val metadataId = job.metadata.metadata.id
+            val key = getOutputParameterValue(job, output) ?: name
+            try {
+                job.metadata.metadata.supplementary.firstOrNull { it.metadataSupplementary.key == key }?.metadataSupplementary
+                    ?: client.metadata.addSupplementary(
+                        MetadataSupplementaryInput(
+                            name = name,
+                            contentType = contentType,
+                            key = key,
+                            metadataId = metadataId,
+                            sourceId = Optional.presentIfNotNull(sourceId),
+                            sourceIdentifier = Optional.presentIfNotNull(sourceIdentifier)
+                        )
+                    ) ?: error("missing supplementary: $name")
+            } catch (ignore: Exception) {
+            }
+            client.metadata.setSupplementaryTextContent(
+                metadataId,
+                key,
+                contentType,
+                value
+            )
+        } ?: job.collection?.collection?.let {
+            val collectionId = job.collection.collection.id
+            val key = getOutputParameterValue(job, output) ?: name
+            try {
+                job.collection.collection.supplementary.firstOrNull { it.collectionSupplementary.key == key }?.collectionSupplementary
+                    ?: client.collections.addSupplementary(
+                        CollectionSupplementaryInput(
+                            name = name,
+                            contentType = contentType,
+                            key = key,
+                            collectionId = collectionId,
+                            sourceId = Optional.presentIfNotNull(sourceId),
+                            sourceIdentifier = Optional.presentIfNotNull(sourceIdentifier)
+                        )
+                    ) ?: error("missing supplementary: $name")
+            } catch (ignore: Exception) {
+            }
+            client.collections.setSupplementaryTextContent(
+                collectionId,
+                key,
+                contentType,
+                value
+            )
+        } ?: error("missing metadata or collection")
     }
 
     protected suspend fun setSupplementaryContents(
@@ -223,26 +283,49 @@ abstract class Activity(protected val client: Client) {
         sourceId: String? = null,
         sourceIdentifier: String? = null
     ) {
-        val metadataId = job.metadata?.metadata?.id ?: error("missing metadata id")
-        val key = getOutputParameterValue(job, output) ?: name
-        val supplementary =
-            job.metadata.metadata.supplementary.firstOrNull { it.metadataSupplementary.key == key }?.metadataSupplementary
-                ?: client.metadata.addSupplementary(
-                    MetadataSupplementaryInput(
-                        name = name,
-                        contentType = "application/json",
-                        key = key,
-                        metadataId = metadataId,
-                        sourceId = Optional.presentIfNotNull(sourceId),
-                        sourceIdentifier = Optional.presentIfNotNull(sourceIdentifier)
-                    )
-                ) ?: error("missing supplementary: $name")
-        client.metadata.setSupplementaryTextContent(
-            metadataId,
-            supplementary.key,
-            "application/json",
-            if (value is String) value else Json.encodeToString(serializer, value)
-        )
+        job.metadata?.metadata?.let {
+            val metadataId = job.metadata.metadata.id
+            val key = getOutputParameterValue(job, output) ?: name
+            val supplementary =
+                job.metadata.metadata.supplementary.firstOrNull { it.metadataSupplementary.key == key }?.metadataSupplementary
+                    ?: client.metadata.addSupplementary(
+                        MetadataSupplementaryInput(
+                            name = name,
+                            contentType = "application/json",
+                            key = key,
+                            metadataId = metadataId,
+                            sourceId = Optional.presentIfNotNull(sourceId),
+                            sourceIdentifier = Optional.presentIfNotNull(sourceIdentifier)
+                        )
+                    ) ?: error("missing supplementary: $name")
+            client.metadata.setSupplementaryTextContent(
+                metadataId,
+                supplementary.key,
+                "application/json",
+                if (value is String) value else Json.encodeToString(serializer, value)
+            )
+        } ?: job.collection?.collection?.let {
+            val collectionId = job.collection.collection.id
+            val key = getOutputParameterValue(job, output) ?: name
+            val supplementary =
+                job.collection.collection.supplementary.firstOrNull { it.collectionSupplementary.key == key }?.collectionSupplementary
+                    ?: client.collections.addSupplementary(
+                        CollectionSupplementaryInput(
+                            name = name,
+                            contentType = "application/json",
+                            key = key,
+                            collectionId = collectionId,
+                            sourceId = Optional.presentIfNotNull(sourceId),
+                            sourceIdentifier = Optional.presentIfNotNull(sourceIdentifier)
+                        )
+                    ) ?: error("missing supplementary: $name")
+            client.collections.setSupplementaryTextContent(
+                collectionId,
+                supplementary.key,
+                "application/json",
+                if (value is String) value else Json.encodeToString(serializer, value)
+            )
+        } ?: error("missing metadata or collection")
     }
 
     protected inline fun <reified T> getAttributes(job: WorkflowJob, name: String): T {

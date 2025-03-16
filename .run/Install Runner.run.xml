@@ -6,6 +6,7 @@
     <module name="bosca-runner.runner.main" />
     <option name="PROGRAM_PARAMETERS" value="install --directory examples/blog/configuration" />
     <shortenClasspath name="NONE" />
+    <option name="VM_PARAMETERS" value="-Djava.rmi.server.hostname=localhost  " />
     <method v="2">
       <option name="Make" enabled="true" />
     </method>

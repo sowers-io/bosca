@@ -148,6 +148,7 @@ impl WorkflowsMutationObject {
                 ctx.content
                     .metadata_workflows
                     .set_metadata_workflow_state(
+                        ctx,
                         &ctx.principal,
                         &metadata,
                         &metadata.workflow_state_id,
@@ -174,6 +175,7 @@ impl WorkflowsMutationObject {
             ctx.content
                 .collection_workflows
                 .set_state(
+                    ctx,
                     &ctx.principal,
                     &collection,
                     &collection.workflow_state_id,

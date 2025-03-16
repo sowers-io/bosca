@@ -78,7 +78,6 @@ impl BoscaContext {
                 Arc::clone(&bosca_pool),
                 jobs.clone(),
                 Arc::clone(&notifier),
-                Arc::clone(&search),
             ),
             workflow_schedule: WorkflowScheduleDataStore::new(
                 Arc::clone(&bosca_pool),
@@ -124,6 +123,31 @@ impl BoscaContext {
         }
     }
 
+    pub async fn check_collection_action_principal(
+        &self,
+        principal: &Principal,
+        id: &Uuid,
+        action: PermissionAction,
+    ) -> Result<Collection, Error> {
+        match self.content.collections.get(id).await? {
+            Some(collection) => {
+                if !self
+                    .content
+                    .collection_permissions
+                    .has(&collection, principal, action)
+                    .await?
+                {
+                    let admin = self.security.get_administrators_group().await?;
+                    if !self.principal.has_group(&admin.id) {
+                        return Err(Error::new("invalid permissions"));
+                    }
+                }
+                Ok(collection)
+            }
+            None => Err(Error::new(format!("metadata not found: {}", id))),
+        }
+    }
+
     pub async fn check_metadata_content_action_principal(
         &self,
         principal: &Principal,
@@ -146,6 +170,56 @@ impl BoscaContext {
                 Ok(metadata)
             }
             None => Err(Error::new(format!("metadata not found: {}", id))),
+        }
+    }
+
+    pub async fn check_metadata_supplementary_action_principal(
+        &self,
+        principal: &Principal,
+        id: &Uuid,
+        action: PermissionAction,
+    ) -> Result<Metadata, Error> {
+        match self.content.metadata.get(id).await? {
+            Some(metadata) => {
+                if !self
+                    .content
+                    .metadata_permissions
+                    .has_metadata_supplementary_permission(&metadata, principal, action)
+                    .await?
+                {
+                    let admin = self.security.get_administrators_group().await?;
+                    if !self.principal.has_group(&admin.id) {
+                        return Err(Error::new("invalid permissions"));
+                    }
+                }
+                Ok(metadata)
+            }
+            None => Err(Error::new(format!("metadata not found: {}", id))),
+        }
+    }
+
+    pub async fn check_collection_supplementary_action_principal(
+        &self,
+        principal: &Principal,
+        id: &Uuid,
+        action: PermissionAction,
+    ) -> Result<Collection, Error> {
+        match self.content.collections.get(id).await? {
+            Some(collection) => {
+                if !self
+                    .content
+                    .collection_permissions
+                    .has_supplementary_permission(&collection, principal, action)
+                    .await?
+                {
+                    let admin = self.security.get_administrators_group().await?;
+                    if !self.principal.has_group(&admin.id) {
+                        return Err(Error::new("invalid permissions"));
+                    }
+                }
+                Ok(collection)
+            }
+            None => Err(Error::new(format!("collection not found: {}", id))),
         }
     }
 

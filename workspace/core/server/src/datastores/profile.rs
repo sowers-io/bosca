@@ -9,7 +9,7 @@ use deadpool_postgres::{GenericClient, Pool, Transaction};
 use std::sync::Arc;
 use uuid::Uuid;
 use crate::models::workflow::enqueue_request::EnqueueRequest;
-use crate::workflow::core_workflow_ids::PROFILE_INDEX;
+use crate::workflow::core_workflow_ids::PROFILE_UPDATE_STORAGE;
 
 #[derive(Clone)]
 pub struct ProfileDataStore {
@@ -178,7 +178,7 @@ impl ProfileDataStore {
             .await?;
         }
         txn.commit().await?;
-        self.index_profile(ctx, &id).await?;
+        self.update_storage(ctx, &id).await?;
         Ok(id)
     }
 
@@ -216,7 +216,7 @@ impl ProfileDataStore {
         let id: Uuid = results[0].get("id");
         self.edit_profile_attributes(&txn, &id, profile).await?;
         txn.commit().await?;
-        self.index_profile(ctx, &id).await?;
+        self.update_storage(ctx, &id).await?;
         Ok(())
     }
 
@@ -242,7 +242,7 @@ impl ProfileDataStore {
         let id: Uuid = results[0].get("id");
         self.edit_profile_attributes(&txn, &id, profile).await?;
         txn.commit().await?;
-        self.index_profile(ctx, &id).await?;
+        self.update_storage(ctx, &id).await?;
         Ok(())
     }
 
@@ -289,13 +289,13 @@ impl ProfileDataStore {
         Ok(())
     }
 
-    pub async fn index_profile(
+    pub async fn update_storage(
         &self,
         ctx: &BoscaContext,
         id: &Uuid,
     ) -> Result<(), Error> {
         let mut request = EnqueueRequest {
-            workflow_id: Some(PROFILE_INDEX.to_string()),
+            workflow_id: Some(PROFILE_UPDATE_STORAGE.to_string()),
             profile_id: Some(*id),
             ..Default::default()
         };

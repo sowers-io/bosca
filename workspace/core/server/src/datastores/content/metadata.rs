@@ -12,7 +12,7 @@ use crate::models::content::metadata_relationship::{
 };
 use crate::models::security::permission::{Permission, PermissionAction};
 use crate::models::workflow::enqueue_request::EnqueueRequest;
-use crate::workflow::core_workflow_ids::{METADATA_DELETE_FINALIZE, METADATA_INDEX};
+use crate::workflow::core_workflow_ids::{METADATA_DELETE_FINALIZE, METADATA_UPDATE_STORAGE};
 use async_graphql::*;
 use deadpool_postgres::{Pool, Transaction};
 use log::error;
@@ -31,14 +31,16 @@ impl MetadataDataStore {
         Self { pool, notifier }
     }
 
-    async fn on_metadata_changed(&self, id: &Uuid) -> Result<(), Error> {
+    async fn on_metadata_changed(&self, ctx: &BoscaContext, id: &Uuid) -> Result<(), Error> {
+        self.update_storage(ctx, id).await?;
         if let Err(e) = self.notifier.metadata_changed(id).await {
             error!("Failed to notify metadata changes: {:?}", e);
         }
         Ok(())
     }
 
-    async fn on_collection_changed(&self, id: &Uuid) -> Result<(), Error> {
+    async fn on_collection_changed(&self, ctx: &BoscaContext, id: &Uuid) -> Result<(), Error> {
+        ctx.content.collections.update_storage(ctx, id).await?;
         if let Err(e) = self.notifier.collection_changed(id).await {
             error!("Failed to notify collection changes: {:?}", e);
         }
@@ -103,17 +105,6 @@ impl MetadataDataStore {
             return Ok(None);
         }
         Ok(Some(rows.first().unwrap().into()))
-    }
-
-    pub async fn get_all(&self, offset: i64, limit: i64) -> Result<Vec<Metadata>, Error> {
-        let connection = self.pool.get().await?;
-        let stmt = connection
-            .prepare_cached(
-                "select * from metadata where deleted = false order by name offset $1 limit $2",
-            )
-            .await?;
-        let rows = connection.query(&stmt, &[&offset, &limit]).await?;
-        Ok(rows.iter().map(|r| r.into()).collect())
     }
 
     pub async fn get_by_version(&self, id: &Uuid, version: i32) -> Result<Option<Metadata>, Error> {
@@ -241,14 +232,14 @@ impl MetadataDataStore {
         };
         ctx.workflow.enqueue_workflow(ctx, &mut request).await?;
 
-        self.on_metadata_changed(metadata_id).await?;
+        self.on_metadata_changed(ctx, metadata_id).await?;
         for collection_id in collection_ids {
-            self.on_collection_changed(&collection_id).await?;
+            self.on_collection_changed(ctx, &collection_id).await?;
         }
         Ok(())
     }
 
-    pub async fn set_public(&self, id: &Uuid, public: bool) -> Result<(), Error> {
+    pub async fn set_public(&self, ctx: &BoscaContext, id: &Uuid, public: bool) -> Result<(), Error> {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
         let stmt = txn
@@ -257,11 +248,11 @@ impl MetadataDataStore {
         txn.execute(&stmt, &[&public, id]).await?;
         update_metadata_etag(&txn, id).await?;
         txn.commit().await?;
-        self.on_metadata_changed(id).await?;
+        self.on_metadata_changed(ctx, id).await?;
         Ok(())
     }
 
-    pub async fn set_public_content(&self, id: &Uuid, public: bool) -> Result<(), Error> {
+    pub async fn set_public_content(&self, ctx: &BoscaContext, id: &Uuid, public: bool) -> Result<(), Error> {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
         let stmt = txn
@@ -272,7 +263,7 @@ impl MetadataDataStore {
         txn.execute(&stmt, &[&public, id]).await?;
         update_metadata_etag(&txn, id).await?;
         txn.commit().await?;
-        self.on_metadata_changed(id).await?;
+        self.on_metadata_changed(ctx, id).await?;
         Ok(())
     }
 
@@ -313,12 +304,11 @@ impl MetadataDataStore {
             )
             .await
         {
-            Ok(version) => {
+            Ok(_) => {
                 txn.commit().await?;
-                self.index_metadata(ctx, id, Some(version)).await?;
-                self.on_metadata_changed(id).await?;
+                self.on_metadata_changed(ctx, id).await?;
                 for collection_id in collection_ids {
-                    self.on_collection_changed(&collection_id).await?;
+                    self.on_collection_changed(ctx, &collection_id).await?;
                 }
                 Ok(())
             }
@@ -333,13 +323,12 @@ impl MetadataDataStore {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
         let stmt = txn
-            .prepare_cached("update metadata set attributes = $1, modified = now() where id = $2 returning version")
+            .prepare_cached("update metadata set attributes = $1, modified = now() where id = $2")
             .await?;
-        let row = txn.query_one(&stmt, &[&attributes, &metadata_id]).await?;
+        txn.execute(&stmt, &[&attributes, &metadata_id]).await?;
         update_metadata_etag(&txn, metadata_id).await?;
         txn.commit().await?;
-        self.index_metadata(ctx, metadata_id, row.get("version")).await?;
-        self.on_metadata_changed(metadata_id).await?;
+        self.on_metadata_changed(ctx, metadata_id).await?;
         Ok(())
     }
 
@@ -352,15 +341,12 @@ impl MetadataDataStore {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
         let stmt = txn
-            .prepare_cached(
-                "update metadata set system_attributes = $1, modified = now() where id = $2 returning version",
-            )
+            .prepare_cached("update metadata set system_attributes = $1, modified = now() where id = $2")
             .await?;
-        let row = txn.query_one(&stmt, &[&attributes, &metadata_id]).await?;
+        txn.execute(&stmt, &[&attributes, &metadata_id]).await?;
         update_metadata_etag(&txn, metadata_id).await?;
         txn.commit().await?;
-        self.index_metadata(ctx, metadata_id, row.get("version")).await?;
-        self.on_metadata_changed(metadata_id).await?;
+        self.on_metadata_changed(ctx, metadata_id).await?;
         Ok(())
     }
 
@@ -375,7 +361,7 @@ impl MetadataDataStore {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
         let stmt = txn
-            .prepare_cached("update metadata set uploaded = now(), system_attributes = $1, modified = now(), content_type = $2, content_length = $3 where id = $4 returning version")
+            .prepare_cached("update metadata set uploaded = now(), system_attributes = $1, modified = now(), content_type = $2, content_length = $3 where id = $4")
             .await?;
         let len = len as i64;
         let mut attrs = Map::new();
@@ -384,7 +370,7 @@ impl MetadataDataStore {
             Value::String(original_file_name.clone().unwrap_or("--".to_owned())),
         );
         let attrs = Value::Object(attrs);
-        let row = txn.query_one(&stmt, &[&attrs, content_type, &len, metadata_id])
+        txn.execute(&stmt, &[&attrs, content_type, &len, metadata_id])
             .await?;
         if let Some(content_type) = content_type {
             self.ensure_content_type_traits(metadata_id, content_type, &txn)
@@ -392,8 +378,7 @@ impl MetadataDataStore {
         }
         update_metadata_etag(&txn, metadata_id).await?;
         txn.commit().await?;
-        self.index_metadata(ctx, metadata_id, row.get("version")).await?;
-        self.on_metadata_changed(metadata_id).await?;
+        self.on_metadata_changed(ctx, metadata_id).await?;
         Ok(())
     }
 
@@ -422,11 +407,10 @@ impl MetadataDataStore {
     pub async fn set_upload_removed(&self, ctx: &BoscaContext, metadata_id: &Uuid) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
-            .prepare_cached("update metadata set uploaded = null, modified = now(), content_length = 0 where id = $1 returning version")
+            .prepare_cached("update metadata set uploaded = null, modified = now(), content_length = 0 where id = $1")
             .await?;
-        let row = connection.query_one(&stmt, &[&metadata_id]).await?;
-        self.index_metadata(ctx, metadata_id, row.get("version")).await?;
-        self.on_metadata_changed(metadata_id).await?;
+        connection.execute(&stmt, &[&metadata_id]).await?;
+        self.on_metadata_changed(ctx, metadata_id).await?;
         Ok(())
     }
 
@@ -660,13 +644,13 @@ impl MetadataDataStore {
         Ok(())
     }
 
-    pub async fn delete_trait(&self, id: &Uuid, trait_id: &String) -> Result<(), Error> {
+    pub async fn delete_trait(&self, ctx: &BoscaContext, id: &Uuid, trait_id: &String) -> Result<(), Error> {
         let conn = self.pool.get().await?;
         let stmt = conn
             .prepare("delete from metadata_traits where metadata_id = $1 and trait_id = $2")
             .await?;
         conn.execute(&stmt, &[id, trait_id]).await?;
-        self.on_metadata_changed(id).await?;
+        self.on_metadata_changed(ctx, id).await?;
         Ok(())
     }
 
@@ -695,13 +679,13 @@ impl MetadataDataStore {
         Ok(())
     }
 
-    pub async fn add_trait(&self, id: &Uuid, trait_id: &String) -> Result<(), Error> {
+    pub async fn add_trait(&self, ctx: &BoscaContext, id: &Uuid, trait_id: &String) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached("insert into metadata_traits (metadata_id, trait_id) values ($1, $2)")
             .await?;
         connection.execute(&stmt, &[id, trait_id]).await?;
-        self.on_metadata_changed(id).await?;
+        self.on_metadata_changed(ctx, id).await?;
         Ok(())
     }
 
@@ -738,8 +722,7 @@ impl MetadataDataStore {
             )
             .await?;
         connection.execute(&stmt, &[id, category_id]).await?;
-        self.index_metadata(ctx, id, None).await?;
-        self.on_metadata_changed(id).await?;
+        self.on_metadata_changed(ctx, id).await?;
         Ok(())
     }
 
@@ -751,8 +734,7 @@ impl MetadataDataStore {
             )
             .await?;
         connection.execute(&stmt, &[id, category_id]).await?;
-        self.index_metadata(ctx, id, None).await?;
-        self.on_metadata_changed(id).await?;
+        self.on_metadata_changed(ctx, id).await?;
         Ok(())
     }
 
@@ -776,10 +758,8 @@ impl MetadataDataStore {
                 ],
             )
             .await?;
-        self.index_metadata(ctx, &id1, None).await?;
-        self.index_metadata(ctx, &id2, None).await?;
-        self.on_metadata_changed(&id1).await?;
-        self.on_metadata_changed(&id2).await?;
+        self.on_metadata_changed(ctx, &id1).await?;
+        self.on_metadata_changed(ctx, &id2).await?;
         Ok(())
     }
 
@@ -820,10 +800,8 @@ impl MetadataDataStore {
         connection
             .query(&stmt, &[&relationship, &attributes, id1, id2])
             .await?;
-        self.index_metadata(ctx, id1, None).await?;
-        self.index_metadata(ctx, id2, None).await?;
-        self.on_metadata_changed(id1).await?;
-        self.on_metadata_changed(id2).await?;
+        self.on_metadata_changed(ctx, id1).await?;
+        self.on_metadata_changed(ctx, id2).await?;
         Ok(())
     }
 
@@ -844,10 +822,8 @@ impl MetadataDataStore {
         connection
             .execute(&stmt, &[id1, id2, &relationship])
             .await?;
-        self.index_metadata(ctx, id1, None).await?;
-        self.index_metadata(ctx, id2, None).await?;
-        self.on_metadata_changed(id1).await?;
-        self.on_metadata_changed(id2).await?;
+        self.on_metadata_changed(ctx, id1).await?;
+        self.on_metadata_changed(ctx, id2).await?;
         Ok(())
     }
 
@@ -860,9 +836,8 @@ impl MetadataDataStore {
         let txn = conn.transaction().await?;
         let ids = self.add_all_txn(ctx, &txn, metadatas, false, None).await?;
         txn.commit().await?;
-        for (id, version, _) in &ids {
-            self.index_metadata(ctx, id, Some(*version)).await?;
-            self.on_metadata_changed(id).await?
+        for (id, _, _) in &ids {
+            self.on_metadata_changed(ctx, id).await?
         }
         Ok(ids)
     }
@@ -918,16 +893,14 @@ impl MetadataDataStore {
         Ok(new_metadatas)
     }
 
-    pub async fn index_metadata(
+    pub async fn update_storage(
         &self,
         ctx: &BoscaContext,
         id: &Uuid,
-        version: Option<i32>,
     ) -> Result<(), Error> {
         let mut request = EnqueueRequest {
-            workflow_id: Some(METADATA_INDEX.to_string()),
+            workflow_id: Some(METADATA_UPDATE_STORAGE.to_string()),
             metadata_id: Some(*id),
-            metadata_version: version,
             ..Default::default()
         };
         ctx.workflow.enqueue_workflow(ctx, &mut request).await?;

@@ -149,4 +149,24 @@ impl CollectionPermissionsDataStore {
         self.on_collection_changed(&permission.entity_id).await?;
         Ok(())
     }
+
+    pub async fn has_supplementary_permission(
+        &self,
+        collection: &Collection,
+        principal: &Principal,
+        action: PermissionAction,
+    ) -> Result<bool, Error> {
+        if collection.deleted {
+            return Ok(false);
+        }
+        if action == PermissionAction::View
+            && collection.public_supplementary
+            && collection.workflow_state_id == "published"
+            && !collection.deleted
+        {
+            return Ok(true);
+        }
+        let eval = Evaluator::new(self.get(&collection.id).await?);
+        Ok(eval.evaluate(principal, &action))
+    }
 }

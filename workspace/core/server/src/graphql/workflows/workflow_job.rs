@@ -13,6 +13,7 @@ use serde_json::Value;
 use uuid::Uuid;
 use crate::context::BoscaContext;
 use crate::graphql::content::collection::CollectionObject;
+use crate::graphql::profiles::profile::ProfileObject;
 
 pub struct WorkflowJobObject {
     job: WorkflowJob,
@@ -72,6 +73,18 @@ impl WorkflowJobObject {
             .get(&id)
             .await?
             .map(MetadataObject::from))
+    }
+
+    async fn profile(&self, ctx: &Context<'_>) -> Result<Option<ProfileObject>, Error> {
+        if self.job.profile_id.is_none() {
+            return Ok(None);
+        }
+        let ctx = ctx.data::<BoscaContext>()?;
+        let id = Uuid::parse_str(self.job.profile_id.clone().unwrap().as_str())?;
+        Ok(ctx.profile
+            .get_by_id(&id)
+            .await?
+            .map(ProfileObject::from))
     }
 
     async fn metadata_version(&self) -> Option<i32> {

@@ -16,7 +16,6 @@ pub struct SearchDocument {
     pub metadata: Option<Metadata>,
     pub collection: Option<Collection>,
     pub profile: Option<Profile>,
-    pub content: String
 }
 
 #[derive(InputObject)]
@@ -52,9 +51,5 @@ impl SearchDocument {
     async fn profile(&self) -> Option<ProfileObject> {
         let profile = self.profile.as_ref()?;
         Some(ProfileObject::new(profile.clone()))
-    }
-
-    async fn content(&self) -> &String {
-        &self.content
     }
 }

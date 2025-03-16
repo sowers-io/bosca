@@ -3,8 +3,8 @@ use crate::graphql::content::guide_step::GuideStepObject;
 use crate::graphql::content::guide_step_module::GuideStepModuleObject;
 use crate::graphql::content::metadata::MetadataObject;
 use crate::graphql::content::metadata_relationship::MetadataRelationshipObject;
+use crate::graphql::content::metadata_supplementary::MetadataSupplementaryObject;
 use crate::graphql::content::permission::PermissionObject;
-use crate::graphql::content::supplementary::MetadataSupplementaryObject;
 use crate::graphql::workflows::workflow_execution_plan::WorkflowExecutionPlanObject;
 use crate::models::content::collection::MetadataChildInput;
 use crate::models::content::document::DocumentInput;
@@ -16,10 +16,10 @@ use crate::models::content::guide_template_step_module::GuideTemplateStepModule;
 use crate::models::content::metadata::{Metadata, MetadataInput};
 use crate::models::content::metadata_profile::MetadataProfileInput;
 use crate::models::content::metadata_relationship::MetadataRelationshipInput;
+use crate::models::content::metadata_supplementary::MetadataSupplementaryInput;
 use crate::models::content::metadata_workflow_state::{
     MetadataWorkflowCompleteState, MetadataWorkflowState,
 };
-use crate::models::content::supplementary::MetadataSupplementaryInput;
 use crate::models::security::permission::{Permission, PermissionAction, PermissionInput};
 use crate::models::workflow::enqueue_request::EnqueueRequest;
 use crate::models::workflow::execution_plan::WorkflowExecutionPlan;
@@ -125,7 +125,7 @@ impl MetadataMutationObject {
             return Err(Error::new("invalid step"));
         }
         let template_step = template_step.unwrap();
-        let step = add_study_step_impl(
+        let step = add_guide_step_impl(
             ctx,
             &parent_collection_id,
             &template_id,
@@ -183,7 +183,7 @@ impl MetadataMutationObject {
             return Err(Error::new("invalid module"));
         }
         let template_module = template_module.unwrap();
-        let module = add_study_module_impl(ctx, &parent_collection_id, 0, &template_module).await?;
+        let module = add_guide_module_impl(ctx, &parent_collection_id, 0, &template_module).await?;
         let new_module = ctx
             .content
             .guides
@@ -239,7 +239,7 @@ impl MetadataMutationObject {
         let profile = ctx.profile.get_by_principal(&ctx.principal.id).await?;
         let categories = ctx
             .content
-            .metadata
+            .collections
             .get_categories(&parent_collection_id)
             .await?;
         let template_steps = ctx
@@ -249,7 +249,7 @@ impl MetadataMutationObject {
             .await?;
         let mut steps = Vec::new();
         for (index, template_step) in template_steps.iter().enumerate() {
-            let step = add_study_step_impl(
+            let step = add_guide_step_impl(
                 ctx,
                 &parent_collection_id,
                 &template_id,
@@ -391,7 +391,10 @@ impl MetadataMutationObject {
         ctx.check_metadata_action(&id, PermissionAction::Edit)
             .await?;
         let category_id = Uuid::parse_str(category_id.as_str())?;
-        ctx.content.metadata.add_category(ctx, &id, &category_id).await?;
+        ctx.content
+            .metadata
+            .add_category(ctx, &id, &category_id)
+            .await?;
         Ok(true)
     }
 
@@ -424,7 +427,7 @@ impl MetadataMutationObject {
         let metadata = ctx
             .check_metadata_action(&id, PermissionAction::Manage)
             .await?;
-        ctx.content.metadata.add_trait(&id, &trait_id).await?;
+        ctx.content.metadata.add_trait(ctx, &id, &trait_id).await?;
         if metadata.ready.is_some() {
             let mut request = EnqueueRequest {
                 trait_id: Some(trait_id),
@@ -454,7 +457,10 @@ impl MetadataMutationObject {
         let metadata = ctx
             .check_metadata_action(&id, PermissionAction::Manage)
             .await?;
-        ctx.content.metadata.delete_trait(&id, &trait_id).await?;
+        ctx.content
+            .metadata
+            .delete_trait(ctx, &id, &trait_id)
+            .await?;
         if t.is_some() && t.as_ref().unwrap().delete_workflow_id.is_some() {
             let mut request = EnqueueRequest {
                 workflow_id: t.unwrap().delete_workflow_id.clone(),
@@ -462,11 +468,11 @@ impl MetadataMutationObject {
                 metadata_version: Some(metadata.version),
                 ..Default::default()
             };
-            let plan = ctx
-                .workflow
-                .enqueue_workflow(ctx, &mut request)
-                .await?;
-            return Ok(plan.into_iter().map(WorkflowExecutionPlanObject::new).collect());
+            let plan = ctx.workflow.enqueue_workflow(ctx, &mut request).await?;
+            return Ok(plan
+                .into_iter()
+                .map(WorkflowExecutionPlanObject::new)
+                .collect());
         }
         Ok(Vec::new())
     }
@@ -482,7 +488,7 @@ impl MetadataMutationObject {
         let mut metadata = ctx
             .check_metadata_action(&id, PermissionAction::Manage)
             .await?;
-        ctx.content.metadata.set_public(&id, public).await?;
+        ctx.content.metadata.set_public(ctx, &id, public).await?;
         metadata.public = public;
         Ok(metadata.into())
     }
@@ -498,7 +504,10 @@ impl MetadataMutationObject {
         let mut metadata = ctx
             .check_metadata_action(&id, PermissionAction::Manage)
             .await?;
-        ctx.content.metadata.set_public_content(&id, public).await?;
+        ctx.content
+            .metadata
+            .set_public_content(ctx, &id, public)
+            .await?;
         metadata.public = public;
         Ok(metadata.into())
     }
@@ -516,7 +525,7 @@ impl MetadataMutationObject {
             .await?;
         ctx.content
             .metadata_supplementary
-            .set_supplementary_public(&id, public)
+            .set_supplementary_public(ctx, &id, public)
             .await?;
         metadata.public = public;
         Ok(metadata.into())
@@ -554,64 +563,6 @@ impl MetadataMutationObject {
         Ok(permission.into())
     }
 
-    async fn add_supplementary(
-        &self,
-        ctx: &Context<'_>,
-        supplementary: MetadataSupplementaryInput,
-    ) -> Result<MetadataSupplementaryObject, Error> {
-        let ctx = ctx.data::<BoscaContext>()?;
-        let id = Uuid::parse_str(supplementary.metadata_id.as_str())?;
-        let metadata = ctx
-            .check_metadata_action(&id, PermissionAction::Manage)
-            .await?;
-        ctx.content
-            .metadata_supplementary
-            .add_supplementary(&supplementary)
-            .await?;
-        match ctx
-            .content
-            .metadata_supplementary
-            .get_supplementary(&id, &supplementary.key)
-            .await?
-        {
-            Some(supplementary) => Ok(MetadataSupplementaryObject::new(metadata, supplementary)),
-            None => Err(Error::new("Error creating metadata")),
-        }
-    }
-
-    async fn delete_supplementary(
-        &self,
-        ctx: &Context<'_>,
-        id: String,
-        key: String,
-    ) -> Result<bool, Error> {
-        let ctx = ctx.data::<BoscaContext>()?;
-        let id = Uuid::parse_str(id.as_str())?;
-        ctx.check_metadata_action(&id, PermissionAction::Manage)
-            .await?;
-        ctx.content.metadata_supplementary.delete_supplementary(ctx, &id, &key).await?;
-        Ok(true)
-    }
-
-    async fn set_supplementary_uploaded(
-        &self,
-        ctx: &Context<'_>,
-        metadata_id: String,
-        supplementary_key: String,
-        content_type: String,
-        len: usize,
-    ) -> Result<bool, Error> {
-        let ctx = ctx.data::<BoscaContext>()?;
-        let id = Uuid::parse_str(metadata_id.as_str())?;
-        ctx.check_metadata_action(&id, PermissionAction::Manage)
-            .await?;
-        ctx.content
-            .metadata_supplementary
-            .set_supplementary_uploaded(&id, &supplementary_key, content_type.as_str(), len)
-            .await?;
-        Ok(true)
-    }
-
     async fn add_relationship(
         &self,
         ctx: &Context<'_>,
@@ -624,7 +575,10 @@ impl MetadataMutationObject {
         let id2 = Uuid::parse_str(relationship.id2.as_str())?;
         ctx.check_metadata_action(&id2, PermissionAction::Edit)
             .await?;
-        ctx.content.metadata.add_relationship(ctx, &relationship).await?;
+        ctx.content
+            .metadata
+            .add_relationship(ctx, &relationship)
+            .await?;
         match ctx.content.metadata.get_relationship(&id1, &id2).await? {
             Some(relationship) => Ok(relationship.into()),
             None => Err(Error::new("error creating relationship")),
@@ -689,6 +643,7 @@ impl MetadataMutationObject {
             ctx.content
                 .metadata_workflows
                 .set_metadata_workflow_state(
+                    ctx,
                     &ctx.principal,
                     &metadata,
                     &state.state_id,
@@ -720,6 +675,7 @@ impl MetadataMutationObject {
             ctx.content
                 .metadata_workflows
                 .set_metadata_workflow_state(
+                    ctx,
                     &ctx.principal,
                     &metadata,
                     &state_id,
@@ -805,46 +761,6 @@ impl MetadataMutationObject {
         Ok(true)
     }
 
-    async fn set_supplementary_contents(
-        &self,
-        ctx: &Context<'_>,
-        id: String,
-        key: String,
-        content_type: String,
-        file: Upload,
-    ) -> Result<bool, Error> {
-        let octx = ctx;
-        let ctx = ctx.data::<BoscaContext>()?;
-        let metadata_id = Uuid::parse_str(id.as_str())?;
-        let metadata = ctx
-            .check_metadata_action(&metadata_id, PermissionAction::Manage)
-            .await?;
-        let path = ctx
-            .storage
-            .get_metadata_path(&metadata, Some(key.to_owned()))
-            .await?;
-        let mut multipart = ctx.storage.put_multipart(&path).await?;
-        let mut content = file.value(octx)?.into_async_read();
-        let mut buf = vec![0_u8; 524288];
-        let mut len = 0;
-        loop {
-            let read = content.read(&mut buf).await?;
-            if read > 0 {
-                len += read;
-                let buf_slice = buf[..read].to_vec();
-                multipart.put_part(buf_slice.into()).await?;
-            } else {
-                multipart.complete().await?;
-                break;
-            }
-        }
-        ctx.content
-            .metadata_supplementary
-            .set_supplementary_uploaded(&metadata_id, &key, &content_type, len)
-            .await?;
-        Ok(true)
-    }
-
     async fn set_metadata_text_contents(
         &self,
         ctx: &Context<'_>,
@@ -864,33 +780,6 @@ impl MetadataMutationObject {
         ctx.content
             .metadata
             .set_uploaded(ctx, &metadata_id, &None, &content_type, len)
-            .await?;
-        Ok(true)
-    }
-
-    async fn set_supplementary_text_contents(
-        &self,
-        ctx: &Context<'_>,
-        id: String,
-        key: String,
-        content_type: String,
-        content: String,
-    ) -> Result<bool, Error> {
-        let ctx = ctx.data::<BoscaContext>()?;
-        let metadata_id = Uuid::parse_str(id.as_str())?;
-        let metadata = ctx
-            .check_metadata_action(&metadata_id, PermissionAction::Edit)
-            .await?;
-        let path = ctx
-            .storage
-            .get_metadata_path(&metadata, Some(key.clone()))
-            .await?;
-        let bytes: Bytes = content.into();
-        let len = bytes.len();
-        ctx.storage.put(&path, bytes).await?;
-        ctx.content
-            .metadata_supplementary
-            .set_supplementary_uploaded(&metadata_id, &key, &content_type, len)
             .await?;
         Ok(true)
     }
@@ -989,9 +878,156 @@ impl MetadataMutationObject {
             .await?;
         Ok(true)
     }
+
+    async fn add_supplementary(
+        &self,
+        ctx: &Context<'_>,
+        supplementary: MetadataSupplementaryInput,
+    ) -> Result<MetadataSupplementaryObject, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let id = Uuid::parse_str(supplementary.metadata_id.as_str())?;
+        let metadata = ctx
+            .check_metadata_action(&id, PermissionAction::Manage)
+            .await?;
+        ctx.content
+            .metadata_supplementary
+            .add_supplementary(ctx, &supplementary)
+            .await?;
+        match ctx
+            .content
+            .metadata_supplementary
+            .get_supplementary(
+                &id,
+                &supplementary.key,
+                supplementary.plan_id.map(|p| Uuid::parse_str(&p).unwrap()),
+            )
+            .await?
+        {
+            Some(supplementary) => Ok(MetadataSupplementaryObject::new(metadata, supplementary)),
+            None => Err(Error::new("Error creating metadata")),
+        }
+    }
+
+    async fn set_supplementary_uploaded(
+        &self,
+        ctx: &Context<'_>,
+        metadata_id: String,
+        supplementary_key: String,
+        plan_id: Option<String>,
+        content_type: String,
+        len: usize,
+    ) -> Result<bool, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let id = Uuid::parse_str(metadata_id.as_str())?;
+        let plan_id = plan_id.map(|p| Uuid::parse_str(p.as_str()).unwrap());
+        ctx.check_metadata_action(&id, PermissionAction::Manage)
+            .await?;
+        ctx.content
+            .metadata_supplementary
+            .set_supplementary_uploaded(
+                ctx,
+                &id,
+                &supplementary_key,
+                plan_id,
+                content_type.as_str(),
+                len,
+            )
+            .await?;
+        Ok(true)
+    }
+
+    async fn set_supplementary_contents(
+        &self,
+        ctx: &Context<'_>,
+        id: String,
+        key: String,
+        plan_id: Option<String>,
+        content_type: String,
+        file: Upload,
+    ) -> Result<bool, Error> {
+        let octx = ctx;
+        let ctx = ctx.data::<BoscaContext>()?;
+        let metadata_id = Uuid::parse_str(id.as_str())?;
+        let plan_id = plan_id.map(|p| Uuid::parse_str(p.as_str()).unwrap());
+        let metadata = ctx
+            .check_metadata_action(&metadata_id, PermissionAction::Manage)
+            .await?;
+        let path = ctx
+            .storage
+            .get_metadata_path(&metadata, Some(key.to_owned()))
+            .await?;
+        let mut multipart = ctx.storage.put_multipart(&path).await?;
+        let mut content = file.value(octx)?.into_async_read();
+        let mut buf = vec![0_u8; 524288];
+        let mut len = 0;
+        loop {
+            let read = content.read(&mut buf).await?;
+            if read > 0 {
+                len += read;
+                let buf_slice = buf[..read].to_vec();
+                multipart.put_part(buf_slice.into()).await?;
+            } else {
+                multipart.complete().await?;
+                break;
+            }
+        }
+        ctx.content
+            .metadata_supplementary
+            .set_supplementary_uploaded(ctx, &metadata_id, &key, plan_id, &content_type, len)
+            .await?;
+        Ok(true)
+    }
+
+    async fn set_supplementary_text_contents(
+        &self,
+        ctx: &Context<'_>,
+        id: String,
+        key: String,
+        plan_id: Option<String>,
+        content_type: String,
+        content: String,
+    ) -> Result<bool, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let metadata_id = Uuid::parse_str(id.as_str())?;
+        let plan_id = plan_id.map(|p| Uuid::parse_str(p.as_str()).unwrap());
+        let metadata = ctx
+            .check_metadata_action(&metadata_id, PermissionAction::Edit)
+            .await?;
+        let path = ctx
+            .storage
+            .get_metadata_path(&metadata, Some(key.clone()))
+            .await?;
+        let bytes: Bytes = content.into();
+        let len = bytes.len();
+        ctx.storage.put(&path, bytes).await?;
+        ctx.content
+            .metadata_supplementary
+            .set_supplementary_uploaded(ctx, &metadata_id, &key, plan_id, &content_type, len)
+            .await?;
+        Ok(true)
+    }
+
+    async fn delete_supplementary(
+        &self,
+        ctx: &Context<'_>,
+        id: String,
+        key: String,
+        plan_id: Option<String>,
+    ) -> Result<bool, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let id = Uuid::parse_str(id.as_str())?;
+        let plan_id = plan_id.map(|p| Uuid::parse_str(p.as_str()).unwrap());
+        ctx.check_metadata_action(&id, PermissionAction::Manage)
+            .await?;
+        ctx.content
+            .metadata_supplementary
+            .delete_supplementary(ctx, &id, &key, plan_id)
+            .await?;
+        Ok(true)
+    }
 }
 
-async fn add_study_step_impl(
+async fn add_guide_step_impl(
     ctx: &BoscaContext,
     parent_collection_id: &Uuid,
     template_id: &Uuid,
@@ -1029,7 +1065,7 @@ async fn add_study_step_impl(
 
     let mut new_modules = Vec::new();
     for (index, module) in modules.iter().enumerate() {
-        let module = add_study_module_impl(ctx, parent_collection_id, index, module).await?;
+        let module = add_guide_module_impl(ctx, parent_collection_id, index, module).await?;
         new_modules.push(module);
     }
 
@@ -1040,7 +1076,7 @@ async fn add_study_step_impl(
     })
 }
 
-async fn add_study_module_impl(
+async fn add_guide_module_impl(
     ctx: &BoscaContext,
     parent_collection_id: &Uuid,
     module_index: usize,
@@ -1117,7 +1153,7 @@ async fn add_document_impl(
     let profile = ctx.profile.get_by_principal(&ctx.principal.id).await?;
     let categories = ctx
         .content
-        .metadata
+        .collections
         .get_categories(parent_collection_id)
         .await?;
     let metadata = MetadataInput {

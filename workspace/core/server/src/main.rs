@@ -1,7 +1,7 @@
 mod authed_subscription;
 mod context;
 mod datastores;
-mod files;
+mod metadata_files;
 mod graphql;
 mod initialization;
 mod logger;
@@ -15,8 +15,9 @@ mod slugs;
 mod util;
 mod workflow;
 mod caching_headers;
+mod collection_files;
 
-use crate::files::{download, upload};
+use crate::metadata_files::{metadata_download, metadata_upload};
 use async_graphql::extensions::apollo_persisted_queries::ApolloPersistedQueries;
 use axum::extract::DefaultBodyLimit;
 use axum::routing::post;
@@ -41,6 +42,7 @@ use mimalloc::MiMalloc;
 use tower_http::cors::CorsLayer;
 
 use crate::authed_subscription::AuthGraphQLSubscription;
+use crate::collection_files::{collection_download, collection_upload};
 use crate::graphql::schema::new_schema;
 use crate::initialization::content::initialize_content;
 use crate::initialization::security::initialize_security;
@@ -88,9 +90,13 @@ async fn main() {
         _ => 2147483648,
     };
 
-    let files = Router::new()
-        .route("/upload", post(upload))
-        .route("/download", get(download))
+    let metadata_files = Router::new()
+        .route("/upload", post(metadata_upload))
+        .route("/download", get(metadata_download))
+        .with_state(ctx.clone());
+    let collection_files = Router::new()
+        .route("/upload", post(collection_upload))
+        .route("/download", get(collection_download))
         .with_state(ctx.clone());
 
     let content = Router::new()
@@ -100,7 +106,8 @@ async fn main() {
     let app = Router::new()
         .route("/", get(graphiql_handler))
         .route("/health", get(health))
-        .nest("/files", files)
+        .nest("/files/metadata", metadata_files)
+        .nest("/files/collection", collection_files)
         .nest("/content", content)
         .route("/graphql", post(graphql_handler))
         .route("/graphql", get(graphql_handler))

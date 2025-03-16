@@ -83,6 +83,7 @@ pub async fn begin_transition(
             ctx.content
                 .metadata_workflows
                 .set_metadata_workflow_state(
+                    ctx,
                     &ctx.principal,
                     &metadata,
                     &request.state_id,
@@ -129,6 +130,7 @@ pub async fn begin_transition(
                         ctx.content
                             .metadata_workflows
                             .set_metadata_workflow_state(
+                                ctx,
                                 &ctx.principal,
                                 &metadata,
                                 &request.state_id,
@@ -186,6 +188,7 @@ pub async fn begin_transition(
         ctx.content
             .collection_workflows
             .set_state(
+                ctx,
                 &ctx.principal,
                 &collection,
                 &request.state_id,
@@ -231,6 +234,7 @@ pub async fn begin_transition(
                     ctx.content
                         .collection_workflows
                         .set_state(
+                            ctx,
                             &ctx.principal,
                             &collection,
                             &request.state_id,

@@ -69,7 +69,6 @@ watch(currentStep, async (step) => {
     await loadDocument(route.params.metadataId.toString())
     await loadMetadata(route.params.metadataId.toString())
   } else if (step.metadata) {
-    console.log(step.metadata.id, step.metadata.name, step.metadata.type)
     await loadDocument(step.metadata.id)
     await loadMetadata(step.metadata.id)
   }

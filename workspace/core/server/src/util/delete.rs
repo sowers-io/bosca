@@ -33,7 +33,7 @@ pub async fn delete_collection(
             for item in metadatas {
                 ctx.content
                     .collections
-                    .remove_child_metadata(collection_id, &item.id)
+                    .remove_child_metadata(ctx, collection_id, &item.id)
                     .await?;
                 let collection_ids = ctx.content.metadata.get_parent_ids(&item.id, 0, 1).await?;
                 if collection_ids.is_empty() {
@@ -67,9 +67,9 @@ pub async fn delete_collection(
         }
     }
     if permanently {
-        ctx.content.collections.delete(collection_id).await?;
+        ctx.content.collections.delete(ctx, collection_id).await?;
     } else {
-        ctx.content.collections.mark_deleted(collection_id).await?;
+        ctx.content.collections.mark_deleted(ctx, collection_id).await?;
         let mut request = EnqueueRequest {
             workflow_id: Some(COLLECTION_DELETE_FINALIZE.to_string()),
             collection_id: Some(*collection_id),

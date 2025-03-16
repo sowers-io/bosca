@@ -15,6 +15,11 @@ fragment MetadataSupplementary on MetadataSupplementary {
 fragment MetadataSupplementaryContent on MetadataSupplementaryContent {
     type
     length
+}
+
+fragment MetadataSupplementaryContentDownload on MetadataSupplementaryContent {
+    type
+    length
     urls {
         download {
             url

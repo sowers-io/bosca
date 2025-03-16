@@ -1,11 +1,13 @@
 fragment MetadataIdName on Metadata {
     id
+    slug
     version
     name
 }
 
 fragment Metadata on Metadata {
     id
+    slug
     version
     parentId
     name

@@ -1,0 +1,11 @@
+query GetCollectionSupplementaryDownload($id: String!, $key: String!) {
+    content {
+        collection(id: $id) {
+            supplementary(key: $key) {
+                content {
+                    ...CollectionSupplementaryContentDownload
+                }
+            }
+        }
+    }
+}

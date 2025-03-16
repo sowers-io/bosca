@@ -5,7 +5,7 @@ use crate::graphql::content::collection_templates::CollectionTemplatesObject;
 use crate::graphql::content::document_templates::DocumentTemplatesObject;
 use crate::graphql::content::metadata::MetadataObject;
 use crate::graphql::content::sources::SourcesObject;
-use crate::graphql::content::supplementary::MetadataSupplementaryObject;
+use crate::graphql::content::metadata_supplementary::MetadataSupplementaryObject;
 use crate::graphql::profiles::profile::ProfileObject;
 use crate::models::content::slug::SlugType;
 use crate::models::security::permission::PermissionAction;
@@ -148,9 +148,11 @@ impl ContentObject {
         id: String,
         version: Option<i32>,
         key: String,
+        plan_id: Option<String>,
     ) -> Result<Option<MetadataSupplementaryObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::from_str(id.as_str())?;
+        let plan_id = plan_id.map(|p| Uuid::from_str(p.as_str()).unwrap());
         let metadata = if let Some(version) = version {
             ctx.check_metadata_version_action(&id, version, PermissionAction::View)
                 .await?
@@ -161,7 +163,7 @@ impl ContentObject {
         let supplementary = ctx
             .content
             .metadata_supplementary
-            .get_supplementary(&metadata.id, &key)
+            .get_supplementary(&metadata.id, &key, plan_id)
             .await?;
         if let Some(supplementary) = supplementary {
             Ok(Some(MetadataSupplementaryObject::new(

@@ -80,7 +80,7 @@
     @apply border-border;
   }
 
-  body {
+  body, input, textarea {
     @apply bg-background text-foreground;
   }
 }

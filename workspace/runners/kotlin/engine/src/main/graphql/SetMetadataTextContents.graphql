@@ -1,4 +1,4 @@
-mutation SetTextContents($id: String!, $contentType: String!, $content: String!) {
+mutation SetMetadataTextContents($id: String!, $contentType: String!, $content: String!) {
     content {
         metadata {
             setMetadataTextContents(id: $id, contentType: $contentType, content: $content)

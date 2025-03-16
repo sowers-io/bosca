@@ -1,6 +1,11 @@
 fragment MetadataContent on MetadataContent {
     type
     length
+}
+
+fragment MetadataContentDownload on MetadataContent {
+    type
+    length
     urls {
         download {
             url

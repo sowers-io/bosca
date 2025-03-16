@@ -1,11 +1,7 @@
 use crate::context::BoscaContext;
 use crate::datastores::notifier::Notifier;
 use crate::graphql::content::metadata_mutation::WorkflowConfigurationInput;
-use crate::models::workflow::activities::{
-    Activity, ActivityInput, ActivityParameter, WorkflowActivity, WorkflowActivityInput,
-    WorkflowActivityModel, WorkflowActivityParameter, WorkflowActivityPrompt,
-    WorkflowActivityStorageSystem,
-};
+use crate::models::workflow::activities::{Activity, ActivityInput, ActivityParameter, ActivityParameterScope, WorkflowActivity, WorkflowActivityInput, WorkflowActivityModel, WorkflowActivityParameter, WorkflowActivityPrompt, WorkflowActivityStorageSystem};
 use crate::models::workflow::enqueue_request::EnqueueRequest;
 use crate::models::workflow::execution_plan::{
     WorkflowExecutionId, WorkflowExecutionPlan, WorkflowJob, WorkflowJobId,
@@ -25,7 +21,6 @@ use async_graphql::*;
 use chrono::{DateTime, Utc};
 use deadpool_postgres::{GenericClient, Pool, Transaction};
 use log::{error, warn};
-use meilisearch_sdk::client::Client;
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::Ordering::Relaxed;
@@ -39,7 +34,6 @@ pub struct WorkflowDataStore {
     pool: Arc<Pool>,
     queues: JobQueues,
     notifier: Arc<Notifier>,
-    search: Arc<Client>,
 }
 
 impl WorkflowDataStore {
@@ -47,13 +41,11 @@ impl WorkflowDataStore {
         pool: Arc<Pool>,
         queues: JobQueues,
         notifier: Arc<Notifier>,
-        search: Arc<Client>,
     ) -> Self {
         Self {
             pool,
             queues,
             notifier,
-            search,
         }
     }
 
@@ -92,23 +84,25 @@ impl WorkflowDataStore {
         drop(stmt);
         let stmt = connection
             .prepare_cached(
-                "insert into activity_inputs (activity_id, name, type) values ($1, $2, $3)",
+                "insert into activity_inputs (activity_id, name, type, scope) values ($1, $2, $3, $4)",
             )
             .await?;
         for input in activity.inputs.iter() {
+            let scope = input.scope.unwrap_or(ActivityParameterScope::Content);
             connection
-                .execute(&stmt, &[&activity.id, &input.name, &input.parameter_type])
+                .execute(&stmt, &[&activity.id, &input.name, &input.parameter_type, &scope])
                 .await?;
         }
         drop(stmt);
         let stmt = connection
             .prepare_cached(
-                "insert into activity_outputs (activity_id, name, type) values ($1, $2, $3)",
+                "insert into activity_outputs (activity_id, name, type, scope) values ($1, $2, $3, $4)",
             )
             .await?;
         for input in activity.outputs.iter() {
+            let scope = input.scope.unwrap_or(ActivityParameterScope::Content);
             connection
-                .execute(&stmt, &[&activity.id, &input.name, &input.parameter_type])
+                .execute(&stmt, &[&activity.id, &input.name, &input.parameter_type, &scope])
                 .await?;
         }
         self.notifier.activity_changed(&activity.id).await?;
@@ -142,20 +136,22 @@ impl WorkflowDataStore {
         .await?;
         let stmt = txn
             .prepare_cached(
-                "insert into activity_inputs (activity_id, name, type) values ($1, $2, $3)",
+                "insert into activity_inputs (activity_id, name, type, scope) values ($1, $2, $3, $4)",
             )
             .await?;
         for input in activity.inputs.iter() {
-            txn.execute(&stmt, &[&activity.id, &input.name, &input.parameter_type])
+            let scope = input.scope.unwrap_or(ActivityParameterScope::Content);
+            txn.execute(&stmt, &[&activity.id, &input.name, &input.parameter_type, &scope])
                 .await?;
         }
         let stmt = txn
             .prepare_cached(
-                "insert into activity_outputs (activity_id, name, type) values ($1, $2, $3)",
+                "insert into activity_outputs (activity_id, name, type, scope) values ($1, $2, $3, $4)",
             )
             .await?;
         for input in activity.outputs.iter() {
-            txn.execute(&stmt, &[&activity.id, &input.name, &input.parameter_type])
+            let scope = input.scope.unwrap_or(ActivityParameterScope::Content);
+            txn.execute(&stmt, &[&activity.id, &input.name, &input.parameter_type, &scope])
                 .await?;
         }
         txn.commit().await?;
@@ -380,16 +376,18 @@ impl WorkflowDataStore {
             rows.first().unwrap().get(0)
         };
         {
-            let stmt = txn.prepare_cached("insert into workflow_activity_inputs (activity_id, name, value) values ($1, $2, $3)").await?;
+            let stmt = txn.prepare_cached("insert into workflow_activity_inputs (activity_id, name, value, scope) values ($1, $2, $3, $4)").await?;
             for input in activity.inputs.iter() {
-                txn.execute(&stmt, &[&id, &input.name, &input.value])
+                let scope = input.scope.unwrap_or(ActivityParameterScope::Content);
+                txn.execute(&stmt, &[&id, &input.name, &input.value, &scope])
                     .await?;
             }
         }
         {
-            let stmt = txn.prepare_cached("insert into workflow_activity_outputs (activity_id, name, value) values ($1, $2, $3)").await?;
+            let stmt = txn.prepare_cached("insert into workflow_activity_outputs (activity_id, name, value, scope) values ($1, $2, $3, $4)").await?;
             for input in activity.outputs.iter() {
-                txn.execute(&stmt, &[&id, &input.name, &input.value])
+                let scope = input.scope.unwrap_or(ActivityParameterScope::Content);
+                txn.execute(&stmt, &[&id, &input.name, &input.value, &scope])
                     .await?;
             }
         }
@@ -742,34 +740,6 @@ impl WorkflowDataStore {
         self.notifier.storage_system_changed(&id_str).await?;
 
         Ok(id)
-    }
-
-    pub async fn initialize_default_search_index(&self) -> Result<(), Error> {
-        let systems = self.get_storage_systems().await?;
-        let Some(storage_system) = systems.iter().find(|s| s.name == "Default Search") else {
-            return Err(Error::new(
-                "Default search storage system not found".to_string(),
-            ));
-        };
-        let Some(configuration) = &storage_system.configuration else {
-            return Ok(());
-        };
-        let index_name = configuration
-            .get("indexName")
-            .unwrap()
-            .as_str()
-            .unwrap()
-            .to_owned();
-        let create_task = self
-            .search
-            .create_index(index_name.clone(), Some("_id"))
-            .await?;
-        self.search.wait_for_task(create_task, None, None).await?;
-        let index = self.search.get_index(index_name).await?;
-        let mut settings = index.get_settings().await?;
-        settings.filterable_attributes = Some(vec!["type".to_owned(), "_type".to_owned()]);
-        index.set_settings(&settings).await?;
-        Ok(())
     }
 
     pub async fn edit_storage_system(
@@ -1392,6 +1362,7 @@ impl WorkflowDataStore {
             collection_id: request.collection_id,
             profile_id: request.profile_id,
             finished: None,
+            max_failures: 10
         })
     }
 
@@ -1417,19 +1388,21 @@ impl WorkflowDataStore {
             Ok(plans)
         } else if request.workflow.is_some() {
             let mut plan = self.get_new_execution_plan(request).await?;
-            let id = self.queues.enqueue_plan(&mut plan).await?;
-            if request.wait_for_completion.is_some() && request.wait_for_completion.unwrap() {
-                self.wait_for_execution_plan(&id, request.delay_until)
-                    .await?;
+            if let Some(id) = self.queues.enqueue_plan(&mut plan).await? {
+                if request.wait_for_completion.is_some() && request.wait_for_completion.unwrap() {
+                    self.wait_for_execution_plan(&id, request.delay_until)
+                        .await?;
+                }
             }
             Ok(vec![plan])
         } else if let Some(workflow_id) = &request.workflow_id {
             request.workflow = self.get_workflow(workflow_id).await?;
             let mut plan = self.get_new_execution_plan(request).await?;
-            let id = self.queues.enqueue_plan(&mut plan).await?;
-            if request.wait_for_completion.is_some() && request.wait_for_completion.unwrap() {
-                self.wait_for_execution_plan(&id, request.delay_until)
-                    .await?;
+            if let Some(id) = self.queues.enqueue_plan(&mut plan).await? {
+                if request.wait_for_completion.is_some() && request.wait_for_completion.unwrap() {
+                    self.wait_for_execution_plan(&id, request.delay_until)
+                        .await?;
+                }
             }
             Ok(vec![plan])
         } else {

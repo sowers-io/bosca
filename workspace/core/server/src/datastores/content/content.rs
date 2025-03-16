@@ -12,6 +12,7 @@ use deadpool_postgres::Pool;
 use std::sync::Arc;
 use uuid::Uuid;
 use crate::datastores::content::categories::CategoriesDataStore;
+use crate::datastores::content::collection_supplementary::CollectionSupplementaryDataStore;
 use crate::datastores::content::collection_templates::CollectionTemplatesDataStore;
 use crate::datastores::content::guides::GuidesDataStore;
 use crate::datastores::content::metadata_supplementary::MetadataSupplementaryDataStore;
@@ -23,6 +24,7 @@ pub struct ContentDataStore {
 
     pub categories: CategoriesDataStore,
     pub collections: CollectionsDataStore,
+    pub collection_supplementary: CollectionSupplementaryDataStore,
     pub collection_permissions: CollectionPermissionsDataStore,
     pub collection_workflows: CollectionWorkflowsDataStore,
     pub collection_templates: CollectionTemplatesDataStore,
@@ -40,6 +42,7 @@ impl ContentDataStore {
         Self {
             categories: CategoriesDataStore::new(Arc::clone(&pool), Arc::clone(&notifier)),
             collections: CollectionsDataStore::new(Arc::clone(&pool), Arc::clone(&notifier)),
+            collection_supplementary: CollectionSupplementaryDataStore::new(Arc::clone(&pool), Arc::clone(&notifier)),
             collection_permissions: CollectionPermissionsDataStore::new(
                 Arc::clone(&pool),
                 Arc::clone(&notifier),

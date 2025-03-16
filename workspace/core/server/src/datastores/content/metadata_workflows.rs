@@ -24,7 +24,8 @@ impl MetadataWorkflowsDataStore {
         Self { pool, notifier }
     }
 
-    async fn on_metadata_changed(&self, id: &Uuid) -> Result<(), Error> {
+    async fn on_metadata_changed(&self, ctx: &BoscaContext, id: &Uuid) -> Result<(), Error> {
+        ctx.content.metadata.update_storage(ctx, id).await?;
         if let Err(e) = self.notifier.metadata_changed(id).await {
             error!("Failed to notify metadata changes: {:?}", e);
         }
@@ -50,6 +51,7 @@ impl MetadataWorkflowsDataStore {
     #[allow(clippy::too_many_arguments)]
     pub async fn set_metadata_workflow_state(
         &self,
+        ctx: &BoscaContext,
         principal: &Principal,
         metadata: &Metadata,
         to_state_id: &str,
@@ -91,7 +93,7 @@ impl MetadataWorkflowsDataStore {
             txn.execute(&stmt, &[&state, &valid, &metadata.id]).await?;
         }
         txn.commit().await?;
-        self.on_metadata_changed(&metadata.id).await?;
+        self.on_metadata_changed(ctx, &metadata.id).await?;
         Ok(())
     }
 
@@ -133,7 +135,7 @@ impl MetadataWorkflowsDataStore {
         Ok(())
     }
 
-    async fn set_metadata_ready(&self, id: &Uuid) -> Result<(), Error> {
+    async fn set_metadata_ready(&self, ctx: &BoscaContext, id: &Uuid) -> Result<(), Error> {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
         let stmt = txn
@@ -142,7 +144,7 @@ impl MetadataWorkflowsDataStore {
         txn.execute(&stmt, &[id]).await?;
         update_metadata_etag(&txn, id).await?;
         txn.commit().await?;
-        self.on_metadata_changed(id).await?;
+        self.on_metadata_changed(ctx, id).await?;
         Ok(())
     }
 
@@ -158,6 +160,7 @@ impl MetadataWorkflowsDataStore {
         self.validate(ctx, &metadata.id, metadata.version).await?;
         let workflow = &ctx.workflow;
         self.set_metadata_workflow_state(
+            ctx,
             &ctx.principal,
             metadata,
             "draft",
@@ -167,7 +170,7 @@ impl MetadataWorkflowsDataStore {
             false,
         )
         .await?;
-        self.set_metadata_ready(&metadata.id).await?;
+        self.set_metadata_ready(ctx, &metadata.id).await?;
         let mut request = EnqueueRequest {
             workflow_id: Some(METADATA_PROCESS.to_string()),
             metadata_id: Some(metadata.id),
@@ -176,7 +179,6 @@ impl MetadataWorkflowsDataStore {
             ..Default::default()
         };
         workflow.enqueue_workflow(ctx, &mut request).await?;
-        self.on_metadata_changed(&metadata.id).await?;
         Ok(true)
     }
 }

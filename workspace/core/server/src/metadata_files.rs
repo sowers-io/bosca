@@ -1,5 +1,5 @@
 use crate::context::BoscaContext;
-use crate::models::content::supplementary::MetadataSupplementary;
+use crate::models::content::metadata_supplementary::MetadataSupplementary;
 use crate::models::security::permission::PermissionAction;
 use crate::models::workflow::enqueue_request::EnqueueRequest;
 use crate::util::security::get_principal_from_headers;
@@ -20,6 +20,7 @@ use crate::workflow::core_workflow_ids::METADATA_PROCESS;
 pub struct Params {
     id: Option<String>,
     supplementary_id: Option<String>,
+    plan_id: Option<String>,
     ready: Option<bool>,
     redirect: Option<String>,
 }
@@ -28,18 +29,19 @@ async fn get_supplementary(
     ctx: &BoscaContext,
     params: &Params,
     metadata_id: &Uuid,
+    plan_id: Option<Uuid>,
 ) -> Result<Option<MetadataSupplementary>, Error> {
     Ok(if params.supplementary_id.is_none() {
         None
     } else {
         ctx.content
             .metadata_supplementary
-            .get_supplementary(metadata_id, params.supplementary_id.as_ref().unwrap())
+            .get_supplementary(metadata_id, params.supplementary_id.as_ref().unwrap(), plan_id)
             .await?
     })
 }
 
-pub async fn download(
+pub async fn metadata_download(
     State(ctx): State<BoscaContext>,
     Query(params): Query<Params>,
     headers: HeaderMap,
@@ -51,7 +53,7 @@ pub async fn download(
     let id_str = params.id.as_deref().unwrap_or("");
     let id =
         Uuid::parse_str(id_str).map_err(|_| (StatusCode::BAD_REQUEST, "Bad Request".to_owned()))?;
-    let url = format!("/files{}", request.uri().path_and_query().unwrap());
+    let url = format!("/files/metadata{}", request.uri().path_and_query().unwrap());
     let metadata = if ctx.security.verify_signed_url(&url) {
         let metadata = ctx
             .content
@@ -64,9 +66,15 @@ pub async fn download(
         }
         metadata.unwrap()
     } else {
-        ctx.check_metadata_content_action_principal(&principal, &id, PermissionAction::View)
-            .await
-            .map_err(|_| (StatusCode::FORBIDDEN, "Forbidden".to_owned()))?
+        if params.supplementary_id.is_some() {
+            ctx.check_metadata_supplementary_action_principal(&principal, &id, PermissionAction::View)
+                .await
+                .map_err(|_| (StatusCode::FORBIDDEN, "Forbidden".to_owned()))?
+        } else {
+            ctx.check_metadata_content_action_principal(&principal, &id, PermissionAction::View)
+                .await
+                .map_err(|_| (StatusCode::FORBIDDEN, "Forbidden".to_owned()))?
+        }
     };
     if metadata.deleted
         && !ctx
@@ -76,7 +84,8 @@ pub async fn download(
     {
         return Err((StatusCode::NOT_FOUND, "Not Found".to_owned()))?;
     }
-    let supplementary = get_supplementary(&ctx, &params, &metadata.id)
+    let plan_id = params.plan_id.as_ref().map(|s| Uuid::parse_str(s.as_str()).unwrap());
+    let supplementary = get_supplementary(&ctx, &params, &metadata.id, plan_id)
         .await
         .map_err(|_| {
             (
@@ -126,7 +135,7 @@ pub async fn download(
     Ok((headers, body))
 }
 
-pub async fn upload(
+pub async fn metadata_upload(
     State(ctx): State<BoscaContext>,
     headers: HeaderMap,
     Query(params): Query<Params>,
@@ -137,11 +146,12 @@ pub async fn upload(
         .map_err(|_| (StatusCode::UNAUTHORIZED, "Unauthorized".to_owned()))?;
     let id = Uuid::parse_str(params.id.as_ref().unwrap().as_str())
         .map_err(|_| (StatusCode::BAD_REQUEST, "Bad Request".to_owned()))?;
+    let plan_id = params.plan_id.as_ref().map(|s| Uuid::parse_str(s.as_str()).unwrap());
     let metadata = ctx
         .check_metadata_action_principal(&principal, &id, PermissionAction::Edit)
         .await
         .map_err(|_| (StatusCode::FORBIDDEN, "Forbidden".to_owned()))?;
-    let supplementary = get_supplementary(&ctx, &params, &metadata.id)
+    let supplementary = get_supplementary(&ctx, &params, &metadata.id, plan_id)
         .await
         .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Error".to_owned()))?;
     if let Some(mut field) = multipart
@@ -225,7 +235,7 @@ pub async fn upload(
             let content_type = field.content_type().unwrap_or("");
             ctx.content
                 .metadata_supplementary
-                .set_supplementary_uploaded(&id, &key.key, content_type, len)
+                .set_supplementary_uploaded(&ctx, &id, &key.key, key.plan_id, content_type, len)
                 .await
                 .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Server Error".to_owned()))?;
         }

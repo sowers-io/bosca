@@ -293,9 +293,12 @@ impl JobQueues {
     pub async fn enqueue_plan(
         &self,
         plan: &mut WorkflowExecutionPlan,
-    ) -> Result<WorkflowExecutionId, Error> {
+    ) -> Result<Option<WorkflowExecutionId>, Error> {
         if plan.finished.is_some() {
             return Err(Error::new("can't enqueue plan, it's already finished"));
+        }
+        if plan.jobs.is_empty() {
+            return Ok(None);
         }
         debug!(target: "workflow", "enqueuing plan: {}", plan.id);
         let mut connection = self.pool.get().await?;
@@ -319,7 +322,7 @@ impl JobQueues {
         if let Some(id) = &plan.metadata_id {
             self.notifier.metadata_changed(id).await?;
         }
-        Ok(plan.id.clone())
+        Ok(Some(plan.id.clone()))
     }
 
     pub async fn enqueue_job_child_workflows(
