@@ -16,7 +16,7 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.10.1")
     implementation("com.dashjoin:jsonata:0.9.8")
     implementation("com.fleeksoft.ksoup:ksoup:0.2.2")
-    implementation("org.graalvm.polyglot:js:24.1.2")
+    implementation("org.graalvm.polyglot:js-community:24.1.2")
     implementation("org.graalvm.polyglot:polyglot:24.1.2")
     implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.18.3")
 
