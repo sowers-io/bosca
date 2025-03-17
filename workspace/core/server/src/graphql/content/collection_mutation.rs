@@ -13,8 +13,8 @@ use crate::models::security::permission::{Permission, PermissionAction, Permissi
 use crate::util::delete::delete_collection;
 use async_graphql::*;
 use bytes::Bytes;
-use futures_util::AsyncReadExt;
 use uuid::Uuid;
+use crate::util::upload::upload_file;
 
 pub struct CollectionMutationObject {}
 
@@ -589,21 +589,7 @@ impl CollectionMutationObject {
             .storage
             .get_collection_path(&collection, Some(supplementary.id))
             .await?;
-        let mut multipart = ctx.storage.put_multipart(&path).await?;
-        let mut content = file.value(octx)?.into_async_read();
-        let mut buf = vec![0_u8; 524288];
-        let mut len = 0;
-        loop {
-            let read = content.read(&mut buf).await?;
-            if read > 0 {
-                len += read;
-                let buf_slice = buf[..read].to_vec();
-                multipart.put_part(buf_slice.into()).await?;
-            } else {
-                multipart.complete().await?;
-                break;
-            }
-        }
+        let len = upload_file(ctx, octx, path, file).await?;
         ctx.content
             .collection_supplementary
             .set_supplementary_uploaded(ctx, &supplementary_id, &content_type, len)

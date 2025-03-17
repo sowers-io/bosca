@@ -52,7 +52,7 @@ services:
         condition: service_healthy
 
   runner:
-    image: ghcr.io/sowers-io/bosca/kotlin-runner-community:latest
+    image: ghcr.io/sowers-io/bosca/kotlin-runner-community-compatibility:latest
     platform: linux/amd64
     environment:
       BOSCA_QUEUES: "default,10;media-transcription,1;media-upload,5;metadata,50;search-index,100;traits,100;transition,100;ai,10"

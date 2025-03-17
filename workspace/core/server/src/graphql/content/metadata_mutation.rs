@@ -23,10 +23,9 @@ use crate::models::content::metadata_workflow_state::{
 use crate::models::security::permission::{Permission, PermissionAction, PermissionInput};
 use crate::models::workflow::enqueue_request::EnqueueRequest;
 use crate::models::workflow::execution_plan::WorkflowExecutionPlan;
+use crate::util::upload::upload_file;
 use async_graphql::*;
 use bytes::Bytes;
-use futures_util::AsyncReadExt;
-use object_store::MultipartUpload;
 use serde_json::json;
 use uuid::Uuid;
 
@@ -739,21 +738,7 @@ impl MetadataMutationObject {
             .check_metadata_action(&metadata_id, PermissionAction::Edit)
             .await?;
         let path = ctx.storage.get_metadata_path(&metadata, None).await?;
-        let mut multipart = ctx.storage.put_multipart(&path).await?;
-        let mut content = file.value(octx)?.into_async_read();
-        let mut buf = vec![0_u8; 524288];
-        let mut len = 0;
-        loop {
-            let read = content.read(&mut buf).await?;
-            if read > 0 {
-                len += read;
-                let buf_slice = buf[..read].to_vec();
-                multipart.put_part(buf_slice.into()).await?;
-            } else {
-                multipart.complete().await?;
-                break;
-            }
-        }
+        let len = upload_file(ctx, octx, path, file).await?;
         ctx.content
             .metadata
             .set_uploaded(ctx, &metadata_id, &None, &content_type, len)
@@ -956,21 +941,7 @@ impl MetadataMutationObject {
             .storage
             .get_metadata_path(&metadata, Some(supplementary_id))
             .await?;
-        let mut multipart = ctx.storage.put_multipart(&path).await?;
-        let mut content = file.value(octx)?.into_async_read();
-        let mut buf = vec![0_u8; 524288];
-        let mut len = 0;
-        loop {
-            let read = content.read(&mut buf).await?;
-            if read > 0 {
-                len += read;
-                let buf_slice = buf[..read].to_vec();
-                multipart.put_part(buf_slice.into()).await?;
-            } else {
-                multipart.complete().await?;
-                break;
-            }
-        }
+        let len = upload_file(ctx, octx, path, file).await?;
         ctx.content
             .metadata_supplementary
             .set_supplementary_uploaded(ctx, &supplementary_id, &content_type, len)
@@ -1012,11 +983,7 @@ impl MetadataMutationObject {
         Ok(true)
     }
 
-    async fn delete_supplementary(
-        &self,
-        ctx: &Context<'_>,
-        id: String,
-    ) -> Result<bool, Error> {
+    async fn delete_supplementary(&self, ctx: &Context<'_>, id: String) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let supplementary_id = Uuid::parse_str(id.as_str())?;
         let Some(supplementary) = ctx
@@ -1042,11 +1009,7 @@ impl MetadataMutationObject {
         Ok(true)
     }
 
-    async fn detach_supplementary(
-        &self,
-        ctx: &Context<'_>,
-        id: String,
-    ) -> Result<bool, Error> {
+    async fn detach_supplementary(&self, ctx: &Context<'_>, id: String) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let supplementary_id = Uuid::parse_str(id.as_str())?;
         let Some(supplementary) = ctx

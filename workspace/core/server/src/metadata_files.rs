@@ -8,13 +8,11 @@ use async_graphql::Error;
 use axum::body::Body;
 use axum::extract::{Multipart, Query};
 use axum::extract::{Request, State};
-use bytes::{Buf, BufMut, BytesMut};
 use http::{HeaderMap, HeaderValue, StatusCode};
 use log::error;
-use object_store::MultipartUpload;
 use serde::Deserialize;
-use std::io::Write;
 use uuid::Uuid;
+use crate::util::upload::upload_field;
 
 #[derive(Debug, Deserialize)]
 pub struct Params {
@@ -178,51 +176,8 @@ pub async fn metadata_upload(
             .get_metadata_path(&metadata, supplementary.as_ref().map(|s| s.id))
             .await
             .map_err(|err| (StatusCode::BAD_REQUEST, err.to_string()))?;
-        let mut upload = ctx
-            .storage
-            .put_multipart(&path)
-            .await
-            .map_err(|err| (StatusCode::BAD_REQUEST, err.to_string()))?;
-        let mut len = 0;
-        let buf = BytesMut::with_capacity(5242880);
-        let writer = &mut buf.writer();
-        while let Some(chunk) = field.chunk().await.map_err(|err| {
-            error!("Error getting chunk: {}", err);
-            (StatusCode::BAD_REQUEST, err.to_string())
-        })? {
-            let chunk_len = chunk.len();
-            len += chunk_len;
-            let write_len = writer.write(chunk.as_ref()).unwrap();
-            if write_len != chunk_len {
-                error!("Error validating write {}, {}", write_len, chunk_len);
-                return Err((
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "Invalid length".to_string(),
-                ));
-            }
-            // assert_eq!(write_len, chunk_len);
-            let buf_len = writer.get_ref().len();
-            if buf_len >= 5242880 {
-                let copy = writer.get_mut().copy_to_bytes(buf_len);
-                writer.get_mut().clear();
-                upload.put_part(copy.into()).await.map_err(|err| {
-                    error!("Error putting part {}", err);
-                    (StatusCode::INTERNAL_SERVER_ERROR, err.to_string())
-                })?;
-            }
-        }
-        let buf_len = writer.get_ref().len();
-        if buf_len > 0 {
-            let copy = writer.get_mut().copy_to_bytes(buf_len);
-            upload
-                .put_part(copy.into())
-                .await
-                .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?;
-        }
-        upload
-            .complete()
-            .await
-            .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?;
+        let len = upload_field(&ctx, path, &mut field).await
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Server Error: {:?}", e).to_owned()))?;
         if let Some(supplementary) = &supplementary {
             let content_type = field.content_type().unwrap_or("");
             ctx.content
