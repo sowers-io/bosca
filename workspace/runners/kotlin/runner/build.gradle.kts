@@ -52,7 +52,7 @@ graalvmNative {
         named("main") {
             imageName.set("bosca-runner")
             mainClass.set("io.bosca.MainKt")
-            buildArgs.addAll(
+            val args = mutableListOf(
                 "-H:+StaticExecutableWithDynamicLibC",
                 "-H:+AllowDeprecatedBuilderClassesOnImageClasspath",
                 "-H:+UnlockExperimentalVMOptions",
@@ -62,6 +62,10 @@ graalvmNative {
                 "--initialize-at-run-time=ai.onnxruntime.OnnxRuntime",
                 "--install-exit-handlers"
             )
+            if (System.getenv("MARCH") != null) {
+                args.add("-march=${System.getenv("MARCH")}")
+            }
+            buildArgs.addAll(args)
         }
     }
     toolchainDetection.set(true)
