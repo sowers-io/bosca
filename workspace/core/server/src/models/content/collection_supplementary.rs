@@ -6,7 +6,9 @@ use uuid::Uuid;
 
 #[derive(Clone)]
 pub struct CollectionSupplementary {
+    pub id: Uuid,
     pub plan_id: Option<Uuid>,
+    pub collection_id: Uuid,
     pub key: String,
     pub name: String,
     pub content_type: String,
@@ -21,7 +23,7 @@ pub struct CollectionSupplementary {
 
 #[derive(InputObject)]
 pub struct CollectionSupplementaryInput {
-    pub plan_id: Option<String>,
+    pub plan_id: String,
     pub collection_id: String,
     pub key: String,
     pub name: String,
@@ -35,6 +37,8 @@ pub struct CollectionSupplementaryInput {
 impl From<&Row> for CollectionSupplementary {
     fn from(row: &Row) -> Self {
         Self {
+            id: row.get("id"),
+            collection_id: row.get("collection_id"),
             plan_id: row.get("plan_id"),
             key: row.get("key"),
             name: row.get("name"),

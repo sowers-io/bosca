@@ -21,12 +21,11 @@ class DeleteAllSupplementary(client: Client) : Activity(client) {
     }
 
     override suspend fun execute(context: ActivityContext, job: WorkflowJob) {
-        val id = job.collection?.collection?.id ?: error("metadata id missing")
         val supplementary = job.collection?.collection?.supplementary?.map {
-            it.collectionSupplementary.key
+            it.collectionSupplementary.id
         }
-        for (key in supplementary ?: emptyList()) {
-            client.collections.deleteSupplementary(id, key)
+        for (id in supplementary ?: emptyList()) {
+            client.collections.deleteSupplementary(id)
         }
     }
 

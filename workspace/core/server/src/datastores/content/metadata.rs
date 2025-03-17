@@ -197,13 +197,10 @@ impl MetadataDataStore {
         for supplementary in supplementaries {
             let path = ctx
                 .storage
-                .get_metadata_path(&metadata, Some(supplementary.key.clone()))
+                .get_metadata_path(&metadata, Some(supplementary.id))
                 .await?;
             ctx.storage.delete(&path).await?;
         }
-
-        // TODO: delete versions
-        // TODO: delete search documents
 
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
@@ -215,22 +212,14 @@ impl MetadataDataStore {
         let rows = txn.query(&stmt, &[metadata_id]).await?;
         let collection_ids: Vec<Uuid> = rows.iter().map(|r| r.get("collection_id")).collect();
         let stmt = txn
-            .prepare_cached("delete from metadata where id = $1")
-            .await?;
-        txn.execute(&stmt, &[&metadata_id]).await?;
-        let stmt = txn
             .prepare_cached("delete from metadata_versions where id = $1")
             .await?;
         txn.execute(&stmt, &[&metadata_id]).await?;
+        let stmt = txn
+            .prepare_cached("delete from metadata where id = $1")
+            .await?;
+        txn.execute(&stmt, &[&metadata_id]).await?;
         txn.commit().await?;
-
-        let mut request = EnqueueRequest {
-            workflow_id: Some(METADATA_DELETE_FINALIZE.to_string()),
-            metadata_id: Some(metadata.id),
-            metadata_version: Some(metadata.version),
-            ..Default::default()
-        };
-        ctx.workflow.enqueue_workflow(ctx, &mut request).await?;
 
         self.on_metadata_changed(ctx, metadata_id).await?;
         for collection_id in collection_ids {

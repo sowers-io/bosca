@@ -1,8 +1,8 @@
-query GetMetadataSupplementaryContent($id: String!, $key: String!) {
+query GetMetadataSupplementaryContent($supplementaryId: String!) {
     content {
-        metadata(id: $id) {
-            supplementary(key: $key) {
-                ...MetadataSupplementary
+        metadataSupplementary(supplementaryId: $supplementaryId) {
+            content {
+                ...MetadataSupplementaryContent
             }
         }
     }

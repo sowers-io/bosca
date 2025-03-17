@@ -1,8 +1,6 @@
 use crate::context::BoscaContext;
-use crate::models::content::collection_supplementary::CollectionSupplementary;
 use crate::models::security::permission::PermissionAction;
 use crate::util::security::get_principal_from_headers;
-use async_graphql::Error;
 use axum::body::Body;
 use axum::extract::{Multipart, Query};
 use axum::extract::{Request, State};
@@ -16,20 +14,8 @@ use uuid::Uuid;
 
 #[derive(Debug, Deserialize)]
 pub struct Params {
-    id: Option<String>,
     supplementary_id: String,
     redirect: Option<String>,
-}
-
-async fn get_supplementary(
-    ctx: &BoscaContext,
-    params: &Params,
-    metadata_id: &Uuid,
-) -> Result<Option<CollectionSupplementary>, Error> {
-    ctx.content
-        .collection_supplementary
-        .get_supplementary(metadata_id, &params.supplementary_id)
-        .await
 }
 
 pub async fn collection_download(
@@ -41,28 +27,46 @@ pub async fn collection_download(
     let principal = get_principal_from_headers(&ctx, &headers)
         .await
         .map_err(|_| (StatusCode::UNAUTHORIZED, "Unauthorized".to_owned()))?;
-    let id_str = params.id.as_deref().unwrap_or("");
-    let id =
-        Uuid::parse_str(id_str).map_err(|_| (StatusCode::BAD_REQUEST, "Bad Request".to_owned()))?;
     let url = format!(
         "/files/collection{}",
         request.uri().path_and_query().unwrap()
     );
-    let collection = if ctx.security.verify_signed_url(&url) {
-        let collection = ctx
+    let supplementary_id = Uuid::parse_str(&params.supplementary_id).map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Internal Server Error".to_owned(),
+        )
+    })?;
+    let (collection, supplementary) = if ctx.security.verify_signed_url(&url) {
+        let supplementary = if let Some(supplementary) = ctx
             .content
-            .collections
-            .get(&id)
-            .await
-            .map_err(|_| (StatusCode::FORBIDDEN, "Forbidden".to_owned()))?;
-        if collection.is_none() {
-            return Err((StatusCode::FORBIDDEN, "Forbidden".to_owned()))?;
-        }
-        collection.unwrap()
-    } else {
-        ctx.check_collection_supplementary_action_principal(&principal, &id, PermissionAction::View)
+            .collection_supplementary
+            .get_supplementary(&supplementary_id)
             .await
             .map_err(|_| (StatusCode::FORBIDDEN, "Forbidden".to_owned()))?
+        {
+            supplementary
+        } else {
+            return Err((StatusCode::FORBIDDEN, "Forbidden".to_owned()))?;
+        };
+        let Some(collection) = ctx
+            .content
+            .collections
+            .get(&supplementary.collection_id)
+            .await
+            .map_err(|_| (StatusCode::FORBIDDEN, "Forbidden".to_owned()))?
+        else {
+            return Err((StatusCode::FORBIDDEN, "Forbidden".to_owned()));
+        };
+        (collection, supplementary)
+    } else {
+        ctx.check_collection_supplementary_action_principal(
+            &principal,
+            &supplementary_id,
+            PermissionAction::View,
+        )
+        .await
+        .map_err(|_| (StatusCode::FORBIDDEN, "Forbidden".to_owned()))?
     };
     if collection.deleted
         && !ctx
@@ -72,19 +76,9 @@ pub async fn collection_download(
     {
         return Err((StatusCode::NOT_FOUND, "Not Found".to_owned()))?;
     }
-    let Some(supplementary) = get_supplementary(&ctx, &params, &collection.id)
-        .await
-        .map_err(|_| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Internal Server Error".to_owned(),
-            )
-        })? else {
-        return Err((StatusCode::NOT_FOUND, "Not Found".to_owned()))?;
-    };
     let path = ctx
         .storage
-        .get_collection_path(&collection, &supplementary.key)
+        .get_collection_path(&collection, Some(supplementary.id))
         .await
         .map_err(|_| {
             (
@@ -119,17 +113,16 @@ pub async fn collection_upload(
     let principal = get_principal_from_headers(&ctx, &headers)
         .await
         .map_err(|_| (StatusCode::UNAUTHORIZED, "Unauthorized".to_owned()))?;
-    let id = Uuid::parse_str(params.id.as_ref().unwrap().as_str())
+    let supplementary_id = Uuid::parse_str(&params.supplementary_id)
         .map_err(|_| (StatusCode::BAD_REQUEST, "Bad Request".to_owned()))?;
-    let collection = ctx
-        .check_collection_action_principal(&principal, &id, PermissionAction::Edit)
+    let (collection, supplementary) = ctx
+        .check_collection_supplementary_action_principal(
+            &principal,
+            &supplementary_id,
+            PermissionAction::Edit,
+        )
         .await
         .map_err(|_| (StatusCode::FORBIDDEN, "Forbidden".to_owned()))?;
-    let Some(supplementary) = get_supplementary(&ctx, &params, &collection.id)
-        .await
-        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Error".to_owned()))? else {
-        return Err((StatusCode::NOT_FOUND, "Not Found".to_owned()))?;
-    };
     if let Some(mut field) = multipart
         .next_field()
         .await
@@ -137,7 +130,7 @@ pub async fn collection_upload(
     {
         let path = ctx
             .storage
-            .get_collection_path(&collection, &supplementary.key)
+            .get_collection_path(&collection, Some(supplementary.id))
             .await
             .map_err(|err| (StatusCode::BAD_REQUEST, err.to_string()))?;
         let mut upload = ctx
@@ -188,7 +181,7 @@ pub async fn collection_upload(
         let content_type = field.content_type().unwrap_or("");
         ctx.content
             .metadata_supplementary
-            .set_supplementary_uploaded(&ctx, &id, &supplementary.key, supplementary.plan_id, content_type, len)
+            .set_supplementary_uploaded(&ctx, &supplementary.id, content_type, len)
             .await
             .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Server Error".to_owned()))?;
     }

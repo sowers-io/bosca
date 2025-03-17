@@ -6,6 +6,8 @@ use uuid::Uuid;
 
 #[derive(Clone)]
 pub struct MetadataSupplementary {
+    pub id: Uuid,
+    pub metadata_id: Uuid,
     pub plan_id: Option<Uuid>,
     pub key: String,
     pub name: String,
@@ -21,7 +23,7 @@ pub struct MetadataSupplementary {
 
 #[derive(InputObject)]
 pub struct MetadataSupplementaryInput {
-    pub plan_id: Option<String>,
+    pub plan_id: String,
     pub metadata_id: String,
     pub key: String,
     pub name: String,
@@ -35,6 +37,8 @@ pub struct MetadataSupplementaryInput {
 impl From<&Row> for MetadataSupplementary {
     fn from(row: &Row) -> Self {
         Self {
+            id: row.get("id"),
+            metadata_id: row.get("metadata_id"),
             plan_id: row.get("plan_id"),
             key: row.get("key"),
             name: row.get("name"),

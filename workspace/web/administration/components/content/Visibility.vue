@@ -114,7 +114,7 @@ onUpdated(() => {
             }} will be publicly visible to anonymous users.
           </span>
         </Label>
-        <Switch id="public" v-model:checked="isPublic" />
+        <Switch id="public" v-model:model-value="isPublic" />
       </div>
       <div
         class="flex items-center justify-between space-x-2"
@@ -126,7 +126,7 @@ onUpdated(() => {
             Allow listing the contents of the Collection as an anonymous user.
           </span>
         </Label>
-        <Switch id="publicListing" v-model:checked="isPublicList" />
+        <Switch id="publicListing" v-model:model-value="isPublicList" />
       </div>
       <div
         class="flex items-center justify-between space-x-2"
@@ -139,7 +139,7 @@ onUpdated(() => {
             available to anonymous users.
           </span>
         </Label>
-        <Switch id="publicContent" v-model:checked="isContentPublic" />
+        <Switch id="publicContent" v-model:model-value="isContentPublic" />
       </div>
       <div
         class="flex items-center justify-between space-x-2"
@@ -154,7 +154,7 @@ onUpdated(() => {
         </Label>
         <Switch
           id="publicSupplementary"
-          v-model:checked="isSupplementaryPublic"
+          v-model:model-value="isSupplementaryPublic"
         />
       </div>
     </CardContent>

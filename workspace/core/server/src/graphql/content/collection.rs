@@ -13,6 +13,7 @@ use crate::models::security::permission::PermissionAction;
 use async_graphql::{Context, Error, Object, Union};
 use chrono::{DateTime, Utc};
 use serde_json::Value;
+use uuid::Uuid;
 
 #[derive(Union)]
 enum CollectionItem {
@@ -311,13 +312,17 @@ impl CollectionObject {
         &self,
         ctx: &Context<'_>,
         key: Option<String>,
+        plan_id: Option<String>,
     ) -> Result<Vec<CollectionSupplementaryObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
+
         if let Some(key) = key {
+            ctx.check_collection_supplementary_action(&self.collection, PermissionAction::View).await?;
+            let plan_id = plan_id.map(|p| Uuid::parse_str(&p).unwrap());
             if let Some(supplementary) = ctx
                 .content
                 .collection_supplementary
-                .get_supplementary(&self.collection.id, &key)
+                .get_supplementary_by_key(&self.collection.id, &key, plan_id)
                 .await?
             {
                 return Ok(vec![CollectionSupplementaryObject::new(
@@ -327,6 +332,8 @@ impl CollectionObject {
             }
             return Ok(vec![]);
         }
+
+        ctx.check_collection_supplementary_action(&self.collection, PermissionAction::List).await?;
         Ok(ctx
             .content
             .collection_supplementary

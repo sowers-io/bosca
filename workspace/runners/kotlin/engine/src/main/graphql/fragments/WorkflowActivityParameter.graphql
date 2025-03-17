@@ -1,5 +1,4 @@
 fragment WorkflowActivityParameter on WorkflowActivityParameter {
     name
     value
-    scope
 }

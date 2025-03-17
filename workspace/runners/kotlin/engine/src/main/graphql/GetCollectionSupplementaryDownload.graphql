@@ -1,10 +1,8 @@
-query GetCollectionSupplementaryDownload($id: String!, $key: String!) {
+query GetCollectionSupplementaryDownload($supplementaryId: String!) {
     content {
-        collection(id: $id) {
-            supplementary(key: $key) {
-                content {
-                    ...CollectionSupplementaryContentDownload
-                }
+        collectionSupplementary(supplementaryId: $supplementaryId) {
+            content {
+                ...CollectionSupplementaryContentDownload
             }
         }
     }

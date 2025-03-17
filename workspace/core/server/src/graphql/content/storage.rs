@@ -10,10 +10,10 @@ use object_store::local::LocalFileSystem;
 use object_store::path::Path;
 use object_store::{Error, MultipartUpload, ObjectStore, PutPayload};
 use std::env;
-use std::path::PathBuf;
 use std::str::from_utf8;
 use std::string::ToString;
 use std::sync::Arc;
+use uuid::Uuid;
 
 #[derive(Clone)]
 pub struct ObjectStorage {
@@ -36,20 +36,12 @@ impl ObjectStorage {
     pub async fn get_metadata_path(
         &self,
         metadata: &Metadata,
-        supplementary: Option<String>,
+        supplementary_id: Option<Uuid>,
     ) -> Result<Path, object_store::path::Error> {
-        if supplementary.is_some() {
-            let key = supplementary.unwrap();
-            if key.contains('/') || key.contains('\\') || key.contains("..") {
-                let buf = PathBuf::from(format!(
-                    "metadata/{}/{}/supplementary/{}",
-                    metadata.id, metadata.version, key,
-                ));
-                return Err(object_store::path::Error::InvalidPath { path: buf });
-            }
+        if let Some(supplementary_id) = supplementary_id {
             Path::parse(format!(
                 "metadata/{}/{}/supplementary/{}",
-                metadata.id, metadata.version, key,
+                metadata.id, metadata.version, supplementary_id,
             ))
         } else {
             Path::parse(format!(
@@ -62,20 +54,16 @@ impl ObjectStorage {
     pub async fn get_collection_path(
         &self,
         collection: &Collection,
-        supplementary: &String,
+        supplementary_id: Option<Uuid>,
     ) -> Result<Path, object_store::path::Error> {
-        let key = supplementary;
-        if key.contains('/') || key.contains('\\') || key.contains("..") {
-            let buf = PathBuf::from(format!(
+        if let Some(supplementary_id) = supplementary_id {
+            Path::parse(format!(
                 "collection/{}/supplementary/{}",
-                collection.id, key,
-            ));
-            return Err(object_store::path::Error::InvalidPath { path: buf });
+                collection.id, supplementary_id,
+            ))
+        } else {
+            Path::parse(format!("collection/{}/content", collection.id))
         }
-        Path::parse(format!(
-            "collection/{}/supplementary/{}",
-            collection.id, key,
-        ))
     }
 
     pub async fn get(&self, location: &Path) -> Result<String, Error> {
@@ -133,7 +121,7 @@ impl ObjectStorage {
         datastore: &SecurityDataStore,
         principal: &Principal,
         metadata: &Metadata,
-        supplementary: Option<String>,
+        supplementary: Option<Uuid>,
     ) -> Result<SignedUrl, Error> {
         // match &self.interface.as_ref() {
         //     ObjectStorageInterface::FileSystem(_) => {
@@ -216,7 +204,7 @@ impl ObjectStorage {
         datasource: &SecurityDataStore,
         principal: &Principal,
         metadata: &Metadata,
-        supplementary: Option<String>,
+        supplementary: Option<Uuid>,
     ) -> Result<SignedUrl, Error> {
         // match &self.interface.as_ref() {
         //     ObjectStorageInterface::FileSystem(_) => {
@@ -299,7 +287,7 @@ impl ObjectStorage {
         datastore: &SecurityDataStore,
         principal: &Principal,
         collection: &Collection,
-        supplementary: String,
+        supplementary: &Uuid,
     ) -> Result<SignedUrl, Error> {
         // match &self.interface.as_ref() {
         //     ObjectStorageInterface::FileSystem(_) => {
@@ -374,7 +362,7 @@ impl ObjectStorage {
         datasource: &SecurityDataStore,
         principal: &Principal,
         collection: &Collection,
-        supplementary: String,
+        supplementary: &Uuid,
     ) -> Result<SignedUrl, Error> {
         // match &self.interface.as_ref() {
         //     ObjectStorageInterface::FileSystem(_) => {

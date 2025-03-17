@@ -23,7 +23,7 @@ class DownloadSourceUrl(client: Client) : Activity(client) {
     override suspend fun execute(context: ActivityContext, job: WorkflowJob) {
         if (job.metadata?.metadata?.uploaded != null) return
         job.metadata?.metadata?.source?.sourceUrl?.let {
-            val file = getUrlFile(context, job, it)
+            val file = downloadToFile(context, job, it)
             setContent(context, job, file)
         }
     }

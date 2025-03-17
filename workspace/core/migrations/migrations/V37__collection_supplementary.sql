@@ -1,7 +1,6 @@
-create type activity_parameter_scope as enum ('plan', 'content');
-
 create table collection_supplementary
 (
+    id                uuid                     not null default gen_random_uuid(),
     collection_id     uuid                     not null,
     key               varchar                  not null,
     plan_id           uuid,
@@ -14,35 +13,42 @@ create table collection_supplementary
     source_identifier varchar,
     uploaded          timestamp with time zone,
     attributes        jsonb,
-    primary key (collection_id, key, plan_id),
+    primary key (id),
     foreign key (collection_id) references collections (id) on delete cascade,
-    foreign key (source_id) references sources (id)
+    foreign key (source_id) references sources (id),
+    unique (collection_id, key, plan_id)
 );
+
+drop table metadata_supplementary_traits;
 
 alter table metadata_supplementary
     drop constraint metadata_supplementary_pkey cascade;
 alter table metadata_supplementary
-    add column plan_id uuid;
-alter table metadata_supplementary_traits
+    add column id uuid not null default gen_random_uuid();
+alter table metadata_supplementary
     add column plan_id uuid;
 alter table metadata_supplementary
-    add primary key (metadata_id, key, plan_id);
-alter table metadata_supplementary_traits
-    add foreign key (metadata_id, key, plan_id) references metadata_supplementary (metadata_id, key, plan_id) on delete cascade;
+    add primary key (id);
+alter table metadata_supplementary
+    add unique (metadata_id, key, plan_id);
+
+create table metadata_supplementary_traits
+(
+    id       uuid    not null,
+    trait_id varchar not null,
+    primary key (id),
+    foreign key (id) references metadata_supplementary (id) on delete cascade,
+    foreign key (trait_id) references traits (id) on delete cascade
+);
 
 create table collection_supplementary_traits
 (
-    collection_id uuid    not null,
-    key           varchar not null,
-    plan_id       uuid,
-    trait_id      varchar not null,
-    primary key (collection_id, key, trait_id),
-    foreign key (collection_id, key, plan_id) references collection_supplementary (collection_id, key, plan_id) on delete cascade,
+    id       uuid    not null,
+    trait_id varchar not null,
+    primary key (id),
+    foreign key (id) references collection_supplementary (id) on delete cascade,
     foreign key (trait_id) references traits (id) on delete cascade
 );
 
 alter table collections
     add column public_supplementary boolean not null default false;
-
-alter table activity_outputs add column scope activity_parameter_scope not null default 'content';
-alter table workflow_activity_outputs add column scope activity_parameter_scope not null default 'content';

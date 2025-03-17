@@ -27,6 +27,10 @@ impl WorkflowJobObject {
 
 #[Object(name = "WorkflowJob")]
 impl WorkflowJobObject {
+    async fn parent(&self) -> Option<WorkflowJobIdObject> {
+        self.job.parent.as_ref().map(|p| WorkflowJobIdObject::new(p.clone()))
+    }
+
     async fn plan_id(&self) -> WorkflowExecutionIdObject {
         WorkflowExecutionIdObject::new(self.job.plan_id.clone())
     }

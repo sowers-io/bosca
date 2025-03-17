@@ -1,7 +1,7 @@
-mutation SetMetadataSupplementaryTextContents($id: String!, $key: String!, $contentType: String!, $content: String!) {
+mutation SetMetadataSupplementaryTextContents($supplementaryId: String!, $contentType: String!, $content: String!) {
     content {
         metadata {
-            setSupplementaryTextContents(id: $id, key: $key, contentType: $contentType, content: $content)
+            setSupplementaryTextContents(supplementaryId: $supplementaryId, contentType: $contentType, content: $content)
         }
     }
 }

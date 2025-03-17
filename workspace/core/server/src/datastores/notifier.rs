@@ -17,7 +17,8 @@ pub struct Notifier {
 #[derive(SimpleObject, Serialize, Deserialize, Debug)]
 pub struct SupplementaryIdObject {
     pub id: String,
-    pub supplementary: String,
+    pub content_id: String,
+    pub key: String,
     pub plan_id: Option<String>
 }
 
@@ -260,14 +261,13 @@ impl Notifier {
         Ok(())
     }
 
-    pub async fn metadata_supplementary_changed(&self, id: &Uuid, key: &str, plan_id: Option<String>) -> async_graphql::Result<(), Error> {
+    pub async fn metadata_supplementary_changed(&self, supplementary_id: &Uuid, metadata_id: &Uuid, key: &str, plan_id: Option<String>) -> async_graphql::Result<(), Error> {
         let connection = self.redis.get().await?;
         let mut conn = connection.get_connection().await?;
-        let id = id.to_string();
-        let supplementary_id = key.to_string();
         let publish = SupplementaryIdObject {
-            id,
-            supplementary: supplementary_id,
+            id: supplementary_id.to_string(),
+            content_id: metadata_id.to_string(),
+            key: key.to_string(),
             plan_id
         };
         let data = serde_json::to_string(&publish)?;
@@ -285,15 +285,14 @@ impl Notifier {
         Ok(())
     }
 
-    pub async fn collection_supplementary_changed(&self, id: &Uuid, key: &str, plan_id: Option<String>) -> async_graphql::Result<(), Error> {
+    pub async fn collection_supplementary_changed(&self, supplementary_id: &Uuid, collection_id: &Uuid, key: &str, plan_id: Option<Uuid>) -> async_graphql::Result<(), Error> {
         let connection = self.redis.get().await?;
         let mut conn = connection.get_connection().await?;
-        let id = id.to_string();
-        let supplementary_id = key.to_string();
         let publish = SupplementaryIdObject {
-            id,
-            supplementary: supplementary_id,
-            plan_id
+            id: supplementary_id.to_string(),
+            content_id: collection_id.to_string(),
+            key: key.to_string(),
+            plan_id: plan_id.map(|id| id.to_string())
         };
         let data = serde_json::to_string(&publish)?;
         conn.publish::<&str, String, ()>("collection_supplementary_changes", data)

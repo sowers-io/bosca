@@ -1,7 +1,7 @@
-mutation SetCollectionSupplementaryContents($id: String!, $key: String!, $contentType: String!, $file: Upload!) {
+mutation SetCollectionSupplementaryContents($supplementaryId: String!, $contentType: String!, $file: Upload!) {
     content {
         collection {
-            setSupplementaryContents(id: $id, key: $key, contentType: $contentType, file: $file)
+            setSupplementaryContents(supplementaryId: $supplementaryId, contentType: $contentType, file: $file)
         }
     }
 }

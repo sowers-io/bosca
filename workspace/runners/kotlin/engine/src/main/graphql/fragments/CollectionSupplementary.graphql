@@ -1,4 +1,6 @@
 fragment CollectionSupplementary on CollectionSupplementary {
+    id
+    planId
     key
     name
     uploaded

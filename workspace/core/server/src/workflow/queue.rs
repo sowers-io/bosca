@@ -453,7 +453,7 @@ impl JobQueues {
         let Some(job_id) = self.dequeue_job(queue).await? else {
             return Ok(None);
         };
-        if let Some(plan) = self.get_plan_by_job(&job_id).await? {
+        if let Some(mut plan) = self.get_plan_by_job(&job_id).await? {
             if plan.finished.is_some() {
                 error!("invalid plan state");
                 let mut txn = RedisTransaction::new();
@@ -464,7 +464,7 @@ impl JobQueues {
                 txn.execute(&self.redis).await?;
                 return Ok(None);
             }
-            let job = plan.jobs.get(job_id.index as usize).unwrap().clone();
+            let mut job = plan.jobs.get_mut(job_id.index as usize).unwrap().clone();
             if job.complete {
                 error!("invalid job state");
                 let mut txn = RedisTransaction::new();
@@ -472,6 +472,7 @@ impl JobQueues {
                 txn.execute(&self.redis).await?;
                 return Ok(None);
             }
+            job.parent = plan.parent;
             return Ok(Some(job));
         }
         Ok(None)

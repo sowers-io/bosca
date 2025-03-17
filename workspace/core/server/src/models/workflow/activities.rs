@@ -13,12 +13,6 @@ pub enum ActivityParameterType {
     SupplementaryArray,
 }
 
-#[derive(Enum, Debug, Copy, Clone, Eq, PartialEq, Serialize, Deserialize)]
-pub enum ActivityParameterScope {
-    Plan,
-    Content,
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Activity {
     pub id: String,
@@ -53,7 +47,6 @@ pub struct ActivityInput {
 pub struct ActivityParameter {
     pub name: String,
     pub parameter_type: ActivityParameterType,
-    pub scope: ActivityParameterScope,
 }
 
 #[derive(InputObject)]
@@ -61,7 +54,6 @@ pub struct ActivityParameterInput {
     pub name: String,
     #[graphql(name = "type")]
     pub parameter_type: ActivityParameterType,
-    pub scope: Option<ActivityParameterScope>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -118,14 +110,12 @@ pub struct WorkflowActivityInput {
 pub struct WorkflowActivityParameter {
     pub name: String,
     pub value: String,
-    pub scope: ActivityParameterScope,
 }
 
 #[derive(Serialize, Deserialize, InputObject)]
 pub struct WorkflowActivityParameterInput {
     pub name: String,
     pub value: String,
-    pub scope: Option<ActivityParameterScope>,
 }
 
 impl From<&Row> for WorkflowActivity {
@@ -173,9 +163,6 @@ impl From<&Row> for ActivityParameter {
         Self {
             name: row.get("name"),
             parameter_type: row.get("type"),
-            scope: row.try_get("scope").unwrap_or(
-                ActivityParameterScope::Content,
-            ),
         }
     }
 }
@@ -185,9 +172,6 @@ impl From<&Row> for WorkflowActivityParameter {
         Self {
             name: row.get("name"),
             value: row.get("value"),
-            scope: row.try_get("scope").unwrap_or(
-                ActivityParameterScope::Content,
-            ),
         }
     }
 }
@@ -259,40 +243,3 @@ impl ToSql for ActivityParameterType {
     to_sql_checked!();
 }
 
-impl<'a> FromSql<'a> for ActivityParameterScope {
-    fn from_sql(
-        _: &Type,
-        raw: &'a [u8],
-    ) -> Result<ActivityParameterScope, Box<dyn std::error::Error + Sync + Send>> {
-        let e: String = String::from_utf8_lossy(raw).parse().unwrap();
-        match e.as_str() {
-            "content" => Ok(ActivityParameterScope::Content),
-            "plan" => Ok(ActivityParameterScope::Plan),
-            _ => Ok(ActivityParameterScope::Plan),
-        }
-    }
-
-    fn accepts(ty: &Type) -> bool {
-        ty.name() == "activity_parameter_scope"
-    }
-}
-
-impl ToSql for ActivityParameterScope {
-    fn to_sql(
-        &self,
-        _: &Type,
-        w: &mut BytesMut,
-    ) -> Result<IsNull, Box<dyn std::error::Error + Sync + Send>> {
-        match *self {
-            ActivityParameterScope::Plan => w.put_slice("plan".as_ref()),
-            ActivityParameterScope::Content => w.put_slice("content".as_ref()),
-        }
-        Ok(IsNull::No)
-    }
-
-    fn accepts(ty: &Type) -> bool {
-        ty.name() == "activity_parameter_scope"
-    }
-
-    to_sql_checked!();
-}

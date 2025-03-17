@@ -13,6 +13,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.json.JsonObject
 import java.text.SimpleDateFormat
 import java.time.OffsetDateTime
 import java.time.format.DateTimeParseException
@@ -66,8 +67,14 @@ class JSONata(client: Client) : Activity(client) {
 
     override suspend fun execute(context: ActivityContext, job: WorkflowJob) {
         val configuration = getConfiguration<JSONataConfiguration>(job)
-        val file = if (hasInputs(job)) getInputSupplementaryFile(context, job, INPUT_NAME) else getContentFile(context, job)
-        val data = withContext(Dispatchers.IO) { file.readText().parseToJsonElement().toAny() }
+        val file = if (hasInputs(job)) {
+            getInputSupplementaryFile(context, job, INPUT_NAME)
+        } else if (job.metadata?.metadata?.content?.metadataContent?.type?.startsWith("text/") == true || job.metadata?.metadata?.content?.metadataContent?.type?.equals("application/json") == true) {
+            getContentFile(context, job)
+        } else {
+            null
+        }
+        val data = withContext(Dispatchers.IO) { file?.readText()?.parseToJsonElement()?.toAny() ?: "{}".parseToJsonElement().toAny() }
         val expression = Jsonata.jsonata(configuration.expression)
         expression.registerFunction("parseDate", ::parseDate)
         val result = expression.evaluate(data).toJsonElement()

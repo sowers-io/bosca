@@ -4,6 +4,7 @@ import kotlinx.serialization.json.*
 
 fun JsonElement.toAny(): Any? {
     return when (this) {
+        is JsonNull -> null
         is JsonObject -> mapValues { it.value.toAny() }
         is JsonArray -> toAnyList()
         is JsonPrimitive -> when {
@@ -16,7 +17,6 @@ fun JsonElement.toAny(): Any? {
             else -> null
         }
 
-        JsonNull -> null
         else -> error("Unsupported JSON element type: $this")
     }
 }

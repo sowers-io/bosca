@@ -101,6 +101,7 @@ pub struct WorkflowExecutionPlan {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorkflowJob {
+    pub parent: Option<WorkflowJobId>,
     pub plan_id: WorkflowExecutionId,
     pub id: WorkflowJobId,
     pub workflow_id: String,

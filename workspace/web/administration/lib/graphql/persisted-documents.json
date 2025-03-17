@@ -109,7 +109,7 @@
   "a21107cb30091749111a8aa5859b466b434faaa5": "subscription OnActivityChanged { activity }",
   "8df75ee035091a6c9a05d14620023f173f978ed7": "subscription OnCollectionChanged { collection }",
   "10be661596d115ada01a49c268393ea67f3de400": "subscription OnMetadataChanged { metadata }",
-  "376c58766fe2c4bf0d34d43f3df71c754a7064a8": "subscription OnMetadataSupplementaryChanged { metadataSupplementary { id supplementary } }",
+  "290ed9bc573b64fc7659dfd6528c6f1f1491deb9": "subscription OnMetadataSupplementaryChanged { metadataSupplementary { contentId id key planId } }",
   "98b6743a46c52c2f176940255191b246770ea4b7": "subscription OnModelChanged { model }",
   "e0991d6d11d4c404bf7367c164adf7697ae3968c": "subscription OnPromptChanged { prompt }",
   "4bd4a277c311c9de66034545ac42f39f3a14e53a": "subscription OnStateChanged { state }",

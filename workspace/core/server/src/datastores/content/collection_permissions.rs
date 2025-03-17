@@ -159,7 +159,7 @@ impl CollectionPermissionsDataStore {
         if collection.deleted {
             return Ok(false);
         }
-        if action == PermissionAction::View
+        if (action == PermissionAction::List || action == PermissionAction::View)
             && collection.public_supplementary
             && collection.workflow_state_id == "published"
             && !collection.deleted

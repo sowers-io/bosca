@@ -246,6 +246,7 @@ export type CollectionParentCollectionsArgs = {
 
 export type CollectionSupplementaryArgs = {
   key?: InputMaybe<Scalars['String']['input']>;
+  planId?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type CollectionChildInput = {
@@ -380,7 +381,6 @@ export type CollectionMutationDeletePermissionArgs = {
 
 export type CollectionMutationDeleteSupplementaryArgs = {
   id: Scalars['String']['input'];
-  key: Scalars['String']['input'];
 };
 
 
@@ -459,24 +459,21 @@ export type CollectionMutationSetReadyArgs = {
 export type CollectionMutationSetSupplementaryContentsArgs = {
   contentType: Scalars['String']['input'];
   file: Scalars['Upload']['input'];
-  id: Scalars['String']['input'];
-  key: Scalars['String']['input'];
+  supplementaryId: Scalars['String']['input'];
 };
 
 
 export type CollectionMutationSetSupplementaryTextContentsArgs = {
   content: Scalars['String']['input'];
   contentType: Scalars['String']['input'];
-  id: Scalars['String']['input'];
-  key: Scalars['String']['input'];
+  supplementaryId: Scalars['String']['input'];
 };
 
 
 export type CollectionMutationSetSupplementaryUploadedArgs = {
-  colelctionId: Scalars['String']['input'];
   contentType: Scalars['String']['input'];
   len: Scalars['Int']['input'];
-  supplementaryKey: Scalars['String']['input'];
+  supplementaryId: Scalars['String']['input'];
 };
 
 
@@ -495,9 +492,11 @@ export type CollectionSupplementary = {
   collectionId: Scalars['String']['output'];
   content: CollectionSupplementaryContent;
   created: Scalars['String']['output'];
+  id: Scalars['String']['output'];
   key: Scalars['String']['output'];
   modified: Scalars['String']['output'];
   name: Scalars['String']['output'];
+  planId?: Maybe<Scalars['String']['output']>;
   source: CollectionSupplementarySource;
   uploaded?: Maybe<Scalars['String']['output']>;
 };
@@ -524,6 +523,7 @@ export type CollectionSupplementaryInput = {
   contentType: Scalars['String']['input'];
   key: Scalars['String']['input'];
   name: Scalars['String']['input'];
+  planId: Scalars['String']['input'];
   sourceId?: InputMaybe<Scalars['String']['input']>;
   sourceIdentifier?: InputMaybe<Scalars['String']['input']>;
 };
@@ -645,6 +645,7 @@ export type Content = {
   __typename?: 'Content';
   categories: Categories;
   collection?: Maybe<Collection>;
+  collectionSupplementary?: Maybe<CollectionSupplementary>;
   collectionTemplates: CollectionTemplates;
   documentTemplates: DocumentTemplates;
   findCollections: Array<Collection>;
@@ -661,6 +662,11 @@ export type Content = {
 
 export type ContentCollectionArgs = {
   id?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type ContentCollectionSupplementaryArgs = {
+  supplementaryId: Scalars['String']['input'];
 };
 
 
@@ -691,9 +697,7 @@ export type ContentMetadataArgs = {
 
 
 export type ContentMetadataSupplementaryArgs = {
-  id: Scalars['String']['input'];
-  key: Scalars['String']['input'];
-  version?: InputMaybe<Scalars['Int']['input']>;
+  supplementaryId: Scalars['String']['input'];
 };
 
 
@@ -1041,6 +1045,7 @@ export type MetadataRelationshipsArgs = {
 
 export type MetadataSupplementaryArgs = {
   key?: InputMaybe<Scalars['String']['input']>;
+  planId?: InputMaybe<Scalars['String']['input']>;
 };
 
 export type MetadataChildInput = {
@@ -1107,6 +1112,7 @@ export type MetadataMutation = {
   deleteRelationship: Scalars['Boolean']['output'];
   deleteSupplementary: Scalars['Boolean']['output'];
   deleteTrait: Array<WorkflowExecutionPlan>;
+  detachSupplementary: Scalars['Boolean']['output'];
   edit: Metadata;
   editRelationship: Scalars['Boolean']['output'];
   permanentlyDelete: Scalars['Boolean']['output'];
@@ -1234,13 +1240,17 @@ export type MetadataMutationDeleteRelationshipArgs = {
 
 export type MetadataMutationDeleteSupplementaryArgs = {
   id: Scalars['String']['input'];
-  key: Scalars['String']['input'];
 };
 
 
 export type MetadataMutationDeleteTraitArgs = {
   metadataId: Scalars['String']['input'];
   traitId: Scalars['String']['input'];
+};
+
+
+export type MetadataMutationDetachSupplementaryArgs = {
+  id: Scalars['String']['input'];
 };
 
 
@@ -1336,24 +1346,21 @@ export type MetadataMutationSetPublicSupplementaryArgs = {
 export type MetadataMutationSetSupplementaryContentsArgs = {
   contentType: Scalars['String']['input'];
   file: Scalars['Upload']['input'];
-  id: Scalars['String']['input'];
-  key: Scalars['String']['input'];
+  supplementaryId: Scalars['String']['input'];
 };
 
 
 export type MetadataMutationSetSupplementaryTextContentsArgs = {
   content: Scalars['String']['input'];
   contentType: Scalars['String']['input'];
-  id: Scalars['String']['input'];
-  key: Scalars['String']['input'];
+  supplementaryId: Scalars['String']['input'];
 };
 
 
 export type MetadataMutationSetSupplementaryUploadedArgs = {
   contentType: Scalars['String']['input'];
   len: Scalars['Int']['input'];
-  metadataId: Scalars['String']['input'];
-  supplementaryKey: Scalars['String']['input'];
+  supplementaryId: Scalars['String']['input'];
 };
 
 
@@ -1410,10 +1417,12 @@ export type MetadataSupplementary = {
   attributes?: Maybe<Scalars['JSON']['output']>;
   content: MetadataSupplementaryContent;
   created: Scalars['String']['output'];
+  id: Scalars['String']['output'];
   key: Scalars['String']['output'];
   metadataId: Scalars['String']['output'];
   modified: Scalars['String']['output'];
   name: Scalars['String']['output'];
+  planId?: Maybe<Scalars['String']['output']>;
   source: MetadataSupplementarySource;
   uploaded?: Maybe<Scalars['String']['output']>;
 };
@@ -1440,6 +1449,7 @@ export type MetadataSupplementaryInput = {
   key: Scalars['String']['input'];
   metadataId: Scalars['String']['input'];
   name: Scalars['String']['input'];
+  planId: Scalars['String']['input'];
   sourceId?: InputMaybe<Scalars['String']['input']>;
   sourceIdentifier?: InputMaybe<Scalars['String']['input']>;
 };
@@ -2055,8 +2065,10 @@ export type Subscription = {
 
 export type SupplementaryIdObject = {
   __typename?: 'SupplementaryIdObject';
+  contentId: Scalars['String']['output'];
   id: Scalars['String']['output'];
-  supplementary: Scalars['String']['output'];
+  key: Scalars['String']['output'];
+  planId?: Maybe<Scalars['String']['output']>;
 };
 
 export type TemplateAttribute = {
@@ -2350,6 +2362,7 @@ export type WorkflowJob = {
   metadata?: Maybe<Metadata>;
   metadataVersion?: Maybe<Scalars['Int']['output']>;
   models: Array<WorkflowActivityModel>;
+  parent?: Maybe<WorkflowJobId>;
   planId: WorkflowExecutionId;
   profile?: Maybe<Profile>;
   prompts: Array<WorkflowActivityPrompt>;
@@ -3473,7 +3486,7 @@ export type OnMetadataChangedSubscription = { __typename?: 'Subscription', metad
 export type OnMetadataSupplementaryChangedSubscriptionVariables = Exact<{ [key: string]: never; }>;
 
 
-export type OnMetadataSupplementaryChangedSubscription = { __typename?: 'Subscription', metadataSupplementary: { __typename?: 'SupplementaryIdObject', id: string, supplementary: string } };
+export type OnMetadataSupplementaryChangedSubscription = { __typename?: 'Subscription', metadataSupplementary: { __typename?: 'SupplementaryIdObject', contentId: string, id: string, key: string, planId?: string | null } };
 
 export type OnModelChangedSubscriptionVariables = Exact<{ [key: string]: never; }>;
 
@@ -3977,7 +3990,7 @@ export const NextJobDocument = {"__meta__":{"hash":"7cc2d04eec33e14909742f298604
 export const OnActivityChangedDocument = {"__meta__":{"hash":"a21107cb30091749111a8aa5859b466b434faaa5"},"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"subscription","name":{"kind":"Name","value":"OnActivityChanged"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"activity"}}]}}]} as unknown as DocumentNode<OnActivityChangedSubscription, OnActivityChangedSubscriptionVariables>;
 export const OnCollectionChangedDocument = {"__meta__":{"hash":"8df75ee035091a6c9a05d14620023f173f978ed7"},"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"subscription","name":{"kind":"Name","value":"OnCollectionChanged"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"collection"}}]}}]} as unknown as DocumentNode<OnCollectionChangedSubscription, OnCollectionChangedSubscriptionVariables>;
 export const OnMetadataChangedDocument = {"__meta__":{"hash":"10be661596d115ada01a49c268393ea67f3de400"},"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"subscription","name":{"kind":"Name","value":"OnMetadataChanged"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"metadata"}}]}}]} as unknown as DocumentNode<OnMetadataChangedSubscription, OnMetadataChangedSubscriptionVariables>;
-export const OnMetadataSupplementaryChangedDocument = {"__meta__":{"hash":"376c58766fe2c4bf0d34d43f3df71c754a7064a8"},"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"subscription","name":{"kind":"Name","value":"OnMetadataSupplementaryChanged"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"metadataSupplementary"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"supplementary"}}]}}]}}]} as unknown as DocumentNode<OnMetadataSupplementaryChangedSubscription, OnMetadataSupplementaryChangedSubscriptionVariables>;
+export const OnMetadataSupplementaryChangedDocument = {"__meta__":{"hash":"290ed9bc573b64fc7659dfd6528c6f1f1491deb9"},"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"subscription","name":{"kind":"Name","value":"OnMetadataSupplementaryChanged"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"metadataSupplementary"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"contentId"}},{"kind":"Field","name":{"kind":"Name","value":"id"}},{"kind":"Field","name":{"kind":"Name","value":"key"}},{"kind":"Field","name":{"kind":"Name","value":"planId"}}]}}]}}]} as unknown as DocumentNode<OnMetadataSupplementaryChangedSubscription, OnMetadataSupplementaryChangedSubscriptionVariables>;
 export const OnModelChangedDocument = {"__meta__":{"hash":"98b6743a46c52c2f176940255191b246770ea4b7"},"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"subscription","name":{"kind":"Name","value":"OnModelChanged"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"model"}}]}}]} as unknown as DocumentNode<OnModelChangedSubscription, OnModelChangedSubscriptionVariables>;
 export const OnPromptChangedDocument = {"__meta__":{"hash":"e0991d6d11d4c404bf7367c164adf7697ae3968c"},"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"subscription","name":{"kind":"Name","value":"OnPromptChanged"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"prompt"}}]}}]} as unknown as DocumentNode<OnPromptChangedSubscription, OnPromptChangedSubscriptionVariables>;
 export const OnStateChangedDocument = {"__meta__":{"hash":"4bd4a277c311c9de66034545ac42f39f3a14e53a"},"kind":"Document","definitions":[{"kind":"OperationDefinition","operation":"subscription","name":{"kind":"Name","value":"OnStateChanged"},"selectionSet":{"kind":"SelectionSet","selections":[{"kind":"Field","name":{"kind":"Name","value":"state"}}]}}]} as unknown as DocumentNode<OnStateChangedSubscription, OnStateChangedSubscriptionVariables>;

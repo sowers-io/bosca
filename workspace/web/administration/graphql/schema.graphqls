@@ -87,7 +87,7 @@ type Collection {
     publicSupplementary: Boolean!
     ready: DateTime
     slug: String
-    supplementary(key: String): [CollectionSupplementary!]!
+    supplementary(key: String, planId: String): [CollectionSupplementary!]!
     systemAttributes: JSON
     templateMetadata: Metadata
     traitIds: [String!]!
@@ -112,7 +112,7 @@ type CollectionMutation {
     delete(id: String!, recursive: Boolean): Boolean!
     deleteMetadataRelationship(id: String!, metadataId: String!, relationship: String!): Boolean!
     deletePermission(permission: PermissionInput!): Permission!
-    deleteSupplementary(id: String!, key: String!): Boolean!
+    deleteSupplementary(id: String!): Boolean!
     edit(collection: CollectionInput!, id: String!): Collection!
     editMetadataRelationship(relationship: CollectionMetadataRelationshipInput!): Boolean!
     permanentlyDelete(collectionId: String!, recursive: Boolean): Boolean!
@@ -125,9 +125,9 @@ type CollectionMutation {
     setPublicList(id: String!, public: Boolean!): Collection!
     setPublicSupplementary(id: String!, public: Boolean!): Collection!
     setReady(id: String!): Boolean!
-    setSupplementaryContents(contentType: String!, file: Upload!, id: String!, key: String!): Boolean!
-    setSupplementaryTextContents(content: String!, contentType: String!, id: String!, key: String!): Boolean!
-    setSupplementaryUploaded(colelctionId: String!, contentType: String!, len: Int!, supplementaryKey: String!): Boolean!
+    setSupplementaryContents(contentType: String!, file: Upload!, supplementaryId: String!): Boolean!
+    setSupplementaryTextContents(content: String!, contentType: String!, supplementaryId: String!): Boolean!
+    setSupplementaryUploaded(contentType: String!, len: Int!, supplementaryId: String!): Boolean!
     setWorkflowState(state: CollectionWorkflowState!): Boolean!
     setWorkflowStateComplete(state: CollectionWorkflowCompleteState!): Boolean!
 }
@@ -137,9 +137,11 @@ type CollectionSupplementary {
     collectionId: String!
     content: CollectionSupplementaryContent!
     created: String!
+    id: String!
     key: String!
     modified: String!
     name: String!
+    planId: String
     source: CollectionSupplementarySource!
     uploaded: String
 }
@@ -209,6 +211,7 @@ type ConfigurationsMutation {
 type Content {
     categories: Categories!
     collection(id: String): Collection
+    collectionSupplementary(supplementaryId: String!): CollectionSupplementary
     collectionTemplates: CollectionTemplates!
     documentTemplates: DocumentTemplates!
     findCollections(query: FindQueryInput!): [Collection!]!
@@ -217,7 +220,7 @@ type Content {
     findMetadataCount(query: FindQueryInput!): Int!
     guideTemplates: GuideTemplates!
     metadata(id: String!, version: Int): Metadata
-    metadataSupplementary(id: String!, key: String!, version: Int): MetadataSupplementary
+    metadataSupplementary(supplementaryId: String!): MetadataSupplementary
     slug(slug: String!): ContentItem
     sources: Sources!
 }
@@ -378,7 +381,7 @@ type Metadata {
     relationships(filter: [String!]): [MetadataRelationship!]!
     slug: String
     source: MetadataSource!
-    supplementary(key: String): [MetadataSupplementary!]!
+    supplementary(key: String, planId: String): [MetadataSupplementary!]!
     systemAttributes: JSON
     traitIds: [String!]!
     type: MetadataType!
@@ -417,8 +420,9 @@ type MetadataMutation {
     deleteContent(metadataId: String!): Boolean!
     deletePermission(permission: PermissionInput!): Permission!
     deleteRelationship(id1: String!, id2: String!, relationship: String!): Boolean!
-    deleteSupplementary(id: String!, key: String!): Boolean!
+    deleteSupplementary(id: String!): Boolean!
     deleteTrait(metadataId: String!, traitId: String!): [WorkflowExecutionPlan!]!
+    detachSupplementary(id: String!): Boolean!
     edit(id: String!, metadata: MetadataInput!): Metadata!
     editRelationship(relationship: MetadataRelationshipInput!): Boolean!
     permanentlyDelete(metadataId: String!): Boolean!
@@ -433,9 +437,9 @@ type MetadataMutation {
     setPublic(id: String!, public: Boolean!): Metadata!
     setPublicContent(id: String!, public: Boolean!): Metadata!
     setPublicSupplementary(id: String!, public: Boolean!): Metadata!
-    setSupplementaryContents(contentType: String!, file: Upload!, id: String!, key: String!): Boolean!
-    setSupplementaryTextContents(content: String!, contentType: String!, id: String!, key: String!): Boolean!
-    setSupplementaryUploaded(contentType: String!, len: Int!, metadataId: String!, supplementaryKey: String!): Boolean!
+    setSupplementaryContents(contentType: String!, file: Upload!, supplementaryId: String!): Boolean!
+    setSupplementaryTextContents(content: String!, contentType: String!, supplementaryId: String!): Boolean!
+    setSupplementaryUploaded(contentType: String!, len: Int!, supplementaryId: String!): Boolean!
     setWorkflowState(state: MetadataWorkflowState!): Boolean!
     setWorkflowStateComplete(state: MetadataWorkflowCompleteState!): Boolean!
 }
@@ -462,10 +466,12 @@ type MetadataSupplementary {
     attributes: JSON
     content: MetadataSupplementaryContent!
     created: String!
+    id: String!
     key: String!
     metadataId: String!
     modified: String!
     name: String!
+    planId: String
     source: MetadataSupplementarySource!
     uploaded: String
 }
@@ -752,8 +758,10 @@ type Subscription {
 }
 
 type SupplementaryIdObject {
+    contentId: String!
     id: String!
-    supplementary: String!
+    key: String!
+    planId: String
 }
 
 type TemplateAttribute {
@@ -900,6 +908,7 @@ type WorkflowJob {
     metadata: Metadata
     metadataVersion: Int
     models: [WorkflowActivityModel!]!
+    parent: WorkflowJobId
     planId: WorkflowExecutionId!
     profile: Profile
     prompts: [WorkflowActivityPrompt!]!
@@ -1187,6 +1196,7 @@ input CollectionSupplementaryInput {
     contentType: String!
     key: String!
     name: String!
+    planId: String!
     sourceId: String
     sourceIdentifier: String
 }
@@ -1366,6 +1376,7 @@ input MetadataSupplementaryInput {
     key: String!
     metadataId: String!
     name: String!
+    planId: String!
     sourceId: String
     sourceIdentifier: String
 }

@@ -3,6 +3,7 @@ use crate::models::content::metadata_supplementary::MetadataSupplementary;
 use crate::models::security::permission::PermissionAction;
 use crate::models::workflow::enqueue_request::EnqueueRequest;
 use crate::util::security::get_principal_from_headers;
+use crate::workflow::core_workflow_ids::METADATA_PROCESS;
 use async_graphql::Error;
 use axum::body::Body;
 use axum::extract::{Multipart, Query};
@@ -14,13 +15,11 @@ use object_store::MultipartUpload;
 use serde::Deserialize;
 use std::io::Write;
 use uuid::Uuid;
-use crate::workflow::core_workflow_ids::METADATA_PROCESS;
 
 #[derive(Debug, Deserialize)]
 pub struct Params {
     id: Option<String>,
     supplementary_id: Option<String>,
-    plan_id: Option<String>,
     ready: Option<bool>,
     redirect: Option<String>,
 }
@@ -28,17 +27,16 @@ pub struct Params {
 async fn get_supplementary(
     ctx: &BoscaContext,
     params: &Params,
-    metadata_id: &Uuid,
-    plan_id: Option<Uuid>,
 ) -> Result<Option<MetadataSupplementary>, Error> {
-    Ok(if params.supplementary_id.is_none() {
-        None
-    } else {
-        ctx.content
+    if let Some(supplementary_id) = params.supplementary_id.as_ref() {
+        let id = Uuid::parse_str(supplementary_id)?;
+        return Ok(ctx
+            .content
             .metadata_supplementary
-            .get_supplementary(metadata_id, params.supplementary_id.as_ref().unwrap(), plan_id)
-            .await?
-    })
+            .get_supplementary(&id)
+            .await?);
+    }
+    Ok(None)
 }
 
 pub async fn metadata_download(
@@ -50,30 +48,58 @@ pub async fn metadata_download(
     let principal = get_principal_from_headers(&ctx, &headers)
         .await
         .map_err(|_| (StatusCode::UNAUTHORIZED, "Unauthorized".to_owned()))?;
-    let id_str = params.id.as_deref().unwrap_or("");
-    let id =
-        Uuid::parse_str(id_str).map_err(|_| (StatusCode::BAD_REQUEST, "Bad Request".to_owned()))?;
+    let id = params
+        .id
+        .as_ref()
+        .map(|s| Uuid::parse_str(s.as_str()).unwrap())
+        .unwrap_or_default();
     let url = format!("/files/metadata{}", request.uri().path_and_query().unwrap());
-    let metadata = if ctx.security.verify_signed_url(&url) {
+    let (metadata, supplementary) = if ctx.security.verify_signed_url(&url) {
         let metadata = ctx
             .content
             .metadata
             .get(&id)
             .await
             .map_err(|_| (StatusCode::FORBIDDEN, "Forbidden".to_owned()))?;
-        if metadata.is_none() {
+        if let Some(metadata) = metadata {
+            if let Some(supplementary_id) = &params.supplementary_id {
+                let supplementary_id = Uuid::parse_str(supplementary_id)
+                    .map_err(|_| (StatusCode::UNAUTHORIZED, "Unauthorized".to_owned()))?;
+                let supplementary = ctx
+                    .content
+                    .metadata_supplementary
+                    .get_supplementary(&supplementary_id)
+                    .await
+                    .map_err(|_| (StatusCode::UNAUTHORIZED, "Unauthorized".to_owned()))?;
+                (metadata, supplementary)
+            } else {
+                (metadata, None)
+            }
+        } else {
             return Err((StatusCode::FORBIDDEN, "Forbidden".to_owned()))?;
         }
-        metadata.unwrap()
     } else {
         if params.supplementary_id.is_some() {
-            ctx.check_metadata_supplementary_action_principal(&principal, &id, PermissionAction::View)
+            let (metadata, supplementary) = ctx
+                .check_metadata_supplementary_action_principal(
+                    &principal,
+                    &id,
+                    PermissionAction::View,
+                )
                 .await
-                .map_err(|_| (StatusCode::FORBIDDEN, "Forbidden".to_owned()))?
+                .map_err(|_| (StatusCode::FORBIDDEN, "Forbidden".to_owned()))?;
+            (metadata, Some(supplementary))
         } else {
-            ctx.check_metadata_content_action_principal(&principal, &id, PermissionAction::View)
+            (
+                ctx.check_metadata_content_action_principal(
+                    &principal,
+                    &id,
+                    PermissionAction::View,
+                )
                 .await
-                .map_err(|_| (StatusCode::FORBIDDEN, "Forbidden".to_owned()))?
+                .map_err(|_| (StatusCode::FORBIDDEN, "Forbidden".to_owned()))?,
+                None,
+            )
         }
     };
     if metadata.deleted
@@ -84,18 +110,9 @@ pub async fn metadata_download(
     {
         return Err((StatusCode::NOT_FOUND, "Not Found".to_owned()))?;
     }
-    let plan_id = params.plan_id.as_ref().map(|s| Uuid::parse_str(s.as_str()).unwrap());
-    let supplementary = get_supplementary(&ctx, &params, &metadata.id, plan_id)
-        .await
-        .map_err(|_| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Internal Server Error".to_owned(),
-            )
-        })?;
     let path = ctx
         .storage
-        .get_metadata_path(&metadata, supplementary.as_ref().map(|s| s.key.clone()))
+        .get_metadata_path(&metadata, supplementary.as_ref().map(|s| s.id.clone()))
         .await
         .map_err(|_| {
             (
@@ -111,8 +128,8 @@ pub async fn metadata_download(
     let mut headers = HeaderMap::new();
     headers.insert(
         "Content-Type",
-        if supplementary.is_some() {
-            supplementary.unwrap().content_type.parse().map_err(|_| {
+        if let Some(supplementary) = &supplementary {
+            supplementary.content_type.parse().map_err(|_| {
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "Internal Server Error".to_owned(),
@@ -146,12 +163,11 @@ pub async fn metadata_upload(
         .map_err(|_| (StatusCode::UNAUTHORIZED, "Unauthorized".to_owned()))?;
     let id = Uuid::parse_str(params.id.as_ref().unwrap().as_str())
         .map_err(|_| (StatusCode::BAD_REQUEST, "Bad Request".to_owned()))?;
-    let plan_id = params.plan_id.as_ref().map(|s| Uuid::parse_str(s.as_str()).unwrap());
     let metadata = ctx
         .check_metadata_action_principal(&principal, &id, PermissionAction::Edit)
         .await
         .map_err(|_| (StatusCode::FORBIDDEN, "Forbidden".to_owned()))?;
-    let supplementary = get_supplementary(&ctx, &params, &metadata.id, plan_id)
+    let supplementary = get_supplementary(&ctx, &params)
         .await
         .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Error".to_owned()))?;
     if let Some(mut field) = multipart
@@ -161,7 +177,7 @@ pub async fn metadata_upload(
     {
         let path = ctx
             .storage
-            .get_metadata_path(&metadata, supplementary.as_ref().map(|s| s.key.clone()))
+            .get_metadata_path(&metadata, supplementary.as_ref().map(|s| s.id.clone()))
             .await
             .map_err(|err| (StatusCode::BAD_REQUEST, err.to_string()))?;
         let mut upload = ctx
@@ -209,7 +225,14 @@ pub async fn metadata_upload(
             .complete()
             .await
             .map_err(|err| (StatusCode::INTERNAL_SERVER_ERROR, err.to_string()))?;
-        if supplementary.is_none() {
+        if let Some(supplementary) = &supplementary {
+            let content_type = field.content_type().unwrap_or("");
+            ctx.content
+                .metadata_supplementary
+                .set_supplementary_uploaded(&ctx, &supplementary.id, content_type, len)
+                .await
+                .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Server Error".to_owned()))?;
+        } else {
             let content_type = field.content_type().map(|s| s.to_owned());
             let file_name = field.file_name().map(|s| s.to_owned());
             ctx.content
@@ -224,20 +247,11 @@ pub async fn metadata_upload(
                     metadata_version: Some(metadata.version),
                     ..Default::default()
                 };
-                ctx
-                    .workflow
+                ctx.workflow
                     .enqueue_workflow(&ctx, &mut request)
                     .await
                     .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Server Error".to_owned()))?;
             }
-        } else {
-            let key = supplementary.unwrap();
-            let content_type = field.content_type().unwrap_or("");
-            ctx.content
-                .metadata_supplementary
-                .set_supplementary_uploaded(&ctx, &id, &key.key, key.plan_id, content_type, len)
-                .await
-                .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Server Error".to_owned()))?;
         }
     }
     if params.redirect.is_some() {

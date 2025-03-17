@@ -167,20 +167,23 @@ class ContentCollections(network: NetworkClient) : Api(network) {
         return response.data?.content?.collection?.removeChildMetadata?.id
     }
 
-    suspend fun setSupplementaryTextContent(id: String, key: String, contentType: String, content: String) {
-        val response =
-            network.graphql.mutation(SetCollectionSupplementaryTextContentsMutation(id, key, contentType, content)).execute()
+    suspend fun getSupplementaryContentDownload(supplementaryId: String): CollectionSupplementaryContentDownload? {
+        val response = network.graphql.query(GetCollectionSupplementaryDownloadQuery(supplementaryId)).execute()
+        response.validate()
+        return response.data?.content?.collectionSupplementary?.content?.collectionSupplementaryContentDownload
+    }
+
+    suspend fun setSupplementaryTextContent(supplementaryId: String, contentType: String, content: String) {
+        val response = network.graphql.mutation(SetCollectionSupplementaryTextContentsMutation(
+            supplementaryId = supplementaryId,
+            contentType = contentType,
+            content = content
+        )).execute()
         response.validate()
     }
 
-    suspend fun getSupplementaryContentDownload(id: String, key: String): CollectionSupplementaryContentDownload? {
-        val response = network.graphql.query(GetCollectionSupplementaryDownloadQuery(id, key)).execute()
-        response.validate()
-        return response.data?.content?.collection?.supplementary?.firstOrNull()?.content?.collectionSupplementaryContentDownload
-    }
-
-    suspend fun deleteSupplementary(id: String, key: String): Boolean {
-        val response = network.graphql.mutation(DeleteSupplementaryCollectionMutation(id, key)).execute()
+    suspend fun deleteSupplementary(supplementaryId: String): Boolean {
+        val response = network.graphql.mutation(DeleteSupplementaryCollectionMutation(supplementaryId)).execute()
         response.validate()
         return response.data?.content?.collection?.deleteSupplementary ?: false
     }

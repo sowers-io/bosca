@@ -283,12 +283,14 @@ impl MetadataObject {
         plan_id: Option<String>,
     ) -> Result<Vec<MetadataSupplementaryObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
+
         if let Some(key) = key {
+            ctx.check_metadata_supplementary_action(&self.metadata, PermissionAction::View).await?;
             let plan_id = plan_id.map(|p| Uuid::parse_str(&p).unwrap());
             if let Some(supplementary) = ctx
                 .content
                 .metadata_supplementary
-                .get_supplementary(&self.metadata.id, &key, plan_id)
+                .get_supplementary_by_key(&self.metadata.id, &key, plan_id)
                 .await?
             {
                 return Ok(vec![MetadataSupplementaryObject::new(
@@ -298,6 +300,9 @@ impl MetadataObject {
             }
             return Ok(vec![]);
         }
+
+        ctx.check_metadata_supplementary_action(&self.metadata, PermissionAction::List).await?;
+
         Ok(ctx
             .content
             .metadata_supplementary

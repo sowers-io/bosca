@@ -1,7 +1,7 @@
 use crate::context::BoscaContext;
 use crate::datastores::notifier::Notifier;
 use crate::graphql::content::metadata_mutation::WorkflowConfigurationInput;
-use crate::models::workflow::activities::{Activity, ActivityInput, ActivityParameter, ActivityParameterScope, WorkflowActivity, WorkflowActivityInput, WorkflowActivityModel, WorkflowActivityParameter, WorkflowActivityPrompt, WorkflowActivityStorageSystem};
+use crate::models::workflow::activities::{Activity, ActivityInput, ActivityParameter, WorkflowActivity, WorkflowActivityInput, WorkflowActivityModel, WorkflowActivityParameter, WorkflowActivityPrompt, WorkflowActivityStorageSystem};
 use crate::models::workflow::enqueue_request::EnqueueRequest;
 use crate::models::workflow::execution_plan::{
     WorkflowExecutionId, WorkflowExecutionPlan, WorkflowJob, WorkflowJobId,
@@ -84,25 +84,23 @@ impl WorkflowDataStore {
         drop(stmt);
         let stmt = connection
             .prepare_cached(
-                "insert into activity_inputs (activity_id, name, type, scope) values ($1, $2, $3, $4)",
+                "insert into activity_inputs (activity_id, name, type) values ($1, $2, $3)",
             )
             .await?;
         for input in activity.inputs.iter() {
-            let scope = input.scope.unwrap_or(ActivityParameterScope::Content);
             connection
-                .execute(&stmt, &[&activity.id, &input.name, &input.parameter_type, &scope])
+                .execute(&stmt, &[&activity.id, &input.name, &input.parameter_type])
                 .await?;
         }
         drop(stmt);
         let stmt = connection
             .prepare_cached(
-                "insert into activity_outputs (activity_id, name, type, scope) values ($1, $2, $3, $4)",
+                "insert into activity_outputs (activity_id, name, type) values ($1, $2, $3)",
             )
             .await?;
         for input in activity.outputs.iter() {
-            let scope = input.scope.unwrap_or(ActivityParameterScope::Content);
             connection
-                .execute(&stmt, &[&activity.id, &input.name, &input.parameter_type, &scope])
+                .execute(&stmt, &[&activity.id, &input.name, &input.parameter_type])
                 .await?;
         }
         self.notifier.activity_changed(&activity.id).await?;
@@ -136,22 +134,20 @@ impl WorkflowDataStore {
         .await?;
         let stmt = txn
             .prepare_cached(
-                "insert into activity_inputs (activity_id, name, type, scope) values ($1, $2, $3, $4)",
+                "insert into activity_inputs (activity_id, name, type) values ($1, $2, $3)",
             )
             .await?;
         for input in activity.inputs.iter() {
-            let scope = input.scope.unwrap_or(ActivityParameterScope::Content);
-            txn.execute(&stmt, &[&activity.id, &input.name, &input.parameter_type, &scope])
+            txn.execute(&stmt, &[&activity.id, &input.name, &input.parameter_type])
                 .await?;
         }
         let stmt = txn
             .prepare_cached(
-                "insert into activity_outputs (activity_id, name, type, scope) values ($1, $2, $3, $4)",
+                "insert into activity_outputs (activity_id, name, type) values ($1, $2, $3)",
             )
             .await?;
         for input in activity.outputs.iter() {
-            let scope = input.scope.unwrap_or(ActivityParameterScope::Content);
-            txn.execute(&stmt, &[&activity.id, &input.name, &input.parameter_type, &scope])
+            txn.execute(&stmt, &[&activity.id, &input.name, &input.parameter_type])
                 .await?;
         }
         txn.commit().await?;
@@ -376,18 +372,16 @@ impl WorkflowDataStore {
             rows.first().unwrap().get(0)
         };
         {
-            let stmt = txn.prepare_cached("insert into workflow_activity_inputs (activity_id, name, value, scope) values ($1, $2, $3, $4)").await?;
+            let stmt = txn.prepare_cached("insert into workflow_activity_inputs (activity_id, name, value) values ($1, $2, $3)").await?;
             for input in activity.inputs.iter() {
-                let scope = input.scope.unwrap_or(ActivityParameterScope::Content);
-                txn.execute(&stmt, &[&id, &input.name, &input.value, &scope])
+                txn.execute(&stmt, &[&id, &input.name, &input.value])
                     .await?;
             }
         }
         {
-            let stmt = txn.prepare_cached("insert into workflow_activity_outputs (activity_id, name, value, scope) values ($1, $2, $3, $4)").await?;
+            let stmt = txn.prepare_cached("insert into workflow_activity_outputs (activity_id, name, value) values ($1, $2, $3)").await?;
             for input in activity.outputs.iter() {
-                let scope = input.scope.unwrap_or(ActivityParameterScope::Content);
-                txn.execute(&stmt, &[&id, &input.name, &input.value, &scope])
+                txn.execute(&stmt, &[&id, &input.name, &input.value])
                     .await?;
             }
         }
@@ -1305,6 +1299,7 @@ impl WorkflowDataStore {
                 index: jobs.len() as i32,
             };
             let job = WorkflowJob {
+                parent: None,
                 plan_id: WorkflowExecutionId {
                     id: plan_id,
                     queue: workflow.queue.to_owned(),

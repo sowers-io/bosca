@@ -3,17 +3,18 @@ use crate::graphql::content::categories::CategoriesObject;
 use crate::graphql::content::collection::CollectionObject;
 use crate::graphql::content::collection_templates::CollectionTemplatesObject;
 use crate::graphql::content::document_templates::DocumentTemplatesObject;
+use crate::graphql::content::guide_templates::GuideTemplatesObject;
 use crate::graphql::content::metadata::MetadataObject;
-use crate::graphql::content::sources::SourcesObject;
 use crate::graphql::content::metadata_supplementary::MetadataSupplementaryObject;
+use crate::graphql::content::sources::SourcesObject;
 use crate::graphql::profiles::profile::ProfileObject;
+use crate::models::content::find_query::FindQueryInput;
 use crate::models::content::slug::SlugType;
 use crate::models::security::permission::PermissionAction;
 use async_graphql::*;
 use std::str::FromStr;
 use uuid::Uuid;
-use crate::graphql::content::guide_templates::GuideTemplatesObject;
-use crate::models::content::find_query::FindQueryInput;
+use crate::graphql::content::collection_supplementary::CollectionSupplementaryObject;
 
 pub struct ContentObject {}
 
@@ -145,34 +146,51 @@ impl ContentObject {
     async fn metadata_supplementary(
         &self,
         ctx: &Context<'_>,
-        id: String,
-        version: Option<i32>,
-        key: String,
-        plan_id: Option<String>,
+        supplementary_id: String,
     ) -> Result<Option<MetadataSupplementaryObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        let id = Uuid::from_str(id.as_str())?;
-        let plan_id = plan_id.map(|p| Uuid::from_str(p.as_str()).unwrap());
-        let metadata = if let Some(version) = version {
-            ctx.check_metadata_version_action(&id, version, PermissionAction::View)
-                .await?
-        } else {
-            ctx.check_metadata_action(&id, PermissionAction::View)
-                .await?
-        };
-        let supplementary = ctx
+        let id = Uuid::from_str(supplementary_id.as_str())?;
+        let Some(supplementary) = ctx
             .content
             .metadata_supplementary
-            .get_supplementary(&metadata.id, &key, plan_id)
+            .get_supplementary(&id)
+            .await?
+        else {
+            return Ok(None);
+        };
+        let metadata = ctx
+            .check_metadata_action(&supplementary.metadata_id, PermissionAction::View)
             .await?;
-        if let Some(supplementary) = supplementary {
-            Ok(Some(MetadataSupplementaryObject::new(
-                metadata,
-                supplementary,
-            )))
-        } else {
-            Ok(None)
-        }
+        ctx.check_metadata_supplementary_action(&metadata, PermissionAction::View).await?;
+        Ok(Some(MetadataSupplementaryObject::new(
+            metadata,
+            supplementary,
+        )))
+    }
+
+    async fn collection_supplementary(
+        &self,
+        ctx: &Context<'_>,
+        supplementary_id: String,
+    ) -> Result<Option<CollectionSupplementaryObject>, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let id = Uuid::from_str(supplementary_id.as_str())?;
+        let Some(supplementary) = ctx
+            .content
+            .collection_supplementary
+            .get_supplementary(&id)
+            .await?
+        else {
+            return Ok(None);
+        };
+        let collection = ctx
+            .check_collection_action(&supplementary.collection_id, PermissionAction::View)
+            .await?;
+        ctx.check_collection_supplementary_action(&collection, PermissionAction::View).await?;
+        Ok(Some(CollectionSupplementaryObject::new(
+            collection,
+            supplementary,
+        )))
     }
 
     async fn document_templates(&self) -> DocumentTemplatesObject {

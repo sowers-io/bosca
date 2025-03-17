@@ -3,6 +3,8 @@ package io.bosca.workflow.collection
 import io.bosca.api.Client
 import io.bosca.graphql.fragment.WorkflowJob
 import io.bosca.graphql.type.ActivityInput
+import io.bosca.graphql.type.ActivityParameterInput
+import io.bosca.graphql.type.ActivityParameterType
 import io.bosca.workflow.Activity
 import io.bosca.workflow.ActivityContext
 
@@ -15,17 +17,18 @@ class DeleteSupplementary(client: Client) : Activity(client) {
             id = id,
             name = "Delete Collection Supplementary",
             description = "Delete a Collection Supplementary",
-            inputs = listOf(),
+            inputs = listOf(
+                ActivityParameterInput(
+                    INPUT_NAME,
+                    ActivityParameterType.SUPPLEMENTARY
+                )
+            ),
             outputs = emptyList(),
         )
     }
 
     override suspend fun execute(context: ActivityContext, job: WorkflowJob) {
-        val key = getInputParameterValue(job, INPUT_NAME)
-        client.collections.deleteSupplementary(
-            job.collection?.collection?.id ?: error("collection id missing"),
-            key
-        )
+        deleteCollectionSupplementary(job, INPUT_NAME)
     }
 
     companion object {

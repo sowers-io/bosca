@@ -27,7 +27,7 @@ class DeleteSupplementary(client: Client) : Activity(client) {
             if (e.message?.startsWith("missing supplementary: ") == true) return
             throw e
         }
-        deleteSupplementary(job, INPUT_NAME)
+        deleteMetadataSupplementary(job, INPUT_NAME)
     }
 
     companion object {

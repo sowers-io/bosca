@@ -1,6 +1,8 @@
 use crate::context::BoscaContext;
 use crate::datastores::notifier::Notifier;
-use crate::models::content::metadata_supplementary::{MetadataSupplementary, MetadataSupplementaryInput};
+use crate::models::content::metadata_supplementary::{
+    MetadataSupplementary, MetadataSupplementaryInput,
+};
 use async_graphql::*;
 use deadpool_postgres::Pool;
 use log::error;
@@ -26,8 +28,24 @@ impl MetadataSupplementaryDataStore {
         Ok(())
     }
 
-    async fn on_metadata_supplementary_changed(&self, _: &BoscaContext, id: &Uuid, key: &str, plan_id: Option<String>) -> Result<(), Error> {
-        if let Err(e) = self.notifier.metadata_supplementary_changed(id, key, plan_id).await {
+    async fn on_metadata_supplementary_changed(
+        &self,
+        _: &BoscaContext,
+        supplementary_id: &Uuid,
+        metadata_id: &Uuid,
+        key: &str,
+        plan_id: Option<Uuid>,
+    ) -> Result<(), Error> {
+        if let Err(e) = self
+            .notifier
+            .metadata_supplementary_changed(
+                supplementary_id,
+                metadata_id,
+                key,
+                plan_id.map(|p| p.to_string()),
+            )
+            .await
+        {
             error!("Failed to notify metadata supplementary changes: {:?}", e);
         }
         Ok(())
@@ -36,16 +54,30 @@ impl MetadataSupplementaryDataStore {
     pub async fn get_supplementary(
         &self,
         id: &Uuid,
-        key: &String,
+    ) -> Result<Option<MetadataSupplementary>, Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("select * from metadata_supplementary where id = $1")
+            .await?;
+        let rows = connection.query(&stmt, &[id]).await?;
+        if rows.is_empty() {
+            return Ok(None);
+        }
+        Ok(Some(rows.first().unwrap().into()))
+    }
+
+    pub async fn get_supplementary_by_key(
+        &self,
+        metadata_id: &Uuid,
+        key: &str,
         plan_id: Option<Uuid>,
     ) -> Result<Option<MetadataSupplementary>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
-            .prepare_cached(
-                "select * from metadata_supplementary where metadata_id = $1 and key = $2 and plan_id = $3",
-            )
+            .prepare_cached("select * from metadata_supplementary where metadata_id = $1 and key = $2 and plan_id = $3")
             .await?;
-        let rows = connection.query(&stmt, &[id, key, &plan_id]).await?;
+        let key = key.to_owned();
+        let rows = connection.query(&stmt, &[metadata_id, &key, &plan_id]).await?;
         if rows.is_empty() {
             return Ok(None);
         }
@@ -68,10 +100,11 @@ impl MetadataSupplementaryDataStore {
         &self,
         ctx: &BoscaContext,
         supplementary: &MetadataSupplementaryInput,
-    ) -> Result<(), Error> {
+    ) -> Result<Uuid, Error> {
         let connection = self.pool.get().await?;
-        let stmt = connection.prepare_cached("insert into metadata_supplementary (metadata_id, key, plan_id, name, content_type, content_length, attributes, source_id, source_identifier) values ($1, $2, $3, $4, $5, $6, $7, $8, $9)").await?;
-        let id = Uuid::parse_str(supplementary.metadata_id.as_str())?;
+        let stmt = connection.prepare_cached("insert into metadata_supplementary (metadata_id, key, plan_id, name, content_type, content_length, attributes, source_id, source_identifier) values ($1, $2, $3, $4, $5, $6, $7, $8, $9) returning id").await?;
+        let metadata_id = Uuid::parse_str(supplementary.metadata_id.as_str())?;
+        let plan_id = Uuid::parse_str(supplementary.plan_id.as_ref())?;
         let sid = if supplementary.source_identifier.is_some() {
             Some(Uuid::parse_str(
                 supplementary.source_identifier.as_ref().unwrap().as_str(),
@@ -79,13 +112,13 @@ impl MetadataSupplementaryDataStore {
         } else {
             None
         };
-        connection
-            .execute(
+        let row = connection
+            .query_one(
                 &stmt,
                 &[
-                    &id,
+                    &metadata_id,
                     &supplementary.key,
-                    &supplementary.plan_id,
+                    &plan_id,
                     &supplementary.name,
                     &supplementary.content_type,
                     &supplementary.content_length,
@@ -95,29 +128,36 @@ impl MetadataSupplementaryDataStore {
                 ],
             )
             .await?;
-        self.on_metadata_supplementary_changed(ctx, &id, &supplementary.key, supplementary.plan_id.as_ref().map(|p| p.to_string()))
-            .await?;
-        Ok(())
+        let id: Uuid = row.get("id");
+        self.on_metadata_supplementary_changed(
+            ctx,
+            &id,
+            &metadata_id,
+            &supplementary.key,
+            Some(plan_id),
+        )
+        .await?;
+        Ok(id)
     }
 
     pub async fn set_supplementary_uploaded(
         &self,
         ctx: &BoscaContext,
-        metadata_id: &Uuid,
-        key: &str,
-        plan_id: Option<Uuid>,
+        supplementary_id: &Uuid,
         content_type: &str,
         len: usize,
     ) -> Result<(), Error> {
         let connection = self.pool.get().await?;
-        let stmt = connection.prepare_cached("update metadata_supplementary set uploaded = now(), content_type = $1, content_length = $2 where metadata_id = $3 and key = $4 and plan_id = $5").await?;
+        let stmt = connection.prepare_cached("update metadata_supplementary set uploaded = now(), content_type = $1, content_length = $2 where id = $3 returning metadata_id, key, plan_id").await?;
         let len: i64 = len as i64;
-        let key = key.to_owned();
         let content_type = content_type.to_owned();
-        connection
-            .execute(&stmt, &[&content_type, &len, metadata_id, &key, &plan_id])
+        let result = connection
+            .query_one(&stmt, &[&content_type, &len, supplementary_id])
             .await?;
-        self.on_metadata_supplementary_changed(ctx, metadata_id, &key, plan_id.map(|p| p.to_string()))
+        let metadata_id: Uuid = result.get("metadata_id");
+        let key: String = result.get("key");
+        let plan_id: Option<Uuid> = result.get("plan_id");
+        self.on_metadata_supplementary_changed(ctx, supplementary_id, &metadata_id, &key, plan_id)
             .await?;
         Ok(())
     }
@@ -125,22 +165,53 @@ impl MetadataSupplementaryDataStore {
     pub async fn delete_supplementary(
         &self,
         ctx: &BoscaContext,
-        metadata_id: &Uuid,
-        key: &String,
-        plan_id: Option<Uuid>,
+        id: &Uuid,
     ) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached(
-                "delete from metadata_supplementary where metadata_id = $1 and key = $2 and plan_id = $3",
+                "delete from metadata_supplementary where id = $1 returning metadata_id, key, plan_id",
             )
             .await?;
-        connection.execute(&stmt, &[&metadata_id, &key, &plan_id]).await?;
-        self.on_metadata_supplementary_changed(ctx, metadata_id, key, plan_id.map(|p| p.to_string())).await?;
+        let result = connection
+            .query_one(&stmt, &[id])
+            .await?;
+        let metadata_id: Uuid = result.get("metadata_id");
+        let key: String = result.get("key");
+        let plan_id: Option<Uuid> = result.get("plan_id");
+        self.on_metadata_supplementary_changed(ctx, id, &metadata_id, &key, plan_id)
+            .await?;
         Ok(())
     }
 
-    pub async fn set_supplementary_public(&self, ctx: &BoscaContext, id: &Uuid, public: bool) -> Result<(), Error> {
+    pub async fn detach_supplementary(
+        &self,
+        ctx: &BoscaContext,
+        id: &Uuid,
+    ) -> Result<(), Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached(
+                "update metadata_supplementary set plan_id = null where id = $1 returning metadata_id, key, plan_id",
+            )
+            .await?;
+        let result = connection
+            .query_one(&stmt, &[id])
+            .await?;
+        let metadata_id: Uuid = result.get("metadata_id");
+        let key: String = result.get("key");
+        let plan_id: Option<Uuid> = result.get("plan_id");
+        self.on_metadata_supplementary_changed(ctx, id, &metadata_id, &key, plan_id)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn set_supplementary_public(
+        &self,
+        ctx: &BoscaContext,
+        id: &Uuid,
+        public: bool,
+    ) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached(

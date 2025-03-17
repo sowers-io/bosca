@@ -1,6 +1,8 @@
 subscription OnMetadataSupplementaryChanged {
     metadataSupplementary {
+        contentId
         id
-        supplementary
+        key
+        planId
     }
 }

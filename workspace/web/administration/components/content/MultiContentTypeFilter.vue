@@ -15,9 +15,7 @@ const props = defineProps<{
   filter: Reactive<ContentTypeFilter>
 }>()
 
-const selected = ref('')
-
-function updateSelected() {
+const selected = computed(() => {
   let s = ''
   if (props.filter.jpg) s += 'JPEG'
   if (props.filter.png) {
@@ -45,18 +43,8 @@ function updateSelected() {
     s += 'YouTube'
   }
   if (s.length === 0) s = 'Select a Content Type'
-  selected.value = s
-}
-
-onMounted(() => {
-  updateSelected()
+  return s
 })
-
-onUpdated(() => {
-  updateSelected()
-})
-
-watch([props.filter], updateSelected)
 </script>
 
 <template>
@@ -69,25 +57,25 @@ watch([props.filter], updateSelected)
     <DropdownMenuContent class="w-56">
       <DropdownMenuLabel>Content Types</DropdownMenuLabel>
       <DropdownMenuSeparator />
-      <DropdownMenuCheckboxItem v-model:checked="filter.jpg">
+      <DropdownMenuCheckboxItem v-model:model-value="filter.jpg">
         JPEG
       </DropdownMenuCheckboxItem>
-      <DropdownMenuCheckboxItem v-model:checked="filter.png">
+      <DropdownMenuCheckboxItem v-model:model-value="filter.png">
         PNG
       </DropdownMenuCheckboxItem>
-      <DropdownMenuCheckboxItem v-model:checked="filter.webp">
+      <DropdownMenuCheckboxItem v-model:model-value="filter.webp">
         WEBP
       </DropdownMenuCheckboxItem>
-      <DropdownMenuCheckboxItem v-model:checked="filter.mp4">
+      <DropdownMenuCheckboxItem v-model:model-value="filter.mp4">
         MP4
       </DropdownMenuCheckboxItem>
-      <DropdownMenuCheckboxItem v-model:checked="filter.mp3">
+      <DropdownMenuCheckboxItem v-model:model-value="filter.mp3">
         MP3
       </DropdownMenuCheckboxItem>
-      <DropdownMenuCheckboxItem v-model:checked="filter.webm">
+      <DropdownMenuCheckboxItem v-model:model-value="filter.webm">
         WEBM
       </DropdownMenuCheckboxItem>
-      <DropdownMenuCheckboxItem v-model:checked="filter.youtube">
+      <DropdownMenuCheckboxItem v-model:model-value="filter.youtube">
         YouTube
       </DropdownMenuCheckboxItem>
     </DropdownMenuContent>

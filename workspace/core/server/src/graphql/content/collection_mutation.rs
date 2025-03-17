@@ -1,9 +1,11 @@
 use crate::context::BoscaContext;
 use crate::graphql::content::collection::CollectionObject;
 use crate::graphql::content::collection_metadata_relationship::CollectionMetadataRelationshipObject;
+use crate::graphql::content::collection_supplementary::CollectionSupplementaryObject;
 use crate::graphql::content::permission::PermissionObject;
 use crate::models::content::collection::{CollectionChildInput, CollectionInput, CollectionType};
 use crate::models::content::collection_metadata_relationship::CollectionMetadataRelationshipInput;
+use crate::models::content::collection_supplementary::CollectionSupplementaryInput;
 use crate::models::content::collection_workflow_state::{
     CollectionWorkflowCompleteState, CollectionWorkflowState,
 };
@@ -13,8 +15,6 @@ use async_graphql::*;
 use bytes::Bytes;
 use futures_util::AsyncReadExt;
 use uuid::Uuid;
-use crate::graphql::content::collection_supplementary::CollectionSupplementaryObject;
-use crate::models::content::collection_supplementary::CollectionSupplementaryInput;
 
 pub struct CollectionMutationObject {}
 
@@ -108,7 +108,9 @@ impl CollectionMutationObject {
             return Err(Error::new("invalid collection name"));
         }
         if let Some(collection_type) = collection.collection_type {
-            if !is_admin && (collection_type == CollectionType::System || collection_type == CollectionType::Root)
+            if !is_admin
+                && (collection_type == CollectionType::System
+                    || collection_type == CollectionType::Root)
             {
                 return Err(Error::new("invalid collection type"));
             }
@@ -249,7 +251,10 @@ impl CollectionMutationObject {
         let mut collection = ctx
             .check_collection_action(&id, PermissionAction::Manage)
             .await?;
-        ctx.content.collections.set_public_list(ctx, &id, public).await?;
+        ctx.content
+            .collections
+            .set_public_list(ctx, &id, public)
+            .await?;
         collection.public_list = public;
         Ok(collection.into())
     }
@@ -518,21 +523,25 @@ impl CollectionMutationObject {
         supplementary: CollectionSupplementaryInput,
     ) -> Result<CollectionSupplementaryObject, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        let id = Uuid::parse_str(supplementary.collection_id.as_str())?;
+        let collection_id = Uuid::parse_str(&supplementary.collection_id)?;
         let collection = ctx
-            .check_collection_action(&id, PermissionAction::Manage)
+            .check_collection_action(&collection_id, PermissionAction::Manage)
             .await?;
-        ctx.content
+        let id = ctx
+            .content
             .collection_supplementary
             .add_supplementary(ctx, &supplementary)
             .await?;
         match ctx
             .content
             .collection_supplementary
-            .get_supplementary(&id, &supplementary.key)
+            .get_supplementary(&id)
             .await?
         {
-            Some(supplementary) => Ok(CollectionSupplementaryObject::new(collection, supplementary)),
+            Some(supplementary) => Ok(CollectionSupplementaryObject::new(
+                collection,
+                supplementary,
+            )),
             None => Err(Error::new("Error creating metadata")),
         }
     }
@@ -540,20 +549,17 @@ impl CollectionMutationObject {
     async fn set_supplementary_uploaded(
         &self,
         ctx: &Context<'_>,
-        colelction_id: String,
-        supplementary_key: String,
-        plan_id: Option<String>,
+        supplementary_id: String,
         content_type: String,
         len: usize,
     ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        let id = Uuid::parse_str(colelction_id.as_str())?;
-        let plan_id = plan_id.map(|p| Uuid::parse_str(p.as_str()).unwrap());
+        let id = Uuid::parse_str(supplementary_id.as_str())?;
         ctx.check_collection_action(&id, PermissionAction::Manage)
             .await?;
         ctx.content
             .collection_supplementary
-            .set_supplementary_uploaded(ctx, &id, &supplementary_key, plan_id, content_type.as_str(), len)
+            .set_supplementary_uploaded(ctx, &id, content_type.as_str(), len)
             .await?;
         Ok(true)
     }
@@ -561,22 +567,27 @@ impl CollectionMutationObject {
     async fn set_supplementary_contents(
         &self,
         ctx: &Context<'_>,
-        id: String,
-        key: String,
-        plan_id: Option<String>,
+        supplementary_id: String,
         content_type: String,
         file: Upload,
     ) -> Result<bool, Error> {
         let octx = ctx;
         let ctx = ctx.data::<BoscaContext>()?;
-        let collection_id = Uuid::parse_str(id.as_str())?;
-        let plan_id = plan_id.map(|p| Uuid::parse_str(p.as_str()).unwrap());
+        let supplementary_id = Uuid::parse_str(supplementary_id.as_str())?;
+        let Some(supplementary) = ctx
+            .content
+            .metadata_supplementary
+            .get_supplementary(&supplementary_id)
+            .await?
+        else {
+            return Err(Error::new("Supplementary not found"));
+        };
         let collection = ctx
-            .check_collection_action(&collection_id, PermissionAction::Manage)
+            .check_collection_action(&supplementary.id, PermissionAction::Manage)
             .await?;
         let path = ctx
             .storage
-            .get_collection_path(&collection, &key)
+            .get_collection_path(&collection, Some(supplementary.id))
             .await?;
         let mut multipart = ctx.storage.put_multipart(&path).await?;
         let mut content = file.value(octx)?.into_async_read();
@@ -595,7 +606,7 @@ impl CollectionMutationObject {
         }
         ctx.content
             .collection_supplementary
-            .set_supplementary_uploaded(ctx, &collection_id, &key, plan_id, &content_type, len)
+            .set_supplementary_uploaded(ctx, &supplementary_id, &content_type, len)
             .await?;
         Ok(true)
     }
@@ -603,45 +614,59 @@ impl CollectionMutationObject {
     async fn set_supplementary_text_contents(
         &self,
         ctx: &Context<'_>,
-        id: String,
-        key: String,
-        plan_id: Option<String>,
+        supplementary_id: String,
         content_type: String,
         content: String,
     ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        let collection_id = Uuid::parse_str(id.as_str())?;
-        let plan_id = plan_id.map(|p| Uuid::parse_str(p.as_str()).unwrap());
+        let supplementary_id = Uuid::parse_str(supplementary_id.as_str())?;
+        let Some(supplementary) = ctx
+            .content
+            .collection_supplementary
+            .get_supplementary(&supplementary_id)
+            .await?
+        else {
+            return Err(Error::new("Supplementary not found"));
+        };
         let collection = ctx
-            .check_collection_action(&collection_id, PermissionAction::Edit)
+            .check_collection_action(&supplementary.collection_id, PermissionAction::Edit)
             .await?;
         let path = ctx
             .storage
-            .get_collection_path(&collection, &key)
+            .get_collection_path(&collection, Some(supplementary_id))
             .await?;
         let bytes: Bytes = content.into();
         let len = bytes.len();
         ctx.storage.put(&path, bytes).await?;
         ctx.content
             .collection_supplementary
-            .set_supplementary_uploaded(ctx, &collection_id, &key, plan_id, &content_type, len)
+            .set_supplementary_uploaded(ctx, &supplementary_id, &content_type, len)
             .await?;
         Ok(true)
     }
 
-    async fn delete_supplementary(
-        &self,
-        ctx: &Context<'_>,
-        id: String,
-        key: String,
-        plan_id: Option<String>,
-    ) -> Result<bool, Error> {
+    async fn delete_supplementary(&self, ctx: &Context<'_>, id: String) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        let id = Uuid::parse_str(id.as_str())?;
-        let plan_id = plan_id.map(|p| Uuid::parse_str(p.as_str()).unwrap());
-        ctx.check_collection_action(&id, PermissionAction::Manage)
+        let supplementary_id = Uuid::parse_str(id.as_str())?;
+        let Some(supplementary) = ctx
+            .content
+            .collection_supplementary
+            .get_supplementary(&supplementary_id)
+            .await? else {
+            return Err(Error::new("Supplementary not found"));
+        };
+        let collection = ctx
+            .check_collection_action(&supplementary.collection_id, PermissionAction::Manage)
             .await?;
-        ctx.content.collection_supplementary.delete_supplementary(ctx, &id, &key, plan_id).await?;
+        let path = ctx
+            .storage
+            .get_collection_path(&collection, Some(supplementary_id))
+            .await?;
+        ctx.storage.delete(&path).await?;
+        ctx.content
+            .collection_supplementary
+            .delete_supplementary(ctx, &supplementary_id)
+            .await?;
         Ok(true)
     }
 }

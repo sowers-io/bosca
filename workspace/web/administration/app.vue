@@ -96,7 +96,9 @@ useHead({
 
 <template>
   <NuxtLayout>
-    <NuxtPage />
+    <ClientOnly>
+      <NuxtPage />
+    </ClientOnly>
   </NuxtLayout>
   <Toaster />
 </template>

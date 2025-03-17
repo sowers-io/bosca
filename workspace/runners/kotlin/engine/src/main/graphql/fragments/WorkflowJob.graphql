@@ -1,4 +1,9 @@
 fragment WorkflowJob on WorkflowJob {
+    parent {
+        id
+        index
+        queue
+    }
     planId {
         id
         queue

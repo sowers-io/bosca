@@ -1,4 +1,6 @@
 fragment MetadataSupplementary on MetadataSupplementary {
+    id
+    planId
     key
     name
     uploaded

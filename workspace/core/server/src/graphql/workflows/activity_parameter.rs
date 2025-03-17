@@ -1,4 +1,4 @@
-use crate::models::workflow::activities::{ActivityParameter, ActivityParameterScope, ActivityParameterType};
+use crate::models::workflow::activities::{ActivityParameter, ActivityParameterType};
 use async_graphql::Object;
 
 pub struct ActivityParameterObject {
@@ -20,10 +20,6 @@ impl ActivityParameterObject {
     #[graphql(name = "type")]
     async fn parameter_type(&self) -> ActivityParameterType {
         self.parameter.parameter_type
-    }
-
-    async fn scope(&self) -> ActivityParameterScope {
-        self.parameter.scope
     }
 }
 

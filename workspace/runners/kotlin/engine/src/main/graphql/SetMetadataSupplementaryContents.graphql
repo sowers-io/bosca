@@ -1,7 +1,7 @@
-mutation SetMetadataSupplementaryContents($id: String!, $key: String!, $contentType: String!, $file: Upload!) {
+mutation SetMetadataSupplementaryContents($supplementaryId: String!, $contentType: String!, $file: Upload!) {
     content {
         metadata {
-            setSupplementaryContents(id: $id, key: $key, contentType: $contentType, file: $file)
+            setSupplementaryContents(supplementaryId: $supplementaryId, contentType: $contentType, file: $file)
         }
     }
 }

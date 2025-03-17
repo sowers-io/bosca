@@ -885,22 +885,19 @@ impl MetadataMutationObject {
         supplementary: MetadataSupplementaryInput,
     ) -> Result<MetadataSupplementaryObject, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        let id = Uuid::parse_str(supplementary.metadata_id.as_str())?;
+        let metadata_id = Uuid::parse_str(supplementary.metadata_id.as_str())?;
         let metadata = ctx
-            .check_metadata_action(&id, PermissionAction::Manage)
+            .check_metadata_action(&metadata_id, PermissionAction::Manage)
             .await?;
-        ctx.content
+        let id = ctx
+            .content
             .metadata_supplementary
             .add_supplementary(ctx, &supplementary)
             .await?;
         match ctx
             .content
             .metadata_supplementary
-            .get_supplementary(
-                &id,
-                &supplementary.key,
-                supplementary.plan_id.map(|p| Uuid::parse_str(&p).unwrap()),
-            )
+            .get_supplementary(&id)
             .await?
         {
             Some(supplementary) => Ok(MetadataSupplementaryObject::new(metadata, supplementary)),
@@ -911,27 +908,25 @@ impl MetadataMutationObject {
     async fn set_supplementary_uploaded(
         &self,
         ctx: &Context<'_>,
-        metadata_id: String,
-        supplementary_key: String,
-        plan_id: Option<String>,
+        supplementary_id: String,
         content_type: String,
         len: usize,
     ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        let id = Uuid::parse_str(metadata_id.as_str())?;
-        let plan_id = plan_id.map(|p| Uuid::parse_str(p.as_str()).unwrap());
-        ctx.check_metadata_action(&id, PermissionAction::Manage)
+        let supplementary_id = Uuid::parse_str(supplementary_id.as_str())?;
+        let Some(supplementary) = ctx
+            .content
+            .metadata_supplementary
+            .get_supplementary(&supplementary_id)
+            .await?
+        else {
+            return Err(Error::new("Supplementary not found"));
+        };
+        ctx.check_metadata_action(&supplementary.metadata_id, PermissionAction::Manage)
             .await?;
         ctx.content
             .metadata_supplementary
-            .set_supplementary_uploaded(
-                ctx,
-                &id,
-                &supplementary_key,
-                plan_id,
-                content_type.as_str(),
-                len,
-            )
+            .set_supplementary_uploaded(ctx, &supplementary_id, content_type.as_str(), len)
             .await?;
         Ok(true)
     }
@@ -939,22 +934,27 @@ impl MetadataMutationObject {
     async fn set_supplementary_contents(
         &self,
         ctx: &Context<'_>,
-        id: String,
-        key: String,
-        plan_id: Option<String>,
+        supplementary_id: String,
         content_type: String,
         file: Upload,
     ) -> Result<bool, Error> {
         let octx = ctx;
         let ctx = ctx.data::<BoscaContext>()?;
-        let metadata_id = Uuid::parse_str(id.as_str())?;
-        let plan_id = plan_id.map(|p| Uuid::parse_str(p.as_str()).unwrap());
+        let supplementary_id = Uuid::parse_str(supplementary_id.as_str())?;
+        let Some(supplementary) = ctx
+            .content
+            .metadata_supplementary
+            .get_supplementary(&supplementary_id)
+            .await?
+        else {
+            return Err(Error::new("Supplementary not found"));
+        };
         let metadata = ctx
-            .check_metadata_action(&metadata_id, PermissionAction::Manage)
+            .check_metadata_action(&supplementary.metadata_id, PermissionAction::Manage)
             .await?;
         let path = ctx
             .storage
-            .get_metadata_path(&metadata, Some(key.to_owned()))
+            .get_metadata_path(&metadata, Some(supplementary_id))
             .await?;
         let mut multipart = ctx.storage.put_multipart(&path).await?;
         let mut content = file.value(octx)?.into_async_read();
@@ -973,7 +973,7 @@ impl MetadataMutationObject {
         }
         ctx.content
             .metadata_supplementary
-            .set_supplementary_uploaded(ctx, &metadata_id, &key, plan_id, &content_type, len)
+            .set_supplementary_uploaded(ctx, &supplementary_id, &content_type, len)
             .await?;
         Ok(true)
     }
@@ -981,28 +981,33 @@ impl MetadataMutationObject {
     async fn set_supplementary_text_contents(
         &self,
         ctx: &Context<'_>,
-        id: String,
-        key: String,
-        plan_id: Option<String>,
+        supplementary_id: String,
         content_type: String,
         content: String,
     ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        let metadata_id = Uuid::parse_str(id.as_str())?;
-        let plan_id = plan_id.map(|p| Uuid::parse_str(p.as_str()).unwrap());
+        let supplementary_id = Uuid::parse_str(supplementary_id.as_str())?;
+        let Some(supplementary) = ctx
+            .content
+            .metadata_supplementary
+            .get_supplementary(&supplementary_id)
+            .await?
+        else {
+            return Err(Error::new("Supplementary not found"));
+        };
         let metadata = ctx
-            .check_metadata_action(&metadata_id, PermissionAction::Edit)
+            .check_metadata_action(&supplementary.metadata_id, PermissionAction::Manage)
             .await?;
         let path = ctx
             .storage
-            .get_metadata_path(&metadata, Some(key.clone()))
+            .get_metadata_path(&metadata, Some(supplementary_id))
             .await?;
         let bytes: Bytes = content.into();
         let len = bytes.len();
         ctx.storage.put(&path, bytes).await?;
         ctx.content
             .metadata_supplementary
-            .set_supplementary_uploaded(ctx, &metadata_id, &key, plan_id, &content_type, len)
+            .set_supplementary_uploaded(ctx, &supplementary_id, &content_type, len)
             .await?;
         Ok(true)
     }
@@ -1011,17 +1016,55 @@ impl MetadataMutationObject {
         &self,
         ctx: &Context<'_>,
         id: String,
-        key: String,
-        plan_id: Option<String>,
     ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        let id = Uuid::parse_str(id.as_str())?;
-        let plan_id = plan_id.map(|p| Uuid::parse_str(p.as_str()).unwrap());
-        ctx.check_metadata_action(&id, PermissionAction::Manage)
+        let supplementary_id = Uuid::parse_str(id.as_str())?;
+        let Some(supplementary) = ctx
+            .content
+            .metadata_supplementary
+            .get_supplementary(&supplementary_id)
+            .await?
+        else {
+            return Err(Error::new("Supplementary not found"));
+        };
+        let metadata = ctx
+            .check_metadata_action(&supplementary.metadata_id, PermissionAction::Manage)
+            .await?;
+        let path = ctx
+            .storage
+            .get_metadata_path(&metadata, Some(supplementary_id))
+            .await?;
+        ctx.storage.delete(&path).await?;
+        ctx.content
+            .metadata_supplementary
+            .delete_supplementary(ctx, &supplementary_id)
+            .await?;
+        Ok(true)
+    }
+
+    async fn detach_supplementary(
+        &self,
+        ctx: &Context<'_>,
+        id: String,
+    ) -> Result<bool, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let supplementary_id = Uuid::parse_str(id.as_str())?;
+        let Some(supplementary) = ctx
+            .content
+            .metadata_supplementary
+            .get_supplementary(&supplementary_id)
+            .await?
+        else {
+            return Err(Error::new("Supplementary not found"));
+        };
+        let metadata = ctx
+            .check_metadata_action(&supplementary.metadata_id, PermissionAction::Manage)
+            .await?;
+        ctx.check_metadata_action(&metadata.id, PermissionAction::Manage)
             .await?;
         ctx.content
             .metadata_supplementary
-            .delete_supplementary(ctx, &id, &key, plan_id)
+            .detach_supplementary(ctx, &supplementary_id)
             .await?;
         Ok(true)
     }

@@ -43,7 +43,7 @@ impl MetadataSupplementaryContentUrls {
                 &ctx.security,
                 &ctx.principal,
                 &self.metadata,
-                Some(self.supplementary.key.clone()),
+                Some(self.supplementary.id),
             )
             .await?
             .into())
@@ -56,7 +56,7 @@ impl MetadataSupplementaryContentUrls {
                 &ctx.security,
                 &ctx.principal,
                 &self.metadata,
-                Some(self.supplementary.key.clone()),
+                Some(self.supplementary.id),
             )
             .await?
             .into())
@@ -65,6 +65,7 @@ impl MetadataSupplementaryContentUrls {
 
 #[Object(name = "MetadataSupplementaryContent")]
 impl MetadataSupplementaryContentObject {
+
     #[graphql(name = "type")]
     async fn content_type(&self) -> &String {
         &self.supplementary.content_type
@@ -83,13 +84,13 @@ impl MetadataSupplementaryContentObject {
 
     async fn text(&self, ctx: &Context<'_>) -> Result<String, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        let path = ctx.storage.get_metadata_path(&self.metadata, Some(self.supplementary.key.clone())).await?;
+        let path = ctx.storage.get_metadata_path(&self.metadata, Some(self.supplementary.id)).await?;
         Ok(ctx.storage.get(&path).await?)
     }
 
     async fn json(&self, ctx: &Context<'_>) -> Result<Value, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        let path = ctx.storage.get_metadata_path(&self.metadata, Some(self.supplementary.key.clone())).await?;
+        let path = ctx.storage.get_metadata_path(&self.metadata, Some(self.supplementary.id)).await?;
         let text = ctx.storage.get(&path).await?;
         Ok(serde_json::from_str(text.as_str())?)
     }
@@ -111,6 +112,10 @@ impl MetadataSupplementarySourceObject {
 
 #[Object(name = "MetadataSupplementary")]
 impl MetadataSupplementaryObject {
+    async fn id(&self) -> String {
+        self.supplementary.id.to_string()
+    }
+
     async fn plan_id(&self) -> Option<String> { self.supplementary.plan_id.map(|id| id.to_string()) }
 
     async fn metadata_id(&self) -> String {

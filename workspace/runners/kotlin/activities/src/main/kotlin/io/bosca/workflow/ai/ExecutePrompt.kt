@@ -38,7 +38,10 @@ class ExecutePrompt(client: Client) : Activity(client) {
             configuration = emptyMap<String, Any>().toOptional(),
             inputs = emptyList(),
             outputs = listOf(
-                ActivityParameterInput(OUTPUT_NAME, ActivityParameterType.SUPPLEMENTARY)
+                ActivityParameterInput(
+                    OUTPUT_NAME,
+                    ActivityParameterType.SUPPLEMENTARY
+                )
             ),
         )
     }
@@ -63,7 +66,7 @@ class ExecutePrompt(client: Client) : Activity(client) {
         var userPrompt = prompt.userPrompt
 
         for (input in job.workflowActivity.workflowActivity.inputs) {
-            val file = getInputSupplementaryFile(context, job, input.workflowActivityParameter.name)
+            val file = getInputSupplementaryFile(context, job, input.workflowActivityParameter)
             val text = withContext(Dispatchers.IO) { file.readText() }
             userPrompt = userPrompt.replace("{${input.workflowActivityParameter.name}}", text)
         }

@@ -123,7 +123,7 @@ type Documents = {
     "subscription OnActivityChanged {\n  activity\n}": typeof types.OnActivityChangedDocument,
     "subscription OnCollectionChanged {\n  collection\n}": typeof types.OnCollectionChangedDocument,
     "subscription OnMetadataChanged {\n  metadata\n}": typeof types.OnMetadataChangedDocument,
-    "subscription OnMetadataSupplementaryChanged {\n  metadataSupplementary {\n    id\n    supplementary\n  }\n}": typeof types.OnMetadataSupplementaryChangedDocument,
+    "subscription OnMetadataSupplementaryChanged {\n  metadataSupplementary {\n    contentId\n    id\n    key\n    planId\n  }\n}": typeof types.OnMetadataSupplementaryChangedDocument,
     "subscription OnModelChanged {\n  model\n}": typeof types.OnModelChangedDocument,
     "subscription OnPromptChanged {\n  prompt\n}": typeof types.OnPromptChangedDocument,
     "subscription OnStateChanged {\n  state\n}": typeof types.OnStateChangedDocument,
@@ -312,7 +312,7 @@ const documents: Documents = {
     "subscription OnActivityChanged {\n  activity\n}": types.OnActivityChangedDocument,
     "subscription OnCollectionChanged {\n  collection\n}": types.OnCollectionChangedDocument,
     "subscription OnMetadataChanged {\n  metadata\n}": types.OnMetadataChangedDocument,
-    "subscription OnMetadataSupplementaryChanged {\n  metadataSupplementary {\n    id\n    supplementary\n  }\n}": types.OnMetadataSupplementaryChangedDocument,
+    "subscription OnMetadataSupplementaryChanged {\n  metadataSupplementary {\n    contentId\n    id\n    key\n    planId\n  }\n}": types.OnMetadataSupplementaryChangedDocument,
     "subscription OnModelChanged {\n  model\n}": types.OnModelChangedDocument,
     "subscription OnPromptChanged {\n  prompt\n}": types.OnPromptChangedDocument,
     "subscription OnStateChanged {\n  state\n}": types.OnStateChangedDocument,
@@ -845,7 +845,7 @@ export function graphql(source: "subscription OnMetadataChanged {\n  metadata\n}
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */
-export function graphql(source: "subscription OnMetadataSupplementaryChanged {\n  metadataSupplementary {\n    id\n    supplementary\n  }\n}"): (typeof documents)["subscription OnMetadataSupplementaryChanged {\n  metadataSupplementary {\n    id\n    supplementary\n  }\n}"];
+export function graphql(source: "subscription OnMetadataSupplementaryChanged {\n  metadataSupplementary {\n    contentId\n    id\n    key\n    planId\n  }\n}"): (typeof documents)["subscription OnMetadataSupplementaryChanged {\n  metadataSupplementary {\n    contentId\n    id\n    key\n    planId\n  }\n}"];
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.
  */

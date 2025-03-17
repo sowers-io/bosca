@@ -1,7 +1,7 @@
-mutation SetCollectionSupplementaryTextContents($id: String!, $key: String!, $contentType: String!, $content: String!) {
+mutation SetCollectionSupplementaryTextContents($supplementaryId: String!, $contentType: String!, $content: String!) {
     content {
         collection {
-            setSupplementaryTextContents(id: $id, key: $key, contentType: $contentType, content: $content)
+            setSupplementaryTextContents(supplementaryId: $supplementaryId, contentType: $contentType, content: $content)
         }
     }
 }
