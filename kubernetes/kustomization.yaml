@@ -15,9 +15,9 @@ resources:
   - notifier-pubsub.yaml
   - server
   - workflow-server
+  - runner
   - analytics-backend
   - analytics-frontend
-  - analytics-query
   - meilisearch
   - ollama
   - ingress.yaml

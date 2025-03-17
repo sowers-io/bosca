@@ -13,6 +13,15 @@
       "type": "com.dashjoin.jsonata.Expressions"
     },
     {
+      "type": "apple.security.AppleProvider",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
+    },
+    {
       "type": "com.github.ajalt.mordant.terminal.terminalinterface.ffm.TerminalInterfaceProviderFfm"
     },
     {
@@ -97,6 +106,9 @@
       ]
     },
     {
+      "type": "java.lang.ClassValue"
+    },
+    {
       "type": "java.lang.Object"
     },
     {
@@ -163,7 +175,16 @@
       ]
     },
     {
-      "type": "kotlin.reflect.jvm.internal.ReflectionFactoryImpl"
+      "type": "kotlin.jvm.internal.DefaultConstructorMarker"
+    },
+    {
+      "type": "kotlin.reflect.jvm.internal.ReflectionFactoryImpl",
+      "methods": [
+        {
+          "name": "<init>",
+          "parameterTypes": []
+        }
+      ]
     },
     {
       "type": "kotlinx.coroutines.CancellableContinuationImpl",
@@ -386,6 +407,34 @@
         },
         {
           "name": "producerIndex$volatile"
+        }
+      ]
+    },
+    {
+      "type": "kotlinx.coroutines.sync.MutexImpl",
+      "fields": [
+        {
+          "name": "owner$volatile"
+        }
+      ]
+    },
+    {
+      "type": "kotlinx.coroutines.sync.SemaphoreAndMutexImpl",
+      "fields": [
+        {
+          "name": "_availablePermits$volatile"
+        },
+        {
+          "name": "deqIdx$volatile"
+        },
+        {
+          "name": "enqIdx$volatile"
+        },
+        {
+          "name": "head$volatile"
+        },
+        {
+          "name": "tail$volatile"
         }
       ]
     },
@@ -620,6 +669,13 @@
           "com.github.ajalt.mordant.terminal.terminalinterface.jna.PosixLibC"
         ]
       }
+    },
+    {
+      "type": {
+        "proxy": [
+          "com.github.ajalt.mordant.terminal.terminalinterface.jna.MacosLibC"
+        ]
+      }
     }
   ],
   "resources": [
@@ -689,6 +745,17 @@
     {
       "module": "java.xml",
       "glob": "jdk/xml/internal/jdkcatalog/JDKCatalog.xml"
+    },
+    {
+      "glob": "com/sun/jna/darwin-aarch64/libjnidispatch.jnilib"
+    },
+    {
+      "module": "java.base",
+      "glob": "jdk/internal/icu/impl/data/icudt74b/nfc.nrm"
+    },
+    {
+      "module": "java.base",
+      "glob": "jdk/internal/icu/impl/data/icudt74b/nfkc.nrm"
     }
   ],
   "bundles": [],

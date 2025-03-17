@@ -1,13 +1,13 @@
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: analytics-query
+  name: runner
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: analytics-query
-  minReplicas: 2
+    name: runner
+  minReplicas: 1
   maxReplicas: 10
   metrics:
     - type: Resource
@@ -21,4 +21,4 @@ spec:
         name: memory
         target:
           type: AverageValue
-          averageValue: 450Mi
+          averageValue: 700Mi

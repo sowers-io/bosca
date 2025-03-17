@@ -45,6 +45,7 @@ tasks.register<JavaExec>("runMain") {
     environment("BOSCA_URL", "http://127.0.0.1:8000/graphql")
     mainClass.set("io.bosca.MainKt")
     jvmArgs = listOf("-XX:UseSVE=0")
+    args = listOf("run")
 }
 
 graalvmNative {
