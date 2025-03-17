@@ -4,10 +4,7 @@
   "version": "0.0.1",
   "main": "./main.ts",
   "scripts": {
-    "nuxt-build": "nuxt build",
-    "build": "deno task nuxt-build",
-    "compile": "deno compile -A --output ../.output/bosca-administration-installer --include ../lib/graphql/persisted-documents.json ./main.ts",
-    "install-queries": "deno run -A install-queries.ts"
+    "run": "deno run -A main.ts"
   },
   "dependencies": {
   },
