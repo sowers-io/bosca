@@ -1,0 +1,6 @@
+FROM gcr.io/distroless/cc-debian12
+
+COPY workspace/web/administration/.output/bosca-administration /
+
+EXPOSE 3001
+CMD ["./bosca-administration"]

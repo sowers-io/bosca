@@ -1,0 +1,9 @@
+#!/bin/sh
+
+set -e
+
+cd workspace/web/administration
+
+deno install --allow-scripts=npm:json-editor-vue@0.17.3,npm:maplibre-gl@2.4.0,npm:vue-demi@0.14.10,npm:@parcel/watcher@2.5.1
+deno run build
+deno run compile
