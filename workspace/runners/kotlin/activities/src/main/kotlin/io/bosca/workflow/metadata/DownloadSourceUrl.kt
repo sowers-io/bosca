@@ -24,7 +24,7 @@ class DownloadSourceUrl(client: Client) : Activity(client) {
         if (job.metadata?.metadata?.uploaded != null) return
         job.metadata?.metadata?.source?.sourceUrl?.let {
             val file = downloadToFile(context, job, it)
-            setContent(context, job, file)
+            setContent(job, file)
         }
     }
 

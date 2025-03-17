@@ -21,11 +21,9 @@ class DeleteAllSupplementary(client: Client) : Activity(client) {
     }
 
     override suspend fun execute(context: ActivityContext, job: WorkflowJob) {
-        val supplementary = job.collection?.collection?.supplementary?.map {
-            it.collectionSupplementary.id
-        }
-        for (id in supplementary ?: emptyList()) {
-            client.collections.deleteSupplementary(id)
+        val supplementary = job.collection?.collection?.supplementary ?: return
+        for (s in supplementary) {
+            client.collections.deleteSupplementary(s.collectionSupplementary.id)
         }
     }
 

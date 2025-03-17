@@ -18,6 +18,7 @@ import io.bosca.workflow.metadata.PermanentlyDelete as MetadataPermanentlyDelete
 import io.bosca.workflow.metadata.PublishGuide as MetadataPublishGuide
 import io.bosca.workflow.metadata.DeleteSupplementary as MetadataDeleteSupplementary
 import io.bosca.workflow.metadata.DeleteAllSupplementary as MetadataDeleteAllSupplementary
+import io.bosca.workflow.metadata.DeleteAllPlanSupplementary as MetadataDeleteAllPlanSupplementary
 
 import io.bosca.workflow.collection.Traits as CollectionTraits
 import io.bosca.workflow.collection.BeginTransitionTo as CollectionBeginTransitionTo
@@ -29,6 +30,7 @@ import io.bosca.workflow.collection.GenerateList as CollectionGenerateList
 import io.bosca.workflow.collection.PermanentlyDelete as CollectionPermanentlyDelete
 import io.bosca.workflow.collection.DeleteSupplementary as CollectionDeleteSupplementary
 import io.bosca.workflow.collection.DeleteAllSupplementary as CollectionDeleteAllSupplementary
+import io.bosca.workflow.collection.DeleteAllPlanSupplementary as CollectionDeleteAllPlanSupplementary
 
 import io.bosca.workflow.ai.embeddings.GenerateEmbeddings
 import io.bosca.workflow.general.Delay
@@ -56,6 +58,7 @@ class ActivitiesInstaller(client: Client) : Installer, ActivityRegistry {
         MetadataPublishGuide(client),
         MetadataDeleteSupplementary(client),
         MetadataDeleteAllSupplementary(client),
+        MetadataDeleteAllPlanSupplementary(client),
 
         ExecuteChildWorkflow(client),
 
@@ -69,6 +72,7 @@ class ActivitiesInstaller(client: Client) : Installer, ActivityRegistry {
         CollectionPermanentlyDelete(client),
         CollectionDeleteSupplementary(client),
         CollectionDeleteAllSupplementary(client),
+        CollectionDeleteAllPlanSupplementary(client),
 
         MuxUploader(client),
 
