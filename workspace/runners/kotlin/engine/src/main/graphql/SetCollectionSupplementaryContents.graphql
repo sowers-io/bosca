@@ -1,0 +1,7 @@
+mutation SetCollectionSupplementaryContents($supplementaryId: String!, $contentType: String!, $file: Upload!) {
+    content {
+        collection {
+            setSupplementaryContents(supplementaryId: $supplementaryId, contentType: $contentType, file: $file)
+        }
+    }
+}

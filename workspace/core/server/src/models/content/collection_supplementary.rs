@@ -5,7 +5,10 @@ use tokio_postgres::Row;
 use uuid::Uuid;
 
 #[derive(Clone)]
-pub struct MetadataSupplementary {
+pub struct CollectionSupplementary {
+    pub id: Uuid,
+    pub plan_id: Option<Uuid>,
+    pub collection_id: Uuid,
     pub key: String,
     pub name: String,
     pub content_type: String,
@@ -19,8 +22,9 @@ pub struct MetadataSupplementary {
 }
 
 #[derive(InputObject)]
-pub struct MetadataSupplementaryInput {
-    pub metadata_id: String,
+pub struct CollectionSupplementaryInput {
+    pub plan_id: String,
+    pub collection_id: String,
     pub key: String,
     pub name: String,
     pub content_type: String,
@@ -30,9 +34,12 @@ pub struct MetadataSupplementaryInput {
     pub attributes: Option<Value>,
 }
 
-impl From<&Row> for MetadataSupplementary {
+impl From<&Row> for CollectionSupplementary {
     fn from(row: &Row) -> Self {
         Self {
+            id: row.get("id"),
+            collection_id: row.get("collection_id"),
+            plan_id: row.get("plan_id"),
             key: row.get("key"),
             name: row.get("name"),
             content_type: row.get("content_type"),

@@ -13,6 +13,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.serializer
+import kotlinx.serialization.json.JsonObject
+import java.text.SimpleDateFormat
+import java.time.OffsetDateTime
+import java.time.format.DateTimeParseException
+import kotlin.math.exp
 
 @Serializable
 data class JSONataConfiguration(
@@ -33,11 +38,45 @@ class JSONata(client: Client) : Activity(client) {
         )
     }
 
+    private fun parseDate(input: Any?): Long {
+        if (input == null) return 0L
+        return when (input) {
+            is String -> {
+                try {
+                    OffsetDateTime.parse(input).toInstant().toEpochMilli()
+                } catch (e: DateTimeParseException) {
+                    SimpleDateFormat("mm/dd/yyyy hh:mm a").parse(input).time
+                }
+            }
+
+            is Long -> {
+                input.toLong()
+            }
+
+            is Float -> {
+                val seconds = input.toLong()
+                val milliseconds = ((input - seconds) * 1000).toLong()
+                return seconds * 1000 + milliseconds
+            }
+
+            else -> {
+                throw UnsupportedOperationException("Unsupported date type: ${input::class.simpleName} -> $input")
+            }
+        }
+    }
+
     override suspend fun execute(context: ActivityContext, job: WorkflowJob) {
         val configuration = getConfiguration<JSONataConfiguration>(job)
-        val file = if (hasInputs(job)) getInputSupplementaryFile(context, job, INPUT_NAME) else getContentFile(context, job)
-        val data = withContext(Dispatchers.IO) { file.readText().parseToJsonElement().toAny() }
+        val file = if (hasInputs(job)) {
+            getInputSupplementaryFile(context, job, INPUT_NAME)
+        } else if (job.metadata?.metadata?.content?.metadataContent?.type?.startsWith("text/") == true || job.metadata?.metadata?.content?.metadataContent?.type?.equals("application/json") == true) {
+            getContentFile(context, job)
+        } else {
+            null
+        }
+        val data = withContext(Dispatchers.IO) { file?.readText()?.parseToJsonElement()?.toAny() ?: "{}".parseToJsonElement().toAny() }
         val expression = Jsonata.jsonata(configuration.expression)
+        expression.registerFunction("parseDate", ::parseDate)
         val result = expression.evaluate(data).toJsonElement()
         setSupplementaryContents(
             job,

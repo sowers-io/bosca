@@ -1,4 +1,9 @@
 fragment WorkflowJob on WorkflowJob {
+    parent {
+        id
+        index
+        queue
+    }
     planId {
         id
         queue
@@ -13,6 +18,9 @@ fragment WorkflowJob on WorkflowJob {
     }
     metadata {
         ...Metadata
+    }
+    profile {
+        ...Profile
     }
     activity {
         ...Activity

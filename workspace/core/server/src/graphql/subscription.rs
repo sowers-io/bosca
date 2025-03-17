@@ -1,7 +1,7 @@
 use crate::context::BoscaContext;
 use async_graphql::*;
 use tokio_stream::Stream;
-use crate::datastores::notifier::{MetadataSupplementaryIdObject, TransitionIdObject};
+use crate::datastores::notifier::{SupplementaryIdObject, TransitionIdObject};
 use crate::graphql::workflows::workflow_execution_id::WorkflowExecutionIdObject;
 
 pub struct SubscriptionObject;
@@ -41,7 +41,7 @@ impl SubscriptionObject {
         ctx.notifier.listen_metadata_changes().await
     }
 
-    async fn metadata_supplementary(&self, ctx: &Context<'_>) -> Result<impl Stream<Item = MetadataSupplementaryIdObject>> {
+    async fn metadata_supplementary(&self, ctx: &Context<'_>) -> Result<impl Stream<Item = SupplementaryIdObject>> {
         let ctx = ctx.data::<BoscaContext>()?;
         if ctx.principal.anonymous {
             return Err(Error::new("Unauthorized"));
@@ -55,6 +55,14 @@ impl SubscriptionObject {
             return Err(Error::new("Unauthorized"));
         }
         ctx.notifier.listen_collection_changes().await
+    }
+
+    async fn collection_supplementary(&self, ctx: &Context<'_>) -> Result<impl Stream<Item = SupplementaryIdObject>> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        if ctx.principal.anonymous {
+            return Err(Error::new("Unauthorized"));
+        }
+        ctx.notifier.listen_collection_supplementary_changes().await
     }
 
     async fn workflow(&self, ctx: &Context<'_>) -> Result<impl Stream<Item = String>> {

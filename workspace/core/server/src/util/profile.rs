@@ -28,7 +28,7 @@ pub async fn add_password_principal(
     let collection_name = format!("Collection for {}", identifier);
     let collection_id = ctx.content
         .collections
-        .add(&CollectionInput {
+        .add(ctx, &CollectionInput {
             name: collection_name,
             collection_type: Some(CollectionType::System),
             trait_ids: Some(vec!["profile".to_string()]),
@@ -55,7 +55,7 @@ pub async fn add_password_principal(
     };
     ctx.content.collection_permissions.add(&permission).await?;
     if set_ready {
-        ctx.content.collection_workflows.set_ready_and_enqueue(&ctx.workflow, &principal, &collection, None).await?;
+        ctx.content.collection_workflows.set_ready_and_enqueue(ctx, &principal, &collection, None).await?;
     }
 
     Ok(principal)

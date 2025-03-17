@@ -11,15 +11,16 @@ use crate::graphql::content::metadata_content::MetadataContentObject;
 use crate::graphql::content::metadata_profile::MetadataProfileObject;
 use crate::graphql::content::metadata_relationship::MetadataRelationshipObject;
 use crate::graphql::content::metadata_source::MetadataSourceObject;
+use crate::graphql::content::metadata_supplementary::MetadataSupplementaryObject;
 use crate::graphql::content::metadata_workflow::MetadataWorkflowObject;
 use crate::graphql::content::permission::PermissionObject;
-use crate::graphql::content::supplementary::MetadataSupplementaryObject;
 use crate::models::content::attributes_filter::AttributesFilterInput;
 use crate::models::content::metadata::{Metadata, MetadataType};
 use crate::models::security::permission::{Permission, PermissionAction};
 use async_graphql::{Context, Error, Object};
 use chrono::{DateTime, Utc};
 use serde_json::Value;
+use uuid::Uuid;
 
 pub struct MetadataObject {
     metadata: Metadata,
@@ -279,22 +280,36 @@ impl MetadataObject {
         &self,
         ctx: &Context<'_>,
         key: Option<String>,
+        plan_id: Option<String>,
     ) -> Result<Vec<MetadataSupplementaryObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        if key.is_some() {
-            return Ok(ctx
+
+        if let Some(key) = key {
+            if ctx.check_metadata_supplementary_action(&self.metadata, PermissionAction::View).await.is_err() {
+                return Ok(vec![])
+            }
+            let plan_id = plan_id.map(|p| Uuid::parse_str(&p).unwrap());
+            if let Some(supplementary) = ctx
                 .content
-                .metadata
-                .get_supplementaries(&self.metadata.id)
+                .metadata_supplementary
+                .get_supplementary_by_key(&self.metadata.id, &key, plan_id)
                 .await?
-                .into_iter()
-                .filter(|s| s.key == key.clone().unwrap())
-                .map(|s| MetadataSupplementaryObject::new(self.metadata.clone(), s))
-                .collect());
+            {
+                return Ok(vec![MetadataSupplementaryObject::new(
+                    self.metadata.clone(),
+                    supplementary,
+                )]);
+            }
+            return Ok(vec![]);
         }
+
+        if ctx.check_metadata_supplementary_action(&self.metadata, PermissionAction::List).await.is_err() {
+            return Ok(vec![])
+        }
+
         Ok(ctx
             .content
-            .metadata
+            .metadata_supplementary
             .get_supplementaries(&self.metadata.id)
             .await?
             .into_iter()

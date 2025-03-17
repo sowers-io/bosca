@@ -3,22 +3,12 @@ const breadcrumbs = useBreadcrumbs()
 
 onMounted(() => {
   breadcrumbs.set([
-    { title: 'Media' },
+    {title: 'Media'},
   ])
 })
 </script>
 <template>
   <ContentMedia
-    :filter="
-      {
-        jpg: true,
-        png: true,
-        webp: true,
-        mp4: true,
-        mp3: true,
-        webm: true,
-        youtube: true,
-      }
-    "
+      :filter="reactive({ jpg: true, png: true, webp: true, mp4: true, mp3: true, webm: true, youtube: true })"
   />
 </template>

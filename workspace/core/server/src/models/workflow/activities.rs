@@ -242,3 +242,4 @@ impl ToSql for ActivityParameterType {
 
     to_sql_checked!();
 }
+

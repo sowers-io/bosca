@@ -10,7 +10,6 @@ pub async fn initialize_content(ctx: &BoscaContext) -> Result<(), Error> {
     match ctx.content.collections.get(&root_collection_id).await? {
         Some(_) => {}
         None => {
-            ctx.workflow.initialize_default_search_index().await?;
             initialize_collection(ctx, "Root", CollectionType::Root, Value::Null).await?;
         }
     }
@@ -34,8 +33,8 @@ async fn initialize_collection(
         },
         ..Default::default()
     };
-    let collection_id = ctx.content.collections.add(&input).await.unwrap();
-    let group = ctx.security.get_administrators_group().await.unwrap();
+    let collection_id = ctx.content.collections.add(ctx, &input).await?;
+    let group = ctx.security.get_administrators_group().await?;
     let permission = Permission {
         entity_id: collection_id,
         group_id: group.id,
@@ -46,11 +45,8 @@ async fn initialize_collection(
     let collection = ctx.content.collections.get(&collection_id).await?.unwrap();
     ctx.content
         .collection_workflows
-        .set_ready(&collection_id)
-        .await?;
-    ctx.content
-        .collection_workflows
         .set_state(
+            ctx,
             &principal,
             &collection,
             "published",
@@ -59,6 +55,10 @@ async fn initialize_collection(
             true,
             true,
         )
+        .await?;
+    ctx.content
+        .collection_workflows
+        .set_ready(ctx, &collection_id)
         .await?;
     Ok(())
 }

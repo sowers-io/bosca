@@ -22,6 +22,7 @@ impl ActivityParameterObject {
         self.parameter.parameter_type
     }
 }
+
 impl From<ActivityParameter> for ActivityParameterObject {
     fn from(parameter: ActivityParameter) -> Self {
         Self::new(parameter)

@@ -1,8 +1,8 @@
-query GetMetadataContent($id: String!) {
+query GetMetadataDownload($id: String!) {
     content {
         metadata(id: $id) {
             content {
-                ...MetadataContent
+                ...MetadataContentDownload
             }
         }
     }

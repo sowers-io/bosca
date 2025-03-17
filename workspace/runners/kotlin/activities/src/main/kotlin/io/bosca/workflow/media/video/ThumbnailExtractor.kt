@@ -42,10 +42,15 @@ class ThumbnailExtractor(client: Client) : Activity(client) {
                         contentType = "image/jpeg",
                         key = "thumbnail-$index",
                         metadataId = metadata.id,
+                        planId = job.planId.id,
                         name = "Thumbnail #$index",
                     )
                 ) ?: error("failed to add supplementary")
-                client.metadata.setSupplementaryContents(metadata.id, supplementary.key, thumbnail.toUpload("image/jpeg"))
+                client.metadata.setSupplementaryContents(
+                    supplementary.id,
+                    thumbnail,
+                    "image/jpeg"
+                )
             }
         }
     }

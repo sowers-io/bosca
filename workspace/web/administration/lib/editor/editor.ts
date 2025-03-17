@@ -32,7 +32,6 @@ export function newEditor(
   const templateContent = template?.configuration?.content
     ? toRaw(template?.configuration?.content)
     : null
-  console.log(document)
   const CustomDocument = Document.extend({
     content: templateContent || 'heading block+',
     addProseMirrorPlugins() {

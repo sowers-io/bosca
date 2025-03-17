@@ -126,10 +126,7 @@ async function onAdd() {
     if (item.id === selectedId.value) {
       const templates = await client.metadata.find({
         attributes: [],
-        contentTypes: [
-          'bosca/v-' + item.attributes['editor.type'].toLowerCase() +
-          '-template',
-        ],
+        contentTypes: ['bosca/v-' + item.attributes['editor.type'].toLowerCase() + '-template'],
         categoryIds: categoryIds,
         offset: 0,
         limit: 1,

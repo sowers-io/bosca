@@ -18,6 +18,7 @@ fragment CollectionList on Collection {
 
 fragment Collection on Collection {
     id
+    slug
     traitIds
     name
     labels
@@ -37,6 +38,9 @@ fragment Collection on Collection {
     }
     workflow {
         ...CollectionWorkflow
+    }
+    supplementary {
+        ...CollectionSupplementary
     }
 }
 

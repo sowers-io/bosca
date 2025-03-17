@@ -21,12 +21,8 @@ class DeleteAllSupplementary(client: Client) : Activity(client) {
     }
 
     override suspend fun execute(context: ActivityContext, job: WorkflowJob) {
-        val workflowId = job.metadata?.metadata?.id ?: error("metadata id missing")
-        for (input in job.workflowActivity.workflowActivity.inputs) {
-            client.metadata.deleteSupplementary(
-                workflowId,
-                input.workflowActivityParameter.value
-            )
+        job.metadata?.metadata?.supplementary?.forEach { supplementary ->
+            client.metadata.deleteSupplementary(supplementary.metadataSupplementary.id)
         }
     }
 

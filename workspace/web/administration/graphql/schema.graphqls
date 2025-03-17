@@ -84,8 +84,10 @@ type Collection {
     permissions: [Permission!]!
     public: Boolean!
     publicList: Boolean!
+    publicSupplementary: Boolean!
     ready: DateTime
     slug: String
+    supplementary(key: String, planId: String): [CollectionSupplementary!]!
     systemAttributes: JSON
     templateMetadata: Metadata
     traitIds: [String!]!
@@ -106,9 +108,11 @@ type CollectionMutation {
     addChildMetadata(attributes: JSON, id: String!, metadataId: String!): Collection!
     addMetadataRelationship(relationship: CollectionMetadataRelationshipInput!): CollectionMetadataRelationship!
     addPermission(permission: PermissionInput!): Permission!
+    addSupplementary(supplementary: CollectionSupplementaryInput!): CollectionSupplementary!
     delete(id: String!, recursive: Boolean): Boolean!
     deleteMetadataRelationship(id: String!, metadataId: String!, relationship: String!): Boolean!
     deletePermission(permission: PermissionInput!): Permission!
+    deleteSupplementary(id: String!): Boolean!
     edit(collection: CollectionInput!, id: String!): Collection!
     editMetadataRelationship(relationship: CollectionMetadataRelationshipInput!): Boolean!
     permanentlyDelete(collectionId: String!, recursive: Boolean): Boolean!
@@ -119,9 +123,45 @@ type CollectionMutation {
     setCollectionOrdering(id: String!, ordering: JSON!): Boolean!
     setPublic(id: String!, public: Boolean!): Collection!
     setPublicList(id: String!, public: Boolean!): Collection!
+    setPublicSupplementary(id: String!, public: Boolean!): Collection!
     setReady(id: String!): Boolean!
+    setSupplementaryContents(contentType: String!, file: Upload!, supplementaryId: String!): Boolean!
+    setSupplementaryTextContents(content: String!, contentType: String!, supplementaryId: String!): Boolean!
+    setSupplementaryUploaded(contentType: String!, len: Int!, supplementaryId: String!): Boolean!
     setWorkflowState(state: CollectionWorkflowState!): Boolean!
     setWorkflowStateComplete(state: CollectionWorkflowCompleteState!): Boolean!
+}
+
+type CollectionSupplementary {
+    attributes: JSON
+    collectionId: String!
+    content: CollectionSupplementaryContent!
+    created: String!
+    id: String!
+    key: String!
+    modified: String!
+    name: String!
+    planId: String
+    source: CollectionSupplementarySource!
+    uploaded: String
+}
+
+type CollectionSupplementaryContent {
+    json: JSON!
+    length: Int
+    text: String!
+    type: String!
+    urls: CollectionSupplementaryContentUrls!
+}
+
+type CollectionSupplementaryContentUrls {
+    download: SignedUrl!
+    upload: SignedUrl!
+}
+
+type CollectionSupplementarySource {
+    id: String!
+    identifier: String
 }
 
 type CollectionTemplate {
@@ -171,6 +211,7 @@ type ConfigurationsMutation {
 type Content {
     categories: Categories!
     collection(id: String): Collection
+    collectionSupplementary(supplementaryId: String!): CollectionSupplementary
     collectionTemplates: CollectionTemplates!
     documentTemplates: DocumentTemplates!
     findCollections(query: FindQueryInput!): [Collection!]!
@@ -179,7 +220,7 @@ type Content {
     findMetadataCount(query: FindQueryInput!): Int!
     guideTemplates: GuideTemplates!
     metadata(id: String!, version: Int): Metadata
-    metadataSupplementary(id: String!, key: String!, version: Int): MetadataSupplementary
+    metadataSupplementary(supplementaryId: String!): MetadataSupplementary
     slug(slug: String!): ContentItem
     sources: Sources!
 }
@@ -188,7 +229,7 @@ type ContentMutation {
     category: CategoryMutation!
     collection: CollectionMutation!
     metadata: MetadataMutation!
-    reindex: Boolean!
+    rebuildStorageSystemContent: Boolean!
     sources: SourceMutation!
 }
 
@@ -340,7 +381,7 @@ type Metadata {
     relationships(filter: [String!]): [MetadataRelationship!]!
     slug: String
     source: MetadataSource!
-    supplementary(key: String): [MetadataSupplementary!]!
+    supplementary(key: String, planId: String): [MetadataSupplementary!]!
     systemAttributes: JSON
     traitIds: [String!]!
     type: MetadataType!
@@ -372,7 +413,6 @@ type MetadataMutation {
     addGuideStepModule(metadataId: String!, parentCollectionId: String!, sort: Int!, templateId: String!, templateModuleId: Int!, templateStepId: Int!, templateVersion: Int!, version: Int!): GuideStepModule!
     addPermission(permission: PermissionInput!): Permission!
     addRelationship(relationship: MetadataRelationshipInput!): MetadataRelationship!
-    addSearchDocuments(documents: [SearchDocumentInput!]!, storageSystemId: String!): Boolean!
     addSupplementary(supplementary: MetadataSupplementaryInput!): MetadataSupplementary!
     addTrait(metadataId: String!, traitId: String!): [WorkflowExecutionPlan!]!
     delete(metadataId: String!): Boolean!
@@ -380,8 +420,9 @@ type MetadataMutation {
     deleteContent(metadataId: String!): Boolean!
     deletePermission(permission: PermissionInput!): Permission!
     deleteRelationship(id1: String!, id2: String!, relationship: String!): Boolean!
-    deleteSupplementary(id: String!, key: String!): Boolean!
-    deleteTrait(metadataId: String!, traitId: String!): WorkflowExecutionPlan
+    deleteSupplementary(id: String!): Boolean!
+    deleteTrait(metadataId: String!, traitId: String!): [WorkflowExecutionPlan!]!
+    detachSupplementary(id: String!): Boolean!
     edit(id: String!, metadata: MetadataInput!): Metadata!
     editRelationship(relationship: MetadataRelationshipInput!): Boolean!
     permanentlyDelete(metadataId: String!): Boolean!
@@ -396,9 +437,9 @@ type MetadataMutation {
     setPublic(id: String!, public: Boolean!): Metadata!
     setPublicContent(id: String!, public: Boolean!): Metadata!
     setPublicSupplementary(id: String!, public: Boolean!): Metadata!
-    setSupplementaryContents(contentType: String!, file: Upload!, id: String!, key: String!): Boolean!
-    setSupplementaryTextContents(content: String!, contentType: String!, id: String!, key: String!): Boolean!
-    setSupplementaryUploaded(contentType: String!, len: Int!, metadataId: String!, supplementaryKey: String!): Boolean!
+    setSupplementaryContents(contentType: String!, file: Upload!, supplementaryId: String!): Boolean!
+    setSupplementaryTextContents(content: String!, contentType: String!, supplementaryId: String!): Boolean!
+    setSupplementaryUploaded(contentType: String!, len: Int!, supplementaryId: String!): Boolean!
     setWorkflowState(state: MetadataWorkflowState!): Boolean!
     setWorkflowStateComplete(state: MetadataWorkflowCompleteState!): Boolean!
 }
@@ -425,10 +466,12 @@ type MetadataSupplementary {
     attributes: JSON
     content: MetadataSupplementaryContent!
     created: String!
+    id: String!
     key: String!
     metadataId: String!
     modified: String!
     name: String!
+    planId: String
     source: MetadataSupplementarySource!
     uploaded: String
 }
@@ -444,11 +487,6 @@ type MetadataSupplementaryContent {
 type MetadataSupplementaryContentUrls {
     download: SignedUrl!
     upload: SignedUrl!
-}
-
-type MetadataSupplementaryIdObject {
-    id: String!
-    supplementary: String!
 }
 
 type MetadataSupplementarySource {
@@ -614,7 +652,6 @@ type Query {
 
 type SearchDocument {
     collection: Collection
-    content: String!
     metadata: Metadata
     profile: Profile
 }
@@ -704,9 +741,10 @@ type Subscription {
     activity: String!
     category: String!
     collection: String!
+    collectionSupplementary: SupplementaryIdObject!
     configuration: String!
     metadata: String!
-    metadataSupplementary: MetadataSupplementaryIdObject!
+    metadataSupplementary: SupplementaryIdObject!
     model: String!
     prompt: String!
     state: String!
@@ -717,6 +755,13 @@ type Subscription {
     workflowPlanFailed: WorkflowExecutionId!
     workflowPlanFinished: WorkflowExecutionId!
     workflowSchedule: String!
+}
+
+type SupplementaryIdObject {
+    contentId: String!
+    id: String!
+    key: String!
+    planId: String
 }
 
 type TemplateAttribute {
@@ -863,7 +908,9 @@ type WorkflowJob {
     metadata: Metadata
     metadataVersion: Int
     models: [WorkflowActivityModel!]!
+    parent: WorkflowJobId
     planId: WorkflowExecutionId!
+    profile: Profile
     prompts: [WorkflowActivityPrompt!]!
     storageSystems: [WorkflowActivityStorageSystem!]!
     supplementaryId: String
@@ -1123,7 +1170,6 @@ input CollectionInput {
     collectionType: CollectionType
     collections: [CollectionChildInput!]
     description: String
-    index: Boolean
     labels: [String!]
     metadata: [MetadataChildInput!]
     name: String!
@@ -1141,6 +1187,18 @@ input CollectionMetadataRelationshipInput {
     id: String!
     metadataId: String!
     relationship: String
+}
+
+input CollectionSupplementaryInput {
+    attributes: JSON
+    collectionId: String!
+    contentLength: Int
+    contentType: String!
+    key: String!
+    name: String!
+    planId: String!
+    sourceId: String
+    sourceIdentifier: String
 }
 
 input CollectionTemplateInput {
@@ -1172,6 +1230,7 @@ input ConfigurationInput {
     description: String!
     key: String!
     permissions: [PermissionInput!]!
+    public: Boolean!
     value: JSON!
 }
 
@@ -1278,7 +1337,6 @@ input MetadataInput {
     documentTemplate: DocumentTemplateInput
     guide: GuideInput
     guideTemplate: GuideTemplateInput
-    index: Boolean
     labels: [String!]
     languageTag: String!
     metadataType: MetadataType
@@ -1318,6 +1376,7 @@ input MetadataSupplementaryInput {
     key: String!
     metadataId: String!
     name: String!
+    planId: String!
     sourceId: String
     sourceIdentifier: String
 }
@@ -1398,13 +1457,6 @@ input PromptInput {
     schema: JSON
     systemPrompt: String!
     userPrompt: String!
-}
-
-input SearchDocumentInput {
-    collectionId: String
-    content: String!
-    metadataId: String
-    profileId: String
 }
 
 input SearchQuery {

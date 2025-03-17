@@ -2,11 +2,13 @@ package io.bosca.api
 
 import com.apollographql.apollo.api.Optional
 import com.apollographql.apollo.api.Upload
+import com.apollographql.apollo.api.toUpload
 import io.bosca.graphql.*
 import io.bosca.graphql.fragment.*
 import io.bosca.graphql.fragment.Category
 import io.bosca.graphql.fragment.Collection
 import io.bosca.graphql.fragment.Document
+import io.bosca.graphql.fragment.DocumentTemplate
 import io.bosca.graphql.fragment.Guide
 import io.bosca.graphql.fragment.Metadata
 import io.bosca.graphql.fragment.MetadataContent
@@ -15,10 +17,18 @@ import io.bosca.graphql.fragment.MetadataSupplementary
 import io.bosca.graphql.fragment.MetadataSupplementaryContent
 import io.bosca.graphql.fragment.Permission
 import io.bosca.graphql.fragment.Source
+import io.bosca.graphql.fragment.WorkflowJob
 import io.bosca.graphql.type.*
 import io.bosca.util.toOptional
+import java.io.File
 
 class ContentMetadata(network: NetworkClient) : Api(network) {
+
+    suspend fun getAll(offset: Int, limit: Int): List<Metadata> {
+        val response = network.graphql.query(GetAllMetadataQuery(offset.toOptional(), limit.toOptional())).execute()
+        response.validate()
+        return response.data?.content?.findMetadata?.map { it.metadata } ?: emptyList()
+    }
 
     suspend fun get(id: String): Metadata? {
         val response = network.graphql.query(GetMetadataQuery(id)).execute()
@@ -30,6 +40,12 @@ class ContentMetadata(network: NetworkClient) : Api(network) {
         val response = network.graphql.query(GetMetadataDocumentQuery(id, version)).execute()
         response.validate()
         return response.data?.content?.metadata?.document?.document
+    }
+
+    suspend fun getDocumentTemplate(id: String, version: Int): DocumentTemplate? {
+        val response = network.graphql.query(GetMetadataDocumentTemplateQuery(id, version.toOptional())).execute()
+        response.validate()
+        return response.data?.content?.metadata?.documentTemplate?.documentTemplate
     }
 
     suspend fun getGuide(id: String, version: Int): Guide? {
@@ -88,22 +104,22 @@ class ContentMetadata(network: NetworkClient) : Api(network) {
         return response.data?.content?.metadata?.content?.text
     }
 
-    suspend fun getMetadataContent(id: String): MetadataContent? {
-        val response = network.graphql.query(GetMetadataContentQuery(id)).execute()
+    suspend fun getSupplementaryContentDownload(supplementaryId: String): MetadataSupplementaryContentDownload? {
+        val response = network.graphql.query(GetMetadataSupplementaryDownloadQuery(supplementaryId)).execute()
         response.validate()
-        return response.data?.content?.metadata?.content?.metadataContent
+        return response.data?.content?.metadataSupplementary?.content?.metadataSupplementaryContentDownload
+    }
+
+    suspend fun getMetadataContentDownload(id: String): MetadataContentDownload? {
+        val response = network.graphql.query(GetMetadataDownloadQuery(id)).execute()
+        response.validate()
+        return response.data?.content?.metadata?.content?.metadataContentDownload
     }
 
     suspend fun getMetadataContentUpload(id: String): MetadataContentUpload.Upload? {
         val response = network.graphql.query(GetMetadataUploadQuery(id)).execute()
         response.validate()
         return response.data?.content?.metadata?.content?.metadataContentUpload?.urls?.upload
-    }
-
-    suspend fun getMetadataSupplementaryContent(id: String, key: String): MetadataSupplementaryContent? {
-        val response = network.graphql.query(GetMetadataSupplementaryQuery(id)).execute()
-        response.validate()
-        return response.data?.content?.metadata?.supplementary?.firstOrNull()?.metadataSupplementary?.content?.metadataSupplementaryContent
     }
 
     suspend fun getSupplementaryTextContents(id: String, key: String): String? {
@@ -131,7 +147,7 @@ class ContentMetadata(network: NetworkClient) : Api(network) {
     }
 
     suspend fun setTextContent(id: String, contentType: String, content: String) {
-        val response = network.graphql.mutation(SetTextContentsMutation(id, contentType, content)).execute()
+        val response = network.graphql.mutation(SetMetadataTextContentsMutation(id, contentType, content)).execute()
         response.validate()
     }
 
@@ -140,9 +156,33 @@ class ContentMetadata(network: NetworkClient) : Api(network) {
         response.validate()
     }
 
-    suspend fun setSupplementaryTextContent(id: String, key: String, contentType: String, content: String) {
-        val response =
-            network.graphql.mutation(SetSupplementaryTextContentsMutation(id, key, contentType, content)).execute()
+    suspend fun setSupplementaryTextContent(
+        supplementaryId: String,
+        contentType: String,
+        content: String
+    ) {
+        val response = network.graphql.mutation(
+            SetMetadataSupplementaryTextContentsMutation(
+                supplementaryId,
+                contentType,
+                content
+            )
+        ).execute()
+        response.validate()
+    }
+
+    suspend fun setSupplementaryTextContentWithMetadata(
+        supplementaryId: String,
+        contentType: String,
+        content: String
+    ) {
+        val response = network.graphql.mutation(
+            SetMetadataSupplementaryTextContentsMutation(
+                supplementaryId,
+                contentType,
+                content
+            )
+        ).execute()
         response.validate()
     }
 
@@ -157,27 +197,35 @@ class ContentMetadata(network: NetworkClient) : Api(network) {
         return response.data?.content?.metadata?.delete ?: false
     }
 
-    suspend fun deleteSupplementary(id: String, key: String): Boolean {
-        val response = network.graphql.mutation(DeleteSupplementaryMetadataMutation(id, key)).execute()
+    suspend fun deleteSupplementary(supplementaryId: String): Boolean {
+        val response = network.graphql.mutation(DeleteSupplementaryMetadataMutation(supplementaryId)).execute()
         response.validate()
         return response.data?.content?.metadata?.deleteSupplementary ?: false
     }
 
     suspend fun setFileContents(id: String, file: Upload): Boolean {
-        val response =
-            network.graphql.mutation(SetContentsMutation(id, Optional.presentIfNotNull(file.contentType), file))
-                .execute()
+        val response = network.graphql.mutation(SetContentsMutation(id, file.contentType.toOptional(), file)).execute()
         response.validate()
         return response.data?.content?.metadata?.setMetadataContents ?: false
     }
 
-    suspend fun setSupplementaryContents(id: String, key: String, file: Upload): Boolean {
-        val response =
-            network.graphql.mutation(SetSupplementaryContentsMutation(id, key, file.contentType, file))
-                .execute()
+    suspend fun setSupplementaryContents(supplementaryId: String, file: Upload): Boolean {
+        val response = network.graphql.mutation(
+            SetMetadataSupplementaryContentsMutation(
+                supplementaryId,
+                file.contentType,
+                file
+            )
+        ).execute()
         response.validate()
         return response.data?.content?.metadata?.setSupplementaryContents ?: false
     }
+
+    suspend fun setSupplementaryContents(
+        supplementaryId: String,
+        file: File,
+        contentType: String,
+    ): Boolean = setSupplementaryContents(supplementaryId, file.toUpload(contentType))
 
     suspend fun setAttributes(id: String, attributes: Any?) {
         val response =

@@ -274,7 +274,7 @@ impl GuidesDataStore {
         Ok(())
     }
 
-    pub async fn edit_guide(
+    pub async fn edit_guide_txn(
         &self,
         txn: &Transaction<'_>,
         metadata_id: &Uuid,

@@ -2,8 +2,9 @@ package io.bosca.api
 
 import com.apollographql.apollo.api.Optional
 import io.bosca.graphql.*
+import io.bosca.graphql.fragment.*
 import io.bosca.graphql.fragment.Collection
-import io.bosca.graphql.fragment.ParentCollection
+import io.bosca.graphql.fragment.CollectionSupplementary
 import io.bosca.graphql.fragment.Permission
 import io.bosca.graphql.type.*
 import io.bosca.util.toOptional
@@ -48,6 +49,12 @@ class ContentCollections(network: NetworkClient) : Api(network) {
         )
     }
 
+    suspend fun getAll(offset: Int, limit: Int): List<Collection> {
+        val response = network.graphql.query(GetAllCollectionQuery(offset.toOptional(), limit.toOptional())).execute()
+        response.validate()
+        return response.data?.content?.findCollections?.map { it.collection } ?: emptyList()
+    }
+
     suspend fun get(id: String? = null): Collection? {
         val response = network.graphql.query(GetCollectionQuery(Optional.presentIfNotNull(id))).execute()
         response.validate()
@@ -70,6 +77,12 @@ class ContentCollections(network: NetworkClient) : Api(network) {
         val response = network.graphql.mutation(AddCollectionMutation(collection)).execute()
         response.validate()
         return response.data?.content?.collection?.add?.id
+    }
+
+    suspend fun addSupplementary(supplementary: CollectionSupplementaryInput): CollectionSupplementary? {
+        val response = network.graphql.mutation(AddCollectionSupplementaryMutation(supplementary)).execute()
+        response.validate()
+        return response.data?.content?.collection?.addSupplementary?.collectionSupplementary
     }
 
     suspend fun edit(id: String, collection: CollectionInput): String? {
@@ -152,5 +165,26 @@ class ContentCollections(network: NetworkClient) : Api(network) {
         val response = network.graphql.mutation(RemoveMetadataCollectionMutation(collectionId, metadataId)).execute()
         response.validate()
         return response.data?.content?.collection?.removeChildMetadata?.id
+    }
+
+    suspend fun getSupplementaryContentDownload(supplementaryId: String): CollectionSupplementaryContentDownload? {
+        val response = network.graphql.query(GetCollectionSupplementaryDownloadQuery(supplementaryId)).execute()
+        response.validate()
+        return response.data?.content?.collectionSupplementary?.content?.collectionSupplementaryContentDownload
+    }
+
+    suspend fun setSupplementaryTextContent(supplementaryId: String, contentType: String, content: String) {
+        val response = network.graphql.mutation(SetCollectionSupplementaryTextContentsMutation(
+            supplementaryId = supplementaryId,
+            contentType = contentType,
+            content = content
+        )).execute()
+        response.validate()
+    }
+
+    suspend fun deleteSupplementary(supplementaryId: String): Boolean {
+        val response = network.graphql.mutation(DeleteSupplementaryCollectionMutation(supplementaryId)).execute()
+        response.validate()
+        return response.data?.content?.collection?.deleteSupplementary ?: false
     }
 }

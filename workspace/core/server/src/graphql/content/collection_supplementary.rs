@@ -1,49 +1,49 @@
 use crate::graphql::content::signed_url::SignedUrlObject;
-use crate::models::content::metadata::Metadata;
-use crate::models::content::supplementary::MetadataSupplementary;
 use async_graphql::{Context, Error, Object};
 use serde_json::Value;
 use uuid::Uuid;
 use crate::context::BoscaContext;
+use crate::models::content::collection::Collection;
+use crate::models::content::collection_supplementary::CollectionSupplementary;
 
-pub struct MetadataSupplementaryObject {
-    metadata: Metadata,
-    supplementary: MetadataSupplementary,
+pub struct CollectionSupplementaryObject {
+    collection: Collection,
+    supplementary: CollectionSupplementary,
 }
 
-impl MetadataSupplementaryObject {
-    pub fn new(metadata: Metadata, supplementary: MetadataSupplementary) -> Self {
+impl CollectionSupplementaryObject {
+    pub fn new(collection: Collection, supplementary: CollectionSupplementary) -> Self {
         Self {
-            metadata,
+            collection,
             supplementary,
         }
     }
 }
 
-pub struct MetadataSupplementaryContentObject {
-    metadata: Metadata,
-    supplementary: MetadataSupplementary,
+pub struct CollectionSupplementaryContentObject {
+    collection: Collection,
+    supplementary: CollectionSupplementary,
 }
 
-pub struct MetadataSupplementarySourceObject {
-    supplementary: MetadataSupplementary,
+pub struct CollectionSupplementarySourceObject {
+    supplementary: CollectionSupplementary,
 }
 
-pub struct MetadataSupplementaryContentUrls {
-    metadata: Metadata,
-    supplementary: MetadataSupplementary,
+pub struct CollectionSupplementaryContentUrls {
+    collection: Collection,
+    supplementary: CollectionSupplementary,
 }
 
-#[Object(name = "MetadataSupplementaryContentUrls")]
-impl MetadataSupplementaryContentUrls {
+#[Object(name = "CollectionSupplementaryContentUrls")]
+impl CollectionSupplementaryContentUrls {
     async fn download(&self, ctx: &Context<'_>) -> Result<SignedUrlObject, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         Ok(ctx.storage
-            .get_metadata_download_signed_url(
+            .get_collection_download_signed_url(
                 &ctx.security,
                 &ctx.principal,
-                &self.metadata,
-                Some(self.supplementary.key.clone()),
+                &self.collection,
+                &self.supplementary.id,
             )
             .await?
             .into())
@@ -52,19 +52,19 @@ impl MetadataSupplementaryContentUrls {
     async fn upload(&self, ctx: &Context<'_>) -> Result<SignedUrlObject, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         Ok(ctx.storage
-            .get_metadata_upload_signed_url(
+            .get_collection_upload_signed_url(
                 &ctx.security,
                 &ctx.principal,
-                &self.metadata,
-                Some(self.supplementary.key.clone()),
+                &self.collection,
+                &self.supplementary.id,
             )
             .await?
             .into())
     }
 }
 
-#[Object(name = "MetadataSupplementaryContent")]
-impl MetadataSupplementaryContentObject {
+#[Object(name = "CollectionSupplementaryContent")]
+impl CollectionSupplementaryContentObject {
     #[graphql(name = "type")]
     async fn content_type(&self) -> &String {
         &self.supplementary.content_type
@@ -74,29 +74,29 @@ impl MetadataSupplementaryContentObject {
         self.supplementary.content_length
     }
 
-    async fn urls(&self) -> MetadataSupplementaryContentUrls {
-        MetadataSupplementaryContentUrls {
-            metadata: self.metadata.clone(),
+    async fn urls(&self) -> CollectionSupplementaryContentUrls {
+        CollectionSupplementaryContentUrls {
+            collection: self.collection.clone(),
             supplementary: self.supplementary.clone(),
         }
     }
 
     async fn text(&self, ctx: &Context<'_>) -> Result<String, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        let path = ctx.storage.get_metadata_path(&self.metadata, Some(self.supplementary.key.clone())).await?;
+        let path = ctx.storage.get_collection_path(&self.collection, Some(self.supplementary.id)).await?;
         Ok(ctx.storage.get(&path).await?)
     }
 
     async fn json(&self, ctx: &Context<'_>) -> Result<Value, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        let path = ctx.storage.get_metadata_path(&self.metadata, Some(self.supplementary.key.clone())).await?;
+        let path = ctx.storage.get_collection_path(&self.collection, Some(self.supplementary.id)).await?;
         let text = ctx.storage.get(&path).await?;
         Ok(serde_json::from_str(text.as_str())?)
     }
 }
 
-#[Object(name = "MetadataSupplementarySource")]
-impl MetadataSupplementarySourceObject {
+#[Object(name = "CollectionSupplementarySource")]
+impl CollectionSupplementarySourceObject {
     async fn id(&self) -> String {
         self.supplementary
             .source_id
@@ -109,11 +109,18 @@ impl MetadataSupplementarySourceObject {
     }
 }
 
-#[Object(name = "MetadataSupplementary")]
-impl MetadataSupplementaryObject {
-    async fn metadata_id(&self) -> String {
-        self.metadata.id.to_string()
+#[Object(name = "CollectionSupplementary")]
+impl CollectionSupplementaryObject {
+    async fn id(&self) -> String {
+        self.supplementary.id.to_string()
     }
+
+    async fn plan_id(&self) -> Option<String> { self.supplementary.plan_id.map(|id| id.to_string()) }
+
+    async fn collection_id(&self) -> String {
+        self.collection.id.to_string()
+    }
+
     async fn key(&self) -> &String {
         &self.supplementary.key
     }
@@ -142,15 +149,15 @@ impl MetadataSupplementaryObject {
         }
     }
 
-    async fn content(&self) -> MetadataSupplementaryContentObject {
-        MetadataSupplementaryContentObject {
-            metadata: self.metadata.clone(),
+    async fn content(&self) -> CollectionSupplementaryContentObject {
+        CollectionSupplementaryContentObject {
+            collection: self.collection.clone(),
             supplementary: self.supplementary.clone(),
         }
     }
 
-    async fn source(&self) -> MetadataSupplementarySourceObject {
-        MetadataSupplementarySourceObject {
+    async fn source(&self) -> CollectionSupplementarySourceObject {
+        CollectionSupplementarySourceObject {
             supplementary: self.supplementary.clone(),
         }
     }

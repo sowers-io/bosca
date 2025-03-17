@@ -293,9 +293,12 @@ impl JobQueues {
     pub async fn enqueue_plan(
         &self,
         plan: &mut WorkflowExecutionPlan,
-    ) -> Result<WorkflowExecutionId, Error> {
+    ) -> Result<Option<WorkflowExecutionId>, Error> {
         if plan.finished.is_some() {
             return Err(Error::new("can't enqueue plan, it's already finished"));
+        }
+        if plan.jobs.is_empty() {
+            return Ok(None);
         }
         debug!(target: "workflow", "enqueuing plan: {}", plan.id);
         let mut connection = self.pool.get().await?;
@@ -319,7 +322,7 @@ impl JobQueues {
         if let Some(id) = &plan.metadata_id {
             self.notifier.metadata_changed(id).await?;
         }
-        Ok(plan.id.clone())
+        Ok(Some(plan.id.clone()))
     }
 
     pub async fn enqueue_job_child_workflows(
@@ -450,7 +453,7 @@ impl JobQueues {
         let Some(job_id) = self.dequeue_job(queue).await? else {
             return Ok(None);
         };
-        if let Some(plan) = self.get_plan_by_job(&job_id).await? {
+        if let Some(mut plan) = self.get_plan_by_job(&job_id).await? {
             if plan.finished.is_some() {
                 error!("invalid plan state");
                 let mut txn = RedisTransaction::new();
@@ -461,7 +464,7 @@ impl JobQueues {
                 txn.execute(&self.redis).await?;
                 return Ok(None);
             }
-            let job = plan.jobs.get(job_id.index as usize).unwrap().clone();
+            let mut job = plan.jobs.get_mut(job_id.index as usize).unwrap().clone();
             if job.complete {
                 error!("invalid job state");
                 let mut txn = RedisTransaction::new();
@@ -469,6 +472,7 @@ impl JobQueues {
                 txn.execute(&self.redis).await?;
                 return Ok(None);
             }
+            job.parent = plan.parent;
             return Ok(Some(job));
         }
         Ok(None)

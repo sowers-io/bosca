@@ -28,7 +28,6 @@ useDropZone(dropzone, {
     toast({ title: 'Uploading files, please wait...' })
     try {
       const metadataIds = await props.uploader.upload(files)
-      console.log(metadataIds)
       await onMetadataSelected(metadataIds[0])
       toast({ title: 'File(s) uploaded' })
     } catch (e) {

@@ -67,7 +67,7 @@ suspend fun AssetDefinition.install(client: Client, parentCollectionId: String, 
     } ?: error("failed to add metadata for file ${file.name}")
     client.metadata.setFileContents(id, file.toUpload(mimeType))
     client.metadata.setPublic(id, public)
-    client.metadata.setPublicContent(id, public)
+    client.metadata.setPublicContent(id, publicContent)
     if (ready) {
         client.metadata.setReady(id)
     }

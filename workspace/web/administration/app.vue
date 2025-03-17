@@ -56,7 +56,7 @@ useHead({
     --ring:142.1 76.2% 36.3%;
     --radius: 0.5rem;
   }
-}` + adminOverrides?.value?.css?.light || '')
+}` + (adminOverrides?.value?.css?.light || ''))
         : (`
 @layer base {
   :root {
@@ -88,7 +88,7 @@ useHead({
     --input:240 3.7% 15.9%;
     --ring:142.4 71.8% 29.2%;
   }
-}` + adminOverrides?.value?.css?.dark || '')
+}` + (adminOverrides?.value?.css?.dark || ''))
     ),
   },
 })
@@ -96,7 +96,9 @@ useHead({
 
 <template>
   <NuxtLayout>
-    <NuxtPage />
+    <ClientOnly>
+      <NuxtPage />
+    </ClientOnly>
   </NuxtLayout>
   <Toaster />
 </template>

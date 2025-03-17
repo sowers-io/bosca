@@ -1,8 +1,6 @@
 package io.bosca.api
 
-import io.bosca.graphql.fragment.MetadataContent
-import io.bosca.graphql.fragment.MetadataContentUpload
-import io.bosca.graphql.fragment.MetadataSupplementaryContent
+import io.bosca.graphql.fragment.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -16,7 +14,7 @@ import java.nio.file.Files
 
 class Files(network: NetworkClient) : Api(network) {
 
-    suspend fun download(download: MetadataSupplementaryContent.Download, file: File) {
+    suspend fun download(download: MetadataSupplementaryContentDownload.Download, file: File) {
         val request = Request.Builder()
             .url(download.url)
             .apply {
@@ -28,7 +26,19 @@ class Files(network: NetworkClient) : Api(network) {
         execute(request, file)
     }
 
-    suspend fun download(download: MetadataContent.Download, file: File) {
+    suspend fun download(download: CollectionSupplementaryContentDownload.Download, file: File) {
+        val request = Request.Builder()
+            .url(download.url)
+            .apply {
+                download.headers.forEach { header ->
+                    addHeader(header.name, header.value)
+                }
+            }
+            .build()
+        execute(request, file)
+    }
+
+    suspend fun download(download: MetadataContentDownload.Download, file: File) {
         val request = Request.Builder()
             .url(download.url)
             .apply {

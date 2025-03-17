@@ -2,9 +2,11 @@ use crate::context::BoscaContext;
 use crate::graphql::content::metadata_mutation::WorkflowConfigurationInput;
 use crate::models::content::item::ContentItem;
 use crate::models::security::permission::PermissionAction;
+use crate::models::workflow::enqueue_request::EnqueueRequest;
 use crate::models::workflow::execution_plan::WorkflowExecutionPlan;
 use crate::models::workflow::states::WorkflowStateType;
 use crate::models::workflow::transitions::BeginTransitionInput;
+use crate::workflow::core_workflow_ids::{COLLECTION_DELAYED_TRANSITION, METADATA_DELAYED_TRANSITION};
 use async_graphql::Error;
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
@@ -39,7 +41,7 @@ pub enum TransitionType {
 pub async fn begin_transition(
     ctx: &BoscaContext,
     request: &BeginTransitionInput,
-    configurations: Option<&Vec<WorkflowConfigurationInput>>,
+    configurations: Option<Vec<WorkflowConfigurationInput>>,
 ) -> Result<(), Error> {
     if let Some(metadata_id) = &request.metadata_id {
         let id = Uuid::parse_str(metadata_id.as_str())?;
@@ -59,7 +61,7 @@ pub async fn begin_transition(
                 TransitionType::Exit,
                 &metadata,
                 &request.state_id,
-                None,
+                &None,
                 Some(true),
                 None,
                 request.restart,
@@ -71,16 +73,17 @@ pub async fn begin_transition(
                 TransitionType::Enter,
                 &metadata,
                 &request.state_id,
-                None,
+                &None,
                 Some(true),
                 None,
-                request.restart
+                request.restart,
             )
             .await?;
             // log what's about to happen
             ctx.content
                 .metadata_workflows
                 .set_metadata_workflow_state(
+                    ctx,
                     &ctx.principal,
                     &metadata,
                     &request.state_id,
@@ -103,7 +106,7 @@ pub async fn begin_transition(
                 TransitionType::Default,
                 &metadata,
                 &request.state_id,
-                None,
+                &None,
                 request.wait_for_completion,
                 request.state_valid,
                 request.restart,
@@ -113,22 +116,21 @@ pub async fn begin_transition(
                 None => {
                     // no plan was created because possibly need to be delayed (other times it can be because there's actually no plan to be created)
                     if delay {
+                        let mut request = EnqueueRequest {
+                            workflow_id: Some(METADATA_DELAYED_TRANSITION.to_string()),
+                            metadata_id: Some(metadata.id),
+                            metadata_version: Some(metadata.version),
+                            delay_until: request.state_valid,
+                            ..Default::default()
+                        };
                         // enqueue a workflow that will re-run our transition later
-                        ctx.workflow
-                            .enqueue_metadata_workflow(
-                                "metadata.delayed.transition",
-                                &metadata.id,
-                                &metadata.version,
-                                None,
-                                None,
-                                request.state_valid,
-                            )
-                            .await?;
+                        ctx.workflow.enqueue_workflow(ctx, &mut request).await?;
                     } else {
                         // we don't need to delay, so just mark the transition as complete
                         ctx.content
                             .metadata_workflows
                             .set_metadata_workflow_state(
+                                ctx,
                                 &ctx.principal,
                                 &metadata,
                                 &request.state_id,
@@ -164,7 +166,7 @@ pub async fn begin_transition(
             TransitionType::Exit,
             &collection,
             &request.state_id,
-            configurations,
+            &configurations,
             Some(true),
             None,
             request.restart,
@@ -176,7 +178,7 @@ pub async fn begin_transition(
             TransitionType::Enter,
             &collection,
             &request.state_id,
-            configurations,
+            &configurations,
             Some(true),
             None,
             request.restart,
@@ -186,6 +188,7 @@ pub async fn begin_transition(
         ctx.content
             .collection_workflows
             .set_state(
+                ctx,
                 &ctx.principal,
                 &collection,
                 &request.state_id,
@@ -208,30 +211,30 @@ pub async fn begin_transition(
             TransitionType::Default,
             &collection,
             &request.state_id,
-            configurations,
+            &configurations,
             request.wait_for_completion,
             request.state_valid,
             request.restart,
         )
-        .await? {
+        .await?
+        {
             None => {
                 // no plan was created because possibly need to be delayed (other times it can be because there's actually no plan to be created)
                 if delay {
                     // enqueue a workflow that will re-run our transition later
-                    ctx.workflow
-                        .enqueue_collection_workflow(
-                            "collection.delayed.transition",
-                            &collection.id,
-                            None,
-                            None,
-                            request.state_valid,
-                        )
-                        .await?;
+                    let mut request = EnqueueRequest {
+                        workflow_id: Some(COLLECTION_DELAYED_TRANSITION.to_string()),
+                        collection_id: Some(collection.id),
+                        delay_until: request.state_valid,
+                        ..Default::default()
+                    };
+                    ctx.workflow.enqueue_workflow(ctx, &mut request).await?;
                 } else {
                     // we don't need to delay, so just mark the transition as complete
                     ctx.content
                         .collection_workflows
                         .set_state(
+                            ctx,
                             &ctx.principal,
                             &collection,
                             &request.state_id,
@@ -261,10 +264,10 @@ pub async fn transition(
     transition_type: TransitionType,
     item: &impl ContentItem,
     next_state_id: &str,
-    configurations: Option<&Vec<WorkflowConfigurationInput>>,
+    configurations: &Option<Vec<WorkflowConfigurationInput>>,
     wait_for_completion: Option<bool>,
     delay_until: Option<DateTime<Utc>>,
-    restart: Option<bool>
+    restart: Option<bool>,
 ) -> Result<Option<WorkflowExecutionPlan>, Error> {
     if let Some(state) = ctx.workflow.get_state(item.workflow_state_id()).await? {
         if state.state_type == WorkflowStateType::Pending {
@@ -296,28 +299,25 @@ pub async fn transition(
                 TransitionType::Exit => state.exit_workflow_id,
                 TransitionType::Default => state.workflow_id,
             } {
-                Some(if let Some(version) = item.version() {
-                    ctx.workflow
-                        .enqueue_metadata_workflow(
-                            &workflow_id,
-                            item.id(),
-                            &version,
-                            configurations,
-                            wait_for_completion,
-                            delay_until,
-                        )
-                        .await?
+                let Some(workflow) = ctx.workflow.get_workflow(&workflow_id).await? else {
+                    return Err(Error::new("missing workflow"));
+                };
+                let mut request = EnqueueRequest {
+                    workflow: Some(workflow),
+                    configurations: configurations.clone(),
+                    wait_for_completion,
+                    delay_until,
+                    ..Default::default()
+                };
+                let workflows = if let Some(version) = item.version() {
+                    request.metadata_id = Some(*item.id());
+                    request.metadata_version = Some(version);
+                    ctx.workflow.enqueue_workflow(ctx, &mut request).await?
                 } else {
-                    ctx.workflow
-                        .enqueue_collection_workflow(
-                            &workflow_id,
-                            item.id(),
-                            configurations,
-                            wait_for_completion,
-                            delay_until,
-                        )
-                        .await?
-                })
+                    request.collection_id = Some(*item.id());
+                    ctx.workflow.enqueue_workflow(ctx, &mut request).await?
+                };
+                workflows.into_iter().next()
             } else {
                 None
             },

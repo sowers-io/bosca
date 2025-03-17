@@ -46,6 +46,7 @@ impl MetadataPermissionsDataStore {
         if action == PermissionAction::View
             && metadata.public
             && metadata.workflow_state_id == "published"
+            && !metadata.deleted
         {
             return Ok(true);
         }
@@ -65,6 +66,27 @@ impl MetadataPermissionsDataStore {
         if action == PermissionAction::View
             && metadata.public_content
             && metadata.workflow_state_id == "published"
+            && !metadata.deleted
+        {
+            return Ok(true);
+        }
+        let eval = Evaluator::new(self.get_metadata_permissions(&metadata.id).await?);
+        Ok(eval.evaluate(principal, &action))
+    }
+
+    pub async fn has_supplementary_permission(
+        &self,
+        metadata: &Metadata,
+        principal: &Principal,
+        action: PermissionAction,
+    ) -> Result<bool, Error> {
+        if metadata.deleted {
+            return Ok(false);
+        }
+        if (action == PermissionAction::View || action == PermissionAction::List)
+            && metadata.public_supplementary
+            && metadata.workflow_state_id == "published"
+            && !metadata.deleted
         {
             return Ok(true);
         }

@@ -1,15 +1,15 @@
 use crate::context::BoscaContext;
-use crate::models::content::search::SearchDocumentInput;
 use crate::models::profiles::profile::{Profile, ProfileInput};
 use crate::models::profiles::profile_attribute::ProfileAttribute;
 use crate::models::profiles::profile_attribute_type::{
     ProfileAttributeType, ProfileAttributeTypeInput,
 };
-use crate::util::storage::index_documents;
 use async_graphql::Error;
 use deadpool_postgres::{GenericClient, Pool, Transaction};
 use std::sync::Arc;
 use uuid::Uuid;
+use crate::models::workflow::enqueue_request::EnqueueRequest;
+use crate::workflow::core_workflow_ids::PROFILE_UPDATE_STORAGE;
 
 #[derive(Clone)]
 pub struct ProfileDataStore {
@@ -178,7 +178,7 @@ impl ProfileDataStore {
             .await?;
         }
         txn.commit().await?;
-        self.index_profile(ctx, &id, profile).await?;
+        self.update_storage(ctx, &id).await?;
         Ok(id)
     }
 
@@ -216,7 +216,7 @@ impl ProfileDataStore {
         let id: Uuid = results[0].get("id");
         self.edit_profile_attributes(&txn, &id, profile).await?;
         txn.commit().await?;
-        self.index_profile(ctx, &id, profile).await?;
+        self.update_storage(ctx, &id).await?;
         Ok(())
     }
 
@@ -242,7 +242,7 @@ impl ProfileDataStore {
         let id: Uuid = results[0].get("id");
         self.edit_profile_attributes(&txn, &id, profile).await?;
         txn.commit().await?;
-        self.index_profile(ctx, &id, profile).await?;
+        self.update_storage(ctx, &id).await?;
         Ok(())
     }
 
@@ -289,30 +289,17 @@ impl ProfileDataStore {
         Ok(())
     }
 
-    async fn new_search_document(
-        id: &Uuid,
-        _: &ProfileInput,
-    ) -> Result<Option<SearchDocumentInput>, Error> {
-        Ok(Some(SearchDocumentInput {
-            metadata_id: None,
-            collection_id: None,
-            profile_id: Some(id.to_string()),
-            content: "".to_owned(),
-        }))
-    }
-
-    async fn index_profile(
+    pub async fn update_storage(
         &self,
         ctx: &BoscaContext,
         id: &Uuid,
-        profile: &ProfileInput,
     ) -> Result<(), Error> {
-        if let Some(document) = ProfileDataStore::new_search_document(id, profile).await? {
-            let documents = vec![document];
-            if let Some(storage_system) = ctx.workflow.get_default_search_storage_system().await? {
-                index_documents(ctx, &documents, &storage_system).await?;
-            }
-        }
+        let mut request = EnqueueRequest {
+            workflow_id: Some(PROFILE_UPDATE_STORAGE.to_string()),
+            profile_id: Some(*id),
+            ..Default::default()
+        };
+        ctx.workflow.enqueue_workflow(ctx, &mut request).await?;
         Ok(())
     }
 }

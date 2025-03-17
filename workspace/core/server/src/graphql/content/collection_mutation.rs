@@ -1,18 +1,19 @@
 use crate::context::BoscaContext;
 use crate::graphql::content::collection::CollectionObject;
 use crate::graphql::content::collection_metadata_relationship::CollectionMetadataRelationshipObject;
+use crate::graphql::content::collection_supplementary::CollectionSupplementaryObject;
 use crate::graphql::content::permission::PermissionObject;
 use crate::models::content::collection::{CollectionChildInput, CollectionInput, CollectionType};
 use crate::models::content::collection_metadata_relationship::CollectionMetadataRelationshipInput;
+use crate::models::content::collection_supplementary::CollectionSupplementaryInput;
 use crate::models::content::collection_workflow_state::{
     CollectionWorkflowCompleteState, CollectionWorkflowState,
 };
-use crate::models::content::search::SearchDocumentInput;
 use crate::models::security::permission::{Permission, PermissionAction, PermissionInput};
 use crate::util::delete::delete_collection;
-use crate::util::storage::index_documents;
 use async_graphql::*;
-use log::error;
+use bytes::Bytes;
+use futures_util::AsyncReadExt;
 use uuid::Uuid;
 
 pub struct CollectionMutationObject {}
@@ -107,7 +108,9 @@ impl CollectionMutationObject {
             return Err(Error::new("invalid collection name"));
         }
         if let Some(collection_type) = collection.collection_type {
-            if !is_admin && (collection_type == CollectionType::System || collection_type == CollectionType::Root)
+            if !is_admin
+                && (collection_type == CollectionType::System
+                    || collection_type == CollectionType::Root)
             {
                 return Err(Error::new("invalid collection type"));
             }
@@ -117,22 +120,8 @@ impl CollectionMutationObject {
             .await?;
         ctx.content
             .collections
-            .edit(&collection_id, &collection)
+            .edit(ctx, &collection_id, &collection)
             .await?;
-        if collection.index.unwrap_or(true) {
-            let storage_system = ctx.workflow.get_default_search_storage_system().await?;
-            let documents = vec![SearchDocumentInput {
-                metadata_id: None,
-                collection_id: Some(collection_id.to_string()),
-                profile_id: None,
-                content: "".to_owned(),
-            }];
-            if let Some(storage_system) = storage_system {
-                index_documents(ctx, &documents, &storage_system).await?;
-            } else {
-                error!("failed to index, default search storage system not configured");
-            }
-        }
         match ctx.content.collections.get(&collection_id).await? {
             Some(collection) => Ok(collection.into()),
             None => Err(Error::new("Error creating collection")),
@@ -178,7 +167,7 @@ impl CollectionMutationObject {
             .await?;
         ctx.content
             .collections
-            .add_metadata_relationship(&relationship)
+            .add_metadata_relationship(ctx, &relationship)
             .await?;
         match ctx
             .content
@@ -205,7 +194,7 @@ impl CollectionMutationObject {
             .await?;
         ctx.content
             .collections
-            .edit_metadata_relationship(&relationship)
+            .edit_metadata_relationship(ctx, &relationship)
             .await?;
         ctx.content
             .collections
@@ -230,7 +219,7 @@ impl CollectionMutationObject {
             .await?;
         ctx.content
             .collections
-            .delete_metadata_relationship(&id, &metadata_id, &relationship)
+            .delete_metadata_relationship(ctx, &id, &metadata_id, &relationship)
             .await?;
         Ok(true)
     }
@@ -246,7 +235,7 @@ impl CollectionMutationObject {
         let mut collection = ctx
             .check_collection_action(&id, PermissionAction::Manage)
             .await?;
-        ctx.content.collections.set_public(&id, public).await?;
+        ctx.content.collections.set_public(ctx, &id, public).await?;
         collection.public = public;
         Ok(collection.into())
     }
@@ -262,8 +251,30 @@ impl CollectionMutationObject {
         let mut collection = ctx
             .check_collection_action(&id, PermissionAction::Manage)
             .await?;
-        ctx.content.collections.set_public_list(&id, public).await?;
+        ctx.content
+            .collections
+            .set_public_list(ctx, &id, public)
+            .await?;
         collection.public_list = public;
+        Ok(collection.into())
+    }
+
+    async fn set_public_supplementary(
+        &self,
+        ctx: &Context<'_>,
+        id: String,
+        public: bool,
+    ) -> Result<CollectionObject, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let id = Uuid::parse_str(id.as_str())?;
+        let mut collection = ctx
+            .check_collection_action(&id, PermissionAction::Manage)
+            .await?;
+        ctx.content
+            .collection_supplementary
+            .set_supplementary_public(ctx, &id, public)
+            .await?;
+        collection.public = public;
         Ok(collection.into())
     }
 
@@ -313,7 +324,7 @@ impl CollectionMutationObject {
         let child_metadata_id = child_metadata_id.map(|c| Uuid::parse_str(c.as_str()).unwrap());
         ctx.content
             .collections
-            .set_child_item_attributes(&id, child_collection_id, child_metadata_id, attributes)
+            .set_child_item_attributes(ctx, &id, child_collection_id, child_metadata_id, attributes)
             .await?;
         Ok(collection.into())
     }
@@ -333,7 +344,7 @@ impl CollectionMutationObject {
             .await?;
         ctx.content
             .collections
-            .add_child_collection(&id, &collection_id, &attributes)
+            .add_child_collection(ctx, &id, &collection_id, &attributes)
             .await?;
         Ok(collection.into())
     }
@@ -352,7 +363,7 @@ impl CollectionMutationObject {
             .await?;
         ctx.content
             .collections
-            .remove_child_collection(&id, &collection_id)
+            .remove_child_collection(ctx, &id, &collection_id)
             .await?;
         Ok(collection.into())
     }
@@ -372,7 +383,7 @@ impl CollectionMutationObject {
             .await?;
         ctx.content
             .collections
-            .add_child_metadata(&id, &metadata_id, &attributes)
+            .add_child_metadata(ctx, &id, &metadata_id, &attributes)
             .await?;
         Ok(collection.into())
     }
@@ -391,7 +402,7 @@ impl CollectionMutationObject {
             .await?;
         ctx.content
             .collections
-            .remove_child_metadata(&id, &metadata_id)
+            .remove_child_metadata(ctx, &id, &metadata_id)
             .await?;
         Ok(collection.into())
     }
@@ -408,6 +419,7 @@ impl CollectionMutationObject {
             ctx.content
                 .collection_workflows
                 .set_state(
+                    ctx,
                     &ctx.principal,
                     &collection,
                     &state.state_id,
@@ -439,6 +451,7 @@ impl CollectionMutationObject {
             ctx.content
                 .collection_workflows
                 .set_state(
+                    ctx,
                     &ctx.principal,
                     &collection,
                     &state_id,
@@ -466,7 +479,7 @@ impl CollectionMutationObject {
             .await?;
         ctx.content
             .collections
-            .set_attributes(&collection_id, attributes)
+            .set_attributes(ctx, &collection_id, attributes)
             .await?;
         Ok(true)
     }
@@ -483,7 +496,7 @@ impl CollectionMutationObject {
             .await?;
         ctx.content
             .collections
-            .set_ordering(&collection_id, ordering)
+            .set_ordering(ctx, &collection_id, ordering)
             .await?;
         Ok(true)
     }
@@ -499,7 +512,160 @@ impl CollectionMutationObject {
         }
         ctx.content
             .collection_workflows
-            .set_ready_and_enqueue(&ctx.workflow, &ctx.principal, &collection, None)
+            .set_ready_and_enqueue(ctx, &ctx.principal, &collection, None)
+            .await?;
+        Ok(true)
+    }
+
+    async fn add_supplementary(
+        &self,
+        ctx: &Context<'_>,
+        supplementary: CollectionSupplementaryInput,
+    ) -> Result<CollectionSupplementaryObject, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let collection_id = Uuid::parse_str(&supplementary.collection_id)?;
+        let collection = ctx
+            .check_collection_action(&collection_id, PermissionAction::Manage)
+            .await?;
+        let id = ctx
+            .content
+            .collection_supplementary
+            .add_supplementary(ctx, &supplementary)
+            .await?;
+        match ctx
+            .content
+            .collection_supplementary
+            .get_supplementary(&id)
+            .await?
+        {
+            Some(supplementary) => Ok(CollectionSupplementaryObject::new(
+                collection,
+                supplementary,
+            )),
+            None => Err(Error::new("Error creating metadata")),
+        }
+    }
+
+    async fn set_supplementary_uploaded(
+        &self,
+        ctx: &Context<'_>,
+        supplementary_id: String,
+        content_type: String,
+        len: usize,
+    ) -> Result<bool, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let id = Uuid::parse_str(supplementary_id.as_str())?;
+        ctx.check_collection_action(&id, PermissionAction::Manage)
+            .await?;
+        ctx.content
+            .collection_supplementary
+            .set_supplementary_uploaded(ctx, &id, content_type.as_str(), len)
+            .await?;
+        Ok(true)
+    }
+
+    async fn set_supplementary_contents(
+        &self,
+        ctx: &Context<'_>,
+        supplementary_id: String,
+        content_type: String,
+        file: Upload,
+    ) -> Result<bool, Error> {
+        let octx = ctx;
+        let ctx = ctx.data::<BoscaContext>()?;
+        let supplementary_id = Uuid::parse_str(supplementary_id.as_str())?;
+        let Some(supplementary) = ctx
+            .content
+            .metadata_supplementary
+            .get_supplementary(&supplementary_id)
+            .await?
+        else {
+            return Err(Error::new("Supplementary not found"));
+        };
+        let collection = ctx
+            .check_collection_action(&supplementary.id, PermissionAction::Manage)
+            .await?;
+        let path = ctx
+            .storage
+            .get_collection_path(&collection, Some(supplementary.id))
+            .await?;
+        let mut multipart = ctx.storage.put_multipart(&path).await?;
+        let mut content = file.value(octx)?.into_async_read();
+        let mut buf = vec![0_u8; 524288];
+        let mut len = 0;
+        loop {
+            let read = content.read(&mut buf).await?;
+            if read > 0 {
+                len += read;
+                let buf_slice = buf[..read].to_vec();
+                multipart.put_part(buf_slice.into()).await?;
+            } else {
+                multipart.complete().await?;
+                break;
+            }
+        }
+        ctx.content
+            .collection_supplementary
+            .set_supplementary_uploaded(ctx, &supplementary_id, &content_type, len)
+            .await?;
+        Ok(true)
+    }
+
+    async fn set_supplementary_text_contents(
+        &self,
+        ctx: &Context<'_>,
+        supplementary_id: String,
+        content_type: String,
+        content: String,
+    ) -> Result<bool, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let supplementary_id = Uuid::parse_str(supplementary_id.as_str())?;
+        let Some(supplementary) = ctx
+            .content
+            .collection_supplementary
+            .get_supplementary(&supplementary_id)
+            .await?
+        else {
+            return Err(Error::new("Supplementary not found"));
+        };
+        let collection = ctx
+            .check_collection_action(&supplementary.collection_id, PermissionAction::Edit)
+            .await?;
+        let path = ctx
+            .storage
+            .get_collection_path(&collection, Some(supplementary_id))
+            .await?;
+        let bytes: Bytes = content.into();
+        let len = bytes.len();
+        ctx.storage.put(&path, bytes).await?;
+        ctx.content
+            .collection_supplementary
+            .set_supplementary_uploaded(ctx, &supplementary_id, &content_type, len)
+            .await?;
+        Ok(true)
+    }
+
+    async fn delete_supplementary(&self, ctx: &Context<'_>, id: String) -> Result<bool, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let supplementary_id = Uuid::parse_str(id.as_str())?;
+        let Some(supplementary) = ctx
+            .content
+            .collection_supplementary
+            .get_supplementary(&supplementary_id)
+            .await? else {
+            return Err(Error::new("Supplementary not found"));
+        };
+        let collection = ctx
+            .check_collection_action(&supplementary.collection_id, PermissionAction::Manage)
+            .await?;
+        let path = ctx
+            .storage
+            .get_collection_path(&collection, Some(supplementary_id))
+            .await?;
+        ctx.storage.delete(&path).await?;
+        ctx.content
+            .collection_supplementary
+            .delete_supplementary(ctx, &supplementary_id)
             .await?;
         Ok(true)
     }

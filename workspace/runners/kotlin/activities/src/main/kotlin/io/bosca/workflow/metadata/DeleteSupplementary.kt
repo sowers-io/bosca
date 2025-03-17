@@ -21,11 +21,7 @@ class DeleteSupplementary(client: Client) : Activity(client) {
     }
 
     override suspend fun execute(context: ActivityContext, job: WorkflowJob) {
-        val key = getInputParameterValue(job, INPUT_NAME)
-        client.metadata.deleteSupplementary(
-            job.metadata?.metadata?.id ?: error("metadata id missing"),
-            key
-        )
+        deleteMetadataSupplementary(job, INPUT_NAME)
     }
 
     companion object {

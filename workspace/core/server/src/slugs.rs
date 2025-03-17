@@ -1,12 +1,12 @@
 use crate::context::BoscaContext;
+use crate::models::content::metadata_supplementary::MetadataSupplementary;
 use crate::models::content::slug::{Slug, SlugType};
-use crate::models::content::supplementary::MetadataSupplementary;
 use crate::models::security::permission::PermissionAction;
 use crate::util::security::get_principal_from_headers;
 use async_graphql::Error;
 use axum::body::Body;
-use axum::extract::{Path, Query};
 use axum::extract::State;
+use axum::extract::{Path, Query};
 use http::{HeaderMap, StatusCode};
 use log::error;
 use serde::Deserialize;
@@ -14,26 +14,26 @@ use uuid::Uuid;
 
 #[derive(Debug, Deserialize)]
 pub struct PathParams {
-    slug: String
+    slug: String,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct Params {
-    key: Option<String>,
+    supplementary_id: Option<String>,
 }
 
 async fn get_supplementary(
     ctx: &BoscaContext,
     params: &Params,
-    metadata_id: &Uuid,
 ) -> Result<Option<MetadataSupplementary>, Error> {
-    Ok(if params.key.is_none() {
-        None
-    } else {
+    Ok(if let Some(supplementary_id) = &params.supplementary_id {
+        let supplementary_id = Uuid::parse_str(supplementary_id.as_str())?;
         ctx.content
-            .metadata
-            .get_supplementary(metadata_id, params.key.as_ref().unwrap())
+            .metadata_supplementary
+            .get_supplementary(&supplementary_id)
             .await?
+    } else {
+        None
     })
 }
 
@@ -56,7 +56,7 @@ pub async fn slug(
         if let Ok(id) = Uuid::parse_str(slug) {
             slug_content = Some(Slug {
                 id,
-                slug_type: SlugType::Metadata
+                slug_type: SlugType::Metadata,
             })
         } else {
             return Err((StatusCode::NOT_FOUND, "Not Found".to_owned()))?;
@@ -78,17 +78,15 @@ pub async fn slug(
     {
         return Err((StatusCode::NOT_FOUND, "Not Found".to_owned()))?;
     }
-    let supplementary = get_supplementary(&ctx, &params, &metadata.id)
-        .await
-        .map_err(|_| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Internal Server Error".to_owned(),
-            )
-        })?;
+    let supplementary = get_supplementary(&ctx, &params).await.map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Internal Server Error".to_owned(),
+        )
+    })?;
     let path = ctx
         .storage
-        .get_metadata_path(&metadata, supplementary.as_ref().map(|s| s.key.clone()))
+        .get_metadata_path(&metadata, supplementary.as_ref().map(|s| s.id))
         .await
         .map_err(|_| {
             (
@@ -104,8 +102,8 @@ pub async fn slug(
     let mut headers = HeaderMap::new();
     headers.insert(
         "Content-Type",
-        if supplementary.is_some() {
-            supplementary.unwrap().content_type.parse().map_err(|_| {
+        if let Some(supplementary) = &supplementary {
+            supplementary.content_type.parse().map_err(|_| {
                 (
                     StatusCode::INTERNAL_SERVER_ERROR,
                     "Internal Server Error".to_owned(),

@@ -88,7 +88,7 @@ impl QueryObject {
                 continue;
             }
             let obj = obj.unwrap();
-            let Some(id) = obj.get("_id") else {
+            let Some(id) = obj.get("id") else {
                 return Err(Error::new("missing id"));
             };
             let id = id.as_str().unwrap();
@@ -106,13 +106,6 @@ impl QueryObject {
                     metadata: Some(metadata?),
                     collection: None,
                     profile: None,
-                    content: obj
-                        .get("_content")
-                        .unwrap()
-                        .as_str()
-                        .unwrap()
-                        .trim()
-                        .to_owned(),
                 };
                 documents.push(document);
             } else if hit_type == "collection" {
@@ -126,13 +119,6 @@ impl QueryObject {
                     metadata: None,
                     collection: Some(collection?),
                     profile: None,
-                    content: obj
-                        .get("_content")
-                        .unwrap()
-                        .as_str()
-                        .unwrap()
-                        .trim()
-                        .to_owned(),
                 };
                 documents.push(document);
             } else if hit_type == "profile" {
@@ -144,13 +130,6 @@ impl QueryObject {
                     metadata: None,
                     collection: None,
                     profile: Some(profile?),
-                    content: obj
-                        .get("_content")
-                        .unwrap()
-                        .as_str()
-                        .unwrap()
-                        .trim()
-                        .to_owned(),
                 };
                 documents.push(document);
             }

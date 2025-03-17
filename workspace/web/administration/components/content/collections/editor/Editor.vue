@@ -311,6 +311,10 @@ const count = ref(0)
 
 const editable = computed(() => props.collection.workflow.state === 'draft')
 
+watch(selectedTab, () => {
+  currentPage.value = 1
+})
+
 async function onAddItem() {
   toast({ title: 'Not Implemented' })
 }

@@ -89,16 +89,19 @@ pub struct WorkflowExecutionPlan {
     pub metadata_id: Option<Uuid>,
     pub metadata_version: Option<i32>,
     pub collection_id: Option<Uuid>,
+    pub profile_id: Option<Uuid>,
     pub supplementary_id: Option<String>,
     pub context: Option<Value>,
     pub active: HashSet<i32>,
     pub complete: HashSet<i32>,
     pub failed: HashSet<i32>,
     pub error: Option<String>,
+    pub max_failures: i32,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorkflowJob {
+    pub parent: Option<WorkflowJobId>,
     pub plan_id: WorkflowExecutionId,
     pub id: WorkflowJobId,
     pub workflow_id: String,
@@ -106,6 +109,7 @@ pub struct WorkflowJob {
     pub metadata_id: Option<String>,
     pub metadata_version: Option<i32>,
     pub supplementary_id: Option<String>,
+    pub profile_id: Option<String>,
     pub activity: Activity,
     pub activity_inputs: Vec<ActivityParameter>,
     pub activity_outputs: Vec<ActivityParameter>,
@@ -292,14 +296,18 @@ impl WorkflowExecutionPlan {
         info!("job failures: {} {} {}", self.id, job_id, job.failures);
 
         let timeout: i64 = (job.failures * 30) as i64;
+        let max_failures = self.max_failures;
+        let job_failures = job.failures;
         queues.set_plan(db_txn, self, false).await?;
 
-        // TODO: setup limit to failures
         redis_txn.add_op(RedisTransactionOp::RemoveJobRunning(job_id.clone()));
-        if self.finished.is_none() {
+        if self.finished.is_none() && job_failures < max_failures {
             redis_txn.add_op(RedisTransactionOp::PlanCheckin(self.id.clone()));
             redis_txn.add_op(RedisTransactionOp::QueueJobLater(job_id.clone(), timeout));
         } else {
+            if job_failures >= max_failures {
+                error!(target: "workflow", "job failed too many times, marking as failed: {}", self.id);
+            }
             redis_txn.add_op(RedisTransactionOp::RemovePlanRunning(self.id.clone()));
         }
         Ok(())

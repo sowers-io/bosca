@@ -29,8 +29,8 @@ export class Listeners<T extends NetworkClient> extends Api<T> {
           setTimeout(
             () =>
               onData(
-                data.metadataSupplementary.id,
-                data.metadataSupplementary.supplementary,
+                data.metadataSupplementary.contentId,
+                data.metadataSupplementary.key,
               ),
             500,
           )

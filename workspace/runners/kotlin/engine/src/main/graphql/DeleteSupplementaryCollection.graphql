@@ -1,0 +1,7 @@
+mutation DeleteSupplementaryCollection($id: String!) {
+    content {
+        collection {
+            deleteSupplementary(id: $id)
+        }
+    }
+}

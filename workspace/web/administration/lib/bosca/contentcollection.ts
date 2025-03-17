@@ -9,6 +9,7 @@ import {
   type CollectionInput,
   type CollectionMetadataRelationshipFragment,
   type CollectionMetadataRelationshipInput,
+  type CollectionSupplementaryFragment,
   CollectionType,
   DeleteCollectionDocument,
   EditCollectionDocument,
@@ -22,7 +23,7 @@ import {
   GetCollectionDocument,
   GetCollectionListDocument,
   GetCollectionMetadataRelationshipsDocument,
-  GetCollectionParentsDocument,
+  GetCollectionParentsDocument, GetCollectionSupplementaryDocument, GetMetadataSupplementaryDocument,
   type MetadataFragment,
   type ParentCollectionFragment,
   RemoveCollectionCollectionDocument,
@@ -96,6 +97,30 @@ export class ContentCollections<T extends NetworkClient> extends Api<T> {
       }
     }
     return { metadata: [], count: 0 }
+  }
+
+  getCollectionChildMetadataAsyncData(
+    id: string,
+    offset: number | Ref<number>,
+    limit: number | Ref<number>,
+  ): AsyncData<{ metadata: Array<MetadataFragment>; count: number } | null, any> {
+    return this.executeAndTransformAsyncData(
+      GetCollectionChildrenMetadataDocument,
+      {
+        id,
+        offset,
+        limit,
+      },
+      (data) => {
+        if (!data) return null
+        return {
+          metadata: data?.content?.collection?.metadata as Array<
+            MetadataFragment
+          >,
+          count: data?.content?.collection?.metadataCount || 0,
+        }
+      },
+    )
   }
 
   async getCollectionParents(
@@ -221,6 +246,23 @@ export class ContentCollections<T extends NetworkClient> extends Api<T> {
       id: id,
     })
     return response?.content.collection as CollectionFragment | null
+  }
+
+  async getSupplementary(
+      id: string,
+      key: string,
+  ): Promise<CollectionSupplementaryFragment | null> {
+    const response = await this.network.execute(
+        GetCollectionSupplementaryDocument,
+        {
+          id: id,
+          key,
+        },
+    )
+    const supplementary = response?.content?.collection?.supplementary?.find(
+        (s) => s.key === key,
+    )
+    return supplementary as CollectionSupplementaryFragment | null
   }
 
   async getMetadataRelationships(

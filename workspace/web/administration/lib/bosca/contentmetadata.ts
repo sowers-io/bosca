@@ -183,11 +183,11 @@ export class ContentMetadata<T extends NetworkClient> extends Api<T> {
     offset: Ref<number>,
     limit: Ref<number>,
   ): AsyncData<MetadataFragment[] | null, any> {
-    const contentTypes = this.getContentTypes(filter)
+    const self = this
     const query = computed(() => {
       return {
         attributes: [],
-        contentTypes: contentTypes,
+        contentTypes: self.getContentTypes(filter),
         offset: offset.value,
         limit: limit.value,
       }
@@ -205,11 +205,11 @@ export class ContentMetadata<T extends NetworkClient> extends Api<T> {
   getByContentTypeCount(
     filter: Reactive<ContentTypeFilter>,
   ): AsyncData<number | null, any> {
-    const contentTypes = this.getContentTypes(filter)
+    const self = this
     const query = computed(() => {
       return {
         attributes: [],
-        contentTypes: contentTypes,
+        contentTypes: self.getContentTypes(filter),
       }
     })
     return this.executeAndTransformAsyncData(
