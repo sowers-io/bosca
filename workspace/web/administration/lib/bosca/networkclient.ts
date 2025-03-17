@@ -118,7 +118,7 @@ export class NetworkClient {
     }
     const url = options && options.url
       ? options.url
-      : useRuntimeConfig().public.graphqlUrl
+      : import.meta.server ? useRuntimeConfig().graphqlUrl : useRuntimeConfig().public.graphqlUrl
     let body = undefined
     if (options && options.query) {
       body = JSON.stringify({

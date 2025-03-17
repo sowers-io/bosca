@@ -66,3 +66,17 @@ services:
     depends_on:
       server:
         condition: service_started
+
+  administration:
+    image: ghcr.io/sowers-io/bosca/administration:latest
+    platform: linux/amd64
+    environment:
+      NUXT_GRAPHQL_URL: http://server:8000/graphql
+      NUXT_GRAPHQL_WS_URL: ws://server:8000/ws
+      NUXT_PUBLIC_GRAPHQL_URL: http://localhost:8000/graphql
+      NUXT_PUBLIC_GRAPHQL_WS_URL: ws://localhost:8000/ws
+    ports:
+      - '3000:3000'
+    restart: always
+    networks:
+      - boscanet
