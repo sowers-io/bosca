@@ -30,11 +30,11 @@ async fn get_supplementary(
 ) -> Result<Option<MetadataSupplementary>, Error> {
     if let Some(supplementary_id) = params.supplementary_id.as_ref() {
         let id = Uuid::parse_str(supplementary_id)?;
-        return Ok(ctx
+        return ctx
             .content
             .metadata_supplementary
             .get_supplementary(&id)
-            .await?);
+            .await;
     }
     Ok(None)
 }
@@ -78,29 +78,27 @@ pub async fn metadata_download(
         } else {
             return Err((StatusCode::FORBIDDEN, "Forbidden".to_owned()))?;
         }
-    } else {
-        if params.supplementary_id.is_some() {
-            let (metadata, supplementary) = ctx
-                .check_metadata_supplementary_action_principal(
-                    &principal,
-                    &id,
-                    PermissionAction::View,
-                )
-                .await
-                .map_err(|_| (StatusCode::FORBIDDEN, "Forbidden".to_owned()))?;
-            (metadata, Some(supplementary))
-        } else {
-            (
-                ctx.check_metadata_content_action_principal(
-                    &principal,
-                    &id,
-                    PermissionAction::View,
-                )
-                .await
-                .map_err(|_| (StatusCode::FORBIDDEN, "Forbidden".to_owned()))?,
-                None,
+    } else if params.supplementary_id.is_some() {
+        let (metadata, supplementary) = ctx
+            .check_metadata_supplementary_action_principal(
+                &principal,
+                &id,
+                PermissionAction::View,
             )
-        }
+            .await
+            .map_err(|_| (StatusCode::FORBIDDEN, "Forbidden".to_owned()))?;
+        (metadata, Some(supplementary))
+    } else {
+        (
+            ctx.check_metadata_content_action_principal(
+                &principal,
+                &id,
+                PermissionAction::View,
+            )
+            .await
+            .map_err(|_| (StatusCode::FORBIDDEN, "Forbidden".to_owned()))?,
+            None,
+        )
     };
     if metadata.deleted
         && !ctx
@@ -112,7 +110,7 @@ pub async fn metadata_download(
     }
     let path = ctx
         .storage
-        .get_metadata_path(&metadata, supplementary.as_ref().map(|s| s.id.clone()))
+        .get_metadata_path(&metadata, supplementary.as_ref().map(|s| s.id))
         .await
         .map_err(|_| {
             (
@@ -177,7 +175,7 @@ pub async fn metadata_upload(
     {
         let path = ctx
             .storage
-            .get_metadata_path(&metadata, supplementary.as_ref().map(|s| s.id.clone()))
+            .get_metadata_path(&metadata, supplementary.as_ref().map(|s| s.id))
             .await
             .map_err(|err| (StatusCode::BAD_REQUEST, err.to_string()))?;
         let mut upload = ctx

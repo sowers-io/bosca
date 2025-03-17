@@ -317,7 +317,7 @@ impl CollectionObject {
         let ctx = ctx.data::<BoscaContext>()?;
 
         if let Some(key) = key {
-            if let Err(_) = ctx.check_collection_supplementary_action(&self.collection, PermissionAction::View).await {
+            if ctx.check_collection_supplementary_action(&self.collection, PermissionAction::View).await.is_err() {
                 return Ok(vec![])
             }
 
@@ -336,7 +336,7 @@ impl CollectionObject {
             return Ok(vec![]);
         }
 
-        if let Err(_) = ctx.check_collection_supplementary_action(&self.collection, PermissionAction::List).await {
+        if ctx.check_collection_supplementary_action(&self.collection, PermissionAction::List).await.is_err() {
             return Ok(vec![])
         }
 

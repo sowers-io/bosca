@@ -696,7 +696,7 @@ impl CollectionsDataStore {
             )
             .await?;
         txn.execute(&stmt, &[id, metadata_id, attributes]).await?;
-        update_collection_etag(&txn, id).await?;
+        update_collection_etag(txn, id).await?;
         Ok(())
     }
 

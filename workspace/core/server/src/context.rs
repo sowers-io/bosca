@@ -158,7 +158,7 @@ impl BoscaContext {
         if !self
             .content
             .metadata_permissions
-            .has_supplementary_permission(&metadata, &self.principal, action)
+            .has_supplementary_permission(metadata, &self.principal, action)
             .await?
         {
             let admin = self.security.get_administrators_group().await?;
@@ -178,7 +178,7 @@ impl BoscaContext {
         match self
             .content
             .metadata_supplementary
-            .get_supplementary(&supplementary_id)
+            .get_supplementary(supplementary_id)
             .await?
         {
             Some(supplementary) => {
@@ -255,7 +255,7 @@ impl BoscaContext {
         if !self
             .content
             .collection_permissions
-            .has_supplementary_permission(&collection, &self.principal, action)
+            .has_supplementary_permission(collection, &self.principal, action)
             .await?
         {
             let admin = self.security.get_administrators_group().await?;

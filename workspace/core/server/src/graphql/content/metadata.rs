@@ -285,7 +285,7 @@ impl MetadataObject {
         let ctx = ctx.data::<BoscaContext>()?;
 
         if let Some(key) = key {
-            if let Err(_) = ctx.check_metadata_supplementary_action(&self.metadata, PermissionAction::View).await {
+            if ctx.check_metadata_supplementary_action(&self.metadata, PermissionAction::View).await.is_err() {
                 return Ok(vec![])
             }
             let plan_id = plan_id.map(|p| Uuid::parse_str(&p).unwrap());
@@ -303,7 +303,7 @@ impl MetadataObject {
             return Ok(vec![]);
         }
 
-        if let Err(_) = ctx.check_metadata_supplementary_action(&self.metadata, PermissionAction::List).await {
+        if ctx.check_metadata_supplementary_action(&self.metadata, PermissionAction::List).await.is_err() {
             return Ok(vec![])
         }
 
