@@ -80,3 +80,14 @@ services:
     restart: always
     networks:
       - boscanet
+
+  administration-query-installer:
+    image: ghcr.io/sowers-io/bosca/administration-query-installer:latest
+    platform: linux/amd64
+    environment:
+      GRAPHQL_URL: http://server:8000/graphql
+      GRAPHQL_USERNAME: admin
+      GRAPHQL_PASSWORD: password
+    restart: on-failure
+    networks:
+      - boscanet
