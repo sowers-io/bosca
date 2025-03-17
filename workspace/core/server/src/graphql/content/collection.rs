@@ -317,7 +317,10 @@ impl CollectionObject {
         let ctx = ctx.data::<BoscaContext>()?;
 
         if let Some(key) = key {
-            ctx.check_collection_supplementary_action(&self.collection, PermissionAction::View).await?;
+            if let Err(_) = ctx.check_collection_supplementary_action(&self.collection, PermissionAction::View).await {
+                return Ok(vec![])
+            }
+
             let plan_id = plan_id.map(|p| Uuid::parse_str(&p).unwrap());
             if let Some(supplementary) = ctx
                 .content
@@ -333,7 +336,10 @@ impl CollectionObject {
             return Ok(vec![]);
         }
 
-        ctx.check_collection_supplementary_action(&self.collection, PermissionAction::List).await?;
+        if let Err(_) = ctx.check_collection_supplementary_action(&self.collection, PermissionAction::List).await {
+            return Ok(vec![])
+        }
+
         Ok(ctx
             .content
             .collection_supplementary

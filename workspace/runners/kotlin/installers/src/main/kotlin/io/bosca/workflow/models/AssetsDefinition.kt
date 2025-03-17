@@ -21,6 +21,7 @@ data class AssetDefinition(
     val description: String? = null,
     val mimeType: String? = null,
     val public: Boolean = true,
+    val publicContent: Boolean = true,
     val publish: Boolean = true,
     val ready: Boolean = true
 )
