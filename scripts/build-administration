@@ -7,3 +7,6 @@ cd workspace/web/administration
 deno install --allow-scripts=npm:json-editor-vue@0.17.3,npm:maplibre-gl@2.4.0,npm:vue-demi@0.14.10,npm:@parcel/watcher@2.5.1
 deno run build
 deno run compile
+
+cd installer
+deno compile -A --no-check --output ../.output/query-installer --include ./persisted-documents.json ./main.ts

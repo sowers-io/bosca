@@ -1,0 +1,5 @@
+FROM gcr.io/distroless/cc-debian12
+
+COPY workspace/web/administration/.output/query-installer /
+
+CMD ["./query-installer"]

@@ -206,6 +206,15 @@ jobs:
           tags: |
             ghcr.io/sowers-io/bosca/administration:latest
             ghcr.io/sowers-io/bosca/administration:${{ github.sha }}
+      - name: Build and Publish Administration Query Installer Image
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: Dockerfile-administration-query-installer
+          push: true
+          tags: |
+            ghcr.io/sowers-io/bosca/administration-query-installer:latest
+            ghcr.io/sowers-io/bosca/administration-query-installer:${{ github.sha }}
 
   publish-kubernetes:
     if: github.ref_name == 'main'
