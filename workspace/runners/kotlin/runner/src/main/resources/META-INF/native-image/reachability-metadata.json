@@ -1,6 +1,18 @@
 {
   "reflection": [
     {
+      "type": "com.dashjoin.jsonata.Jsonata"
+    },
+    {
+      "type": "com.dashjoin.jsonata.JFunction"
+    },
+    {
+      "type": "com.dashjoin.jsonata.Utils"
+    },
+    {
+      "type": "com.dashjoin.jsonata.Expressions"
+    },
+    {
       "type": "com.github.ajalt.mordant.terminal.terminalinterface.ffm.TerminalInterfaceProviderFfm"
     },
     {

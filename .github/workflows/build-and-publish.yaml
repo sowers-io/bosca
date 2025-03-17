@@ -292,7 +292,7 @@ jobs:
     needs:
       - lint
       - build-and-publish-backend
-      - build-and-publish-runner-community
+      - build-and-publish-runner-enterprise
       - build-and-publish-imageprocessor
       - build-and-publish-administration
     env:

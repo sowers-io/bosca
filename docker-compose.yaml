@@ -59,7 +59,6 @@ services:
       BOSCA_USERNAME: admin
       BOSCA_PASSWORD: password
       BOSCA_QUEUES: "profiles,10;video,4;media,2;default,10;media-transcription,1;media-upload,5;metadata,200;search-index,100;traits,100;transition,100;ai,10;"
-      BOSCA_URL: http://server:8000/graphql
       BOSCA_GRAPHQL_URL: http://server:8000/graphql
       BOSCA_WS_URL: ws://server:8000/ws
     ports:
