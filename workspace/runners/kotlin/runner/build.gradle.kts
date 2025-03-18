@@ -20,6 +20,9 @@ dependencies {
     implementation(project(":installers"))
     implementation(project(":activities"))
 
+    // GraalVM Native Image API for reflection registration
+    compileOnly("org.graalvm.nativeimage:svm:24.0.0")
+
     testImplementation(kotlin("test"))
 }
 
@@ -62,7 +65,8 @@ graalvmNative {
                 "--initialize-at-run-time=io.grpc.netty.shaded.io.netty.handler.ssl.BouncyCastleAlpnSslUtils",
                 "--initialize-at-run-time=ai.onnxruntime.OrtEnvironment",
                 "--initialize-at-run-time=ai.onnxruntime.OnnxRuntime",
-                "--install-exit-handlers"
+                "--install-exit-handlers",
+                "--features=io.bosca.graalvm.BoscaFeature"
             )
             if (System.getenv("MARCH") != null) {
                 args.add("-march=${System.getenv("MARCH")}")
@@ -71,4 +75,10 @@ graalvmNative {
         }
     }
     toolchainDetection.set(true)
+    
+    // Configure reachability metadata
+    metadataRepository {
+        // We're now using a Feature class instead of JSON files
+        enabled.set(false)
+    }
 }

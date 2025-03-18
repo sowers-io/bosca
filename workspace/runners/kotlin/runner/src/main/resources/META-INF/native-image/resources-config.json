@@ -1,0 +1,30 @@
+{
+  "resources": {
+    "includes": [
+      {"pattern": "META-INF/services/com.github.ajalt.mordant.terminal.TerminalInterfaceProvider"},
+      {"pattern": "META-INF/services/com.sun.net.httpserver.spi.HttpServerProvider"},
+      {"pattern": "META-INF/services/java.lang.System$LoggerFinder"},
+      {"pattern": "META-INF/services/java.net.spi.URLStreamHandlerProvider"},
+      {"pattern": "META-INF/services/java.nio.channels.spi.SelectorProvider"},
+      {"pattern": "META-INF/services/javax.xml.parsers.SAXParserFactory"},
+      {"pattern": "META-INF/services/javax.xml.stream.XMLInputFactory"},
+      {"pattern": "META-INF/services/org.slf4j.spi.SLF4JServiceProvider"},
+      {"pattern": "ai/onnxruntime/native/linux-x64/libonnxruntime.so"},
+      {"pattern": "ai/onnxruntime/native/linux-x64/libonnxruntime4j_jni.so"},
+      {"pattern": "ai/onnxruntime/native/linux-x64/libonnxruntime_providers_shared.so"},
+      {"pattern": "all-minilm-l6-v2-tokenizer.json"},
+      {"pattern": "all-minilm-l6-v2.onnx"},
+      {"pattern": "com/sun/jna/linux-x86-64/libjnidispatch.so"},
+      {"pattern": "native/lib/tokenizers.properties"},
+      {"pattern": "org/slf4j/impl/StaticLoggerBinder.class"},
+      {"pattern": "tokenizers-engine.properties"},
+      {"pattern": "^jdk/internal/icu/impl/data/icudt74b/nfkc.nrm$", "module": "java.base"},
+      {"pattern": "^jdk/internal/icu/impl/data/icudt74b/uprops.icu$", "module": "java.base"},
+      {"pattern": "^sun/net/idn/uidna.spp$", "module": "java.base"},
+      {"pattern": "^jdk/xml/internal/jdkcatalog/JDKCatalog.xml$", "module": "java.xml"},
+      {"pattern": "com/sun/jna/darwin-aarch64/libjnidispatch.jnilib"},
+      {"pattern": "^jdk/internal/icu/impl/data/icudt74b/nfc.nrm$", "module": "java.base"}
+    ]
+  },
+  "bundles": []
+}
