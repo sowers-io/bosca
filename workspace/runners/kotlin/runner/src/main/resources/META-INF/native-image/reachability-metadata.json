@@ -215,7 +215,10 @@
       "allPublicConstructors": true,
       "allDeclaredMethods": true,
       "allPublicMethods": true,
-      "unsafeAllocated": true
+      "unsafeAllocated": true,
+      "fields": [
+        {"name": "ENQUEUED"}, {"name": "PROCESSING"}, {"name": "SUCCEEDED"}, {"name": "FAILED"}, {"name": "CANCELED"}
+      ]
     },
     {
       "type": "com.meilisearch.sdk.model.TypoTolerance",
