@@ -469,7 +469,9 @@ class BoscaFeature : Feature {
             RuntimeReflection.registerAllNestMembers(clazz)
             RuntimeReflection.registerAllRecordComponents(clazz)
             RuntimeReflection.registerAllSigners(clazz)
-            RuntimeReflection.registerForReflectiveInstantiation(clazz)
+            try {
+                RuntimeReflection.registerForReflectiveInstantiation(clazz)
+            } catch (ignore: IllegalArgumentException) {}
         } catch (e: ClassNotFoundException) {
             println("Class not found: $className")
         }
