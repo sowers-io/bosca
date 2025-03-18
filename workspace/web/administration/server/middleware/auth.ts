@@ -3,7 +3,6 @@ export default defineEventHandler(async (e) => {
   const cookies = parseCookies(e)
   if (cookies._bat) return
   const path = e.path.split(' ')[0].split('?')[0]
-  console.warn(path)
   if (
     path !== '/login' &&
     path !== '/forgotpassword' &&
