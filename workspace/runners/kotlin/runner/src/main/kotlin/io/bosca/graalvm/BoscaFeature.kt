@@ -427,6 +427,20 @@ class BoscaFeature : Feature {
             val clazz = Class.forName(className)
 
             RuntimeReflection.registerClassLookup(className)
+            clazz.constructors.forEach { constructor ->
+                RuntimeReflection.registerConstructorLookup(
+                    clazz,
+                    *constructor.parameters.map { it.type }.toTypedArray()
+                )
+                RuntimeReflection.register(constructor)
+            }
+            clazz.declaredConstructors.forEach { constructor ->
+                RuntimeReflection.registerConstructorLookup(
+                    clazz,
+                    *constructor.parameters.map { it.type }.toTypedArray()
+                )
+                RuntimeReflection.register(constructor)
+            }
             clazz.methods.forEach { method ->
                 RuntimeReflection.registerMethodLookup(
                     clazz,
