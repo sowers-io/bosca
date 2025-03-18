@@ -1,14 +1,25 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: database-migrations
+  name: administration-query-installer
   namespace: bosca
 spec:
   template:
     spec:
       containers:
         - name: database-content
-          image: ghcr.io/sowers-io/bosca/database-migrations:latest
+          image: ghcr.io/sowers-io/bosca/administration-query-installer:latest
+          env:
+            - name: GRAPHQL_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: service-account
+                  key: username
+            - name: GRAPHQL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: service-account
+                  key: password
           envFrom:
             - configMapRef:
                 name: administration-env

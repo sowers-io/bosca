@@ -12,6 +12,7 @@ configMapGenerator:
   - name: administration-env
     literals:
       - NODE_ENV=production
+      - GRAPHQL_URL=http://server.bosca.svc.cluster.local:8000/graphql
       - NUXT_GRAPHQL_URL=http://server.bosca.svc.cluster.local:8000/graphql
       - NUXT_GRAPHQL_WS_URL=ws://server.bosca.svc.cluster.local:8000/ws
       - NUXT_PUBLIC_GRAPHQL_URL=https://api.bosca.io/graphql

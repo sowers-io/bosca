@@ -12,6 +12,7 @@ export default defineEventHandler(async (e) => {
     path !== '/terms' &&
     path !== '/privacy' &&
     path !== '/content/image' &&
+    path !== '/health' &&
     path !== '/fix-tprotocol-service-worker.js' &&
     !path.startsWith('/_') &&
     !path.startsWith('/api/') &&

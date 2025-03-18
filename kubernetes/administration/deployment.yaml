@@ -16,7 +16,7 @@ spec:
         app: administration
     spec:
       containers:
-        - name: server
+        - name: administration
           image: ghcr.io/sowers-io/bosca/administration:latest
           imagePullPolicy: IfNotPresent
           resources:
@@ -43,7 +43,7 @@ spec:
             periodSeconds: 5
             timeoutSeconds: 5
           ports:
-            - containerPort: 8000
+            - containerPort: 3000
               name: http
           envFrom:
             - configMapRef:
