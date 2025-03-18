@@ -10,7 +10,8 @@ configMapGenerator:
   - name: runner-env
     literals:
       - NODE_ENV=production
-      - BOSCA_URL=http://workflow-server.bosca.svc.cluster.local:8000/graphql
+      - BOSCA_GRAPHQL_URL=http://workflow-server.bosca.svc.cluster.local:8000/graphql
+      - BOSCA_WS_URL=ws://workflow-server.bosca.svc.cluster.local:8000/ws
       - BOSCA_QUEUES=bible,10;bible-ai,0;bible-book,10;bible-verse,25;bible-chapter,25;media-transcription,1;media-upload,5;metadata,25;search-index,25;traits,25;transition,25
       - OTLP_TRACE_ENDPOINT=http://otel-collector.bosca.svc.cluster.local:4318/v1/traces
       - OTLP_METRICS_ENDPOINT=http://otel-collector.bosca.svc.cluster.local:4318/v1/metrics
