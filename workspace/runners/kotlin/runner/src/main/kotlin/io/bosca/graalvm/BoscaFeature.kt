@@ -2,7 +2,6 @@ package io.bosca.graalvm
 
 import org.graalvm.nativeimage.hosted.Feature
 import org.graalvm.nativeimage.hosted.RuntimeReflection
-import java.lang.reflect.Modifier
 
 /**
  * GraalVM Feature that registers classes and methods that need to be accessible via reflection at runtime.
@@ -20,21 +19,23 @@ class BoscaFeature : Feature {
         
         // Meilisearch classes
         registerClass("com.meilisearch.sdk.Index", access, registerFields = true, registerEmptyConstructor = true)
-        registerClassWithAllMethods("com.meilisearch.sdk.exceptions.APIError", access, true, registerEmptyConstructor = true)
+        registerClassWithAllMethods("com.meilisearch.sdk.exceptions.APIError", access, true)
         registerClassWithAllMethods("com.meilisearch.sdk.model.EmbedderInputType", access, true)
         registerClassWithAllMethods("com.meilisearch.sdk.model.EmbedderSource", access, true)
         registerClassWithAllMethods("com.meilisearch.sdk.model.Embedders", access, true)
         registerClassWithAllMethods("com.meilisearch.sdk.model.FacetSortValue", access, true)
-        registerClassWithAllMethods("com.meilisearch.sdk.model.Faceting", access, true, registerEmptyConstructor = true)
+        registerClassWithAllMethods("com.meilisearch.sdk.model.Faceting", access, true)
         registerClassWithAllMethods("com.meilisearch.sdk.model.LocalizedAttribute", access, true)
-        registerClassWithAllMethods("com.meilisearch.sdk.model.Pagination", access, true, registerEmptyConstructor = true)
-        registerClassWithAllMethods("com.meilisearch.sdk.model.Settings", access, true, registerEmptyConstructor = true)
+        registerClassWithAllMethods("com.meilisearch.sdk.model.Pagination", access, true)
+        registerClassWithAllMethods("com.meilisearch.sdk.model.Settings", access, true)
         registerClassWithAllMethods("com.meilisearch.sdk.model.SwapIndexesParams", access, true)
-        registerClassWithAllMethods("com.meilisearch.sdk.model.Task", access, true, registerEmptyConstructor = true)
-        registerClassWithAllMethods("com.meilisearch.sdk.model.TaskDetails", access, true, registerEmptyConstructor = true)
-        registerClassWithAllMethods("com.meilisearch.sdk.model.TaskError", access, true, registerEmptyConstructor = true)
-        registerClassWithAllMethods("com.meilisearch.sdk.model.TaskInfo", access, true, registerEmptyConstructor = true)
-        
+        registerClassWithAllMethods("com.meilisearch.sdk.model.Task", access, true)
+        registerClassWithAllMethods("com.meilisearch.sdk.model.TaskDetails", access, true)
+        registerClassWithAllMethods("com.meilisearch.sdk.model.TaskError", access, true)
+        registerClassWithAllMethods("com.meilisearch.sdk.model.TaskInfo", access, true)
+
+        registerClassWithAllMethods("com.google.gson.internal.LinkedTreeMap", access, true)
+
         // Register TaskStatus enum with its fields
         try {
             val taskStatusClass = Class.forName("com.meilisearch.sdk.model.TaskStatus")
@@ -82,6 +83,7 @@ class BoscaFeature : Feature {
         registerClassWithEmptyConstructor("com.sun.xml.internal.stream.XMLInputFactoryImpl", access)
         
         // Java core classes
+        registerClassWithAllMethods("java.util.HashMap", access, true)
         registerClass("java.lang.ClassValue", access)
         registerClass("java.lang.Object", access)
         registerClass("java.lang.Throwable", access)
@@ -424,8 +426,7 @@ class BoscaFeature : Feature {
     
     private fun registerClassWithAllMethods(
         className: String, 
-        access: Feature.BeforeAnalysisAccess, 
-        unsafeAllocated: Boolean = false,
+        access: Feature.BeforeAnalysisAccess,
         registerEmptyConstructor: Boolean = true
     ) {
         try {
@@ -436,11 +437,8 @@ class BoscaFeature : Feature {
             RuntimeReflection.registerAllDeclaredMethods(clazz)
             RuntimeReflection.registerAllMethods(clazz)
             
-            if (unsafeAllocated) {
-                // For unsafeAllocated=true, we register all declared fields
-                for (field in clazz.declaredFields) {
-                    RuntimeReflection.register(field)
-                }
+            for (field in clazz.declaredFields) {
+                RuntimeReflection.register(field)
             }
             
             if (registerEmptyConstructor) {

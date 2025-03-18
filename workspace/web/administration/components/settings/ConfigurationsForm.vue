@@ -26,6 +26,7 @@ async function saveConfigurations() {
     await bosca.configurations.setConfiguration({
       description: config.configuration.description,
       key: config.configuration.key,
+      public: false,
       permissions: config.configuration.permissions.map((p) => {
         return {
           action: p.action,
@@ -37,7 +38,6 @@ async function saveConfigurations() {
         ? JSON.parse(toRaw(config.value))
         : toRaw(config.value),
     })
-    console.log(toRaw(config.value))
   }
 }
 </script>
@@ -48,7 +48,7 @@ async function saveConfigurations() {
       Configurations
     </h4>
     <div
-      v-for="(config, index) in configurations"
+      v-for="config in configurations"
       :key="config.configuration.id"
       class="border rounded p-4"
     >
