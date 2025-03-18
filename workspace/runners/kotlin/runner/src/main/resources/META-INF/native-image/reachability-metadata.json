@@ -1,20 +1,39 @@
 {
   "reflection": [
     {
-      "type": "com.dashjoin.jsonata.Jsonata"
+      "type": "com.dashjoin.jsonata.Jsonata",
+      "allDeclaredConstructors": true,
+      "allPublicConstructors": true,
+      "allDeclaredMethods": true,
+      "allPublicMethods": true
     },
     {
-      "type": "com.dashjoin.jsonata.JFunction"
+      "type": "com.dashjoin.jsonata.JFunction",
+      "allDeclaredConstructors": true,
+      "allPublicConstructors": true,
+      "allDeclaredMethods": true,
+      "allPublicMethods": true
     },
     {
-      "type": "com.dashjoin.jsonata.Utils"
+      "type": "com.dashjoin.jsonata.Utils",
+      "allDeclaredConstructors": true,
+      "allPublicConstructors": true,
+      "allDeclaredMethods": true,
+      "allPublicMethods": true
     },
     {
-      "type": "com.dashjoin.jsonata.Expressions"
+      "type": "com.dashjoin.jsonata.Expressions",
+      "allDeclaredConstructors": true,
+      "allPublicConstructors": true,
+      "allDeclaredMethods": true,
+      "allPublicMethods": true
     },
     {
       "type": "com.dashjoin.jsonata.Functions",
-      "allDeclaredMethods": true
+      "allDeclaredConstructors": true,
+      "allPublicConstructors": true,
+      "allDeclaredMethods": true,
+      "allPublicMethods": true
     },
     {
       "type": "apple.security.AppleProvider",

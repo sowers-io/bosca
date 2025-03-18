@@ -46,6 +46,6 @@ configurations:
     public: false
     description: Meilisearch
     value:
-      host: http://localhost:7701
+      host: http://meilisearch:7701
       apiKey: p8JcB_HuMHRxN7uVXfrG2wU06b5k7oTvaAAYo6nsi9M
 
