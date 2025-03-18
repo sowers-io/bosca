@@ -5,7 +5,8 @@
       "allDeclaredConstructors": true,
       "allPublicConstructors": true,
       "allDeclaredMethods": true,
-      "allPublicMethods": true
+      "allPublicMethods": true,
+      "unsafeAllocated": true
     },
     {
       "type": "com.dashjoin.jsonata.JFunction",
@@ -19,21 +20,32 @@
       "allDeclaredConstructors": true,
       "allPublicConstructors": true,
       "allDeclaredMethods": true,
-      "allPublicMethods": true
+      "allPublicMethods": true,
+      "unsafeAllocated": true
     },
     {
       "type": "com.dashjoin.jsonata.Expressions",
       "allDeclaredConstructors": true,
       "allPublicConstructors": true,
       "allDeclaredMethods": true,
-      "allPublicMethods": true
+      "allPublicMethods": true,
+      "unsafeAllocated": true
     },
     {
       "type": "com.dashjoin.jsonata.Functions",
       "allDeclaredConstructors": true,
       "allPublicConstructors": true,
       "allDeclaredMethods": true,
-      "allPublicMethods": true
+      "allPublicMethods": true,
+      "unsafeAllocated": true
+    },
+    {
+      "type": "com.meilisearch.sdk.model.TaskInfo",
+      "allDeclaredConstructors": true,
+      "allPublicConstructors": true,
+      "allDeclaredMethods": true,
+      "allPublicMethods": true,
+      "unsafeAllocated": true
     },
     {
       "type": "apple.security.AppleProvider",
