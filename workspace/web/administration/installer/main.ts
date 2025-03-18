@@ -1,6 +1,8 @@
 import { NetworkClient } from './networkclient.ts'
 import { env } from 'node:process';
 
+console.log('Installing persisted queries...')
+
 // @ts-ignore
 const documents = JSON.parse(Deno.readTextFileSync(import.meta.dirname + '/persisted-documents.json'))
 
@@ -24,6 +26,7 @@ try {
     username: env.GRAPHQL_USERNAME || 'admin',
     password: env.GRAPHQL_PASSWORD || 'password',
   })
+  console.log('Finished installing.')
 } finally {
   // @ts-ignore
   Deno.exit();
