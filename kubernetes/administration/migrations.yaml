@@ -7,7 +7,7 @@ spec:
   template:
     spec:
       containers:
-        - name: database-content
+        - name: administration-query-installer
           image: ghcr.io/sowers-io/bosca/administration-query-installer:latest
           env:
             - name: GRAPHQL_USERNAME
