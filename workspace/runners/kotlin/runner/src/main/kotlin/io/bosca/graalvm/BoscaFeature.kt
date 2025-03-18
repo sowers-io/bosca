@@ -86,53 +86,7 @@ class BoscaFeature : Feature {
         register("com.sun.jna.CallbackProxy", access)
         register("com.sun.org.apache.xerces.internal.jaxp.SAXParserFactoryImpl", access)
         register("com.sun.xml.internal.stream.XMLInputFactoryImpl", access)
-
-        // Java core classes
-        register("java.util.HashMap", access)
-        register("java.lang.ClassValue", access)
-        register("java.lang.Object", access)
-        register("java.lang.Throwable", access)
-        register("java.lang.invoke.MethodHandle", access)
-        register("java.lang.invoke.MethodHandles", access)
-        register("java.lang.invoke.MethodHandles\$Lookup", access)
-        register("java.lang.invoke.MethodType", access)
-
-        // Register java.lang.reflect.Method.isDefault() specifically
-        try {
-            val methodClass = Class.forName("java.lang.reflect.Method")
-            val isDefaultMethod = methodClass.getDeclaredMethod("isDefault")
-            RuntimeReflection.register(isDefaultMethod)
-        } catch (e: Exception) {
-            println("Could not register Method.isDefault(): ${e.message}")
-        }
-
         register("java.security.KeyStoreSpi", access)
-
-        // Register fields in ForkJoinTask
-        try {
-            val forkJoinTaskClass = Class.forName("java.util.concurrent.ForkJoinTask")
-            RuntimeReflection.register(forkJoinTaskClass)
-
-            val auxField = forkJoinTaskClass.getDeclaredField("aux")
-            RuntimeReflection.register(auxField)
-
-            val statusField = forkJoinTaskClass.getDeclaredField("status")
-            RuntimeReflection.register(statusField)
-        } catch (e: Exception) {
-            println("Could not register ForkJoinTask fields: ${e.message}")
-        }
-
-        // Register fields in AtomicBoolean
-        try {
-            val atomicBooleanClass = Class.forName("java.util.concurrent.atomic.AtomicBoolean")
-            RuntimeReflection.register(atomicBooleanClass)
-
-            val valueField = atomicBooleanClass.getDeclaredField("value")
-            RuntimeReflection.register(valueField)
-        } catch (e: Exception) {
-            println("Could not register AtomicBoolean fields: ${e.message}")
-        }
-
         register("jdk.internal.misc.Unsafe", access)
 
         // Register fields in Kotlin classes
@@ -152,9 +106,7 @@ class BoscaFeature : Feature {
         // Register fields in Kotlin coroutines classes
         registerCoroutinesClasses(access)
 
-        // Register Jackson and Truffle classes
         register("com.fasterxml.jackson.databind.ext.Java7SupportImpl", access)
-        registerTruffleClasses(access)
 
         // Register security classes
         registerSecurityProviders(access)
@@ -270,57 +222,6 @@ class BoscaFeature : Feature {
                 "head\$volatile", "tail\$volatile"
             ), access
         )
-    }
-
-    private fun registerTruffleClasses(access: Feature.BeforeAnalysisAccess) {
-        register("com.oracle.truffle.api.debug.impl.DebuggerInstrumentProvider", access)
-
-        // Register RootNode with fields
-        try {
-            val rootNodeClass = Class.forName("com.oracle.truffle.api.nodes.RootNode")
-            RuntimeReflection.register(rootNodeClass)
-
-            val lockField = rootNodeClass.getDeclaredField("lock")
-            RuntimeReflection.register(lockField)
-        } catch (e: Exception) {
-            println("Could not register RootNode fields: ${e.message}")
-        }
-
-        register("com.oracle.truffle.js.lang.JavaScriptLanguageProvider", access)
-        register("com.oracle.truffle.js.parser.GraalJSEvaluator", access)
-
-        // Register JSFunctionData with fields
-        try {
-            val jsFunctionDataClass = Class.forName("com.oracle.truffle.js.runtime.builtins.JSFunctionData")
-            RuntimeReflection.register(jsFunctionDataClass)
-
-            val fields = listOf("callTarget", "constructNewTarget", "constructTarget", "rootNode")
-            for (fieldName in fields) {
-                val field = jsFunctionDataClass.getDeclaredField(fieldName)
-                RuntimeReflection.register(field)
-            }
-        } catch (e: Exception) {
-            println("Could not register JSFunctionData fields: ${e.message}")
-        }
-
-        register("com.oracle.truffle.object.CoreLayoutFactory", access)
-        register("com.oracle.truffle.object.DynamicObjectLibraryImplGen\$DynamicObjectLibraryProvider", access)
-
-        // Register Shape, TrieTransitionMap, and other Truffle classes with fields
-        register("com.oracle.truffle.object.ShapeImpl", access)
-        register("com.oracle.truffle.object.TrieTransitionMap", access)
-
-        register("com.oracle.truffle.polyglot.PolyglotImpl", access)
-        register("com.oracle.truffle.polyglot.PolyglotLanguageInstance", access)
-        register("com.oracle.truffle.polyglot.WeakAssumedValue", access)
-
-        register("com.oracle.truffle.regex.RegexLanguageProvider", access)
-        register("com.oracle.truffle.runtime.DefaultLoopNodeFactory", access)
-        register("com.oracle.truffle.runtime.LibTruffleAttachResourceProvider", access)
-        register("com.oracle.truffle.runtime.OptimizedCallTarget", access)
-
-        register("com.oracle.truffle.runtime.hotspot.HotSpotTruffleRuntimeAccess", access)
-        register("com.oracle.truffle.runtime.jfr.impl.ProviderImpl", access)
     }
 
     private fun registerSecurityProviders(access: Feature.BeforeAnalysisAccess) {
