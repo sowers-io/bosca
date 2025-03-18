@@ -1,6 +1,5 @@
 package io.bosca.graalvm
 
-import io.bosca.commands.Run
 import org.graalvm.nativeimage.hosted.Feature
 import org.graalvm.nativeimage.hosted.RuntimeReflection
 
@@ -426,6 +425,39 @@ class BoscaFeature : Feature {
     ) {
         try {
             val clazz = Class.forName(className)
+
+            RuntimeReflection.registerClassLookup(className)
+            clazz.methods.forEach { method ->
+                RuntimeReflection.registerMethodLookup(
+                    clazz,
+                    method.name,
+                    *method.parameters.map { it.type }.toTypedArray()
+                )
+                RuntimeReflection.register(method)
+            }
+            clazz.declaredMethods.forEach { method ->
+                RuntimeReflection.registerMethodLookup(
+                    clazz,
+                    method.name,
+                    *method.parameters.map { it.type }.toTypedArray()
+                )
+                RuntimeReflection.register(method)
+            }
+            clazz.fields.forEach { field ->
+                RuntimeReflection.registerFieldLookup(
+                    clazz,
+                    field.name
+                )
+                RuntimeReflection.register(field)
+            }
+            clazz.declaredFields.forEach { field ->
+                RuntimeReflection.registerFieldLookup(
+                    clazz,
+                    field.name
+                )
+                RuntimeReflection.register(field)
+            }
+
             RuntimeReflection.register(clazz)
             RuntimeReflection.registerAllDeclaredConstructors(clazz)
             RuntimeReflection.registerAllConstructors(clazz)
@@ -437,28 +469,7 @@ class BoscaFeature : Feature {
             RuntimeReflection.registerAllNestMembers(clazz)
             RuntimeReflection.registerAllRecordComponents(clazz)
             RuntimeReflection.registerAllSigners(clazz)
-
-            RuntimeReflection.registerClassLookup(className)
-            clazz.methods.forEach { method ->
-                RuntimeReflection.registerMethodLookup(
-                    clazz,
-                    method.name,
-                    *method.parameters.map { it.type }.toTypedArray()
-                )
-            }
-            clazz.fields.forEach { field ->
-                RuntimeReflection.registerFieldLookup(
-                    clazz,
-                    field.name
-                )
-            }
-
-            try {
-                val constructor = clazz.getDeclaredConstructor()
-                RuntimeReflection.register(constructor)
-            } catch (e: NoSuchMethodException) {
-                println("Empty constructor not found for $className")
-            }
+            RuntimeReflection.registerForReflectiveInstantiation(clazz)
         } catch (e: ClassNotFoundException) {
             println("Class not found: $className")
         }
