@@ -29,4 +29,4 @@ client.execute({
   // @ts-ignore
   Deno.exit();
 })
-console.log('Waiting for install to finish..e.')
+console.log('Waiting for install to finish...')
