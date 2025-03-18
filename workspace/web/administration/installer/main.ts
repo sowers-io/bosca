@@ -1,6 +1,7 @@
 import { NetworkClient } from './networkclient.ts'
 import { env } from 'node:process';
 
+// @ts-ignore
 const documents = JSON.parse(Deno.readTextFileSync(import.meta.dirname + '/persisted-documents.json'))
 
 const queries = []

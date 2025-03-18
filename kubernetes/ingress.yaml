@@ -34,7 +34,7 @@ spec:
             path: "/"
             backend:
               service:
-                name: admin
+                name: administration
                 port:
                   number: 3000
     - host: search.bosca.io

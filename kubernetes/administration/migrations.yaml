@@ -1,0 +1,17 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: database-migrations
+  namespace: bosca
+spec:
+  template:
+    spec:
+      containers:
+        - name: database-content
+          image: ghcr.io/sowers-io/bosca/database-migrations:latest
+          envFrom:
+            - configMapRef:
+                name: administration-env
+      restartPolicy: Never
+      imagePullSecrets:
+        - name: packages-credentials

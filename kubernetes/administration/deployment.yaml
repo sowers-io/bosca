@@ -1,0 +1,53 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: administration
+  namespace: bosca
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      app: administration
+  template:
+    metadata:
+      labels:
+        app: administration
+    spec:
+      containers:
+        - name: server
+          image: ghcr.io/sowers-io/bosca/administration:latest
+          imagePullPolicy: IfNotPresent
+          resources:
+            requests:
+              memory: "250Mi"
+              cpu: "250m"
+#            limits:
+#              memory: "512Mi"
+#              cpu: "2"
+          livenessProbe:
+            httpGet:
+              port: http
+              path: /health
+            initialDelaySeconds: 3
+            failureThreshold: 10
+            periodSeconds: 5
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              port: http
+              path: /health
+            initialDelaySeconds: 3
+            failureThreshold: 10
+            periodSeconds: 5
+            timeoutSeconds: 5
+          ports:
+            - containerPort: 8000
+              name: http
+          envFrom:
+            - configMapRef:
+                name: administration-env
+      terminationGracePeriodSeconds: 600
+      imagePullSecrets:
+        - name: packages-credentials

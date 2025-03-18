@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: runner
-          image: ghcr.io/sowers-io/bosca/kotlin-runner-enterprise-compatibility:latest
+          image: ghcr.io/sowers-io/bosca/kotlin-runner-enterprise:latest
           imagePullPolicy: IfNotPresent
           resources:
             requests:
