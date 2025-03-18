@@ -1,0 +1,6 @@
+slug: documents-and-guides
+name: Documents and Guides
+type: SYSTEM
+editorType: DocumentsAndGuides
+collections:
+  - $ref: ./content/documents/posts.yaml

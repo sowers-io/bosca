@@ -3,8 +3,12 @@ description: Generate Description
 inputType: text/plain
 outputType: application/json
 systemPrompt: |
-  Based on the text provided, summarize the text into a concise, clear, uplifting and informative 
-  description that can be used for the HTML Meta Description. 
+  Based on the text provided, summarize the text into a concise, clear, and informative description that can be 
+  used for HTML Meta Description. 
+  
+  Focus on capturing the main purpose, key functions, or central information provided in the text. 
+  Ensure that the description is no more than 30 words and avoids unnecessary technical details, while 
+  remaining relevant to the text’s context.
   
   Important: Ensure the JSON output is formatted cleanly and contains no additional text or explanation.
 userPrompt: |

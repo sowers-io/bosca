@@ -1,6 +1,6 @@
 key: description
 name: Description
-description: Description of the Document
+description: Description of the Blog Post
 workflows:
   - autoRun: false
     workflow: document.description.generate

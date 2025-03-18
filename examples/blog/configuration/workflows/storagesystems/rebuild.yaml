@@ -1,0 +1,7 @@
+id: rebuild.storage.systems.content
+name: Rebuild all metadata, collection, and profile storage system data
+description: Rebuild all metadata, collection, and profile storage system data
+queue: metadata
+activities:
+  - queue: metadata
+    activity: storage.rebuild.data

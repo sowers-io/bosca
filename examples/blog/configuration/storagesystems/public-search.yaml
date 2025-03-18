@@ -2,4 +2,14 @@ name: Public Search Index
 description: Public Search Index
 type: SEARCH
 models: [ ]
-configuration: { }
+configuration:
+  indexName: bosca
+  searchable:
+    - name
+    - description
+    - topics.name
+    - authors.name
+    - collections.name
+  filterable:
+    - type
+    - _type

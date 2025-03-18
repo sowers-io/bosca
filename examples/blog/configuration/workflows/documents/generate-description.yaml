@@ -6,7 +6,6 @@ activities:
   - queue: metadata
     activity: metadata.document.to.text
     description: Extract Text from Document
-    executionGroup: 1
     outputs:
       - name: text
         supplementary: text
@@ -14,7 +13,6 @@ activities:
   - queue: ai
     activity: ai.prompt
     description: Generate Description
-    executionGroup: 2
     models:
       - name: gpt-4o
     prompts:
@@ -29,7 +27,6 @@ activities:
   - queue: metadata
     activity: data.jq
     description: Extract Description
-    executionGroup: 3
     configuration:
       query: .description
     inputs:

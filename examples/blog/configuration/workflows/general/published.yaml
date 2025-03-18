@@ -1,15 +1,18 @@
-id: metadata.published
+id: content.published
 name: Publish Metadata
 description: Publish Metadata
 queue: metadata
 activities:
-  - queue: metadata
-    activity: metadata.publish.guide
-    description: If Guide, Publish the Guide
-
   - queue: transition
     activity: metadata.transition.to
     description: Transition Metadata to Published
+    configuration:
+      state: published
+      status: moving to published
+
+  - queue: transition
+    activity: collection.transition.to
+    description: Transition Collection to Published
     configuration:
       state: published
       status: moving to published

@@ -6,4 +6,3 @@ activities:
   - queue: metadata
     activity: collection.set.ready
     description: Set Collection Ready
-    executionGroup: 1

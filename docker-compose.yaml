@@ -54,6 +54,7 @@ services:
   runner:
 #    image: ghcr.io/sowers-io/bosca/kotlin-runner-community-compatibility:latest
     image: ghcr.io/sowers-io/bosca/kotlin-runner-enterprise-compatibility:latest
+    pull_policy: always
     platform: linux/amd64
     environment:
       BOSCA_USERNAME: admin
@@ -86,6 +87,7 @@ services:
 
   administration-query-installer:
     image: ghcr.io/sowers-io/bosca/administration-query-installer:latest
+    pull_policy: always
     platform: linux/amd64
     environment:
       GRAPHQL_URL: http://server:8000/graphql

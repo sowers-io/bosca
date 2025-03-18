@@ -1,0 +1,87 @@
+id: collection.update.storage
+name: Update Collection Storage
+description: Update Collection Storage
+queue: metadata
+activities:
+  - queue: metadata
+    activity: workflow.general.delay
+    description: Wait for all supplementary data and relationships to be updated
+    configuration:
+      delayFor: 30 # 30 Seconds
+
+  - queue: metadata
+    activity: collection.to.json
+    outputs:
+      - name: supplementary
+        supplementary: search.json
+
+  - queue: metadata
+    activity: data.jsonata
+    inputs:
+      - name: supplementary
+        supplementary: search.json
+    outputs:
+      - name: supplementary
+        supplementary: search.json
+    configuration:
+      expression: |
+        {
+          "id": id,
+          "slug": slug,
+          "name": name,
+          "description": $lookup(attributes, "bio") ? $lookup(attributes, "bio") : description,
+          "type": $lookup(attributes, "type"),
+          "_type": _type,
+          "published": $lookup(attributes, "published") ? $parseDate($lookup(attributes, "published")) : modified ? $parseDate(modified) : 0,
+          "created": created ? $parseDate(created) : 0,
+          "modified": modified ? $parseDate(modified) : 0,
+          "topics": [$map($filter(_parents, function($v, $i, $a) { $v.attributes.type = "Topic" }), function($v, $i, $a) { { "id": $v.id, "name": $v.name } })],
+          "authors": [$map($filter(_parents, function($v, $i, $a) { $v.attributes.type = "Author" }), function($v, $i, $a) { { "id": $v.id, "name": $v.name } })],
+          "collections": [$map($filter(_parents, function($v, $i, $a) { $v.attributes.type != "Author" and $v.attributes.type != "Topic" }), function($v, $i, $a) { { "id": $v.id, "name": $v.name } })]
+        }
+
+  - queue: metadata
+    activity: workflow.general.if
+    inputs:
+      - name: supplementary
+        supplementary: search.json
+    configuration:
+      workflows:
+        - collection.index.public
+      expression: |
+        let data = JSON.parse(job)
+        let attrs = data.collection?.collection?.attributes
+        let workflowState = data.collection?.collection?.workflow?.collectionWorkflow?.state
+        let result = false
+        if (attrs && workflowState === 'published') {
+          result = attrs['type'] === 'Standard' || attrs['type'] === 'Topic'
+        }
+        result
+
+  - queue: metadata
+    activity: workflow.general.if
+    inputs:
+      - name: supplementary
+        supplementary: search.json
+    configuration:
+      workflows:
+        - collection.index.public.delete
+      expression: |
+        let data = JSON.parse(job)
+        let workflowState = data.collection?.collection?.workflow?.collectionWorkflow?.state
+        workflowState !== 'published'
+
+  - queue: metadata
+    activity: workflow.execute.child
+    inputs:
+      - name: supplementary
+        supplementary: search.json
+    configuration:
+      workflows:
+        - collection.index.default
+
+  - queue: metadata
+    activity: collection.supplementary.delete
+    inputs:
+      - name: supplementary
+        supplementary: search.json

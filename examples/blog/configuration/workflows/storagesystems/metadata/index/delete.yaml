@@ -1,0 +1,9 @@
+id: metadata.index.public.delete
+name: Index Collection
+description: Index Collection
+queue: metadata
+activities:
+  - queue: metadata
+    activity: search.index.item.delete
+    configuration:
+      storageSystem: Public Search Index

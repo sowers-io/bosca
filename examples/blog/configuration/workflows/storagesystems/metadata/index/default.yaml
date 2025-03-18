@@ -1,0 +1,12 @@
+id: metadata.index.default
+name: Index Metadata
+description: Add Metadata to Default Search Index
+queue: metadata
+activities:
+  - queue: metadata
+    activity: search.index.item
+    configuration:
+      storageSystem: Default Search
+    inputs:
+      - name: supplementary
+        supplementary: search.json

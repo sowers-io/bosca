@@ -3,4 +3,4 @@ name: Published
 description: Published
 type: PUBLISHED
 configuration: {}
-workflowId: metadata.published
+workflowId: content.published

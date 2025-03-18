@@ -4,5 +4,5 @@ type: SYSTEM
 editorType: Collections
 collections:
   - $ref: ./collections/authors.yaml
-  - $ref: ./collections/topics.yaml
   - $ref: ./collections/standard.yaml
+  - $ref: ./collections/topics.yaml

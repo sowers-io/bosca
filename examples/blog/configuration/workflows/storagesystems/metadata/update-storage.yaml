@@ -1,0 +1,88 @@
+id: metadata.update.storage
+name: Update Metadata Storage
+description: Update Metadata Storage
+queue: metadata
+activities:
+  - queue: metadata
+    activity: workflow.general.delay
+    description: Wait for all supplementary data and relationships to be updated
+    configuration:
+      delayFor: 30 # 30 Seconds
+
+  - queue: metadata
+    activity: metadata.to.json
+    outputs:
+      - name: supplementary
+        supplementary: search.json
+
+  - queue: metadata
+    activity: data.jsonata
+    inputs:
+      - name: supplementary
+        supplementary: search.json
+    outputs:
+      - name: supplementary
+        supplementary: search.json
+    configuration:
+      expression: |
+        {
+          "id": id,
+          "slug": slug,
+          "name": name,
+          "description": $lookup(attributes, "description"),
+          "type": $lookup(attributes, "type"),
+          "_type": _type,
+          "published": $lookup(attributes, "published") ? $parseDate($lookup(attributes, "published")) : modified ? $parseDate(modified) : 0,
+          "created": created ? $parseDate(created) : 0,
+          "modified": modified ? $parseDate(modified) : 0,
+          "topics": [$map($filter(_parents, function($v, $i, $a) { $v.attributes.type = "Topic" }), function($v, $i, $a) { { "id": $v.id, "name": $v.name } })],
+          "authors": [$map($filter(_parents, function($v, $i, $a) { $v.attributes.type = "Author" }), function($v, $i, $a) { { "id": $v.id, "name": $v.name } })],
+          "collections": [$map($filter(_parents, function($v, $i, $a) { $v.attributes.type != "Author" and $v.attributes.type != "Topic" }), function($v, $i, $a) { { "id": $v.id, "name": $v.name } })]
+        }
+
+  - queue: metadata
+    activity: workflow.general.if
+    inputs:
+      - name: supplementary
+        supplementary: search.json
+    configuration:
+      workflows:
+        - metadata.index.public
+      expression: |
+        let data = JSON.parse(job)
+        let attrs = data.metadata?.metadata?.attributes
+        let workflowState = data.metadata?.metadata?.workflow?.metadataWorkflow?.state
+        let result = false
+        if (attrs && workflowState === 'published') {
+          result = attrs['type'] === 'Blog Post'  
+        }
+        result
+
+  - queue: metadata
+    activity: workflow.general.if
+    inputs:
+      - name: supplementary
+        supplementary: search.json
+    configuration:
+      workflows:
+        - metadata.index.public.delete
+      expression: |
+        let data = JSON.parse(job)
+        let workflowState = data.metadata?.metadata?.workflow?.metadataWorkflow?.state
+        workflowState !== 'published'
+
+  - queue: metadata
+    activity: workflow.execute.child
+    inputs:
+      - name: supplementary
+        supplementary: search.json
+    configuration:
+      workflows:
+        - metadata.index.default
+
+  - queue: metadata
+    activity: metadata.supplementary.delete
+    inputs:
+      - name: supplementary
+        supplementary: search.json
+

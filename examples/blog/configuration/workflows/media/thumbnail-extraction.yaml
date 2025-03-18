@@ -6,4 +6,3 @@ activities:
   - queue: media
     activity: video.thumbnail.extractor
     description: Extract Thumbnails from a Video
-    executionGroup: 1

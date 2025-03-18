@@ -6,12 +6,10 @@ activities:
   - queue: traits
     activity: collection.traits.process
     description: Process Collection Traits
-    executionGroup: 1
 
   - queue: transition
     activity: collection.transition.to
     description: Transition Collection to Draft
-    executionGroup: 2
     configuration:
       state: draft
       status: moving to draft

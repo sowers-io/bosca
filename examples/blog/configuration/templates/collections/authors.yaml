@@ -1,4 +1,4 @@
-slug: authors
+slug: authors-collections
 name: Authors
 type: SYSTEM
 editorType: Collection
@@ -15,6 +15,11 @@ templates:
         type: Author
       collectionsFilter:
         options:
+          - name: Blog Posts
+            query:
+              attributes:
+                - attributes:
+                    type: Blog Post
           - name: Standard
             query:
               attributes:

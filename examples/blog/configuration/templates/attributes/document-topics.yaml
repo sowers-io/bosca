@@ -1,6 +1,6 @@
 key: topics
 name: Topics
-description: Topics of the Document
+description: Topics of the Blog Post
 workflows: [ ]
 type: COLLECTION
 ui: COLLECTION

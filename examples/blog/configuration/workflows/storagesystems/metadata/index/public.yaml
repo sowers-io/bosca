@@ -1,0 +1,12 @@
+id: metadata.index.public
+name: Index Metadata
+description: Add Metadata to Public Index
+queue: metadata
+activities:
+  - queue: metadata
+    activity: search.index.item
+    configuration:
+      storageSystem: Public Search Index
+    inputs:
+      - name: supplementary
+        supplementary: search.json

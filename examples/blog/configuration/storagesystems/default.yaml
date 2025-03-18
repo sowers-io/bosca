@@ -1,0 +1,24 @@
+name: Default Search
+description: Default Search
+type: SEARCH
+models: [ ]
+configuration:
+  type: meilisearch
+  indexName: default
+  primaryKey: id
+  embeddings:
+    url: http://ollama:11434/api/embeddings
+    model: all-minilm
+    source: ollama
+    template: A document titled {{doc.name}} with a body of {{doc._content|truncatewords:500}}
+  filterable:
+    - type
+    - _type
+    - attributes.type
+    - _parents.attributes.type
+  searchable:
+    - name
+    - attributes.collection
+    - categories.category.name
+    - _content
+    - _parents.name

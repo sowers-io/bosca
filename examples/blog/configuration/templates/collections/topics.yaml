@@ -9,7 +9,7 @@ categories:
 templates:
   collection:
     name: Topic
-    description: Default Topic Template
+    description: Default Topic Collection Template
     collection:
       defaultAttributes:
         type: Topic
@@ -20,6 +20,11 @@ templates:
               attributes:
                 - attributes:
                     type: Blog Post
+          - name: Standard
+            query:
+              attributes:
+                - attributes:
+                    type: Standard
       metadataFilter:
         options:
           - name: Blog Posts

@@ -6,7 +6,6 @@ activities:
   - queue: transition
     activity: collection.transition.to
     description: Transition Collection to Published
-    executionGroup: 1
     configuration:
       state: published
       status: moving to published

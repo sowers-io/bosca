@@ -1,6 +1,6 @@
 key: published
 name: Published
-description: When the document is published
+description: When the blog post is published
 type: DATE_TIME
 ui: INPUT
 list: false

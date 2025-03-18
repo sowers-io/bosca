@@ -1,6 +1,6 @@
 key: author
 name: Author
-description: Author of the Document
+description: Author of the Blog Post
 workflows: [ ]
 type: COLLECTION
 ui: COLLECTION

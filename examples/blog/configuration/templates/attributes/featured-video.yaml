@@ -1,0 +1,9 @@
+key: video.featured
+name: Featured Video
+description: Featured Video
+workflows: [ ]
+type: METADATA
+ui: METADATA
+list: false
+configuration:
+  relationship: video.featured

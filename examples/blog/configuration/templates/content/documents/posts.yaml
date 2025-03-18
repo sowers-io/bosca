@@ -13,4 +13,4 @@ ordering:
     type: DATE_TIME
 templates:
   document:
-    $ref: ./documents/templates/blog-post.yaml
+    $ref: ./content/documents/templates/posts.yaml

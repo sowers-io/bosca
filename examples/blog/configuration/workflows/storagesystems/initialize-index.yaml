@@ -1,0 +1,8 @@
+id: storage.index.initialize
+name: Initialize a Storage System Index
+description: Initialize a Storage System Index
+queue: media
+activities:
+  - queue: media
+    activity: storage.index.initialize
+    description: Initialize a Storage System Index
