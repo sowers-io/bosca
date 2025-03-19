@@ -27,7 +27,11 @@ client.execute({
   username: env.GRAPHQL_USERNAME || 'admin',
   password: env.GRAPHQL_PASSWORD || 'password',
 })
-.catch(console.error)
+.catch((e) => {
+  console.error(e)
+  // @ts-ignore
+  Deno.exit(1);
+})
 .finally(() => {
   console.log('Finished installing.')
   // @ts-ignore
