@@ -6,6 +6,7 @@ console.log('Installing persisted queries...')
 // @ts-ignore
 const documents = JSON.parse(Deno.readTextFileSync(import.meta.dirname + '/persisted-documents.json'))
 
+// @ts-ignore
 const queries = []
 
 for (const sha256 in documents) {
@@ -18,14 +19,35 @@ for (const sha256 in documents) {
 console.log('Found ' + queries.length + ' queries.')
 
 const client = new NetworkClient()
+const graphqlUrl = env.GRAPHQL_URL || 'http://localhost:8000/graphql'
+const username = env.GRAPHQL_USERNAME || 'admin'
+const password = env.GRAPHQL_PASSWORD || 'password'
+
+// First login to get a token
 client.execute({
-  application: 'bosca-administration',
-  queries: queries,
+  identifier: username,
+  password: password,
 }, {
-  url: env.GRAPHQL_URL || 'http://localhost:8000/graphql',
-  query: 'mutation AddPersistedQueries($application: String!, $queries: [PersistedQueryInput!]!) { persistedQueries { addAll(application: $application, queries: $queries) } }',
-  username: env.GRAPHQL_USERNAME || 'admin',
-  password: env.GRAPHQL_PASSWORD || 'password',
+  url: graphqlUrl,
+  query: 'mutation Login($identifier: String!, $password: String!) { security { login { password(identifier: $identifier, password: $password) { token { token } } } } }',
+})
+.then(async (response) => {
+  // Extract token from response
+  // @ts-ignore
+  const token = response.security.login.password.token.token
+  console.log('Successfully logged in')
+
+  // Use token to add persisted queries
+  // @ts-ignore
+  return await client.execute({
+    application: 'bosca-administration',
+    // @ts-ignore
+    queries: queries,
+  }, {
+    url: graphqlUrl,
+    query: 'mutation AddPersistedQueries($application: String!, $queries: [PersistedQueryInput!]!) { persistedQueries { addAll(application: $application, queries: $queries) } }',
+    token: token,
+  })
 })
 .catch((e) => {
   console.error(e)

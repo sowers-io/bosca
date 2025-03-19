@@ -1,8 +1,6 @@
 package io.bosca.workflow.ai.embeddings
 
 import io.bosca.api.Client
-import io.bosca.api.KeyValue
-import io.bosca.util.DefaultKeys
 import io.bosca.workflow.ext.ModelConfiguration
 import io.qdrant.client.QdrantClient
 import io.qdrant.client.QdrantGrpcClient

@@ -1,6 +1,5 @@
 package io.bosca.api
 
-import io.bosca.util.DefaultKeys
 import kotlinx.coroutines.delay
 import kotlinx.serialization.DeserializationStrategy
 import kotlinx.serialization.Serializable
@@ -20,6 +19,17 @@ data class FileRequest(val action: String, val url: String, val headers: List<Fi
 
 @Serializable
 data class Request(val input: FileRequest)
+
+@Serializable
+data class RunConfiguration(
+    val token: String,
+    val url: String
+) {
+
+    companion object {
+        const val KEY = "runpod"
+    }
+}
 
 class RunPod(private val boscaClient: Client) : Api(boscaClient.network) {
 
@@ -41,12 +51,12 @@ class RunPod(private val boscaClient: Client) : Api(boscaClient.network) {
     }
 
     private suspend fun run(function: String, fileRequest: FileRequest): String {
-        val token = boscaClient.configurations.get<KeyValue>(DefaultKeys.RUNPOD_TOKEN)?.value ?: ""
-        val runUrl = (boscaClient.configurations.get<KeyValue>(DefaultKeys.RUNPOD_URL)?.value ?: "") + function + "/run"
+        val configuration = boscaClient.configurations.get<RunConfiguration>(RunConfiguration.KEY) ?: error("missing runpod configuration")
+        val runUrl = configuration.url + function + "/run"
         val requestBody = Json.encodeToString(Request(fileRequest))
         val request = okhttp3.Request.Builder()
             .url(runUrl)
-            .header("Authorization", "Bearer $token")
+            .header("Authorization", "Bearer ${configuration.token}")
             .method("POST", requestBody.toRequestBody("application/json".toMediaTypeOrNull()))
             .build()
         val response = client.newCall(request).executeAsync()
@@ -59,11 +69,11 @@ class RunPod(private val boscaClient: Client) : Api(boscaClient.network) {
     }
 
     private suspend fun getResult(function: String, id: String): String {
-        val token = boscaClient.configurations.get<KeyValue>(DefaultKeys.RUNPOD_TOKEN)?.value ?: ""
-        val runUrl = (boscaClient.configurations.get<KeyValue>(DefaultKeys.RUNPOD_URL)?.value ?: "") + function + "/status/" + id
+        val configuration = boscaClient.configurations.get<RunConfiguration>(RunConfiguration.KEY) ?: error("missing runpod configuration")
+        val runUrl = configuration.url + function + "/status/" + id
         val request = okhttp3.Request.Builder()
             .url(runUrl)
-            .header("Authorization", "Bearer $token")
+            .header("Authorization", "Bearer ${configuration.token}")
             .post("".toRequestBody())
             .build()
         while (true) {

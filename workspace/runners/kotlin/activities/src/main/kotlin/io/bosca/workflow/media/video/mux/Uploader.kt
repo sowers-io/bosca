@@ -1,11 +1,9 @@
 package io.bosca.workflow.media.video.mux
 
 import io.bosca.api.Client
-import io.bosca.api.KeyValue
 import io.bosca.graphql.fragment.WorkflowJob
 import io.bosca.graphql.type.ActivityInput
 import io.bosca.api.executeAsync
-import io.bosca.util.DefaultKeys
 import io.bosca.workflow.Activity
 import io.bosca.workflow.ActivityContext
 import kotlinx.serialization.json.Json
@@ -29,8 +27,9 @@ class Uploader(client: Client) : Activity(client) {
     }
 
     private suspend fun newRequestBuilder(): Request.Builder {
-        val tokenId = client.configurations.get<KeyValue>(DefaultKeys.MUX_TOKEN_ID) ?: error("MUX_TOKEN_ID environment variable is missing")
-        val tokenSecret = client.configurations.get<KeyValue>(DefaultKeys.MUX_TOKEN_SECRET) ?: error("MUX_TOKEN_SECRET environment variable is missing")
+        val configuration = client.configurations.get<MuxConfiguration>(MuxConfiguration.KEY) ?: error("MuxConfiguration is missing")
+        val tokenId = configuration.token.id
+        val tokenSecret = configuration.token.secret
         return Request.Builder()
             .addHeader(
                 "Authorization",
@@ -68,11 +67,12 @@ class Uploader(client: Client) : Activity(client) {
     }
 
     private suspend fun initContext(job: WorkflowJob): MuxRecord {
+        val configuration = client.configurations.get<MuxConfiguration>(MuxConfiguration.KEY) ?: error("MuxConfiguration is missing")
         val upload = UploadRequest(
             newAssetSettings = NewAssetSettings(
                 playbackPolicy = listOf("public"),
                 encodingTier = "smart",
-                test = client.configurations.get<KeyValue>(DefaultKeys.MUX_TEST)?.value == "true",
+                test = configuration.test,
             ),
             corsOrigin = "*",
         )

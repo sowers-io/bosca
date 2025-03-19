@@ -5,9 +5,9 @@ import dev.langchain4j.model.embedding.EmbeddingModel
 import dev.langchain4j.model.embedding.onnx.allminilml6v2.AllMiniLmL6V2EmbeddingModel
 import dev.langchain4j.model.openai.OpenAiChatModel
 import io.bosca.api.Client
-import io.bosca.api.KeyValue
 import io.bosca.graphql.fragment.Model
-import io.bosca.util.DefaultKeys
+import io.bosca.models.OllamaConfiguration
+import io.bosca.models.OpenAIConfiguration
 import io.bosca.util.ModelTypes
 import io.bosca.util.decode
 import kotlinx.serialization.SerialName
@@ -35,7 +35,7 @@ suspend fun Model.toChatLanguageModel(client: Client): ChatLanguageModel {
     return when (type) {
         ModelTypes.OpenAI -> {
             val key = configuration?.apiKey
-                ?: client.configurations.get<KeyValue>(DefaultKeys.OPENAI_KEY)?.value
+                ?: client.configurations.get<OpenAIConfiguration>(OpenAIConfiguration.KEY)?.key
                 ?: error("apiKey missing")
             OpenAiChatModel.builder()
                 .apiKey(key)
@@ -47,14 +47,15 @@ suspend fun Model.toChatLanguageModel(client: Client): ChatLanguageModel {
         }
 
         ModelTypes.Ollama -> {
+            val ollama = client.configurations.get<OllamaConfiguration>(OllamaConfiguration.KEY)
             val url = configuration?.baseUrl
-                ?: client.configurations.get<KeyValue>(DefaultKeys.OLLAMA_URL)?.value
+                ?: ollama?.url
                 ?: "http://localhost:11434/v1"
             val key = configuration?.apiKey
-                ?: client.configurations.get<KeyValue>(DefaultKeys.OLLAMA_KEY)?.value
+                ?: ollama?.apiKey
                 ?: "ollama"
             val model = configuration?.baseUrl
-                ?: client.configurations.get<KeyValue>(DefaultKeys.OLLAMA_MODEL_DEFAULT)?.value
+                ?: ollama?.models?.get("default")
                 ?: "llama3.3:70b-instruct-q8_0"
             OpenAiChatModel.builder()
                 .baseUrl(url)

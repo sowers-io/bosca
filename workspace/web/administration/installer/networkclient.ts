@@ -10,8 +10,6 @@ export interface ExecuteOptions {
   post?: boolean | undefined
   query?: string | undefined
   token?: string | undefined
-  username?: string | undefined
-  password?: string | undefined
   url?: string | undefined
   immediate?: boolean | undefined
   watch?: any[] | undefined
@@ -77,12 +75,7 @@ export class NetworkClient {
     const headers = new Headers()
     headers.set('Content-Type', 'application/json')
     headers.set('Accept', 'application/json')
-    if (options && options.username && options.password) {
-      headers.set(
-        'Authorization',
-        'Basic ' + btoa(options.username + ':' + options.password),
-      )
-    } else if (options && options.token) {
+    if (options && options.token) {
       headers.set('Authorization', 'Bearer ' + options.token)
     } else if (options?.authenticate !== false) {
       const token = this.token
