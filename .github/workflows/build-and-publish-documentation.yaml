@@ -120,5 +120,5 @@ jobs:
       - uses: 1password/load-secrets-action@v2
         with:
           export-env: true
-      - run: cd kubernetes-documentation && echo -n $KUBECTL_CONFIG | base64 -d > config
-      - run: cd kubernetes-documentation && ./deploy
+      - run: cd deployment/kubernetes-documentation && echo -n $KUBECTL_CONFIG | base64 -d > config
+      - run: cd deployment/kubernetes-documentation && ./deploy

@@ -70,8 +70,8 @@ services:
         condition: service_healthy
 
   runner:
-#    image: ghcr.io/sowers-io/bosca/kotlin-runner-community-compatibility:latest
-    image: ghcr.io/sowers-io/bosca/kotlin-runner-enterprise-compatibility:latest
+    image: ghcr.io/sowers-io/bosca/kotlin-runner-community:latest
+#    image: ghcr.io/sowers-io/bosca/kotlin-runner-enterprise:latest
     platform: linux/amd64
     environment:
       BOSCA_USERNAME: admin
