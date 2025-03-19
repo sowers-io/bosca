@@ -15,7 +15,10 @@ impl PersistedQueriesMutationObject {
         let ctx = ctx.data::<BoscaContext>()?;
         let sa_group = ctx.security.get_service_account_group().await?;
         if !ctx.principal.has_group(&sa_group.id) {
-            return Err(Error::new("invalid permissions"));
+            let admin_group = ctx.security.get_administrators_group().await?;
+            if !ctx.principal.has_group(&admin_group.id) {
+                return Err(Error::new("invalid permissions"));
+            }
         }
         ctx.queries.add_queries(&application, &queries).await?;
         Ok(true)
