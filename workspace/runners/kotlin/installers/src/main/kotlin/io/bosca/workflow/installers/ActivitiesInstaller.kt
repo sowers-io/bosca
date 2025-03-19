@@ -37,6 +37,11 @@ import io.bosca.workflow.general.Delay
 import io.bosca.workflow.general.If
 import io.bosca.workflow.json.JSONata
 import io.bosca.workflow.metadata.*
+import io.bosca.workflow.search.AddToIndex
+import io.bosca.workflow.search.DeleteFromIndex
+import io.bosca.workflow.search.DeleteFromIndexes
+import io.bosca.workflow.storage.InitializeIndex
+import io.bosca.workflow.storage.RebuildData
 import java.io.File
 import io.bosca.workflow.media.video.mux.Uploader as MuxUploader
 
@@ -46,6 +51,16 @@ class ActivitiesInstaller(client: Client) : Installer, ActivityRegistry {
         Jq(client),
 
         Delay(client),
+
+        CollectionToJson(client),
+        MetadataToJson(client),
+        ProfileToJson(client),
+
+        InitializeIndex(client),
+        AddToIndex(client),
+        DeleteFromIndex(client),
+        DeleteFromIndexes(client),
+        RebuildData(client),
 
         MetadataTraits(client),
         MetadataTransitionTo(client),

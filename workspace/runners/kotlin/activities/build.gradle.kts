@@ -19,6 +19,7 @@ dependencies {
     implementation("org.graalvm.polyglot:js-community:24.1.2")
     implementation("org.graalvm.polyglot:polyglot:24.1.2")
     implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.18.3")
+    implementation("com.meilisearch.sdk:meilisearch-java:0.14.2")
 
     implementation(project(":engine"))
 
