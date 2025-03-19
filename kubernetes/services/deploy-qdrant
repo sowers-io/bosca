@@ -1,4 +1,0 @@
-#!/bin/bash
-
-helm repo add qdrant https://qdrant.to/helm
-helm -n bosca upgrade qdrant qdrant/qdrant

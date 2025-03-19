@@ -1,9 +1,0 @@
-namespace: bosca
-
-resources:
-  - documentation
-  - ingress.yaml
-
-generatorOptions:
-  disableNameSuffixHash: true
-

@@ -1,3 +1,6 @@
 [submodule "workspace/runners/enterprise"]
 	path = workspace/runners/enterprise
 	url = git@github.com:sowers-io/bosca-runner-enterprise
+[submodule "deployment"]
+	path = deployment
+	url = git@github.com:sowers-io/bosca-deployment.git

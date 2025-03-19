@@ -1,4 +1,0 @@
-#!/bin/sh
-
-kubectl apply -f cloudflare.yaml
-kubectl apply -f issuer.yaml
