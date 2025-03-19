@@ -299,11 +299,15 @@ jobs:
       IMAGE_TAG: ${{ github.sha }}
       OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
       KUBECTL_CONFIG: op://Kubernetes/Kubernetes Config/config
+      GITHUB_TOKEN: ${{ secrets.PRIVATE_PAT }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          token: ${{ secrets.PRIVATE_PAT }}
       - run: sudo apt update && sudo apt install -y kubectl
       - uses: 1password/load-secrets-action@v2
         with:
           export-env: true
-      - run: cd kubernetes && echo -n $KUBECTL_CONFIG | base64 -d > config
-      - run: cd kubernetes && ./deploy
+      - run: cd deployment/kubernetes && echo -n $KUBECTL_CONFIG | base64 -d > config
+      - run: cd deployment/kubernetes && ./deploy
