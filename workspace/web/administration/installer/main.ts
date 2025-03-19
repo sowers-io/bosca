@@ -26,7 +26,9 @@ client.execute({
   query: 'mutation AddPersistedQueries($application: String!, $queries: [PersistedQueryInput!]!) { persistedQueries { addAll(application: $application, queries: $queries) } }',
   username: env.GRAPHQL_USERNAME || 'admin',
   password: env.GRAPHQL_PASSWORD || 'password',
-}).finally(() => {
+})
+.catch(console.error)
+.finally(() => {
   console.log('Finished installing.')
   // @ts-ignore
   Deno.exit();
