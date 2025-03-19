@@ -15,6 +15,8 @@ for (const sha256 in documents) {
   })
 }
 
+console.log('Found ' + queries.length + ' queries.')
+
 const client = new NetworkClient()
 client.execute({
   application: 'bosca-administration',

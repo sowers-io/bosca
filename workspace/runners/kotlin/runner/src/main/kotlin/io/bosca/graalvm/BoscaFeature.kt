@@ -5,6 +5,8 @@ import org.graalvm.nativeimage.hosted.RuntimeReflection
 
 class BoscaFeature : Feature {
 
+    private val registered = mutableSetOf<String>()
+
     override fun beforeAnalysis(access: Feature.BeforeAnalysisAccess) {
         // Jsonata classes
         register("com.dashjoin.jsonata.Jsonata", access)
@@ -12,6 +14,8 @@ class BoscaFeature : Feature {
         register("com.dashjoin.jsonata.Utils", access)
         register("com.dashjoin.jsonata.Expressions", access)
         register("com.dashjoin.jsonata.Functions", access)
+
+        register("io.bosca.graphql.fragment.WorkflowJob", access, true)
 
         // Meilisearch classes
         register("com.meilisearch.sdk.Index", access)
@@ -29,30 +33,8 @@ class BoscaFeature : Feature {
         register("com.meilisearch.sdk.model.TaskDetails", access)
         register("com.meilisearch.sdk.model.TaskError", access)
         register("com.meilisearch.sdk.model.TaskInfo", access)
-
-        register("com.google.gson.internal.LinkedTreeMap", access)
-
-        // Register TaskStatus enum with its fields
-        try {
-            val taskStatusClass = Class.forName("com.meilisearch.sdk.model.TaskStatus")
-            RuntimeReflection.register(taskStatusClass)
-            RuntimeReflection.registerAllConstructors(taskStatusClass)
-            RuntimeReflection.registerAllMethods(taskStatusClass)
-
-            // Register enum constants
-            val enumConstants = listOf("ENQUEUED", "PROCESSING", "SUCCEEDED", "FAILED", "CANCELED")
-            for (constantName in enumConstants) {
-                try {
-                    val field = taskStatusClass.getDeclaredField(constantName)
-                    RuntimeReflection.register(field)
-                } catch (e: NoSuchFieldException) {
-                    // Field not found, log and continue
-                    println("Field $constantName not found in TaskStatus enum")
-                }
-            }
-        } catch (e: ClassNotFoundException) {
-            println("TaskStatus class not found")
-        }
+        register("com.meilisearch.sdk.model.TaskStatus", access)
+        register("com.meilisearch.sdk.model.TypoTolerance", access)
 
         // Security providers
         register("apple.security.AppleProvider", access)
@@ -264,18 +246,7 @@ class BoscaFeature : Feature {
         )
 
         for (className in x509Extensions) {
-            try {
-                val clazz = Class.forName(className)
-                RuntimeReflection.register(clazz)
-
-                val constructor = clazz.getDeclaredConstructor(
-                    Boolean::class.java,
-                    Object::class.java
-                )
-                RuntimeReflection.register(constructor)
-            } catch (e: Exception) {
-                println("Could not register $className: ${e.message}")
-            }
+            register(className, access)
         }
     }
 
@@ -322,10 +293,16 @@ class BoscaFeature : Feature {
 
     private fun register(
         className: String,
-        access: Feature.BeforeAnalysisAccess
+        access: Feature.BeforeAnalysisAccess,
+        recursive: Boolean = false,
     ) {
+        if (registered.contains(className)) return
+        registered.add(className)
         try {
+            if (className.startsWith("java.lang")) return
             val clazz = Class.forName(className)
+            if (clazz.isPrimitive) return
+            println("Registering $className...")
 
             RuntimeReflection.registerClassLookup(className)
             clazz.constructors.forEach { constructor ->
@@ -349,6 +326,9 @@ class BoscaFeature : Feature {
                     *method.parameters.map { it.type }.toTypedArray()
                 )
                 RuntimeReflection.register(method)
+                if (recursive) {
+                    register(method.returnType.name, access, true)
+                }
             }
             clazz.declaredMethods.forEach { method ->
                 RuntimeReflection.registerMethodLookup(
@@ -357,6 +337,9 @@ class BoscaFeature : Feature {
                     *method.parameters.map { it.type }.toTypedArray()
                 )
                 RuntimeReflection.register(method)
+                if (recursive) {
+                    register(method.returnType.name, access, true)
+                }
             }
             clazz.fields.forEach { field ->
                 RuntimeReflection.registerFieldLookup(
@@ -364,6 +347,9 @@ class BoscaFeature : Feature {
                     field.name
                 )
                 RuntimeReflection.register(field)
+                if (recursive) {
+                    register(field.type.name, access, true)
+                }
             }
             clazz.declaredFields.forEach { field ->
                 RuntimeReflection.registerFieldLookup(
@@ -371,6 +357,9 @@ class BoscaFeature : Feature {
                     field.name
                 )
                 RuntimeReflection.register(field)
+                if (recursive) {
+                    register(field.type.name, access, true)
+                }
             }
 
             RuntimeReflection.register(clazz)

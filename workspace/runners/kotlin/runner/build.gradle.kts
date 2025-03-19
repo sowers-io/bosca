@@ -20,8 +20,7 @@ dependencies {
     implementation(project(":installers"))
     implementation(project(":activities"))
 
-    // GraalVM Native Image API for reflection registration
-    compileOnly("org.graalvm.nativeimage:svm:24.0.0")
+    compileOnly("org.graalvm.nativeimage:svm:24.1.2")
 
     testImplementation(kotlin("test"))
 }
