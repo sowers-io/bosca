@@ -89,6 +89,7 @@ class BoscaFeature : Feature {
         registerCoroutinesClasses(access)
 
         register("com.fasterxml.jackson.databind.ext.Java7SupportImpl", access)
+        register("com.fasterxml.jackson.databind.PropertyNamingStrategies", access)
 
         // Register security classes
         registerSecurityProviders(access)
@@ -359,6 +360,12 @@ class BoscaFeature : Feature {
                 RuntimeReflection.register(field)
                 if (recursive) {
                     register(field.type.name, access, true)
+                }
+            }
+            clazz.declaredClasses.forEach { innerClass ->
+                RuntimeReflection.register(innerClass)
+                if (recursive) {
+                    register(innerClass.name, access, true)
                 }
             }
 
