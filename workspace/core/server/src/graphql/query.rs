@@ -1,16 +1,19 @@
-use crate::graphql::content::content::ContentObject;
-use crate::graphql::queries::PersistedQueriesObject;
-use crate::graphql::security::security::SecurityObject;
-use crate::graphql::workflows::workflows::WorkflowsObject;
-use async_graphql::*;
-use log::error;
-use uuid::Uuid;
 use crate::context::BoscaContext;
 use crate::graphql::configuration::configurations::ConfigurationsObject;
+use crate::graphql::content::content::ContentObject;
 use crate::graphql::profiles::profiles::ProfilesObject;
+use crate::graphql::queries::PersistedQueriesObject;
+use crate::graphql::security::security::SecurityObject;
 use crate::graphql::server::ServerObject;
-use crate::models::content::search::{SearchDocument, SearchQuery, SearchResultObject};
+use crate::graphql::workflows::workflows::WorkflowsObject;
+use crate::models::content::search::{
+    SearchDocument, SearchQuery, SearchResultFacet, SearchResultObject,
+};
 use crate::models::security::permission::PermissionAction;
+use async_graphql::*;
+use log::error;
+use meilisearch_sdk::search::Selectors;
+use uuid::Uuid;
 
 pub struct QueryObject;
 
@@ -50,13 +53,28 @@ impl QueryObject {
         query: SearchQuery,
     ) -> Result<SearchResultObject, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        let Ok(id) = Uuid::parse_str(query.storage_system_id.as_str()) else {
-            return Ok(SearchResultObject {
-                documents: vec![],
-                estimated_hits: 0,
-            });
-        };
-        let Some(storage_system) = ctx.workflow.get_storage_system(&id).await? else {
+        let storage_system = if let Some(storage_system_id) = query.storage_system_id.as_ref() {
+            let Ok(id) = Uuid::parse_str(storage_system_id) else {
+                return Ok(SearchResultObject {
+                    documents: vec![],
+                    facets: vec![],
+                    estimated_hits: 0,
+                });
+            };
+            let Some(storage_system) = ctx.workflow.get_storage_system(&id).await? else {
+                return Err(Error::new("missing storage system"));
+            };
+            storage_system
+        } else if let Some(storage_system_name) = query.storage_system_name.as_ref() {
+            let Some(storage_system) = ctx
+                .workflow
+                .get_storage_system_by_name(storage_system_name)
+                .await?
+            else {
+                return Err(Error::new("missing storage system"));
+            };
+            storage_system
+        } else {
             return Err(Error::new("missing storage system"));
         };
         let Some(configuration) = storage_system.configuration else {
@@ -75,7 +93,25 @@ impl QueryObject {
         search_query.with_offset(query.offset.unwrap_or(0) as usize);
         search_query.with_limit(if limit > 100 { 100 } else { limit });
         if let Some(filter) = query.filter.as_ref() {
-            search_query.with_filter(filter.as_str());
+            if !filter.is_empty() {
+                search_query.with_filter(filter.as_str());
+            }
+        }
+        let sort_fields = query
+            .sort
+            .as_ref()
+            .map(|s| s.iter().map(|s| s.as_str()).collect::<Vec<&str>>())
+            .unwrap_or_default();
+        if !sort_fields.is_empty() {
+            search_query.with_sort(sort_fields.as_slice());
+        }
+        let facet_fields = query
+            .facets
+            .as_ref()
+            .map(|s| s.iter().map(|s| s.as_str()).collect::<Vec<&str>>())
+            .unwrap_or_default();
+        if !facet_fields.is_empty() {
+            search_query.with_facets(Selectors::Some(facet_fields.as_slice()));
         }
         let results = search_query.execute::<serde_json::Value>().await?;
         let mut documents = Vec::new();
@@ -134,8 +170,21 @@ impl QueryObject {
                 documents.push(document);
             }
         }
+        let mut facets = Vec::new();
+        if let Some(distribution) = results.facet_distribution {
+            for (field, value) in distribution {
+                for (value, count) in value {
+                    facets.push(SearchResultFacet {
+                        field: field.to_string(),
+                        value: value.to_string(),
+                        count: count as i64,
+                    })
+                }
+            }
+        }
         Ok(SearchResultObject {
             documents,
+            facets,
             estimated_hits: results
                 .total_hits
                 .unwrap_or(results.estimated_total_hits.unwrap_or(0))

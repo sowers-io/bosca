@@ -692,6 +692,16 @@ impl WorkflowDataStore {
         Ok(rows.first().map(|r| r.into()))
     }
 
+    pub async fn get_storage_system_by_name(&self, name: &str) -> Result<Option<StorageSystem>, Error> {
+        let connection = self.pool.get().await?;
+        let name = name.to_string();
+        let stmt = connection
+            .prepare_cached("select * from storage_systems where name = $1")
+            .await?;
+        let rows = connection.query(&stmt, &[&name]).await?;
+        Ok(rows.first().map(|r| r.into()))
+    }
+
     pub async fn add_storage_system(
         &self,
         ctx: &BoscaContext,
