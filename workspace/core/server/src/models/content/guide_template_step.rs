@@ -1,5 +1,5 @@
 use async_graphql::InputObject;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tokio_postgres::Row;
 use uuid::Uuid;
 use crate::models::content::guide_template_step_module::GuideTemplateStepModuleInput;
@@ -7,14 +7,14 @@ use crate::models::content::guide_template_step_module::GuideTemplateStepModuleI
 #[derive(Clone)]
 pub struct GuideTemplateStep {
     pub id: i64,
-    pub template_metadata_id: Option<Uuid>,
-    pub template_metadata_version: Option<i32>,
+    pub template_metadata_id: Uuid,
+    pub template_metadata_version: i32,
 }
 
-#[derive(InputObject, Clone, Serialize)]
+#[derive(InputObject, Clone, Serialize, Deserialize)]
 pub struct GuideTemplateStepInput {
-    pub template_metadata_id: Option<String>,
-    pub template_metadata_version: Option<i32>,
+    pub template_metadata_id: String,
+    pub template_metadata_version: i32,
     pub modules: Vec<GuideTemplateStepModuleInput>,
 }
 

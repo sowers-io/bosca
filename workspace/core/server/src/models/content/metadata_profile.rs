@@ -1,4 +1,5 @@
 use async_graphql::*;
+use serde::{Deserialize, Serialize};
 use tokio_postgres::Row;
 use uuid::Uuid;
 
@@ -7,7 +8,7 @@ pub struct MetadataProfile {
     pub relationship: String,
 }
 
-#[derive(InputObject, Clone)]
+#[derive(InputObject, Clone, Serialize, Deserialize)]
 pub struct MetadataProfileInput {
     pub profile_id: String,
     pub relationship: String,

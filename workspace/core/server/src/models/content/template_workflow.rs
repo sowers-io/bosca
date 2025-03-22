@@ -1,5 +1,5 @@
 use async_graphql::*;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tokio_postgres::Row;
 
 #[derive(Clone)]
@@ -8,7 +8,7 @@ pub struct TemplateWorkflow {
     pub auto_run: bool
 }
 
-#[derive(InputObject, Clone, Serialize)]
+#[derive(InputObject, Clone, Serialize, Deserialize)]
 pub struct TemplateWorkflowInput {
     pub workflow_id: String,
     pub auto_run: bool

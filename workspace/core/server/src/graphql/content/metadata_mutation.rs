@@ -8,13 +8,7 @@ use crate::graphql::content::permission::PermissionObject;
 use crate::graphql::workflows::workflow_execution_plan::WorkflowExecutionPlanObject;
 use crate::models::content::collection::MetadataChildInput;
 use crate::models::content::document::DocumentInput;
-use crate::models::content::guide::GuideInput;
-use crate::models::content::guide_step::GuideStepInput;
-use crate::models::content::guide_step_module::GuideStepModuleInput;
-use crate::models::content::guide_template_step::GuideTemplateStep;
-use crate::models::content::guide_template_step_module::GuideTemplateStepModule;
-use crate::models::content::metadata::{Metadata, MetadataInput};
-use crate::models::content::metadata_profile::MetadataProfileInput;
+use crate::models::content::metadata::MetadataInput;
 use crate::models::content::metadata_relationship::MetadataRelationshipInput;
 use crate::models::content::metadata_supplementary::MetadataSupplementaryInput;
 use crate::models::content::metadata_workflow_state::{
@@ -26,7 +20,6 @@ use crate::models::workflow::execution_plan::WorkflowExecutionPlan;
 use crate::util::upload::upload_file;
 use async_graphql::*;
 use bytes::Bytes;
-use serde_json::json;
 use uuid::Uuid;
 
 #[derive(InputObject, Clone, Debug, Default)]
@@ -46,20 +39,22 @@ impl MetadataMutationObject {
         collection_item_attributes: Option<serde_json::Value>,
     ) -> Result<MetadataObject, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        let mut metadatas = vec![MetadataChildInput {
-            metadata: metadata.clone(),
-            attributes: collection_item_attributes,
-        }];
-        let metadata_ids = ctx.content.metadata.add_all(ctx, &mut metadatas).await?;
-        let Some((metadata_id, version, active_version)) = metadata_ids.first() else {
-            return Err(Error::new("Error creating metadata"));
-        };
+        let parent_collection_id = match &metadata.parent_collection_id {
+            Some(id) => Uuid::parse_str(id),
+            None => Uuid::parse_str("00000000-0000-0000-0000-000000000000"),
+        }?;
+        ctx.check_collection_action(&parent_collection_id, PermissionAction::Edit).await?;
+        let (metadata_id, version, active_version) = ctx
+            .content
+            .metadata
+            .add(ctx, &metadata, collection_item_attributes)
+            .await?;
         let new_metadata = if version == active_version {
-            ctx.content.metadata.get(metadata_id).await?.unwrap()
+            ctx.content.metadata.get(&metadata_id).await?.unwrap()
         } else {
             ctx.content
                 .metadata
-                .get_by_version(metadata_id, *version)
+                .get_by_version(&metadata_id, version)
                 .await?
                 .unwrap()
         };
@@ -75,39 +70,61 @@ impl MetadataMutationObject {
     ) -> Result<Option<MetadataObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let parent_collection_id = Uuid::parse_str(parent_collection_id.as_str())?;
-        let template_id = Uuid::parse_str(template_id.as_str())?;
         ctx.check_collection_action(&parent_collection_id, PermissionAction::Edit)
             .await?;
-        Ok(add_document_impl(
-            ctx,
-            &parent_collection_id,
-            &template_id,
-            template_version,
-            "New Document",
-        )
-        .await?
-        .map(MetadataObject::new))
+        let template_id = Uuid::parse_str(template_id.as_str())?;
+        let (id, _) = ctx
+            .content
+            .documents
+            .add_document_from_template(
+                ctx,
+                Some(parent_collection_id),
+                &template_id,
+                template_version,
+                "New Document",
+                "bosca/v-document",
+            )
+            .await?;
+        let metadata = ctx.content.metadata.get(&id).await?;
+        Ok(metadata.map(MetadataObject::new))
+    }
+
+    async fn add_guide(
+        &self,
+        ctx: &Context<'_>,
+        parent_collection_id: String,
+        template_id: String,
+        template_version: i32,
+    ) -> Result<Option<MetadataObject>, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let parent_collection_id = Uuid::parse_str(&parent_collection_id)?;
+        ctx.check_collection_action(&parent_collection_id, PermissionAction::Edit)
+            .await?;
+        let template_id = Uuid::parse_str(&template_id)?;
+        let (id, _) = ctx
+            .content
+            .guides
+            .add_guide_from_template(ctx, &parent_collection_id, &template_id, template_version)
+            .await?;
+        let metadata = ctx.content.metadata.get(&id).await?;
+        Ok(metadata.map(MetadataObject::new))
     }
 
     #[allow(clippy::too_many_arguments)]
     async fn add_guide_step(
         &self,
         ctx: &Context<'_>,
-        parent_collection_id: String,
         metadata_id: String,
-        version: i32,
+        metadata_version: i32,
         template_id: String,
         template_version: i32,
         template_step_id: i64,
         sort: i32,
     ) -> Result<GuideStepObject, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        let parent_collection_id = Uuid::parse_str(parent_collection_id.as_str())?;
         let template_id = Uuid::parse_str(template_id.as_str())?;
-        ctx.check_collection_action(&parent_collection_id, PermissionAction::Edit)
-            .await?;
         let metadata_id = Uuid::parse_str(&metadata_id)?;
-        ctx.check_metadata_version_action(&metadata_id, version, PermissionAction::View)
+        ctx.check_metadata_version_action(&metadata_id, metadata_version, PermissionAction::Edit)
             .await?;
         let template = ctx
             .check_metadata_version_action(&template_id, template_version, PermissionAction::View)
@@ -115,39 +132,35 @@ impl MetadataMutationObject {
         if template.content_type != "bosca/v-guide-step-template" {
             return Err(Error::new("invalid template"));
         }
-        let template_step = ctx
+        let Some(template_step) = ctx
             .content
             .guides
             .get_template_step(&template.id, template.version, template_step_id)
-            .await?;
-        if template_step.is_none() {
+            .await?
+        else {
             return Err(Error::new("invalid step"));
-        }
-        let template_step = template_step.unwrap();
-        let step = add_guide_step_impl(
-            ctx,
-            &parent_collection_id,
-            &template_id,
-            template_version,
-            0,
-            &template_step,
-        )
-        .await?;
-        let new_step = ctx
+        };
+        let step = ctx
             .content
             .guides
-            .add_guide_step(&metadata_id, version, &step, sort)
+            .add_guide_step_from_template(
+                ctx,
+                &metadata_id,
+                metadata_version,
+                sort as usize,
+                &template_step,
+            )
             .await?;
-        Ok(GuideStepObject::new(new_step))
+        Ok(GuideStepObject::new(step))
     }
 
     #[allow(clippy::too_many_arguments)]
     async fn add_guide_step_module(
         &self,
         ctx: &Context<'_>,
-        parent_collection_id: String,
         metadata_id: String,
-        version: i32,
+        metadata_version: i32,
+        step_id: i64,
         template_id: String,
         template_version: i32,
         template_step_id: i64,
@@ -155,12 +168,9 @@ impl MetadataMutationObject {
         sort: i32,
     ) -> Result<GuideStepModuleObject, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        let parent_collection_id = Uuid::parse_str(parent_collection_id.as_str())?;
         let template_id = Uuid::parse_str(template_id.as_str())?;
-        ctx.check_collection_action(&parent_collection_id, PermissionAction::Edit)
-            .await?;
         let metadata_id = Uuid::parse_str(&metadata_id)?;
-        ctx.check_metadata_version_action(&metadata_id, version, PermissionAction::View)
+        ctx.check_metadata_version_action(&metadata_id, metadata_version, PermissionAction::Edit)
             .await?;
         let template = ctx
             .check_metadata_version_action(&template_id, template_version, PermissionAction::View)
@@ -178,123 +188,22 @@ impl MetadataMutationObject {
                 template_module_id,
             )
             .await?;
-        if template_module.is_none() {
+        let Some(template_module) = template_module else {
             return Err(Error::new("invalid module"));
-        }
-        let template_module = template_module.unwrap();
-        let module = add_guide_module_impl(ctx, &parent_collection_id, 0, &template_module).await?;
-        let new_module = ctx
-            .content
-            .guides
-            .add_guide_step_module(&metadata_id, version, template_step_id, sort, &module)
-            .await?;
-        Ok(GuideStepModuleObject::new(new_module))
-    }
-
-    async fn add_guide(
-        &self,
-        ctx: &Context<'_>,
-        parent_collection_id: String,
-        template_id: String,
-        template_version: i32,
-    ) -> Result<Option<MetadataObject>, Error> {
-        let ctx = ctx.data::<BoscaContext>()?;
-        let parent_collection_id = Uuid::parse_str(parent_collection_id.as_str())?;
-        let template_id = Uuid::parse_str(template_id.as_str())?;
-        ctx.check_collection_action(&parent_collection_id, PermissionAction::Edit)
-            .await?;
-        let template = ctx
-            .check_metadata_version_action(&template_id, template_version, PermissionAction::View)
-            .await?;
-        if template.content_type != "bosca/v-guide-template" {
-            return Err(Error::new("invalid template"));
-        }
-        let Some(template_document) = ctx
-            .content
-            .documents
-            .get_template(&template.id, template.version)
-            .await?
-        else {
-            return Err(Error::new("missing template"));
         };
-        let Some(template_guide) = ctx
+        let module = ctx
             .content
             .guides
-            .get_template(&template.id, template.version)
-            .await?
-        else {
-            return Err(Error::new("missing guide"));
-        };
-        let mut attrs = json!({
-            "editor.type": "Guide",
-        });
-        if let Some(default_attributes) = &template_document.default_attributes {
-            if let serde_json::Value::Object(ref mut attrs_obj) = attrs {
-                if let serde_json::Value::Object(default_obj) = default_attributes.clone() {
-                    attrs_obj.extend(default_obj.into_iter());
-                }
-            }
-        }
-        let profile = ctx.profile.get_by_principal(&ctx.principal.id).await?;
-        let categories = ctx
-            .content
-            .collections
-            .get_categories(&parent_collection_id)
-            .await?;
-        let template_steps = ctx
-            .content
-            .guides
-            .get_template_steps(&template.id, template.version)
-            .await?;
-        let mut steps = Vec::new();
-        for (index, template_step) in template_steps.iter().enumerate() {
-            let step = add_guide_step_impl(
+            .add_guide_module_from_template(
                 ctx,
-                &parent_collection_id,
-                &template_id,
-                template_version,
-                index,
-                template_step,
+                &metadata_id,
+                metadata_version,
+                step_id,
+                sort as usize,
+                &template_module,
             )
             .await?;
-            steps.push(step);
-        }
-        let metadata = MetadataInput {
-            parent_collection_id: Some(parent_collection_id.to_string()),
-            category_ids: Some(categories.iter().map(|c| c.id.to_string()).collect()),
-            name: "New Guide".to_string(),
-            content_type: "bosca/v-guide".to_string(),
-            language_tag: template.language_tag,
-            attributes: Some(attrs),
-            guide: Some(GuideInput {
-                guide_type: template_guide.guide_type,
-                rrule: template_guide.rrule.map(|rrule| rrule.to_string()),
-                template_metadata_id: Some(template.id.to_string()),
-                template_metadata_version: Some(template.version),
-                steps,
-            }),
-            document: Some(DocumentInput {
-                template_metadata_id: Some(template.id.to_string()),
-                template_metadata_version: Some(template.version),
-                title: "New Guide".to_string(),
-                content: template_document.content.clone(),
-            }),
-            profiles: profile.map(|p| {
-                vec![MetadataProfileInput {
-                    profile_id: p.id.to_string(),
-                    relationship: "author".to_string(),
-                }]
-            }),
-            ..Default::default()
-        };
-        let mut add = vec![MetadataChildInput {
-            metadata,
-            attributes: None,
-        }];
-        let ids = ctx.content.metadata.add_all(ctx, &mut add).await?;
-        let id = ids.first().unwrap();
-        let metadata = ctx.content.metadata.get(&id.0).await?;
-        Ok(metadata.map(MetadataObject::new))
+        Ok(GuideStepModuleObject::new(module))
     }
 
     async fn edit(
@@ -326,8 +235,19 @@ impl MetadataMutationObject {
         metadatas: Vec<MetadataChildInput>,
     ) -> Result<Vec<MetadataObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
+
+        let root_collection_id = Uuid::parse_str("00000000-0000-0000-0000-000000000000")?;
+
+        for metadata in metadatas.iter() {
+            let parent_collection_id = match &metadata.metadata.parent_collection_id {
+                Some(id) => Uuid::parse_str(id)?,
+                None => root_collection_id,
+            };
+            ctx.check_collection_action(&parent_collection_id, PermissionAction::Edit).await?;
+        }
+
         let mut metadatas = metadatas;
-        let metadata_ids = ctx.content.metadata.add_all(ctx, &mut metadatas).await?;
+        let metadata_ids = ctx.content.metadata.add_all(ctx, &mut metadatas, true).await?;
         let mut metadatas = Vec::new();
         for (id, version, active_version) in metadata_ids {
             let metadata = if version == active_version {
@@ -361,7 +281,7 @@ impl MetadataMutationObject {
     ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::parse_str(metadata_id.as_str())?;
-        ctx.check_has_admin_account().await?;
+        ctx.check_has_service_account().await?;
         ctx.content.metadata.delete(ctx, &id).await?;
         Ok(true)
     }
@@ -1031,163 +951,4 @@ impl MetadataMutationObject {
             .await?;
         Ok(true)
     }
-}
-
-async fn add_guide_step_impl(
-    ctx: &BoscaContext,
-    parent_collection_id: &Uuid,
-    template_id: &Uuid,
-    template_version: i32,
-    step_index: usize,
-    step: &GuideTemplateStep,
-) -> Result<GuideStepInput, Error> {
-    let new_metadata = if let Some(template_id) = step.template_metadata_id {
-        if let Some(template_version) = step.template_metadata_version {
-            let title = if step_index == 0 {
-                "New Step".to_string()
-            } else {
-                format!("New Step {}", step_index + 1)
-            };
-            add_document_impl(
-                ctx,
-                parent_collection_id,
-                &template_id,
-                template_version,
-                &title,
-            )
-            .await?
-        } else {
-            None
-        }
-    } else {
-        None
-    };
-
-    let modules = ctx
-        .content
-        .guides
-        .get_template_step_modules(template_id, template_version, step_index as i64)
-        .await?;
-
-    let mut new_modules = Vec::new();
-    for (index, module) in modules.iter().enumerate() {
-        let module = add_guide_module_impl(ctx, parent_collection_id, index, module).await?;
-        new_modules.push(module);
-    }
-
-    Ok(GuideStepInput {
-        step_metadata_id: new_metadata.as_ref().map(|m| m.id.to_string()),
-        step_metadata_version: new_metadata.map(|m| m.version),
-        modules: new_modules,
-    })
-}
-
-async fn add_guide_module_impl(
-    ctx: &BoscaContext,
-    parent_collection_id: &Uuid,
-    module_index: usize,
-    module: &GuideTemplateStepModule,
-) -> Result<GuideStepModuleInput, Error> {
-    let title = if module_index == 0 {
-        "New Module".to_string()
-    } else {
-        format!("New Module {}", module_index + 1)
-    };
-    let Some(metadata) = add_document_impl(
-        ctx,
-        parent_collection_id,
-        &module.template_metadata_id,
-        module.template_metadata_version,
-        &title,
-    )
-    .await?
-    else {
-        return Err(Error::new("Error creating metadata"));
-    };
-    Ok(GuideStepModuleInput {
-        module_metadata_id: metadata.id.to_string(),
-        module_metadata_version: metadata.version,
-    })
-}
-
-async fn add_document_impl(
-    ctx: &BoscaContext,
-    parent_collection_id: &Uuid,
-    template_id: &Uuid,
-    template_version: i32,
-    title: &str,
-) -> Result<Option<Metadata>, Error> {
-    let template = ctx
-        .check_metadata_version_action(template_id, template_version, PermissionAction::View)
-        .await?;
-    if template.content_type != "bosca/v-document-template" {
-        return Err(Error::new("invalid template"));
-    }
-    let Some(template_document) = ctx
-        .content
-        .documents
-        .get_template(&template.id, template.version)
-        .await?
-    else {
-        return Err(Error::new("missing template"));
-    };
-    let editor_type = template
-        .attributes
-        .get("editor.type")
-        .unwrap()
-        .as_str()
-        .unwrap()
-        .to_string();
-    let template_type = template
-        .attributes
-        .get("template.type")
-        .unwrap()
-        .as_str()
-        .unwrap()
-        .to_string();
-    let content_type = format!("bosca/v-{}", template_type.to_lowercase());
-    let mut attrs = json!({
-        "editor.type": editor_type.to_string(),
-    });
-    if let Some(default_attributes) = &template_document.default_attributes {
-        if let serde_json::Value::Object(ref mut attrs_obj) = attrs {
-            if let serde_json::Value::Object(default_obj) = default_attributes.clone() {
-                attrs_obj.extend(default_obj.into_iter());
-            }
-        }
-    }
-    let profile = ctx.profile.get_by_principal(&ctx.principal.id).await?;
-    let categories = ctx
-        .content
-        .collections
-        .get_categories(parent_collection_id)
-        .await?;
-    let metadata = MetadataInput {
-        parent_collection_id: Some(parent_collection_id.to_string()),
-        category_ids: Some(categories.iter().map(|c| c.id.to_string()).collect()),
-        name: title.to_string(),
-        content_type: content_type.to_string(),
-        language_tag: template.language_tag,
-        attributes: Some(attrs),
-        document: Some(DocumentInput {
-            template_metadata_id: Some(template.id.to_string()),
-            template_metadata_version: Some(template.version),
-            title: title.to_string(),
-            content: template_document.content.clone(),
-        }),
-        profiles: profile.map(|p| {
-            vec![MetadataProfileInput {
-                profile_id: p.id.to_string(),
-                relationship: "author".to_string(),
-            }]
-        }),
-        ..Default::default()
-    };
-    let mut add = vec![MetadataChildInput {
-        metadata,
-        attributes: None,
-    }];
-    let ids = ctx.content.metadata.add_all(ctx, &mut add).await?;
-    let id = ids.first().unwrap();
-    ctx.content.metadata.get(&id.0).await
 }

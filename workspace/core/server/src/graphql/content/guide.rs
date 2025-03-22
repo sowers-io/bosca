@@ -40,12 +40,40 @@ impl GuideObject {
         self.guide.guide_type
     }
 
-    pub async fn steps(&self, ctx: &Context<'_>) -> Result<Vec<GuideStepObject>, Error> {
+    pub async fn step(
+        &self,
+        ctx: &Context<'_>,
+        step_id: i64,
+    ) -> Result<Option<GuideStepObject>, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let guide = ctx
+            .content
+            .guides
+            .get_guide_step(&self.guide.metadata_id, self.guide.version, step_id)
+            .await?;
+        Ok(guide.map(GuideStepObject::new))
+    }
+
+    pub async fn step_count(&self, ctx: &Context<'_>) -> Result<i64, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        ctx
+            .content
+            .guides
+            .get_guide_step_count(&self.guide.metadata_id, self.guide.version)
+            .await
+    }
+
+    pub async fn steps(
+        &self,
+        ctx: &Context<'_>,
+        offset: Option<i64>,
+        limit: Option<i64>,
+    ) -> Result<Vec<GuideStepObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let steps = ctx
             .content
             .guides
-            .get_guide_steps(&self.guide.metadata_id, self.guide.version)
+            .get_guide_steps(&self.guide.metadata_id, self.guide.version, offset, limit)
             .await?;
         Ok(steps.into_iter().map(GuideStepObject::new).collect())
     }

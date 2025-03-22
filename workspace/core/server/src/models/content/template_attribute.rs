@@ -1,5 +1,5 @@
 use async_graphql::*;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tokio_postgres::Row;
 use crate::models::content::attribute_type::AttributeType;
 use crate::models::content::attribute_ui_type::AttributeUiType;
@@ -17,7 +17,7 @@ pub struct TemplateAttribute {
     pub list: bool,
 }
 
-#[derive(InputObject, Clone, Serialize)]
+#[derive(InputObject, Clone, Serialize, Deserialize)]
 pub struct TemplateAttributeInput {
     pub key: String,
     pub name: String,

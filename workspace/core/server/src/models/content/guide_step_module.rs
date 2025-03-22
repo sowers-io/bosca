@@ -1,7 +1,8 @@
 use async_graphql::InputObject;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tokio_postgres::Row;
 use uuid::Uuid;
+use crate::models::content::metadata::MetadataInput;
 
 #[derive(Clone)]
 pub struct GuideStepModule {
@@ -10,10 +11,11 @@ pub struct GuideStepModule {
     pub module_metadata_version: i32,
 }
 
-#[derive(InputObject, Clone, Default, Serialize)]
+#[derive(InputObject, Clone, Default, Serialize, Deserialize)]
 pub struct GuideStepModuleInput {
-    pub module_metadata_id: String,
-    pub module_metadata_version: i32,
+    pub module_metadata_id: Option<String>,
+    pub module_metadata_version: Option<i32>,
+    pub metadata: Option<MetadataInput>,
 }
 
 impl From<&Row> for GuideStepModule {

@@ -10,7 +10,6 @@ use crate::models::content::metadata_profile::MetadataProfile;
 use crate::models::content::metadata_relationship::{
     MetadataRelationship, MetadataRelationshipInput,
 };
-use crate::models::security::permission::{Permission, PermissionAction};
 use crate::models::workflow::enqueue_request::EnqueueRequest;
 use crate::workflow::core_workflow_ids::{METADATA_DELETE_FINALIZE, METADATA_UPDATE_STORAGE};
 use async_graphql::*;
@@ -188,7 +187,6 @@ impl MetadataDataStore {
         let Some(metadata) = self.get(metadata_id).await? else {
             return Ok(());
         };
-
         let supplementaries = ctx
             .content
             .metadata_supplementary
@@ -201,7 +199,6 @@ impl MetadataDataStore {
                 .await?;
             ctx.storage.delete(&path).await?;
         }
-
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
         let stmt = txn
@@ -228,7 +225,12 @@ impl MetadataDataStore {
         Ok(())
     }
 
-    pub async fn set_public(&self, ctx: &BoscaContext, id: &Uuid, public: bool) -> Result<(), Error> {
+    pub async fn set_public(
+        &self,
+        ctx: &BoscaContext,
+        id: &Uuid,
+        public: bool,
+    ) -> Result<(), Error> {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
         let stmt = txn
@@ -241,7 +243,12 @@ impl MetadataDataStore {
         Ok(())
     }
 
-    pub async fn set_public_content(&self, ctx: &BoscaContext, id: &Uuid, public: bool) -> Result<(), Error> {
+    pub async fn set_public_content(
+        &self,
+        ctx: &BoscaContext,
+        id: &Uuid,
+        public: bool,
+    ) -> Result<(), Error> {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
         let stmt = txn
@@ -308,7 +315,12 @@ impl MetadataDataStore {
         }
     }
 
-    pub async fn set_attributes(&self, ctx: &BoscaContext, metadata_id: &Uuid, attributes: Value) -> Result<(), Error> {
+    pub async fn set_attributes(
+        &self,
+        ctx: &BoscaContext,
+        metadata_id: &Uuid,
+        attributes: Value,
+    ) -> Result<(), Error> {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
         let stmt = txn
@@ -330,7 +342,9 @@ impl MetadataDataStore {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
         let stmt = txn
-            .prepare_cached("update metadata set system_attributes = $1, modified = now() where id = $2")
+            .prepare_cached(
+                "update metadata set system_attributes = $1, modified = now() where id = $2",
+            )
             .await?;
         txn.execute(&stmt, &[&attributes, &metadata_id]).await?;
         update_metadata_etag(&txn, metadata_id).await?;
@@ -393,7 +407,11 @@ impl MetadataDataStore {
         Ok(())
     }
 
-    pub async fn set_upload_removed(&self, ctx: &BoscaContext, metadata_id: &Uuid) -> Result<(), Error> {
+    pub async fn set_upload_removed(
+        &self,
+        ctx: &BoscaContext,
+        metadata_id: &Uuid,
+    ) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached("update metadata set uploaded = null, modified = now(), content_length = 0 where id = $1")
@@ -401,107 +419,6 @@ impl MetadataDataStore {
         connection.execute(&stmt, &[&metadata_id]).await?;
         self.on_metadata_changed(ctx, metadata_id).await?;
         Ok(())
-    }
-
-    async fn add_txn<'a>(
-        &'a self,
-        ctx: &BoscaContext,
-        txn: &'a Transaction<'a>,
-        metadata: &MetadataInput,
-    ) -> Result<(Uuid, i32, i32), Error> {
-        let mut source_id: Option<Uuid> = None;
-        let mut source_identifier: Option<String> = None;
-        let mut source_url: Option<String> = None;
-        if let Some(source) = &metadata.source {
-            source_id = source.id.as_ref().map(|id| Uuid::parse_str(id).unwrap());
-            source_identifier = source.identifier.clone();
-            source_url = source.source_url.clone();
-        }
-        let stmt = txn.prepare("insert into metadata (name, type, content_type, content_length, labels, attributes, source_id, source_identifier, source_url, language_tag) values ($1, 'standard', $2, $3, $4, ($5)::jsonb, $6, $7, $8, $9) returning id, version, active_version").await?;
-        let labels = metadata.labels.clone().unwrap_or_default();
-        let rows = txn
-            .query(
-                &stmt,
-                &[
-                    &metadata.name,
-                    &metadata.content_type,
-                    &metadata.content_length,
-                    &labels,
-                    &metadata.attributes.as_ref().or(Some(&Value::Null)),
-                    &source_id,
-                    &source_identifier,
-                    &source_url,
-                    &metadata.language_tag,
-                ],
-            )
-            .await?;
-
-        let id: Uuid = rows.first().unwrap().get(0);
-        let version: i32 = rows.first().unwrap().get(1);
-        let active_version: i32 = rows.first().unwrap().get(2);
-
-        let stmt = txn.prepare_cached("insert into slugs (slug, metadata_id) values (case when length($1) > 0 then $1 else slugify($2) end, $3) on conflict (slug) do update set slug = slugify($2) || nextval('duplicate_slug_seq')").await?;
-        txn.execute(&stmt, &[&metadata.slug, &metadata.name, &id])
-            .await?;
-
-        if let Some(trait_ids) = &metadata.trait_ids {
-            for trait_id in trait_ids {
-                self.add_trait_txn(txn, &id, trait_id).await?
-            }
-        }
-
-        if let Some(category_ids) = &metadata.category_ids {
-            for category_id in category_ids {
-                let cid = Uuid::parse_str(category_id)?;
-                self.add_category_txn(txn, &id, &cid).await?
-            }
-        }
-
-        if let Some(profiles) = &metadata.profiles {
-            for (index, profile) in profiles.iter().enumerate() {
-                let pid = Uuid::parse_str(&profile.profile_id)?;
-                self.add_profile_txn(txn, &id, &pid, &profile.relationship, index as i32)
-                    .await?
-            }
-        }
-
-        if let Some(document) = &metadata.document {
-            ctx.content
-                .documents
-                .add_document_txn(txn, &id, version, document)
-                .await?;
-        }
-        if let Some(document_template) = &metadata.document_template {
-            ctx.content
-                .documents
-                .add_template_txn(txn, &id, version, document_template)
-                .await?;
-        }
-        if let Some(guide) = &metadata.guide {
-            ctx.content
-                .guides
-                .add_guide_txn(txn, &id, version, guide)
-                .await?;
-        }
-        if let Some(guide_template) = &metadata.guide_template {
-            ctx.content
-                .guides
-                .add_template_txn(txn, &id, version, guide_template)
-                .await?;
-        }
-        if let Some(collection_template) = &metadata.collection_template {
-            ctx.content
-                .collection_templates
-                .add_template_txn(txn, &id, version, collection_template)
-                .await?;
-        }
-
-        self.ensure_content_type_traits(&id, &metadata.content_type, txn)
-            .await?;
-
-        update_metadata_etag(txn, &id).await?;
-
-        Ok((id, version, active_version))
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -582,7 +499,7 @@ impl MetadataDataStore {
         if let Some(guide) = &metadata.guide {
             ctx.content
                 .guides
-                .edit_guide_txn(txn, id, version, guide)
+                .edit_guide_txn(ctx, txn, id, version, guide)
                 .await?;
         }
         if let Some(guide_template) = &metadata.guide_template {
@@ -598,7 +515,8 @@ impl MetadataDataStore {
                 .await?;
         }
 
-        self.ensure_content_type_traits(id, &metadata.content_type, txn).await?;
+        self.ensure_content_type_traits(id, &metadata.content_type, txn)
+            .await?;
 
         update_metadata_etag(txn, id).await?;
 
@@ -633,7 +551,12 @@ impl MetadataDataStore {
         Ok(())
     }
 
-    pub async fn delete_trait(&self, ctx: &BoscaContext, id: &Uuid, trait_id: &String) -> Result<(), Error> {
+    pub async fn delete_trait(
+        &self,
+        ctx: &BoscaContext,
+        id: &Uuid,
+        trait_id: &String,
+    ) -> Result<(), Error> {
         let conn = self.pool.get().await?;
         let stmt = conn
             .prepare("delete from metadata_traits where metadata_id = $1 and trait_id = $2")
@@ -668,7 +591,12 @@ impl MetadataDataStore {
         Ok(())
     }
 
-    pub async fn add_trait(&self, ctx: &BoscaContext, id: &Uuid, trait_id: &String) -> Result<(), Error> {
+    pub async fn add_trait(
+        &self,
+        ctx: &BoscaContext,
+        id: &Uuid,
+        trait_id: &String,
+    ) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached("insert into metadata_traits (metadata_id, trait_id) values ($1, $2)")
@@ -703,7 +631,12 @@ impl MetadataDataStore {
         Ok(())
     }
 
-    pub async fn add_category(&self, ctx: &BoscaContext, id: &Uuid, category_id: &Uuid) -> Result<(), Error> {
+    pub async fn add_category(
+        &self,
+        ctx: &BoscaContext,
+        id: &Uuid,
+        category_id: &Uuid,
+    ) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached(
@@ -715,7 +648,12 @@ impl MetadataDataStore {
         Ok(())
     }
 
-    pub async fn delete_category(&self, ctx: &BoscaContext, id: &Uuid, category_id: &Uuid) -> Result<(), Error> {
+    pub async fn delete_category(
+        &self,
+        ctx: &BoscaContext,
+        id: &Uuid,
+        category_id: &Uuid,
+    ) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached(
@@ -816,14 +754,152 @@ impl MetadataDataStore {
         Ok(())
     }
 
+    pub async fn add(
+        &self,
+        ctx: &BoscaContext,
+        metadata: &MetadataInput,
+        collection_item_attributes: Option<Value>,
+    ) -> Result<(Uuid, i32, i32), Error> {
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        let (id, version, active_version) = self
+            .add_txn(ctx, &txn, metadata, true, &collection_item_attributes)
+            .await?;
+        txn.commit().await?;
+        Ok((id, version, active_version))
+    }
+
+    pub async fn add_txn<'a>(
+        &'a self,
+        ctx: &BoscaContext,
+        txn: &'a Transaction<'a>,
+        metadata: &MetadataInput,
+        inherit_permissions: bool,
+        collection_item_attributes: &Option<Value>,
+    ) -> Result<(Uuid, i32, i32), Error> {
+        let mut source_id: Option<Uuid> = None;
+        let mut source_identifier: Option<String> = None;
+        let mut source_url: Option<String> = None;
+        if let Some(source) = &metadata.source {
+            source_id = source.id.as_ref().map(|id| Uuid::parse_str(id).unwrap());
+            source_identifier = source.identifier.clone();
+            source_url = source.source_url.clone();
+        }
+        let stmt = txn.prepare("insert into metadata (name, type, content_type, content_length, labels, attributes, source_id, source_identifier, source_url, language_tag) values ($1, 'standard', $2, $3, $4, ($5)::jsonb, $6, $7, $8, $9) returning id, version, active_version").await?;
+        let labels = metadata.labels.clone().unwrap_or_default();
+        let rows = txn
+            .query(
+                &stmt,
+                &[
+                    &metadata.name,
+                    &metadata.content_type,
+                    &metadata.content_length,
+                    &labels,
+                    &metadata.attributes.as_ref().or(Some(&Value::Null)),
+                    &source_id,
+                    &source_identifier,
+                    &source_url,
+                    &metadata.language_tag,
+                ],
+            )
+            .await?;
+
+        let id: Uuid = rows.first().unwrap().get(0);
+        let version: i32 = rows.first().unwrap().get(1);
+        let active_version: i32 = rows.first().unwrap().get(2);
+
+        let stmt = txn.prepare_cached("insert into slugs (slug, metadata_id) values (case when length($1) > 0 then $1 else slugify($2) end, $3) on conflict (slug) do update set slug = slugify($2) || nextval('duplicate_slug_seq')").await?;
+        txn.execute(&stmt, &[&metadata.slug, &metadata.name, &id])
+            .await?;
+
+        if let Some(trait_ids) = &metadata.trait_ids {
+            for trait_id in trait_ids {
+                self.add_trait_txn(txn, &id, trait_id).await?
+            }
+        }
+        if let Some(category_ids) = &metadata.category_ids {
+            for category_id in category_ids {
+                let cid = Uuid::parse_str(category_id)?;
+                self.add_category_txn(txn, &id, &cid).await?
+            }
+        }
+        if let Some(profiles) = &metadata.profiles {
+            for (index, profile) in profiles.iter().enumerate() {
+                let pid = Uuid::parse_str(&profile.profile_id)?;
+                self.add_profile_txn(txn, &id, &pid, &profile.relationship, index as i32)
+                    .await?
+            }
+        }
+        if let Some(document) = &metadata.document {
+            ctx.content
+                .documents
+                .add_document_txn(txn, &id, version, document)
+                .await?;
+        }
+        if let Some(document_template) = &metadata.document_template {
+            ctx.content
+                .documents
+                .add_template_txn(txn, &id, version, document_template)
+                .await?;
+        }
+        if let Some(guide) = &metadata.guide {
+            ctx.content
+                .guides
+                .add_guide_txn(ctx, txn, &id, version, guide)
+                .await?;
+        }
+        if let Some(guide_template) = &metadata.guide_template {
+            ctx.content
+                .guides
+                .add_template_txn(txn, &id, version, guide_template)
+                .await?;
+        }
+        if let Some(collection_template) = &metadata.collection_template {
+            ctx.content
+                .collection_templates
+                .add_template_txn(txn, &id, version, collection_template)
+                .await?;
+        }
+
+        self.ensure_content_type_traits(&id, &metadata.content_type, txn)
+            .await?;
+
+        update_metadata_etag(txn, &id).await?;
+
+        if let Some(parent_collection_id) = &metadata.parent_collection_id {
+            let parent_collection_id = Uuid::parse_str(parent_collection_id.as_str())?;
+            ctx.content
+                .collections
+                .add_child_metadata_txn(txn, &parent_collection_id, &id, collection_item_attributes)
+                .await?;
+            if inherit_permissions {
+                ctx.content
+                    .metadata_permissions
+                    .add_inherited_metadata_permissions_txn(ctx, txn, &parent_collection_id, &id)
+                    .await?;
+            }
+        } else if inherit_permissions {
+            let parent_collection_id = Uuid::parse_str("00000000-0000-0000-0000-000000000000")?;
+            ctx.content
+                .metadata_permissions
+                .add_inherited_metadata_permissions_txn(ctx, txn, &parent_collection_id, &id)
+                .await?;
+        }
+
+        Ok((id, version, active_version))
+    }
+
     pub async fn add_all(
         &self,
         ctx: &BoscaContext,
         metadatas: &mut [MetadataChildInput],
+        inherit_permissions: bool,
     ) -> Result<Vec<(Uuid, i32, i32)>, Error> {
         let mut conn = self.pool.get().await?;
         let txn = conn.transaction().await?;
-        let ids = self.add_all_txn(ctx, &txn, metadatas, false, None).await?;
+        let ids = self
+            .add_all_txn(ctx, &txn, metadatas, inherit_permissions)
+            .await?;
         txn.commit().await?;
         for (id, _, _) in &ids {
             self.on_metadata_changed(ctx, id).await?
@@ -836,57 +912,25 @@ impl MetadataDataStore {
         ctx: &BoscaContext,
         txn: &Transaction<'_>,
         metadatas: &[MetadataChildInput],
-        ignore_permission_check: bool,
-        permissions: Option<Vec<Permission>>,
+        inherit_permissions: bool,
     ) -> Result<Vec<(Uuid, i32, i32)>, Error> {
         let mut new_metadatas = Vec::new();
         for metadata_child in metadatas {
-            let metadata = &metadata_child.metadata;
-            let has_collection_id = metadata.parent_collection_id.is_some();
-            let collection_id = match &metadata.parent_collection_id {
-                Some(id) => Uuid::parse_str(id.as_str())?,
-                None => Uuid::parse_str("00000000-0000-0000-0000-000000000000")?,
-            };
-            if !ignore_permission_check {
-                ctx.check_collection_action_txn(txn, &collection_id, PermissionAction::Edit)
-                    .await?;
-            }
-            let (id, version, active_version) = self.add_txn(ctx, txn, metadata).await?;
-            let permissions = if let Some(permissions) = &permissions {
-                permissions.clone()
-            } else {
-                ctx.content
-                    .collection_permissions
-                    .get_txn(txn, &collection_id)
-                    .await?
-            };
-            for permission in permissions.iter() {
-                let metadata_permission = Permission {
-                    entity_id: id,
-                    group_id: permission.group_id,
-                    action: permission.action,
-                };
-                ctx.content
-                    .metadata_permissions
-                    .add_metadata_permission_txn(txn, &metadata_permission)
-                    .await?
-            }
-            if has_collection_id {
-                ctx.content
-                    .collections
-                    .add_child_metadata_txn(txn, &collection_id, &id, &metadata_child.attributes)
-                    .await?;
-            }
+            let (id, version, active_version) = self
+                .add_txn(
+                    ctx,
+                    txn,
+                    &metadata_child.metadata,
+                    inherit_permissions,
+                    &metadata_child.attributes,
+                )
+                .await?;
             new_metadatas.push((id, version, active_version));
         }
         Ok(new_metadatas)
     }
 
-    pub async fn update_storage(
-        &self,
-        ctx: &BoscaContext,
-        id: &Uuid,
-    ) -> Result<(), Error> {
+    pub async fn update_storage(&self, ctx: &BoscaContext, id: &Uuid) -> Result<(), Error> {
         let mut request = EnqueueRequest {
             workflow_id: Some(METADATA_UPDATE_STORAGE.to_string()),
             metadata_id: Some(*id),

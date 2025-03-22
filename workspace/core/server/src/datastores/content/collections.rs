@@ -762,7 +762,12 @@ impl CollectionsDataStore {
         Ok(())
     }
 
-    pub async fn set_ordering(&self, ctx: &BoscaContext, collection_id: &Uuid, ordering: Value) -> Result<(), Error> {
+    pub async fn set_ordering(
+        &self,
+        ctx: &BoscaContext,
+        collection_id: &Uuid,
+        ordering: Value,
+    ) -> Result<(), Error> {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
         let stmt = txn
@@ -870,12 +875,14 @@ impl CollectionsDataStore {
                 for child in children.iter_mut() {
                     child.metadata.parent_collection_id = Some(id.to_string());
                 }
-                metadata_ids.extend(
+                let ids = ctx.content.metadata.add_all_txn(ctx, txn, children, false).await?;
+                for (metadata_id, _, _) in ids.iter() {
                     ctx.content
-                        .metadata
-                        .add_all_txn(ctx, txn, children, true, Some(permissions.clone()))
-                        .await?,
-                );
+                        .metadata_permissions
+                        .add_metadata_permissions_txn(txn, metadata_id, &permissions)
+                        .await?;
+                }
+                metadata_ids.extend(ids);
             }
             update_collection_etag(txn, &id).await?;
             new_collections.push((id, parent_collection_id, metadata_ids));

@@ -1,22 +1,24 @@
 use async_graphql::InputObject;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tokio_postgres::Row;
 use uuid::Uuid;
 use crate::models::content::guide_step_module::GuideStepModuleInput;
+use crate::models::content::metadata::MetadataInput;
 
 #[derive(Clone)]
 pub struct GuideStep {
     pub metadata_id: Uuid,
     pub metadata_version: i32,
     pub id: i64,
-    pub step_metadata_id: Option<Uuid>,
-    pub step_metadata_version: Option<i32>,
+    pub step_metadata_id: Uuid,
+    pub step_metadata_version: i32,
 }
 
-#[derive(InputObject, Clone, Default, Serialize)]
+#[derive(InputObject, Clone, Default, Serialize, Deserialize)]
 pub struct GuideStepInput {
     pub step_metadata_id: Option<String>,
     pub step_metadata_version: Option<i32>,
+    pub metadata: Option<MetadataInput>,
     pub modules: Vec<GuideStepModuleInput>,
 }
 

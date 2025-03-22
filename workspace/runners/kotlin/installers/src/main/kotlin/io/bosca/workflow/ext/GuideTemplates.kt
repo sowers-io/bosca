@@ -3,7 +3,6 @@ package io.bosca.workflow.ext
 import io.bosca.api.Client
 import io.bosca.graphql.fragment.Category
 import io.bosca.graphql.type.*
-import io.bosca.util.toOptional
 import io.bosca.workflow.models.CollectionDefinition
 import io.bosca.workflow.models.GuideTemplateDefinition
 
@@ -56,12 +55,12 @@ suspend fun GuideTemplateDefinition.toInput(
                 client.metadata.get(id) ?: error("Failed to get metadata")
             }
         } else {
-            null
+            error("missing template")
         }
         steps.add(
             GuideTemplateStepInput(
-                templateMetadataId = template?.id.toOptional(),
-                templateMetadataVersion = template?.version.toOptional(),
+                templateMetadataId = template.id,
+                templateMetadataVersion = template.version,
                 modules = modules
             )
         )

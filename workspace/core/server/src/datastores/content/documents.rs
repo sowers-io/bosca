@@ -1,15 +1,20 @@
+use crate::context::BoscaContext;
+use crate::datastores::content::tag::update_metadata_etag;
 use crate::datastores::notifier::Notifier;
 use crate::models::content::document::{Document, DocumentInput};
 use crate::models::content::document_template::{DocumentTemplate, DocumentTemplateInput};
+use crate::models::content::document_template_container::DocumentTemplateContainer;
+use crate::models::content::metadata::MetadataInput;
+use crate::models::content::metadata_profile::MetadataProfileInput;
+use crate::models::content::template_attribute::TemplateAttribute;
+use crate::models::content::template_workflow::TemplateWorkflow;
+use crate::models::security::permission::PermissionAction;
 use async_graphql::*;
 use deadpool_postgres::{GenericClient, Pool, Transaction};
 use log::error;
+use serde_json::json;
 use std::sync::Arc;
 use uuid::Uuid;
-use crate::datastores::content::tag::update_metadata_etag;
-use crate::models::content::document_template_container::DocumentTemplateContainer;
-use crate::models::content::template_attribute::TemplateAttribute;
-use crate::models::content::template_workflow::TemplateWorkflow;
 
 #[derive(Clone)]
 pub struct DocumentsDataStore {
@@ -32,9 +37,7 @@ impl DocumentsDataStore {
     pub async fn get_templates(&self) -> Result<Vec<DocumentTemplate>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
-            .prepare_cached(
-                "select * from document_templates",
-            )
+            .prepare_cached("select * from document_templates")
             .await?;
         let rows = connection.query(&stmt, &[]).await?;
         Ok(rows.iter().map(|r| r.into()).collect())
@@ -85,7 +88,9 @@ impl DocumentsDataStore {
     ) -> Result<Vec<TemplateWorkflow>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection.prepare_cached("select * from document_template_container_workflows where metadata_id = $1 and version = $2 and id = $3").await?;
-        let results = connection.query(&stmt, &[metadata_id, &version, id]).await?;
+        let results = connection
+            .query(&stmt, &[metadata_id, &version, id])
+            .await?;
         Ok(results.iter().map(|r| r.into()).collect())
     }
 
@@ -152,12 +157,12 @@ impl DocumentsDataStore {
             "delete from document_template_attributes where metadata_id = $1 and version = $2",
             &[metadata_id, &version],
         )
-            .await?;
+        .await?;
         txn.execute(
             "delete from document_template_containers where metadata_id = $1 and version = $2",
             &[metadata_id, &version],
         )
-            .await?;
+        .await?;
         txn.execute(
             "delete from document_template_attribute_workflows where metadata_id = $1 and version = $2",
             &[metadata_id, &version],
@@ -215,15 +220,19 @@ impl DocumentsDataStore {
             let stmt_wid = txn.prepare_cached("insert into document_template_container_workflows (metadata_id, version, id, workflow_id, auto_run) values ($1, $2, $3, $4, $5)").await?;
             for (index, container) in containers.iter().enumerate() {
                 let sort = index as i32;
-                txn.execute(&stmt, &[
-                    metadata_id,
-                    &version,
-                    &container.id,
-                    &container.name,
-                    &container.description,
-                    &container.supplementary_key,
-                    &sort
-                ]).await?;
+                txn.execute(
+                    &stmt,
+                    &[
+                        metadata_id,
+                        &version,
+                        &container.id,
+                        &container.name,
+                        &container.description,
+                        &container.supplementary_key,
+                        &sort,
+                    ],
+                )
+                .await?;
                 for wid in &container.workflows {
                     txn.execute(
                         &stmt_wid,
@@ -235,7 +244,7 @@ impl DocumentsDataStore {
                             &wid.auto_run,
                         ],
                     )
-                        .await?;
+                    .await?;
                 }
             }
         }
@@ -306,8 +315,10 @@ impl DocumentsDataStore {
                 &document.content,
             ],
         )
+        .await?;
+        let stmt = txn
+            .prepare_cached("update metadata set modified = now() where id = $1")
             .await?;
-        let stmt = txn.prepare_cached("update metadata set modified = now() where id = $1").await?;
         txn.execute(&stmt, &[metadata_id]).await?;
         update_metadata_etag(&txn, metadata_id).await?;
         txn.execute(&stmt, &[metadata_id]).await?;
@@ -341,5 +352,104 @@ impl DocumentsDataStore {
         )
         .await?;
         Ok(())
+    }
+
+    pub async fn add_document_from_template(
+        &self,
+        ctx: &BoscaContext,
+        parent_collection_id: Option<Uuid>,
+        template_id: &Uuid,
+        template_version: i32,
+        title: &str,
+        content_type: &str,
+    ) -> Result<(Uuid, i32), Error> {
+        let mut conn = self.pool.get().await?;
+        let txn = conn.transaction().await?;
+        let (id, version) = self
+            .add_document_from_template_txn(
+                ctx,
+                &txn,
+                parent_collection_id,
+                title,
+                template_id,
+                template_version,
+                content_type,
+            )
+            .await?;
+        txn.commit().await?;
+        Ok((id, version))
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub async fn add_document_from_template_txn(
+        &self,
+        ctx: &BoscaContext,
+        txn: &Transaction<'_>,
+        parent_collection_id: Option<Uuid>,
+        title: &str,
+        template_id: &Uuid,
+        template_version: i32,
+        content_type: &str,
+    ) -> Result<(Uuid, i32), Error> {
+        let template = ctx
+            .check_metadata_version_action(template_id, template_version, PermissionAction::View)
+            .await?;
+        if template.content_type != "bosca/v-document-template" {
+            return Err(Error::new("invalid template"));
+        }
+        let Some(template_document) = ctx
+            .content
+            .documents
+            .get_template(&template.id, template.version)
+            .await?
+        else {
+            return Err(Error::new("missing template"));
+        };
+        let editor_type = template
+            .attributes
+            .get("editor.type")
+            .unwrap()
+            .as_str()
+            .unwrap()
+            .to_string();
+        let mut attrs = json!({
+            "editor.type": editor_type.to_string(),
+        });
+        if let Some(default_attributes) = &template_document.default_attributes {
+            if let serde_json::Value::Object(ref mut attrs_obj) = attrs {
+                if let serde_json::Value::Object(default_obj) = default_attributes.clone() {
+                    attrs_obj.extend(default_obj.into_iter());
+                }
+            }
+        }
+        let profile = ctx.profile.get_by_principal(&ctx.principal.id).await?;
+        let categories = ctx.content.metadata.get_categories(&template.id).await?;
+        let metadata = MetadataInput {
+            parent_collection_id: parent_collection_id.map(|p| p.to_string()),
+            category_ids: Some(categories.iter().map(|c| c.id.to_string()).collect()),
+            name: title.to_string(),
+            content_type: content_type.to_string(),
+            language_tag: template.language_tag,
+            attributes: Some(attrs),
+            document: Some(DocumentInput {
+                template_metadata_id: Some(template.id.to_string()),
+                template_metadata_version: Some(template.version),
+                title: title.to_string(),
+                content: template_document.content.clone(),
+            }),
+            profiles: profile.map(|p| {
+                vec![MetadataProfileInput {
+                    profile_id: p.id.to_string(),
+                    relationship: "author".to_string(),
+                }]
+            }),
+            ..Default::default()
+        };
+        let (id, version, _) = ctx
+            .content
+            .metadata
+            .add_txn(ctx, txn, &metadata, true, &None)
+            .await?;
+        Ok((id, version))
     }
 }

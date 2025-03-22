@@ -2,7 +2,7 @@ use crate::models::content::guide_template_step::GuideTemplateStepInput;
 use crate::models::content::guide_type::GuideType;
 use async_graphql::InputObject;
 use rrule::RRuleSet;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tokio_postgres::Row;
 use uuid::Uuid;
 
@@ -14,7 +14,7 @@ pub struct GuideTemplate {
     pub guide_type: GuideType,
 }
 
-#[derive(InputObject, Clone, Serialize)]
+#[derive(InputObject, Clone, Serialize, Deserialize)]
 pub struct GuideTemplateInput {
     pub rrule: String,
     #[graphql(name = "type")]

@@ -12,18 +12,18 @@ pub enum ExtensionFilterType {
     CollectionTemplate,
 }
 
-#[derive(InputObject, Clone, Serialize)]
+#[derive(InputObject, Clone, Serialize, Deserialize)]
 pub struct FindAttributeInput {
     pub key: String,
     pub value: String,
 }
 
-#[derive(InputObject, Clone, Serialize)]
+#[derive(InputObject, Clone, Serialize, Deserialize)]
 pub struct FindAttributesInput {
     pub attributes: Vec<FindAttributeInput>,
 }
 
-#[derive(InputObject, Clone, Serialize)]
+#[derive(InputObject, Clone, Serialize, Deserialize)]
 pub struct FindQueryInput {
     pub attributes: Vec<FindAttributesInput>,
     pub content_types: Option<Vec<String>>,
@@ -34,12 +34,12 @@ pub struct FindQueryInput {
     pub offset: Option<i64>,
 }
 
-#[derive(InputObject, Clone, Serialize)]
+#[derive(InputObject, Clone, Serialize, Deserialize)]
 pub struct FindQueriesInput {
     pub options: Vec<FindQueryOptionInput>,
 }
 
-#[derive(InputObject, Clone, Serialize)]
+#[derive(InputObject, Clone, Serialize, Deserialize)]
 pub struct FindQueryOptionInput {
     pub name: String,
     pub query: FindQueryInput,

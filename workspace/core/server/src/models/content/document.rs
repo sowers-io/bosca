@@ -1,5 +1,5 @@
 use async_graphql::InputObject;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio_postgres::Row;
 use uuid::Uuid;
@@ -12,7 +12,7 @@ pub struct Document {
     pub content: Value
 }
 
-#[derive(InputObject, Clone, Serialize)]
+#[derive(InputObject, Clone, Serialize, Deserialize)]
 pub struct DocumentInput {
     pub template_metadata_id : Option<String>,
     pub template_metadata_version : Option<i32>,

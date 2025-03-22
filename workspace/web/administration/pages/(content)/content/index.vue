@@ -47,8 +47,7 @@ const { data: collection } = client.collections.findAsyncData({
 
 const collectionItems = computedAsync<CollectionItem[]>(async () => {
   if (!collection.value) return []
-  const items =
-    (await client.collections.list(collection.value[0].id))?.items || []
+  const items = (await client.collections.list(collection.value[0].id))?.items || []
   if (selectedId.value == '' && items.length > 0) {
     selectedId.value = items[0].id
   }

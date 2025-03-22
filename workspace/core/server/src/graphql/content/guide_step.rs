@@ -17,17 +17,20 @@ impl GuideStepObject {
 
 #[Object(name = "GuideStep")]
 impl GuideStepObject {
+    pub async fn id(&self) -> i64 {
+        self.step.id
+    }
+
     pub async fn metadata(&self, ctx: &Context<'_>) -> Result<Option<MetadataObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        if let Some(metadata_id) = &self.step.step_metadata_id {
-            if let Some(version) = &self.step.step_metadata_version {
-                let metadata = ctx
-                    .check_metadata_version_action(metadata_id, *version, PermissionAction::View)
-                    .await?;
-                return Ok(Some(MetadataObject::new(metadata)));
-            }
-        }
-        Ok(None)
+        let metadata = ctx
+            .check_metadata_version_action(
+                &self.step.step_metadata_id,
+                self.step.step_metadata_version,
+                PermissionAction::View,
+            )
+            .await?;
+        Ok(Some(MetadataObject::new(metadata)))
     }
 
     pub async fn modules(&self, ctx: &Context<'_>) -> Result<Vec<GuideStepModuleObject>, Error> {

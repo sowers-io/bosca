@@ -1,3 +1,4 @@
+use crate::context::BoscaContext;
 use crate::datastores::notifier::Notifier;
 use crate::models::content::metadata::Metadata;
 use crate::models::security::permission::{Permission, PermissionAction};
@@ -124,6 +125,41 @@ impl MetadataPermissionsDataStore {
         Ok(())
     }
 
+    pub async fn add_inherited_metadata_permissions_txn(
+        &self,
+        ctx: &BoscaContext,
+        txn: &Transaction<'_>,
+        parent_collection_id: &Uuid,
+        id: &Uuid,
+    ) -> Result<(), Error> {
+        let permissions = ctx
+            .content
+            .collection_permissions
+            .get_txn(txn, parent_collection_id)
+            .await?;
+        self.add_metadata_permissions_txn(txn, id, &permissions)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn add_metadata_permissions_txn(
+        &self,
+        txn: &Transaction<'_>,
+        id: &Uuid,
+        permissions: &[Permission],
+    ) -> Result<(), Error> {
+        for permission in permissions.iter() {
+            let metadata_permission = Permission {
+                entity_id: *id,
+                group_id: permission.group_id,
+                action: permission.action,
+            };
+            self.add_metadata_permission_txn(txn, &metadata_permission)
+                .await?
+        }
+        Ok(())
+    }
+
     pub async fn add_metadata_permission_txn(
         &self,
         txn: &Transaction<'_>,
@@ -138,7 +174,7 @@ impl MetadataPermissionsDataStore {
                 &permission.action,
             ],
         )
-            .await?;
+        .await?;
         Ok(())
     }
 

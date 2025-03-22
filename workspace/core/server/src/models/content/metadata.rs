@@ -9,13 +9,14 @@ use postgres_types::{to_sql_checked, FromSql, IsNull, ToSql, Type};
 use serde_json::Value;
 use std::error::Error;
 use std::fmt::Debug;
+use serde::{Deserialize, Serialize};
 use tokio_postgres::Row;
 use uuid::Uuid;
 use crate::models::content::collection_template::CollectionTemplateInput;
 use crate::models::content::guide::GuideInput;
 use crate::models::content::guide_template::GuideTemplateInput;
 
-#[derive(Enum, Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Enum, Debug, Copy, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum MetadataType {
     Standard,
     Variant,
@@ -83,20 +84,20 @@ impl ContentItem for Metadata {
     }
 }
 
-#[derive(InputObject, Clone)]
+#[derive(InputObject, Clone, Serialize, Deserialize)]
 pub struct MetadataWorkflowInput {
     pub state: String,
     pub delete_workflow_id: Option<String>,
 }
 
-#[derive(InputObject, Clone)]
+#[derive(InputObject, Clone, Serialize, Deserialize)]
 pub struct MetadataSourceInput {
     pub id: Option<String>,
     pub identifier: Option<String>,
     pub source_url: Option<String>
 }
 
-#[derive(InputObject, Default, Clone)]
+#[derive(InputObject, Default, Clone, Serialize, Deserialize)]
 pub struct MetadataInput {
     pub slug: Option<String>,
     pub parent_collection_id: Option<String>,
