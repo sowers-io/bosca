@@ -561,7 +561,7 @@ impl MetadataMutationObject {
         if let Some(metadata) = ctx.content.metadata.get(&id).await? {
             ctx.content
                 .metadata_workflows
-                .set_metadata_workflow_state(
+                .set_state(
                     ctx,
                     &ctx.principal,
                     &metadata,
@@ -593,7 +593,7 @@ impl MetadataMutationObject {
             }
             ctx.content
                 .metadata_workflows
-                .set_metadata_workflow_state(
+                .set_state(
                     ctx,
                     &ctx.principal,
                     &metadata,

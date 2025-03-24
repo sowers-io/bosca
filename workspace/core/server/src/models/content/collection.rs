@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use tokio_postgres::Row;
 use uuid::Uuid;
 use crate::models::content::item::ContentItem;
-use crate::models::content::metadata::MetadataInput;
+use crate::models::content::metadata::{Metadata, MetadataInput};
 use crate::models::content::ordering::{Ordering, OrderingInput};
 
 #[derive(Enum, Debug, Copy, Clone, Eq, PartialEq, Serialize, Deserialize)]
@@ -75,6 +75,14 @@ impl ContentItem for Collection {
 
     fn ready(&self) -> &Option<DateTime<Utc>> {
         &self.ready
+    }
+
+    fn as_metadata(&self) -> Option<&Metadata> {
+        None
+    }
+
+    fn as_collection(&self) -> Option<&Collection> {
+        Some(&self)
     }
 }
 

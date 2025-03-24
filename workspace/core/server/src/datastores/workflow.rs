@@ -20,7 +20,7 @@ use crate::workflow::queue::JobQueues;
 use async_graphql::*;
 use chrono::{DateTime, Utc};
 use deadpool_postgres::{GenericClient, Pool, Transaction};
-use log::{error, warn};
+use log::{error, info, warn};
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use std::sync::atomic::Ordering::Relaxed;
@@ -51,7 +51,7 @@ impl WorkflowDataStore {
 
     pub fn start_monitoring_expirations(&self) {
         let jobs_expiration = self.queues.clone();
-        tokio::spawn(async move {
+        tokio::task::spawn(async move {
             loop {
                 RUNNING_BACKGROUND.fetch_add(1, Relaxed);
                 let now = Utc::now().timestamp();
@@ -1384,7 +1384,7 @@ impl WorkflowDataStore {
             for workflow in ctx.workflow.get_workflows_by_trait(trait_id).await? {
                 request.workflow = Some(workflow);
                 let plan = self.get_new_execution_plan(request).await?;
-                if request.wait_for_completion.is_some() && request.wait_for_completion.unwrap() {
+                if request.wait_for_completion {
                     self.wait_for_execution_plan(&plan.id, request.delay_until)
                         .await?;
                 }
@@ -1394,7 +1394,7 @@ impl WorkflowDataStore {
         } else if request.workflow.is_some() {
             let mut plan = self.get_new_execution_plan(request).await?;
             if let Some(id) = self.queues.enqueue_plan(&mut plan).await? {
-                if request.wait_for_completion.is_some() && request.wait_for_completion.unwrap() {
+                if request.wait_for_completion {
                     self.wait_for_execution_plan(&id, request.delay_until)
                         .await?;
                 }
@@ -1404,7 +1404,7 @@ impl WorkflowDataStore {
             request.workflow = self.get_workflow(workflow_id).await?;
             let mut plan = self.get_new_execution_plan(request).await?;
             if let Some(id) = self.queues.enqueue_plan(&mut plan).await? {
-                if request.wait_for_completion.is_some() && request.wait_for_completion.unwrap() {
+                if request.wait_for_completion {
                     self.wait_for_execution_plan(&id, request.delay_until)
                         .await?;
                 }
@@ -1446,7 +1446,8 @@ impl WorkflowDataStore {
                         return Ok(());
                     }
                 }
-                tokio::time::sleep(Duration::from_secs(3)).await;
+                info!("waiting for execution plan to complete");
+                tokio::time::sleep(Duration::from_secs(1)).await;
             }
         } else {
             warn!("not waiting for execution plan to complete, it has been delayed");

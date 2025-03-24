@@ -147,7 +147,7 @@ impl WorkflowsMutationObject {
                     .await?;
                 ctx.content
                     .metadata_workflows
-                    .set_metadata_workflow_state(
+                    .set_state(
                         ctx,
                         &ctx.principal,
                         &metadata,

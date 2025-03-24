@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { CollectionItem } from '~/lib/bosca/contentcollection'
-import { computedAsync } from '@vueuse/core'
+import {computedAsync, useStorage} from '@vueuse/core'
 import {
   type CollectionInput,
   CollectionType,
@@ -24,10 +24,19 @@ import { toast } from '~/components/ui/toast'
 const client = useBoscaClient()
 const router = useRouter()
 
+const currentContentPage = useStorage('selected-collection-page', 1)
+const selectedContentTab = useStorage('selected-collection-tab', '')
 const selectedId = ref('')
 const currentPage = ref(1)
 const limit = ref(12)
 const offset = computed(() => (currentPage.value - 1) * limit.value)
+
+watch(selectedId, () => {
+  if (selectedContentTab.value != selectedId.value) {
+    selectedContentTab.value = selectedId.value
+    currentPage.value = 1
+  }
+})
 
 const { data: rootCollection } = client.collections.findAsyncData({
   attributes: [{ attributes: [{ key: 'editor.type', value: 'Collections' }] }],
@@ -130,6 +139,8 @@ const breadcrumbs = useBreadcrumbs()
 
 onMounted(() => {
   breadcrumbs.set([{ title: 'Content' }])
+  selectedId.value = selectedContentTab.value || ''
+  currentPage.value = currentContentPage.value
 })
 
 watch(selectedId, () => {

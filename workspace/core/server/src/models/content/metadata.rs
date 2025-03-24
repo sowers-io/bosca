@@ -12,6 +12,7 @@ use std::fmt::Debug;
 use serde::{Deserialize, Serialize};
 use tokio_postgres::Row;
 use uuid::Uuid;
+use crate::models::content::collection::Collection;
 use crate::models::content::collection_template::CollectionTemplateInput;
 use crate::models::content::guide::GuideInput;
 use crate::models::content::guide_template::GuideTemplateInput;
@@ -22,11 +23,12 @@ pub enum MetadataType {
     Variant,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Metadata {
     pub id: Uuid,
     pub parent_id: Option<Uuid>,
     pub version: i32,
+    pub active_version: i32,
     pub metadata_type: MetadataType,
     pub name: String,
     pub content_type: String,
@@ -82,6 +84,14 @@ impl ContentItem for Metadata {
     fn ready(&self) -> &Option<DateTime<Utc>> {
         &self.ready
     }
+
+    fn as_collection(&self) -> Option<&Collection> {
+        None
+    }
+
+    fn as_metadata(&self) -> Option<&Metadata> {
+        Some(&self)
+    }
 }
 
 #[derive(InputObject, Clone, Serialize, Deserialize)]
@@ -128,6 +138,7 @@ impl From<&Row> for Metadata {
             id: row.get("id"),
             parent_id: row.get("parent_id"),
             version: row.get("version"),
+            active_version: row.get("active_version"),
             metadata_type: row.get("type"),
             name: row.get("name"),
             content_type: row.get("content_type"),

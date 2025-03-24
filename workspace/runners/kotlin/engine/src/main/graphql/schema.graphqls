@@ -525,6 +525,7 @@ type ModelsMutation {
 }
 
 type Mutation {
+    clearCache: Boolean!
     configurations: ConfigurationsMutation!
     content: ContentMutation!
     persistedQueries: PersistedQueriesMutation!

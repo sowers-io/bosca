@@ -5,3 +5,6 @@ pub mod notifier;
 pub mod profile;
 pub mod content;
 pub mod configurations;
+pub mod security_cache;
+pub mod cache;
+pub mod metadata_cache;

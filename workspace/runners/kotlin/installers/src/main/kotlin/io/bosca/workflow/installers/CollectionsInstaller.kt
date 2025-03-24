@@ -92,7 +92,8 @@ class CollectionsInstaller(val client: Client) : Installer {
                         currentCategories
                     )
                 )
-            } else if (templateSlug.metadata?.workflow?.metadataWorkflow?.state != "published") {
+            } else if (templateSlug.metadata?.workflow?.metadataWorkflow?.state != "published" &&
+                templateSlug.metadata?.workflow?.metadataWorkflow?.state != "pending") {
                 client.metadata.edit(
                     templateSlug.metadata!!.id,
                     collection.templates.document.toDocumentTemplateInput(

@@ -1,6 +1,10 @@
 fragment MetadataRelationshipMetadata on Metadata {
     id
+    version
     name
+    public
+    publicContent
+    publicSupplementary
 }
 
 fragment MetadataRelationship on MetadataRelationship {

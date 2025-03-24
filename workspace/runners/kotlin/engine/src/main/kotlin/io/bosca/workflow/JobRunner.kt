@@ -1,5 +1,6 @@
 package io.bosca.workflow
 
+import com.apollographql.apollo.exception.ApolloNetworkException
 import io.bosca.api.Client
 import io.bosca.graphql.fragment.WorkflowJob
 import kotlinx.coroutines.*
@@ -26,44 +27,61 @@ class JobRunner(
         shutdown.set(true)
     }
 
-    suspend fun run() = coroutineScope {
-        while (!shutdown.get()) {
-            if (active.get() >= max) {
-                delay(10)
-                continue
+    suspend fun run() {
+        val jobs = mutableListOf<Job>()
+        coroutineScope {
+            for (i in 1..10) {
+                jobs.add(launch { process() })
             }
-            active.incrementAndGet()
+        }
+        jobs.forEach { it.join() }
+    }
 
-            val job: WorkflowJob?
-            try {
-                job = client.workflows.getNextJob(queue)
-                if (job == null) {
-                    if (!noJobs.get()) {
-                        noJobs.set(true)
-                        println("no jobs available: $queue")
-                    }
-                    active.decrementAndGet()
-                    delay = min(delay * 2, 1_000);
-                    delay(delay)
+    private suspend fun process() {
+        coroutineScope {
+            while (!shutdown.get()) {
+                if (active.get() >= max) {
+                    delay(10)
                     continue
-                } else if (noJobs.get()) {
-                    noJobs.set(false)
                 }
-                delay = 1L
-            } catch (e: Exception) {
-                println("error fetching next job: $queue: $e")
-                delay(1_000)
-                active.decrementAndGet()
-                continue
-            }
+                active.incrementAndGet()
 
-            launch {
+                val job: WorkflowJob?
                 try {
-                    run(job)
-                } catch (e: Exception) {
-                    println("failed to run job: $queue: ${job.id}: $e")
-                } finally {
+                    job = client.workflows.getNextJob(queue)
+                    if (job == null) {
+                        if (!noJobs.get()) {
+                            noJobs.set(true)
+                            println("no jobs available: $queue")
+                        }
+                        active.decrementAndGet()
+                        delay = min(delay * 2, 1_000)
+                        delay(delay)
+                        continue
+                    } else if (noJobs.get()) {
+                        noJobs.set(false)
+                    }
+                    delay = 1L
+                } catch (e: ApolloNetworkException) {
+                    println("error fetching next job: $queue: $e :: ${e.platformCause}")
+                    delay(1_000)
                     active.decrementAndGet()
+                    continue
+                } catch (e: Exception) {
+                    println("error fetching next job: $queue: $e")
+                    delay(1_000)
+                    active.decrementAndGet()
+                    continue
+                }
+
+                launch {
+                    try {
+                        run(job)
+                    } catch (e: Exception) {
+                        println("failed to run job: $queue: ${job.id}: $e")
+                    } finally {
+                        active.decrementAndGet()
+                    }
                 }
             }
         }

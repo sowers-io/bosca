@@ -16,7 +16,7 @@ use meilisearch_sdk::client::Client;
 use std::env;
 use std::sync::Arc;
 use uuid::Uuid;
-
+use crate::datastores::cache::manager::BoscaCacheManager;
 use crate::datastores::notifier::Notifier;
 use crate::datastores::profile::ProfileDataStore;
 use crate::initialization::jwt::new_jwt;
@@ -43,6 +43,7 @@ pub struct BoscaContext {
     pub notifier: Arc<Notifier>,
     pub search: Arc<Client>,
     pub principal: Principal,
+    pub cache: BoscaCacheManager,
 }
 
 impl BoscaContext {
@@ -66,6 +67,7 @@ impl BoscaContext {
             }
         };
         let redis_jobs_queue_client = new_redis_client("REDIS_JOBS_QUEUE_URL").await?;
+        let redis_cache_client = new_redis_client("REDIS_CACHE_URL").await?;
         let redis_notifier_client = new_redis_client("REDIS_NOTIFIER_PUBSUB_URL").await?;
         let notifier = Arc::new(Notifier::new(redis_notifier_client.clone()));
         let jobs = JobQueues::new(
@@ -74,8 +76,9 @@ impl BoscaContext {
             Arc::clone(&notifier),
         );
         let search = new_search_client()?;
+        let mut cache = BoscaCacheManager::new(redis_cache_client, Arc::clone(&notifier));
         Ok(BoscaContext {
-            security: SecurityDataStore::new(Arc::clone(&bosca_pool), new_jwt(), url_secret_key),
+            security: SecurityDataStore::new(&mut cache, Arc::clone(&bosca_pool), new_jwt(), url_secret_key),
             workflow: WorkflowDataStore::new(
                 Arc::clone(&bosca_pool),
                 jobs.clone(),
@@ -92,11 +95,12 @@ impl BoscaContext {
             ),
             profile: ProfileDataStore::new(Arc::clone(&bosca_pool)),
             queries: PersistedQueriesDataStore::new(Arc::clone(&bosca_pool)).await,
-            content: ContentDataStore::new(bosca_pool, Arc::clone(&notifier)),
+            content: ContentDataStore::new(bosca_pool, &mut cache, Arc::clone(&notifier)),
             notifier,
             search,
             storage: new_object_storage(),
             principal: get_anonymous_principal(),
+            cache
         })
     }
 

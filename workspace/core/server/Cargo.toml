@@ -34,7 +34,7 @@ jsonwebtoken = "9.3.0"
 tokio-stream = "0.1.16"
 structured-logger = "1.0.3"
 object_store = { version = "0.11.0", features = ["aws"] }
-redis = { version = "0.29.1", features = ["aio", "tokio-comp", "r2d2", "streams", "connection-manager"] }
+redis = { version = "0.29.1", features = ["aio", "tokio-comp", "r2d2", "streams", "connection-manager", "uuid", "json"] }
 bosca-database = { path = "../util/database" }
 jsonschema = "0.29.0"
 md5 = "0.7.0"
@@ -60,4 +60,5 @@ url = "2.5.4"
 hex = "0.4.3"
 rand = "0.9.0"
 rrule = "0.13.0"
+moka = { version = "0.12.10", features = ["future"] }
 #console-subscriber = "0.4.0"

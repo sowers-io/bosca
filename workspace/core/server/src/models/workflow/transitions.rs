@@ -16,7 +16,7 @@ pub struct TransitionInput {
     pub description: String,
 }
 
-#[derive(InputObject)]
+#[derive(InputObject, Clone)]
 pub struct BeginTransitionInput {
     pub collection_id: Option<String>,
     pub metadata_id: Option<String>,

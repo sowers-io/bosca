@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::process::exit;
 use std::str::FromStr;
 use std::sync::Arc;
-use deadpool_postgres::{Config, ManagerConfig, Pool, RecyclingMethod, Runtime};
+use deadpool_postgres::{Config, ManagerConfig, Pool, PoolConfig, RecyclingMethod, Runtime, Timeouts};
 use base64::Engine;
 use rustls::pki_types::CertificateDer;
 use rustls::pki_types::pem::PemObject;
@@ -20,6 +20,9 @@ pub fn build_pool(key: &str) -> Arc<Pool> {
             exit(1);
         }
     }
+    let mut pool_config = PoolConfig::new(50);
+    pool_config.timeouts = Timeouts::wait_millis(3000);
+    config.pool = Some(pool_config);
     config.manager = Some(ManagerConfig {
         recycling_method: RecyclingMethod::Fast,
     });

@@ -11,6 +11,7 @@ use async_graphql::Error;
 use deadpool_postgres::Pool;
 use std::sync::Arc;
 use uuid::Uuid;
+use crate::datastores::cache::manager::BoscaCacheManager;
 use crate::datastores::content::categories::CategoriesDataStore;
 use crate::datastores::content::collection_supplementary::CollectionSupplementaryDataStore;
 use crate::datastores::content::collection_templates::CollectionTemplatesDataStore;
@@ -38,7 +39,7 @@ pub struct ContentDataStore {
 }
 
 impl ContentDataStore {
-    pub fn new(pool: Arc<Pool>, notifier: Arc<Notifier>) -> Self {
+    pub fn new(pool: Arc<Pool>, cache: &mut BoscaCacheManager, notifier: Arc<Notifier>) -> Self {
         Self {
             categories: CategoriesDataStore::new(Arc::clone(&pool), Arc::clone(&notifier)),
             collections: CollectionsDataStore::new(Arc::clone(&pool), Arc::clone(&notifier)),
@@ -54,7 +55,7 @@ impl ContentDataStore {
             collection_templates: CollectionTemplatesDataStore::new(
                 Arc::clone(&pool),
             ),
-            metadata: MetadataDataStore::new(Arc::clone(&pool), Arc::clone(&notifier)),
+            metadata: MetadataDataStore::new(Arc::clone(&pool), cache, Arc::clone(&notifier)),
             metadata_supplementary: MetadataSupplementaryDataStore::new(Arc::clone(&pool), Arc::clone(&notifier)),
             metadata_permissions: MetadataPermissionsDataStore::new(
                 Arc::clone(&pool),

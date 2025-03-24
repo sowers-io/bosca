@@ -8,6 +8,7 @@ use crate::graphql::workflows::workflow_execution_id::WorkflowExecutionIdObject;
 use crate::models::workflow::execution_plan::WorkflowExecutionId;
 use crate::redis::RedisClient;
 
+#[derive(Clone)]
 pub struct Notifier {
     redis: RedisClient,
 }

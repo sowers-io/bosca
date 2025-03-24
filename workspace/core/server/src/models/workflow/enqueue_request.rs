@@ -20,8 +20,8 @@ pub struct EnqueueRequest {
     pub storage_system_ids: Option<Vec<Uuid>>,
 
     pub configurations: Option<Vec<WorkflowConfigurationInput>>,
-    pub wait_for_completion: Option<bool>,
     pub delay_until: Option<DateTime<Utc>>,
+    pub wait_for_completion: bool
 }
 
 // #[derive(InputObject)]

@@ -49,7 +49,7 @@ impl MetadataWorkflowsDataStore {
     }
 
     #[allow(clippy::too_many_arguments)]
-    pub async fn set_metadata_workflow_state(
+    pub async fn set_state(
         &self,
         ctx: &BoscaContext,
         principal: &Principal,
@@ -159,7 +159,7 @@ impl MetadataWorkflowsDataStore {
         }
         self.validate(ctx, &metadata.id, metadata.version).await?;
         let workflow = &ctx.workflow;
-        self.set_metadata_workflow_state(
+        self.set_state(
             ctx,
             &ctx.principal,
             metadata,

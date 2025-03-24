@@ -1,6 +1,8 @@
 use crate::context::BoscaContext;
+use crate::datastores::cache::manager::BoscaCacheManager;
 use crate::datastores::content::tag::update_metadata_etag;
 use crate::datastores::content::util::build_find_args;
+use crate::datastores::metadata_cache::MetadataCache;
 use crate::datastores::notifier::Notifier;
 use crate::models::content::category::Category;
 use crate::models::content::collection::MetadataChildInput;
@@ -21,13 +23,18 @@ use uuid::Uuid;
 
 #[derive(Clone)]
 pub struct MetadataDataStore {
+    cache: MetadataCache,
     pool: Arc<Pool>,
     notifier: Arc<Notifier>,
 }
 
 impl MetadataDataStore {
-    pub fn new(pool: Arc<Pool>, notifier: Arc<Notifier>) -> Self {
-        Self { pool, notifier }
+    pub fn new(pool: Arc<Pool>, cache: &mut BoscaCacheManager, notifier: Arc<Notifier>) -> Self {
+        Self {
+            cache: MetadataCache::new(cache),
+            pool,
+            notifier,
+        }
     }
 
     async fn on_metadata_changed(&self, ctx: &BoscaContext, id: &Uuid) -> Result<(), Error> {
@@ -95,6 +102,9 @@ impl MetadataDataStore {
     }
 
     pub async fn get(&self, id: &Uuid) -> Result<Option<Metadata>, Error> {
+        if let Some(metadata) = self.cache.get_metadata(id).await {
+            return Ok(Some(metadata));
+        }
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached("select * from metadata where id = $1")
@@ -103,10 +113,15 @@ impl MetadataDataStore {
         if rows.is_empty() {
             return Ok(None);
         }
-        Ok(Some(rows.first().unwrap().into()))
+        let metadata = rows.first().unwrap().into();
+        self.cache.set_metadata(&id, &metadata).await;
+        Ok(Some(metadata))
     }
 
     pub async fn get_by_version(&self, id: &Uuid, version: i32) -> Result<Option<Metadata>, Error> {
+        if let Some(metadata) = self.cache.get_metadata_by_version(id, version).await {
+            return Ok(Some(metadata));
+        }
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached("select * from metadata_versions where id = $1 and version = $2")
@@ -115,7 +130,9 @@ impl MetadataDataStore {
         if rows.is_empty() {
             return Ok(None);
         }
-        Ok(Some(rows.first().unwrap().into()))
+        let metadata = rows.first().unwrap().into();
+        self.cache.set_metadata(&id, &metadata).await;
+        Ok(Some(metadata))
     }
 
     pub async fn get_categories(&self, id: &Uuid) -> Result<Vec<Category>, Error> {

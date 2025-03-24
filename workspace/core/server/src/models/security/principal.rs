@@ -1,10 +1,11 @@
 use crate::models::security::group::Group;
 use serde_json::Value;
 use std::collections::HashSet;
+use serde::{Deserialize, Serialize};
 use tokio_postgres::Row;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Principal {
     pub id: Uuid,
     pub verified: bool,

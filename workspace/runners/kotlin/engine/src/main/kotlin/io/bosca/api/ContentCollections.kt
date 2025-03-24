@@ -5,6 +5,7 @@ import io.bosca.graphql.*
 import io.bosca.graphql.fragment.*
 import io.bosca.graphql.fragment.Collection
 import io.bosca.graphql.fragment.CollectionSupplementary
+import io.bosca.graphql.fragment.MetadataRelationship
 import io.bosca.graphql.fragment.Permission
 import io.bosca.graphql.type.*
 import io.bosca.util.toOptional
@@ -71,6 +72,12 @@ class ContentCollections(network: NetworkClient) : Api(network) {
         val response = network.graphql.query(GetCollectionPermissionsQuery(Optional.presentIfNotNull(id))).execute()
         response.validate()
         return response.data?.content?.collection?.permissions?.map { it.permission } ?: emptyList()
+    }
+
+    suspend fun getRelationships(id: String): List<CollectionRelationship> {
+        val response = network.graphql.query(GetCollectionRelationshipsQuery(id)).execute()
+        response.validate()
+        return response.data?.content?.collection?.metadataRelationships?.map { it.collectionRelationship } ?: emptyList()
     }
 
     suspend fun add(collection: CollectionInput): String? {

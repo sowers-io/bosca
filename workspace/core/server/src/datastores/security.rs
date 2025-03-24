@@ -6,15 +6,18 @@ use crate::security::jwt::Jwt;
 use crate::security::token::Token;
 use crate::util::signed_url::{sign_url, verify_signed_url};
 use async_graphql::*;
+use chrono::{DateTime, Utc};
 use deadpool_postgres::{GenericClient, Object, Pool};
+use log::warn;
 use serde_json::Value;
 use std::sync::Arc;
-use chrono::{DateTime, Utc};
-use log::warn;
 use uuid::Uuid;
+use crate::datastores::cache::manager::BoscaCacheManager;
+use crate::datastores::security_cache::SecurityCache;
 
 #[derive(Clone)]
 pub struct SecurityDataStore {
+    cache: SecurityCache,
     pool: Arc<Pool>,
     jwt: Jwt,
     url_secret_key: String,
@@ -25,9 +28,15 @@ pub const SERVICE_ACCOUNT_GROUP: &str = "sa";
 pub const MODEL_MANAGERS_GROUP: &str = "model.managers";
 pub const WORKFLOW_MANAGERS_GROUP: &str = "workflow.managers";
 
+
 impl SecurityDataStore {
-    pub fn new(pool: Arc<Pool>, jwt: Jwt, url_secret_key: String) -> Self {
-        Self { pool, jwt, url_secret_key }
+    pub fn new(cache: &mut BoscaCacheManager, pool: Arc<Pool>, jwt: Jwt, url_secret_key: String) -> Self {
+        Self {
+            cache: SecurityCache::new(cache),
+            pool,
+            jwt,
+            url_secret_key,
+        }
     }
 
     pub fn sign_url(&self, url: &str) -> String {
@@ -46,42 +55,54 @@ impl SecurityDataStore {
             .await?;
         let results = connection.query(&stmt, &[name, description]).await?;
         let id: Uuid = results.first().unwrap().get(0);
-        Ok(Group::new(id, name.clone()))
+        let group = Group::new(id, name.clone());
+        self.cache.cache_group(&group).await;
+        Ok(group)
     }
 
     pub async fn get_groups(&self, offset: i64, limit: i64) -> Result<Vec<Group>, Error> {
         let connection = self.pool.get().await?;
-        let stmt = connection.prepare_cached("select * from groups order by id offset $1 limit $2").await?;
+        let stmt = connection
+            .prepare_cached("select * from groups order by id offset $1 limit $2")
+            .await?;
         let results = connection.query(&stmt, &[&offset, &limit]).await?;
         Ok(results.iter().map(Group::from).collect())
     }
 
     pub async fn get_group(&self, id: &Uuid) -> Result<Group, Error> {
+        if let Some(group) = self.cache.get_group_by_id(id).await {
+            return Ok(group);
+        }
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached("select * from groups where id = $1")
             .await?;
         let results = connection.query(&stmt, &[id]).await?;
-        Ok(results.first().unwrap().into())
+        let group: Group = results.first().unwrap().into();
+        self.cache.cache_group(&group).await;
+        Ok(group)
     }
 
     pub async fn get_group_by_name(&self, name: &String) -> Result<Group, Error> {
+        if let Some(group) = self.cache.get_group_by_name(name).await {
+            return Ok(group);
+        }
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached("select * from groups where name = $1")
             .await?;
         let results = connection.query(&stmt, &[name]).await?;
-        Ok(results.first().unwrap().into())
+        let group: Group = results.first().unwrap().into();
+        self.cache.cache_group(&group).await;
+        Ok(group)
     }
 
-    pub async fn get_principals(
-        &self,
-        offset: i64,
-        limit: i64
-    ) -> Result<Vec<Principal>, Error> {
+    pub async fn get_principals(&self, offset: i64, limit: i64) -> Result<Vec<Principal>, Error> {
         let mut principals = Vec::<Principal>::new();
         let connection = self.pool.get().await?;
-        let stmt = connection.prepare_cached("select * from principals order by id offset $1 limit $2").await?;
+        let stmt = connection
+            .prepare_cached("select * from principals order by id offset $1 limit $2")
+            .await?;
         let results = connection.query(&stmt, &[&offset, &limit]).await?;
         for result in results.iter() {
             principals.push(result.into())
@@ -108,7 +129,10 @@ impl SecurityDataStore {
         self.jwt.new_token(principal)
     }
 
-    pub fn new_refresh_token(&self, principal: &Principal) -> Result<String, jsonwebtoken::errors::Error> {
+    pub fn new_refresh_token(
+        &self,
+        principal: &Principal,
+    ) -> Result<String, jsonwebtoken::errors::Error> {
         self.jwt.new_refresh_token(principal)
     }
 
@@ -130,10 +154,16 @@ impl SecurityDataStore {
         Ok(None)
     }
 
-    pub async fn add_refresh_token(&self, principal: &Principal, refresh_token: &str) -> Result<(), Error> {
+    pub async fn add_refresh_token(
+        &self,
+        principal: &Principal,
+        refresh_token: &str,
+    ) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
-            .prepare_cached("insert into principal_refresh_tokens (token, principal_id) values ($1, $2)")
+            .prepare_cached(
+                "insert into principal_refresh_tokens (token, principal_id) values ($1, $2)",
+            )
             .await?;
         let token = refresh_token.to_string();
         connection.execute(&stmt, &[&token, &principal.id]).await?;
@@ -156,11 +186,17 @@ impl SecurityDataStore {
         credential: &impl Credential,
         groups: &Vec<&Uuid>,
     ) -> Result<Uuid, Error> {
-        let verification_token = if verified { None } else { Some(hex::encode(Uuid::new_v4().as_bytes())) };
+        let verification_token = if verified {
+            None
+        } else {
+            Some(hex::encode(Uuid::new_v4().as_bytes()))
+        };
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
         let stmt = txn.prepare_cached("insert into principals (verified, verification_token, anonymous, attributes) values ($1, $2, false, $3) returning id").await?;
-        let results = txn.query(&stmt, &[&verified, &verification_token, &attributes]).await?;
+        let results = txn
+            .query(&stmt, &[&verified, &verification_token, &attributes])
+            .await?;
         if results.is_empty() {
             return Err(Error::new("failed to create principal"));
         }
@@ -231,6 +267,7 @@ impl SecurityDataStore {
             .prepare_cached("insert into principal_groups (principal, group_id) values ($1, $2)")
             .await?;
         connection.execute(&stmt, &[principal, group]).await?;
+        self.cache.evict_principal(principal).await;
         Ok(())
     }
 
@@ -249,6 +286,9 @@ impl SecurityDataStore {
     }
 
     pub async fn get_principal_by_id(&self, id: &Uuid) -> Result<Principal, Error> {
+        if let Some(principal) = self.cache.get_principal_by_id(id).await {
+            return Ok(principal);
+        }
         let connection = self.pool.get().await?;
         let principal = self.get_principal_by_id_internal(&connection, id).await?;
         Ok(principal)
@@ -270,6 +310,7 @@ impl SecurityDataStore {
         drop(stmt);
         let groups = self.get_principal_groups(connection, id).await?;
         principal.set_groups(&Some(groups));
+        self.cache.cache_principal(&principal).await;
         Ok(principal)
     }
 
@@ -325,6 +366,7 @@ impl SecurityDataStore {
             return Err(Error::new("invalid token"));
         }
         let id: Uuid = results.first().unwrap().get("id");
+        self.cache.evict_principal(&id).await;
         Ok(id)
     }
 

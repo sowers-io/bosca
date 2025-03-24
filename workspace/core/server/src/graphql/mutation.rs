@@ -4,7 +4,8 @@ use crate::graphql::profiles::profiles_mutation::ProfilesMutationObject;
 use crate::graphql::queries_mutation::PersistedQueriesMutationObject;
 use crate::graphql::security::security_mutation::SecurityMutationObject;
 use crate::graphql::workflows::workflows_mutation::WorkflowsMutationObject;
-use async_graphql::Object;
+use async_graphql::{Context, Error, Object};
+use crate::context::BoscaContext;
 
 pub(crate) struct MutationObject;
 
@@ -32,5 +33,11 @@ impl MutationObject {
 
     async fn persisted_queries(&self) -> PersistedQueriesMutationObject {
         PersistedQueriesMutationObject {}
+    }
+
+    async fn clear_cache(&self, ctx: &Context<'_>) -> Result<bool, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        ctx.cache.clear_all().await;
+        Ok(true)
     }
 }
