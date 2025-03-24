@@ -29,7 +29,6 @@ impl RedisClient {
     pub async fn new(url: String) -> Result<Self, Error> {
         info!("Connecting to Redis at {}", url);
         let cfg = ConnectionManagerConfig::new()
-            .set_automatic_resubscription()
             .set_connection_timeout(Duration::from_millis(3000))
             .set_response_timeout(Duration::from_millis(3000));
         let mgr = ConnectionManager::new_with_config(Client::open(url.clone())?, cfg).await?;
