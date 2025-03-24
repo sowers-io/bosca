@@ -14,6 +14,7 @@ use deadpool_postgres::Transaction;
 use meilisearch_sdk::client::Client;
 use std::env;
 use std::sync::Arc;
+use log::info;
 use uuid::Uuid;
 use crate::datastores::cache::manager::BoscaCacheManager;
 use crate::datastores::notifier::Notifier;
@@ -48,6 +49,7 @@ pub struct BoscaContext {
 
 impl BoscaContext {
     pub async fn new() -> Result<BoscaContext, Error> {
+        info!("Connecting to Database");
         let bosca_pool = build_pool("DATABASE_URL");
         let url_secret_key = match env::var("URL_SECRET_KEY") {
             Ok(url_secret_key) => url_secret_key,
@@ -66,6 +68,7 @@ impl BoscaContext {
                 ))
             }
         };
+        info!("Connecting to Redis");
         let redis_jobs_queue_client = new_redis_client("REDIS_JOBS_QUEUE_URL").await?;
         let redis_cache_client = new_redis_client("REDIS_CACHE_URL").await?;
         let redis_notifier_client = new_redis_client("REDIS_NOTIFIER_PUBSUB_URL").await?;
@@ -75,7 +78,9 @@ impl BoscaContext {
             redis_jobs_queue_client.clone(),
             Arc::clone(&notifier),
         );
+        info!("Connecting to Search");
         let search = new_search_client()?;
+        info!("Building Context");
         let mut cache = BoscaCacheManager::new(redis_cache_client, Arc::clone(&notifier));
         Ok(BoscaContext {
             security: SecurityDataStore::new(&mut cache, Arc::clone(&bosca_pool), new_jwt(), url_secret_key),

@@ -59,6 +59,7 @@ impl WorkflowDataStore {
     }
 
     pub fn start_monitoring_expirations(&self) {
+        info!("starting background monitoring of workflow expiration");
         let jobs_expiration = self.queues.clone();
         tokio::task::spawn(async move {
             loop {

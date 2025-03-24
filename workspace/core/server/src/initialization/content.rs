@@ -2,10 +2,12 @@ use crate::context::BoscaContext;
 use crate::models::content::collection::{CollectionInput, CollectionType};
 use crate::models::security::permission::{Permission, PermissionAction};
 use async_graphql::Error;
+use log::info;
 use serde_json::Value;
 use uuid::Uuid;
 
 pub async fn initialize_content(ctx: &BoscaContext) -> Result<(), Error> {
+    info!("Initialize Content");
     let root_collection_id = Uuid::parse_str("00000000-0000-0000-0000-000000000000")?;
     match ctx.content.collections.get(&root_collection_id).await? {
         Some(_) => {}

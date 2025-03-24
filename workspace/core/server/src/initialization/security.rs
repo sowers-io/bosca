@@ -3,9 +3,11 @@ use crate::models::profiles::profile::ProfileInput;
 use crate::models::profiles::profile_visibility::ProfileVisibility;
 use crate::util::profile::add_password_principal;
 use async_graphql::Error;
+use log::info;
 use serde_json::Value;
 
 pub async fn initialize_security(ctx: &BoscaContext) -> Result<(), Error> {
+    info!("Initialize Security");
     match ctx.security.get_principal_by_identifier("admin").await {
         Ok(_) => {}
         Err(_) => {
