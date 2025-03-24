@@ -82,7 +82,7 @@ impl ContentItem for Collection {
     }
 
     fn as_collection(&self) -> Option<&Collection> {
-        Some(&self)
+        Some(self)
     }
 }
 

@@ -4,8 +4,6 @@ use crate::datastores::cache::tiered_cache::TieredCacheType;
 use crate::models::content::metadata::Metadata;
 use uuid::Uuid;
 
-const CACHE_METADATA_ID: &str = "metadata::id";
-
 #[derive(Clone)]
 pub struct MetadataCache {
     metadata_id: BoscaCache<Uuid, Metadata>,
@@ -15,7 +13,7 @@ impl MetadataCache {
     pub fn new(cache: &mut BoscaCacheManager) -> Self {
         Self {
             metadata_id: cache.new_id_tiered_cache(
-                CACHE_METADATA_ID,
+                "metadata::id",
                 5000,
                 TieredCacheType::Metadata,
             ),
@@ -36,9 +34,9 @@ impl MetadataCache {
         None
     }
 
-    pub async fn set_metadata(&self, id: &Uuid, metadata: &Metadata) {
+    pub async fn set_metadata(&self, metadata: &Metadata) {
         if metadata.version == metadata.active_version {
-            self.metadata_id.set(id, metadata).await;
+            self.metadata_id.set(&metadata.id, metadata).await;
         }
     }
 

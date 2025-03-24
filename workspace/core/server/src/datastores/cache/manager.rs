@@ -54,6 +54,42 @@ impl BoscaCacheManager {
         tiered_cache
     }
 
+    pub fn new_string_tiered_cache<V>(
+        &mut self,
+        name: &str,
+        size: u64,
+        tiered_cache: TieredCacheType,
+    ) -> BoscaCache<String, V>
+    where
+        V: Clone + Send + Sync + serde::ser::Serialize + serde::de::DeserializeOwned + 'static,
+    {
+        let memory_cache = MemoryCache::<String, V>::new_ttl(size, Duration::from_secs(3600));
+        let redis_cache = RedisCache::new(self.redis.clone(), name.to_string());
+        let cache = TieredCache::<String, V>::new(memory_cache, redis_cache);
+        cache.watch_changes(Arc::clone(&self.notifier), tiered_cache);
+        let tiered_cache = BoscaCache::TieredCache(cache);
+        self.caches.insert(name.to_string(), tiered_cache.to_managed());
+        tiered_cache
+    }
+
+    pub fn new_int_tiered_cache<V>(
+        &mut self,
+        name: &str,
+        size: u64,
+        tiered_cache: TieredCacheType,
+    ) -> BoscaCache<i64, V>
+    where
+        V: Clone + Send + Sync + serde::ser::Serialize + serde::de::DeserializeOwned + 'static,
+    {
+        let memory_cache = MemoryCache::<i64, V>::new_ttl(size, Duration::from_secs(3600));
+        let redis_cache = RedisCache::new(self.redis.clone(), name.to_string());
+        let cache = TieredCache::<i64, V>::new(memory_cache, redis_cache);
+        cache.watch_changes(Arc::clone(&self.notifier), tiered_cache);
+        let tiered_cache = BoscaCache::TieredCache(cache);
+        self.caches.insert(name.to_string(), tiered_cache.to_managed());
+        tiered_cache
+    }
+
     pub async fn clear_all(&self) {
         for (_, cache) in self.caches.iter() {
             cache.clear().await;

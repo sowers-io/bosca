@@ -5,6 +5,10 @@ fragment MetadataRelationshipMetadata on Metadata {
     public
     publicContent
     publicSupplementary
+    workflow {
+        state
+        pending
+    }
 }
 
 fragment MetadataRelationship on MetadataRelationship {

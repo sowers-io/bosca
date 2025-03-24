@@ -90,7 +90,7 @@ impl ContentItem for Metadata {
     }
 
     fn as_metadata(&self) -> Option<&Metadata> {
-        Some(&self)
+        Some(self)
     }
 }
 

@@ -9,10 +9,18 @@ use tokio_stream::StreamExt;
 use uuid::Uuid;
 
 pub enum TieredCacheType {
+    Slug,
     Metadata,
-    MetadataSupplementary,
     Collection,
-    CollectionSupplementary
+    State,
+    Transition,
+    StorageSystem,
+    Model,
+    Prompt,
+    Workflow,
+    Trait,
+    Activity,
+    WorkflowActivity,
 }
 
 #[derive(Clone)]
@@ -71,6 +79,18 @@ where
                             error!("failed to listen for metadata changes, trying again")
                         }
                     }
+                    TieredCacheType::State => {
+                        if let Ok(stream) = notifier.listen_state_changes().await {
+                            tokio::pin!(stream);
+                            while let Some(item) = stream.next().await {
+                                if let Ok(id) = Uuid::parse_str(&item) {
+                                    memory.remove(&id).await;
+                                }
+                            }
+                        } else {
+                            error!("failed to listen for metadata changes, trying again")
+                        }
+                    }
                     _ => {}
                 }
             }
@@ -87,29 +107,71 @@ where
         tokio::spawn(async move {
             loop {
                 match tiered_cache {
-                    TieredCacheType::MetadataSupplementary => {
-                        if let Ok(stream) = notifier.listen_metadata_supplementary_changes().await {
+                    TieredCacheType::Workflow => {
+                        if let Ok(stream) = notifier.listen_workflow_changes().await {
                             tokio::pin!(stream);
                             while let Some(item) = stream.next().await {
-                                let key = format!("{}:{}", item.id, item.key);
+                                memory.remove(&item).await;
+                            }
+                        } else {
+                            error!("failed to listen for metadata changes, trying again")
+                        }
+                    }
+                    TieredCacheType::Transition => {
+                        if let Ok(stream) = notifier.listen_transition_changes().await {
+                            tokio::pin!(stream);
+                            while let Some(item) = stream.next().await {
+                                let key = format!("{}-{}", item.from_state_id, item.to_state_id);
                                 memory.remove(&key).await;
                             }
                         } else {
                             error!("failed to listen for metadata changes, trying again")
                         }
                     }
-                    TieredCacheType::CollectionSupplementary => {
-                        if let Ok(stream) = notifier.listen_collection_supplementary_changes().await {
+                    TieredCacheType::Trait => {
+                        if let Ok(stream) = notifier.listen_trait_changes().await {
                             tokio::pin!(stream);
                             while let Some(item) = stream.next().await {
-                                let key = format!("{}:{}", item.id, item.key);
-                                memory.remove(&key).await;
+                                memory.remove(&item).await;
+                            }
+                        } else {
+                            error!("failed to listen for metadata changes, trying again")
+                        }
+                    }
+                    TieredCacheType::Activity => {
+                        if let Ok(stream) = notifier.listen_activity_changes().await {
+                            tokio::pin!(stream);
+                            while let Some(item) = stream.next().await {
+                                memory.remove(&item).await;
                             }
                         } else {
                             error!("failed to listen for metadata changes, trying again")
                         }
                     }
                     _ => {}
+                }
+            }
+        });
+    }
+}
+
+impl<V> TieredCache<i64, V>
+where
+    V: Clone + Send + Sync + serde::ser::Serialize + serde::de::DeserializeOwned,
+{
+    pub fn watch_changes(&self, notifier: Arc<Notifier>, tiered_cache: TieredCacheType) {
+        let memory = self.memory.clone();
+        tokio::spawn(async move {
+            loop {
+                if let TieredCacheType::WorkflowActivity = tiered_cache {
+                    if let Ok(stream) = notifier.listen_workflow_activity_changes().await {
+                        tokio::pin!(stream);
+                        while let Some(item) = stream.next().await {
+                            memory.remove(&item).await;
+                        }
+                    } else {
+                        error!("failed to listen for metadata changes, trying again")
+                    }
                 }
             }
         });

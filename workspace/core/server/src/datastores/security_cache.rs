@@ -29,14 +29,14 @@ impl SecurityCache {
     }
 
     pub async fn cache_principal(&self, principal: &Principal) {
-        self.principal_id.set(&principal.id, &principal).await;
+        self.principal_id.set(&principal.id, principal).await;
     }
 
     pub async fn evict_principal(&self, principal_id: &Uuid) {
         self.principal_id.remove(principal_id).await;
     }
 
-    pub async fn get_group_by_name(&self, name: &String) -> Option<Group> {
+    pub async fn get_group_by_name(&self, name: &str) -> Option<Group> {
         let name_lower = name.to_lowercase();
         self.group_name.get(&name_lower).await
     }
@@ -47,8 +47,8 @@ impl SecurityCache {
 
     pub async fn cache_group(&self, group: &Group) {
         let name_lower = group.name.to_lowercase();
-        self.group_id.set(&group.id, &group).await;
-        self.group_name.set(&name_lower, &group).await;
+        self.group_id.set(&group.id, group).await;
+        self.group_name.set(&name_lower, group).await;
     }
 
     // pub async fn evict_group(&self, group_id: &Uuid) {

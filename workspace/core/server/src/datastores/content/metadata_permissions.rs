@@ -1,4 +1,7 @@
 use crate::context::BoscaContext;
+use crate::datastores::cache::cache::{BoscaCache, BoscaCacheInterface};
+use crate::datastores::cache::manager::BoscaCacheManager;
+use crate::datastores::cache::tiered_cache::TieredCacheType;
 use crate::datastores::notifier::Notifier;
 use crate::models::content::metadata::Metadata;
 use crate::models::security::permission::{Permission, PermissionAction};
@@ -12,13 +15,22 @@ use uuid::Uuid;
 
 #[derive(Clone)]
 pub struct MetadataPermissionsDataStore {
+    permission_cache: BoscaCache<Uuid, Vec<Permission>>,
     pool: Arc<Pool>,
     notifier: Arc<Notifier>,
 }
 
 impl MetadataPermissionsDataStore {
-    pub fn new(pool: Arc<Pool>, notifier: Arc<Notifier>) -> Self {
-        Self { pool, notifier }
+    pub fn new(pool: Arc<Pool>, cache: &mut BoscaCacheManager, notifier: Arc<Notifier>) -> Self {
+        Self {
+            pool,
+            permission_cache: cache.new_id_tiered_cache(
+                "metadata_permissions",
+                5000,
+                TieredCacheType::Metadata,
+            ),
+            notifier,
+        }
     }
 
     async fn on_metadata_changed(&self, id: &Uuid) -> Result<(), Error> {
@@ -29,13 +41,18 @@ impl MetadataPermissionsDataStore {
     }
 
     pub async fn get_metadata_permissions(&self, id: &Uuid) -> Result<Vec<Permission>, Error> {
+        if let Some(permissions) = self.permission_cache.get(id).await {
+            return Ok(permissions);
+        }
         let connection = self.pool.get().await?;
         let stmt = connection.prepare_cached("select metadata_id as entity_id, group_id, action from metadata_permissions where metadata_id = $1").await?;
         let rows = connection.query(&stmt, &[id]).await?;
-        Ok(rows.iter().map(|r| r.into()).collect())
+        let permissions = rows.iter().map(|r| r.into()).collect();
+        self.permission_cache.set(id, &permissions).await;
+        Ok(permissions)
     }
 
-    pub async fn has_metadata_permission(
+    pub async fn has(
         &self,
         metadata: &Metadata,
         principal: &Principal,
@@ -121,6 +138,7 @@ impl MetadataPermissionsDataStore {
                 ],
             )
             .await?;
+        self.permission_cache.remove(&permission.entity_id).await;
         self.on_metadata_changed(&permission.entity_id).await?;
         Ok(())
     }
@@ -191,6 +209,7 @@ impl MetadataPermissionsDataStore {
                 ],
             )
             .await?;
+        self.permission_cache.remove(&permission.entity_id).await;
         self.on_metadata_changed(&permission.entity_id).await?;
         Ok(())
     }

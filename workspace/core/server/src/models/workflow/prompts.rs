@@ -1,8 +1,10 @@
 use async_graphql::*;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio_postgres::Row;
 use uuid::Uuid;
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Prompt {
     pub id: Uuid,
     pub name: String,

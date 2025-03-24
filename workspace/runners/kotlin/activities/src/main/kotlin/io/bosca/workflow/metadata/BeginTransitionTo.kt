@@ -27,13 +27,15 @@ class BeginTransitionTo(client: Client) : Activity(client) {
     override suspend fun execute(context: ActivityContext, job: WorkflowJob) {
         val configuration = job.workflowActivity.workflowActivity.configuration as Map<*, *>
         val state = configuration["state"] as String
-
-        client.workflows.beginMetadataTransition(
-            job.metadata?.metadata?.id ?: error("missing metadata"),
-            job.metadata!!.metadata.version,
-            "Begin Metadata Transition",
-            state
-        )
+        val current = job.metadata?.metadata?.workflow?.metadataWorkflow
+        if (state != current?.state && state != current?.pending) {
+            client.workflows.beginMetadataTransition(
+                job.metadata?.metadata?.id ?: error("missing metadata"),
+                job.metadata!!.metadata.version,
+                "Begin Metadata Transition",
+                state
+            )
+        }
     }
 
     companion object {

@@ -1,10 +1,12 @@
 use crate::workflow::yaml::into;
 use async_graphql::*;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio_postgres::Row;
 use uuid::Uuid;
 use yaml_rust2::Yaml;
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StorageSystemModel {
     pub model_id: Uuid,
     pub configuration: Value,

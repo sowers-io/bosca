@@ -11,7 +11,9 @@ use async_graphql::Error;
 use deadpool_postgres::Pool;
 use std::sync::Arc;
 use uuid::Uuid;
+use crate::datastores::cache::cache::{BoscaCache, BoscaCacheInterface};
 use crate::datastores::cache::manager::BoscaCacheManager;
+use crate::datastores::cache::tiered_cache::TieredCacheType;
 use crate::datastores::content::categories::CategoriesDataStore;
 use crate::datastores::content::collection_supplementary::CollectionSupplementaryDataStore;
 use crate::datastores::content::collection_templates::CollectionTemplatesDataStore;
@@ -21,6 +23,7 @@ use crate::datastores::content::sources::SourcesDataStore;
 
 #[derive(Clone)]
 pub struct ContentDataStore {
+    slug_cache: BoscaCache<String, Slug>,
     pool: Arc<Pool>,
 
     pub categories: CategoriesDataStore,
@@ -39,13 +42,16 @@ pub struct ContentDataStore {
 }
 
 impl ContentDataStore {
+
     pub fn new(pool: Arc<Pool>, cache: &mut BoscaCacheManager, notifier: Arc<Notifier>) -> Self {
         Self {
+            slug_cache: cache.new_string_tiered_cache("slugs", 5000, TieredCacheType::Slug),
             categories: CategoriesDataStore::new(Arc::clone(&pool), Arc::clone(&notifier)),
             collections: CollectionsDataStore::new(Arc::clone(&pool), Arc::clone(&notifier)),
             collection_supplementary: CollectionSupplementaryDataStore::new(Arc::clone(&pool), Arc::clone(&notifier)),
             collection_permissions: CollectionPermissionsDataStore::new(
                 Arc::clone(&pool),
+                cache,
                 Arc::clone(&notifier),
             ),
             collection_workflows: CollectionWorkflowsDataStore::new(
@@ -59,6 +65,7 @@ impl ContentDataStore {
             metadata_supplementary: MetadataSupplementaryDataStore::new(Arc::clone(&pool), Arc::clone(&notifier)),
             metadata_permissions: MetadataPermissionsDataStore::new(
                 Arc::clone(&pool),
+                cache,
                 Arc::clone(&notifier),
             ),
             metadata_workflows: MetadataWorkflowsDataStore::new(
@@ -73,13 +80,16 @@ impl ContentDataStore {
     }
 
     pub async fn get_slug(&self, slug: &str) -> async_graphql::Result<Option<Slug>, Error> {
+        let slug = slug.to_string();
+        if let Some(s) = self.slug_cache.get(&slug).await {
+            return Ok(Some(s));
+        }
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached(
                 "select metadata_id, collection_id, profile_id from slugs where slug = $1",
             )
             .await?;
-        let slug = slug.to_string();
         let rows = connection.query(&stmt, &[&slug]).await?;
         if rows.is_empty() {
             return Ok(None);
@@ -88,7 +98,7 @@ impl ContentDataStore {
         let metadata_id: Option<Uuid> = row.get("metadata_id");
         let collection_id: Option<Uuid> = row.get("collection_id");
         let profile_id: Option<Uuid> = row.get("profile_id");
-        Ok(Some(Slug {
+        let s = Slug {
             id: if let Some(metadata_id) = metadata_id {
                 metadata_id
             } else if let Some(collection_id) = collection_id {
@@ -103,6 +113,8 @@ impl ContentDataStore {
             } else {
                 SlugType::Profile
             },
-        }))
+        };
+        self.slug_cache.set(&slug, &s).await;
+        Ok(Some(s))
     }
 }

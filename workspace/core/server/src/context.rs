@@ -3,7 +3,6 @@ use crate::datastores::content::content::ContentDataStore;
 use crate::datastores::content::workflow_schedules::WorkflowScheduleDataStore;
 use crate::datastores::persisted_queries::PersistedQueriesDataStore;
 use crate::datastores::security::SecurityDataStore;
-use crate::datastores::workflow::WorkflowDataStore;
 use crate::graphql::content::storage::ObjectStorage;
 use crate::models::content::collection::Collection;
 use crate::models::content::metadata::Metadata;
@@ -19,6 +18,7 @@ use uuid::Uuid;
 use crate::datastores::cache::manager::BoscaCacheManager;
 use crate::datastores::notifier::Notifier;
 use crate::datastores::profile::ProfileDataStore;
+use crate::datastores::workflow::workflow::WorkflowDataStore;
 use crate::initialization::jwt::new_jwt;
 use crate::initialization::object_storage::new_object_storage;
 use crate::initialization::redis::new_redis_client;
@@ -81,6 +81,7 @@ impl BoscaContext {
             security: SecurityDataStore::new(&mut cache, Arc::clone(&bosca_pool), new_jwt(), url_secret_key),
             workflow: WorkflowDataStore::new(
                 Arc::clone(&bosca_pool),
+                &mut cache,
                 jobs.clone(),
                 Arc::clone(&notifier),
             ),
@@ -115,7 +116,7 @@ impl BoscaContext {
                 if !self
                     .content
                     .metadata_permissions
-                    .has_metadata_permission(&metadata, principal, action)
+                    .has(&metadata, principal, action)
                     .await?
                 {
                     let admin = self.security.get_administrators_group().await?;
@@ -280,7 +281,7 @@ impl BoscaContext {
                 if !self
                     .content
                     .metadata_permissions
-                    .has_metadata_permission(&metadata, &self.principal, action)
+                    .has(&metadata, &self.principal, action)
                     .await?
                 {
                     let admin = self.security.get_administrators_group().await?;

@@ -12,7 +12,7 @@ pub struct RedisCache {
 
 impl RedisCache {
     pub fn new(redis: RedisClient, name: String) -> Self {
-        Self { redis, name }
+        Self { redis, name: format!("cache::{}", name) }
     }
 }
 

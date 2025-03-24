@@ -66,7 +66,6 @@ impl MetadataDataStore {
     }
 
     pub async fn find(&self, query: &mut FindQueryInput) -> Result<Vec<Metadata>, Error> {
-        let connection = self.pool.get().await?;
         let category_ids = query.get_category_ids();
         let (query, values) = build_find_args(
             "metadata",
@@ -76,13 +75,13 @@ impl MetadataDataStore {
             &category_ids,
             false,
         );
+        let connection = self.pool.get().await?;
         let stmt = connection.prepare_cached(query.as_str()).await?;
         let rows = connection.query(&stmt, values.as_slice()).await?;
         Ok(rows.iter().map(|r| r.into()).collect())
     }
 
     pub async fn find_count(&self, query: &mut FindQueryInput) -> Result<i64, Error> {
-        let connection = self.pool.get().await?;
         let category_ids = query.get_category_ids();
         let (query, values) = build_find_args(
             "metadata",
@@ -92,6 +91,7 @@ impl MetadataDataStore {
             &category_ids,
             true,
         );
+        let connection = self.pool.get().await?;
         let stmt = connection.prepare_cached(query.as_str()).await?;
         let rows = connection.query(&stmt, values.as_slice()).await?;
         if rows.is_empty() {
@@ -114,7 +114,7 @@ impl MetadataDataStore {
             return Ok(None);
         }
         let metadata = rows.first().unwrap().into();
-        self.cache.set_metadata(&id, &metadata).await;
+        self.cache.set_metadata(&metadata).await;
         Ok(Some(metadata))
     }
 
@@ -131,7 +131,7 @@ impl MetadataDataStore {
             return Ok(None);
         }
         let metadata = rows.first().unwrap().into();
-        self.cache.set_metadata(&id, &metadata).await;
+        self.cache.set_metadata(&metadata).await;
         Ok(Some(metadata))
     }
 
@@ -235,6 +235,7 @@ impl MetadataDataStore {
         txn.execute(&stmt, &[&metadata_id]).await?;
         txn.commit().await?;
 
+        self.cache.evict_metadata(metadata_id).await;
         self.on_metadata_changed(ctx, metadata_id).await?;
         for collection_id in collection_ids {
             self.on_collection_changed(ctx, &collection_id).await?;
@@ -256,6 +257,7 @@ impl MetadataDataStore {
         txn.execute(&stmt, &[&public, id]).await?;
         update_metadata_etag(&txn, id).await?;
         txn.commit().await?;
+        self.cache.evict_metadata(id).await;
         self.on_metadata_changed(ctx, id).await?;
         Ok(())
     }
@@ -276,6 +278,7 @@ impl MetadataDataStore {
         txn.execute(&stmt, &[&public, id]).await?;
         update_metadata_etag(&txn, id).await?;
         txn.commit().await?;
+        self.cache.evict_metadata(id).await;
         self.on_metadata_changed(ctx, id).await?;
         Ok(())
     }
@@ -319,6 +322,7 @@ impl MetadataDataStore {
         {
             Ok(_) => {
                 txn.commit().await?;
+                self.cache.evict_metadata(id).await;
                 self.on_metadata_changed(ctx, id).await?;
                 for collection_id in collection_ids {
                     self.on_collection_changed(ctx, &collection_id).await?;
@@ -346,6 +350,7 @@ impl MetadataDataStore {
         txn.execute(&stmt, &[&attributes, &metadata_id]).await?;
         update_metadata_etag(&txn, metadata_id).await?;
         txn.commit().await?;
+        self.cache.evict_metadata(metadata_id).await;
         self.on_metadata_changed(ctx, metadata_id).await?;
         Ok(())
     }
@@ -366,6 +371,7 @@ impl MetadataDataStore {
         txn.execute(&stmt, &[&attributes, &metadata_id]).await?;
         update_metadata_etag(&txn, metadata_id).await?;
         txn.commit().await?;
+        self.cache.evict_metadata(metadata_id).await;
         self.on_metadata_changed(ctx, metadata_id).await?;
         Ok(())
     }
@@ -398,6 +404,7 @@ impl MetadataDataStore {
         }
         update_metadata_etag(&txn, metadata_id).await?;
         txn.commit().await?;
+        self.cache.evict_metadata(metadata_id).await;
         self.on_metadata_changed(ctx, metadata_id).await?;
         Ok(())
     }
@@ -434,6 +441,7 @@ impl MetadataDataStore {
             .prepare_cached("update metadata set uploaded = null, modified = now(), content_length = 0 where id = $1")
             .await?;
         connection.execute(&stmt, &[&metadata_id]).await?;
+        self.cache.evict_metadata(metadata_id).await;
         self.on_metadata_changed(ctx, metadata_id).await?;
         Ok(())
     }
@@ -579,6 +587,7 @@ impl MetadataDataStore {
             .prepare("delete from metadata_traits where metadata_id = $1 and trait_id = $2")
             .await?;
         conn.execute(&stmt, &[id, trait_id]).await?;
+        self.cache.evict_metadata(id).await;
         self.on_metadata_changed(ctx, id).await?;
         Ok(())
     }
@@ -619,6 +628,7 @@ impl MetadataDataStore {
             .prepare_cached("insert into metadata_traits (metadata_id, trait_id) values ($1, $2)")
             .await?;
         connection.execute(&stmt, &[id, trait_id]).await?;
+        self.cache.evict_metadata(id).await;
         self.on_metadata_changed(ctx, id).await?;
         Ok(())
     }
@@ -661,6 +671,7 @@ impl MetadataDataStore {
             )
             .await?;
         connection.execute(&stmt, &[id, category_id]).await?;
+        self.cache.evict_metadata(id).await;
         self.on_metadata_changed(ctx, id).await?;
         Ok(())
     }
@@ -678,6 +689,7 @@ impl MetadataDataStore {
             )
             .await?;
         connection.execute(&stmt, &[id, category_id]).await?;
+        self.cache.evict_metadata(id).await;
         self.on_metadata_changed(ctx, id).await?;
         Ok(())
     }
@@ -702,6 +714,8 @@ impl MetadataDataStore {
                 ],
             )
             .await?;
+        self.cache.evict_metadata(&id1).await;
+        self.cache.evict_metadata(&id2).await;
         self.on_metadata_changed(ctx, &id1).await?;
         self.on_metadata_changed(ctx, &id2).await?;
         Ok(())
@@ -744,6 +758,8 @@ impl MetadataDataStore {
         connection
             .query(&stmt, &[&relationship, &attributes, id1, id2])
             .await?;
+        self.cache.evict_metadata(id1).await;
+        self.cache.evict_metadata(id2).await;
         self.on_metadata_changed(ctx, id1).await?;
         self.on_metadata_changed(ctx, id2).await?;
         Ok(())
@@ -766,6 +782,8 @@ impl MetadataDataStore {
         connection
             .execute(&stmt, &[id1, id2, &relationship])
             .await?;
+        self.cache.evict_metadata(id1).await;
+        self.cache.evict_metadata(id2).await;
         self.on_metadata_changed(ctx, id1).await?;
         self.on_metadata_changed(ctx, id2).await?;
         Ok(())

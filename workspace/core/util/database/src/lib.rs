@@ -20,8 +20,8 @@ pub fn build_pool(key: &str) -> Arc<Pool> {
             exit(1);
         }
     }
-    let mut pool_config = PoolConfig::new(50);
-    pool_config.timeouts = Timeouts::wait_millis(3000);
+    let mut pool_config = PoolConfig::new(75);
+    pool_config.timeouts = Timeouts::wait_millis(10000);
     config.pool = Some(pool_config);
     config.manager = Some(ManagerConfig {
         recycling_method: RecyclingMethod::Fast,

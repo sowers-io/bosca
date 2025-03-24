@@ -2,20 +2,21 @@ use crate::workflow::yaml::into;
 use async_graphql::*;
 use bytes::{BufMut, BytesMut};
 use postgres_types::{to_sql_checked, FromSql, IsNull, ToSql, Type};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio_postgres::Row;
 use uuid::Uuid;
 use yaml_rust2::Yaml;
 use crate::models::workflow::storage_system_models::StorageSystemModelInput;
 
-#[derive(Enum, Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Enum, Debug, Copy, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum StorageSystemType {
     Search,
     Vector,
     Supplementary,
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StorageSystem {
     pub id: Uuid,
     pub system_type: StorageSystemType,

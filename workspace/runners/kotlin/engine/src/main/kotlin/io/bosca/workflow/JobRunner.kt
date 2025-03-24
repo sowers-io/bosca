@@ -30,7 +30,7 @@ class JobRunner(
     suspend fun run() {
         val jobs = mutableListOf<Job>()
         coroutineScope {
-            for (i in 1..10) {
+            for (i in 0..4) {
                 jobs.add(launch { process() })
             }
         }

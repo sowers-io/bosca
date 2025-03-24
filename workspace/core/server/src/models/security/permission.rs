@@ -2,10 +2,11 @@ use async_graphql::{Enum, InputObject};
 use bytes::{BufMut, BytesMut};
 use postgres_types::{to_sql_checked, FromSql, IsNull, ToSql, Type};
 use std::error::Error;
+use serde::{Deserialize, Serialize};
 use tokio_postgres::Row;
 use uuid::Uuid;
 
-#[derive(Enum, Debug, Copy, Clone, Eq, PartialEq, Hash)]
+#[derive(Enum, Debug, Copy, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
 pub enum PermissionAction {
     View,
     Edit,
@@ -16,7 +17,7 @@ pub enum PermissionAction {
     Execute
 }
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub struct Permission {
     pub entity_id: Uuid,
     pub group_id: Uuid,

@@ -1,6 +1,8 @@
 use async_graphql::*;
+use serde::{Deserialize, Serialize};
 use tokio_postgres::Row;
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Trait {
     pub id: String,
     pub name: String,

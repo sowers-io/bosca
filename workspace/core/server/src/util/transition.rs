@@ -72,7 +72,7 @@ pub async fn begin_transition(
             return Err(Error::new("collection is already in this state"));
         }
         verify_transition_exists(ctx, &collection.workflow_state_id, &request.state_id).await?;
-        do_transition(&ctx, &request, configurations, &collection).await?;
+        do_transition(ctx, request, configurations, &collection).await?;
     } else {
         return Err(Error::new(
             "you must provide either a collection_id or a metadata_id",
@@ -155,7 +155,7 @@ async fn do_transition(
         content,
         &request.state_id,
         &configurations,
-        false,
+        request.wait_for_completion.unwrap_or(false),
         request.state_valid,
         request.restart,
     )
@@ -171,12 +171,12 @@ async fn do_transition(
                         COLLECTION_DELAYED_TRANSITION.to_string()
                     }),
                     metadata_id: if content.version().is_some() {
-                        Some(content.id().clone())
+                        Some(*content.id())
                     } else {
                         None
                     },
                     collection_id: if content.version().is_none() {
-                        Some(content.id().clone())
+                        Some(*content.id())
                     } else {
                         None
                     },

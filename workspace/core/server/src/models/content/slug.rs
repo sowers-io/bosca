@@ -7,6 +7,7 @@ pub enum SlugType {
     Profile,
 }
 
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
 pub struct Slug {
     pub id: Uuid,
     pub slug_type: SlugType

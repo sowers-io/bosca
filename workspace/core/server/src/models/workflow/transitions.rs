@@ -1,8 +1,10 @@
 use async_graphql::*;
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use tokio_postgres::Row;
 use yaml_rust2::Yaml;
 
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Transition {
     pub from_state_id: String,
     pub to_state_id: String,

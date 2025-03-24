@@ -1,7 +1,13 @@
 use crate::context::BoscaContext;
+use crate::datastores::cache::manager::BoscaCacheManager;
 use crate::datastores::notifier::Notifier;
+use crate::datastores::workflow::workflow_cache::WorkflowCache;
 use crate::graphql::content::metadata_mutation::WorkflowConfigurationInput;
-use crate::models::workflow::activities::{Activity, ActivityInput, ActivityParameter, WorkflowActivity, WorkflowActivityInput, WorkflowActivityModel, WorkflowActivityParameter, WorkflowActivityPrompt, WorkflowActivityStorageSystem};
+use crate::models::workflow::activities::{
+    Activity, ActivityInput, ActivityParameter, WorkflowActivity, WorkflowActivityInput,
+    WorkflowActivityModel, WorkflowActivityParameter, WorkflowActivityPrompt,
+    WorkflowActivityStorageSystem,
+};
 use crate::models::workflow::enqueue_request::EnqueueRequest;
 use crate::models::workflow::execution_plan::{
     WorkflowExecutionId, WorkflowExecutionPlan, WorkflowJob, WorkflowJobId,
@@ -33,18 +39,21 @@ use uuid::Uuid;
 pub struct WorkflowDataStore {
     pool: Arc<Pool>,
     queues: JobQueues,
+    cache: WorkflowCache,
     notifier: Arc<Notifier>,
 }
 
 impl WorkflowDataStore {
     pub fn new(
         pool: Arc<Pool>,
+        cache: &mut BoscaCacheManager,
         queues: JobQueues,
         notifier: Arc<Notifier>,
     ) -> Self {
         Self {
             pool,
             queues,
+            cache: WorkflowCache::new(cache),
             notifier,
         }
     }
@@ -156,11 +165,13 @@ impl WorkflowDataStore {
     }
 
     pub async fn delete_activity(&self, activity_id: &str) -> Result<(), Error> {
+        let activity_id = activity_id.to_owned();
         let connection = self.pool.get().await?;
         connection
             .execute("delete from activities where id = $1", &[&activity_id])
             .await?;
-        self.notifier.activity_changed(activity_id).await?;
+        self.cache.evict_activity(&activity_id).await;
+        self.notifier.activity_changed(&activity_id).await?;
         Ok(())
     }
 
@@ -174,6 +185,9 @@ impl WorkflowDataStore {
     }
 
     pub async fn get_activity(&self, id: &String) -> Result<Option<Activity>, Error> {
+        if let Some(activity) = self.cache.get_activity(id).await {
+            return Ok(Some(activity));
+        }
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached("select * from activities where id = $1")
@@ -182,31 +196,47 @@ impl WorkflowDataStore {
         if rows.is_empty() {
             return Ok(None);
         }
-        Ok(Some(rows.first().unwrap().into()))
+        let activity = rows.first().unwrap().into();
+        self.cache.set_activity(&activity).await;
+        Ok(Some(activity))
     }
 
     pub async fn get_activity_inputs(
         &self,
         activity_id: &String,
     ) -> Result<Vec<ActivityParameter>, Error> {
+        if let Some(activity) = self.cache.get_activity_inputs(activity_id).await {
+            return Ok(activity);
+        }
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached("select * from activity_inputs where activity_id = $1")
             .await?;
         let rows = connection.query(&stmt, &[activity_id]).await?;
-        Ok(rows.iter().map(ActivityParameter::from).collect())
+        let parameters = rows.iter().map(ActivityParameter::from).collect();
+        self.cache
+            .set_activity_inputs(activity_id, &parameters)
+            .await;
+        Ok(parameters)
     }
 
     pub async fn get_activity_outputs(
         &self,
         activity_id: &String,
     ) -> Result<Vec<ActivityParameter>, Error> {
+        if let Some(activity) = self.cache.get_activity_outputs(activity_id).await {
+            return Ok(activity);
+        }
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached("select * from activity_outputs where activity_id = $1")
             .await?;
         let rows = connection.query(&stmt, &[activity_id]).await?;
-        Ok(rows.iter().map(ActivityParameter::from).collect())
+        let parameters = rows.iter().map(ActivityParameter::from).collect();
+        self.cache
+            .set_activity_outputs(activity_id, &parameters)
+            .await;
+        Ok(parameters)
     }
 
     /* activities */
@@ -221,10 +251,31 @@ impl WorkflowDataStore {
     }
 
     pub async fn get_workflows_by_trait(&self, trait_id: &String) -> Result<Vec<Workflow>, Error> {
+        if let Some(workflow_ids) = self.cache.get_trait_workflow_ids(trait_id).await {
+            let mut workflows = Vec::new();
+            for id in workflow_ids {
+                if let Some(workflow) = self.get_workflow(&id).await? {
+                    workflows.push(workflow);
+                }
+            }
+            return Ok(workflows);
+        }
         let connection = self.pool.get().await?;
-        let stmt = connection.prepare_cached("select w.* from workflows w inner join trait_workflows tw on (tw.workflow_id = w.id and tw.trait_id = $1)").await?;
+        let stmt = connection.prepare_cached("select w.id as id from workflows w inner join trait_workflows tw on (tw.workflow_id = w.id and tw.trait_id = $1)").await?;
         let rows = connection.query(&stmt, &[trait_id]).await?;
-        Ok(rows.into_iter().map(Workflow::from).collect())
+        let mut workflow_ids = Vec::new();
+        let mut workflows = Vec::new();
+        for row in rows.iter() {
+            let id: String = row.get(0);
+            if let Some(workflow) = self.get_workflow(&id).await? {
+                workflows.push(workflow);
+            }
+            workflow_ids.push(id);
+        }
+        self.cache
+            .set_trait_workflow_ids(trait_id, &workflow_ids)
+            .await;
+        Ok(workflows)
     }
 
     pub async fn add_workflow(&self, workflow: &WorkflowInput) -> Result<(), Error> {
@@ -276,11 +327,20 @@ impl WorkflowDataStore {
             ],
         )
         .await?;
+        let mut ids = Vec::new();
         for activity in &workflow.activities {
-            self.add_workflow_activity(&txn, &workflow.id, activity)
+            let id = self.add_workflow_activity(&txn, &workflow.id, activity)
                 .await?;
+            ids.push(id);
         }
         txn.commit().await?;
+
+        for id in ids {
+            self.notifier.workflow_activity_changed(id).await?;
+            self.cache.evict_workflow_activity(&id).await;
+        }
+
+        self.cache.evict_workflow(&workflow.id).await;
         self.notifier.workflow_changed(&workflow.id).await?;
         Ok(())
     }
@@ -314,21 +374,27 @@ impl WorkflowDataStore {
         let id = id.to_owned();
         self.delete_workflow_txn(&txn, &id, true).await?;
         txn.commit().await?;
+        self.cache.evict_workflow(&id).await;
         self.notifier.workflow_changed(&id).await?;
         Ok(())
     }
 
     pub async fn get_workflow(&self, id: &str) -> Result<Option<Workflow>, Error> {
+        let id = id.to_owned();
+        if let Some(workflow) = self.cache.get_workflow(&id).await {
+            return Ok(Some(workflow));
+        }
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached("select * from workflows where id = $1")
             .await?;
-        let id = id.to_owned();
         let mut rows = connection.query(&stmt, &[&id]).await?;
         if rows.is_empty() {
             return Ok(None);
         }
-        Ok(Some(rows.remove(0).into()))
+        let workflow = rows.remove(0).into();
+        self.cache.set_workflow(&workflow).await;
+        Ok(Some(workflow))
     }
 
     /* workflows */
@@ -409,6 +475,7 @@ impl WorkflowDataStore {
                     .await?;
             }
         }
+        self.notifier.workflow_activity_changed(id).await?;
         Ok(id)
     }
 
@@ -416,48 +483,90 @@ impl WorkflowDataStore {
         &self,
         activity_id: &i64,
     ) -> Result<Option<WorkflowActivity>, Error> {
+        if let Some(workflow_activity) = self.cache.get_workflow_activity(activity_id).await {
+            return Ok(Some(workflow_activity));
+        }
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached("select * from workflow_activities where id = $1")
             .await?;
         let rows = connection.query(&stmt, &[activity_id]).await?;
-        Ok(rows.first().map(WorkflowActivity::from))
+        if let Some(activity) = rows.first().map(WorkflowActivity::from) {
+            self.cache.set_workflow_activity(&activity).await;
+            return Ok(Some(activity));
+        }
+        Ok(None)
     }
 
     pub async fn get_workflow_activities(
         &self,
         workflow_id: &String,
     ) -> Result<Vec<WorkflowActivity>, Error> {
+        if let Some(ids) = self.cache.get_workflow_activity_ids(workflow_id).await {
+            let mut activities = Vec::new();
+            for id in ids {
+                if let Some(activity) = self.get_workflow_activity(&id).await? {
+                    activities.push(activity);
+                }
+            }
+            return Ok(activities);
+        }
         let connection = self.pool.get().await?;
         let stmt = connection
-            .prepare_cached("select * from workflow_activities where workflow_id = $1 order by execution_group asc")
+            .prepare_cached("select id from workflow_activities where workflow_id = $1 order by execution_group asc")
             .await?;
         let rows = connection.query(&stmt, &[workflow_id]).await?;
-        Ok(rows.iter().map(WorkflowActivity::from).collect())
+        let mut activities = Vec::new();
+        let mut activity_ids = Vec::new();
+        for row in rows.iter() {
+            let id: i64 = row.get(0);
+            if let Some(activity) = self.get_workflow_activity(&id).await? {
+                activities.push(activity);
+                activity_ids.push(id);
+            }
+        }
+        self.cache
+            .set_workflow_activity_ids(workflow_id, &activity_ids)
+            .await;
+        Ok(activities)
     }
 
     pub async fn get_workflow_activity_inputs(
         &self,
         activity_id: &i64,
     ) -> Result<Vec<WorkflowActivityParameter>, Error> {
+        if let Some(inputs) = self.cache.get_workflow_activity_inputs(activity_id).await {
+            return Ok(inputs);
+        }
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached("select * from workflow_activity_inputs where activity_id = $1")
             .await?;
         let rows = connection.query(&stmt, &[activity_id]).await?;
-        Ok(rows.iter().map(WorkflowActivityParameter::from).collect())
+        let inputs = rows.iter().map(WorkflowActivityParameter::from).collect();
+        self.cache
+            .set_workflow_activity_inputs(activity_id, &inputs)
+            .await;
+        Ok(inputs)
     }
 
     pub async fn get_workflow_activity_outputs(
         &self,
         activity_id: &i64,
     ) -> Result<Vec<WorkflowActivityParameter>, Error> {
+        if let Some(outputs) = self.cache.get_workflow_activity_outputs(activity_id).await {
+            return Ok(outputs);
+        }
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached("select * from workflow_activity_outputs where activity_id = $1")
             .await?;
         let rows = connection.query(&stmt, &[activity_id]).await?;
-        Ok(rows.iter().map(WorkflowActivityParameter::from).collect())
+        let outputs = rows.iter().map(WorkflowActivityParameter::from).collect();
+        self.cache
+            .set_workflow_activity_outputs(activity_id, &outputs)
+            .await;
+        Ok(outputs)
     }
 
     /* workflow activities */
@@ -468,12 +577,19 @@ impl WorkflowDataStore {
         &self,
         activity_id: &i64,
     ) -> Result<Vec<WorkflowActivityModel>, Error> {
+        if let Some(models) = self.cache.get_workflow_activity_models(activity_id).await {
+            return Ok(models);
+        }
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached("select * from workflow_activity_models where activity_id = $1")
             .await?;
         let rows = connection.query(&stmt, &[activity_id]).await?;
-        Ok(rows.iter().map(WorkflowActivityModel::from).collect())
+        let models = rows.iter().map(WorkflowActivityModel::from).collect();
+        self.cache
+            .set_workflow_activity_models(activity_id, &models)
+            .await;
+        Ok(models)
     }
 
     /* workflow activity models */
@@ -484,12 +600,19 @@ impl WorkflowDataStore {
         &self,
         activity_id: &i64,
     ) -> Result<Vec<WorkflowActivityPrompt>, Error> {
+        if let Some(prompts) = self.cache.get_workflow_activity_prompts(activity_id).await {
+            return Ok(prompts);
+        }
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached("select * from workflow_activity_prompts where activity_id = $1")
             .await?;
         let rows = connection.query(&stmt, &[activity_id]).await?;
-        Ok(rows.iter().map(WorkflowActivityPrompt::from).collect())
+        let prompts = rows.iter().map(WorkflowActivityPrompt::from).collect();
+        self.cache
+            .set_workflow_activity_prompts(activity_id, &prompts)
+            .await;
+        Ok(prompts)
     }
 
     /* workflow activity prompts */
@@ -500,6 +623,13 @@ impl WorkflowDataStore {
         &self,
         activity_id: &i64,
     ) -> Result<Vec<WorkflowActivityStorageSystem>, Error> {
+        if let Some(systems) = self
+            .cache
+            .get_workflow_activity_storage_systems(activity_id)
+            .await
+        {
+            return Ok(systems);
+        }
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached(
@@ -507,10 +637,14 @@ impl WorkflowDataStore {
             )
             .await?;
         let rows = connection.query(&stmt, &[activity_id]).await?;
-        Ok(rows
+        let systems = rows
             .iter()
             .map(WorkflowActivityStorageSystem::from)
-            .collect())
+            .collect();
+        self.cache
+            .set_workflow_activity_storage_systems(activity_id, &systems)
+            .await;
+        Ok(systems)
     }
 
     /* workflow activity storage systems */
@@ -525,6 +659,9 @@ impl WorkflowDataStore {
     }
 
     pub async fn get_model(&self, id: &Uuid) -> Result<Option<Model>, Error> {
+        if let Some(model) = self.cache.get_model(id).await {
+            return Ok(Some(model));
+        }
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached("select * from models where id = $1")
@@ -533,7 +670,9 @@ impl WorkflowDataStore {
         if rows.is_empty() {
             return Ok(None);
         }
-        Ok(Some(rows.remove(0).into()))
+        let model = rows.remove(0).into();
+        self.cache.set_model(&model).await;
+        Ok(Some(model))
     }
 
     pub async fn add_model(&self, model: &ModelInput) -> Result<Uuid, Error> {
@@ -575,6 +714,7 @@ impl WorkflowDataStore {
             )
             .await?;
         let id_str = id.to_string();
+        self.cache.evict_model(id).await;
         self.notifier.model_changed(&id_str).await?;
         Ok(())
     }
@@ -585,6 +725,7 @@ impl WorkflowDataStore {
             .prepare_cached("delete from models where id = $5")
             .await?;
         connection.execute(&stmt, &[&id]).await?;
+        self.cache.evict_model(id).await;
         let id_str = id.to_string();
         self.notifier.model_changed(&id_str).await?;
         Ok(())
@@ -604,16 +745,21 @@ impl WorkflowDataStore {
     }
 
     pub async fn get_state(&self, id: &str) -> Result<Option<WorkflowState>, Error> {
+        let id = id.to_owned();
+        if let Some(state) = self.cache.get_state(&id).await {
+            return Ok(Some(state));
+        }
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached("select * from workflow_states where id = $1")
             .await?;
-        let id = id.to_owned();
         let mut rows = connection.query(&stmt, &[&id]).await?;
         if rows.is_empty() {
             return Ok(None);
         }
-        Ok(Some(rows.remove(0).into()))
+        let state = rows.remove(0).into();
+        self.cache.set_state(&state).await;
+        Ok(Some(state))
     }
 
     pub async fn add_state(&self, state: &WorkflowStateInput) -> Result<(), Error> {
@@ -656,6 +802,7 @@ impl WorkflowDataStore {
                 ],
             )
             .await?;
+        self.cache.evict_state(&state.id).await;
         self.notifier.state_changed(&state.id).await?;
         Ok(())
     }
@@ -666,6 +813,7 @@ impl WorkflowDataStore {
             .prepare_cached("delete from workflow_states where id = $1")
             .await?;
         connection.execute(&stmt, &[&id]).await?;
+        self.cache.evict_state(id).await;
         self.notifier.state_changed(id).await?;
         Ok(())
     }
@@ -684,15 +832,25 @@ impl WorkflowDataStore {
     }
 
     pub async fn get_storage_system(&self, id: &Uuid) -> Result<Option<StorageSystem>, Error> {
+        if let Some(system) = self.cache.get_storage_system(id).await {
+            return Ok(Some(system));
+        }
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached("select * from storage_systems where id = $1")
             .await?;
         let rows = connection.query(&stmt, &[id]).await?;
-        Ok(rows.first().map(|r| r.into()))
+        let system = rows.first().map(|r| r.into());
+        if let Some(system) = &system {
+            self.cache.set_storage_system(system).await;
+        }
+        Ok(system)
     }
 
-    pub async fn get_storage_system_by_name(&self, name: &str) -> Result<Option<StorageSystem>, Error> {
+    pub async fn get_storage_system_by_name(
+        &self,
+        name: &str,
+    ) -> Result<Option<StorageSystem>, Error> {
         let connection = self.pool.get().await?;
         let name = name.to_string();
         let stmt = connection
@@ -785,6 +943,8 @@ impl WorkflowDataStore {
             log::error!("Failed to initialize storage system: {:?}", e);
         }
 
+        self.cache.evict_storage_system(id).await;
+
         let id_str = id.to_string();
         self.notifier.storage_system_changed(&id_str).await?;
 
@@ -812,12 +972,17 @@ impl WorkflowDataStore {
         &self,
         id: &Uuid,
     ) -> Result<Vec<StorageSystemModel>, Error> {
+        if let Some(models) = self.cache.get_storage_system_models(id).await {
+            return Ok(models);
+        }
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached("select * from storage_system_models where system_id = $1")
             .await?;
         let rows = connection.query(&stmt, &[id]).await?;
-        Ok(rows.into_iter().map(StorageSystemModel::from).collect())
+        let models = rows.into_iter().map(StorageSystemModel::from).collect();
+        self.cache.set_storage_system_models(id, &models).await;
+        Ok(models)
     }
 
     pub async fn delete_storage_system(&self, id: &Uuid) -> Result<bool, Error> {
@@ -826,6 +991,7 @@ impl WorkflowDataStore {
             .prepare_cached("delete from storage_system where idf = $1")
             .await?;
         connection.query(&stmt, &[id]).await?;
+        self.cache.evict_storage_system(id).await;
         let id_str = id.to_string();
         self.notifier.storage_system_changed(&id_str).await?;
         Ok(true)
@@ -879,6 +1045,7 @@ impl WorkflowDataStore {
                 ],
             )
             .await?;
+        self.cache.evict_prompt(id).await;
         let id_str = id.to_string();
         self.notifier.prompt_changed(&id_str).await?;
         Ok(())
@@ -890,6 +1057,7 @@ impl WorkflowDataStore {
             .prepare_cached("delete from prompts where id = $1")
             .await?;
         connection.execute(&stmt, &[id]).await?;
+        self.cache.evict_prompt(id).await;
         let id_str = id.to_string();
         self.notifier.prompt_changed(&id_str).await?;
         Ok(())
@@ -903,6 +1071,9 @@ impl WorkflowDataStore {
     }
 
     pub async fn get_prompt(&self, id: &Uuid) -> Result<Option<Prompt>, Error> {
+        if let Some(prompt) = self.cache.get_prompt(id).await {
+            return Ok(Some(prompt));
+        }
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached("select * from prompts where id = $1")
@@ -911,7 +1082,9 @@ impl WorkflowDataStore {
         if rows.is_empty() {
             return Ok(None);
         }
-        Ok(Some(rows.first().unwrap().into()))
+        let prompt = rows.first().unwrap().into();
+        self.cache.set_prompt(&prompt).await;
+        Ok(Some(prompt))
     }
 
     /* prompts */
@@ -949,6 +1122,9 @@ impl WorkflowDataStore {
     }
 
     pub async fn get_trait(&self, id: &String) -> Result<Option<Trait>, Error> {
+        if let Some(t) = self.cache.get_trait(id).await {
+            return Ok(Some(t));
+        }
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached("select * from traits where id = $1")
@@ -972,6 +1148,7 @@ impl WorkflowDataStore {
                 .iter()
                 .map(|r| r.get::<&str, String>("content_type").to_string())
                 .collect();
+            self.cache.set_trait(&t).await;
             return Ok(Some(t));
         }
         Ok(None)
@@ -1044,6 +1221,7 @@ impl WorkflowDataStore {
             transaction.execute(&stmt, &[&t.id, content_type]).await?;
         }
         transaction.commit().await?;
+        self.cache.evict_trait(&t.id).await;
         self.notifier.trait_changed(&t.id).await?;
         Ok(())
     }
@@ -1053,6 +1231,7 @@ impl WorkflowDataStore {
         connection
             .execute("delete from traits where id = $1", &[&id])
             .await?;
+        self.cache.evict_trait(id).await;
         self.notifier.trait_changed(id).await?;
         Ok(())
     }
@@ -1079,6 +1258,9 @@ impl WorkflowDataStore {
         connection
             .query(&stmt, &[&t.from_state_id, &t.to_state_id, &t.description])
             .await?;
+        self.cache
+            .evict_transition(&t.from_state_id, &t.to_state_id)
+            .await;
         self.notifier
             .transition_changed(&t.from_state_id, &t.to_state_id)
             .await?;
@@ -1099,6 +1281,9 @@ impl WorkflowDataStore {
         connection
             .query(&stmt, &[from_state_id, to_state_id])
             .await?;
+        self.cache
+            .evict_transition(from_state_id, to_state_id)
+            .await;
         self.notifier
             .transition_changed(from_state_id, to_state_id)
             .await?;
@@ -1119,14 +1304,21 @@ impl WorkflowDataStore {
         from_state_id: &str,
         to_state_id: &str,
     ) -> Result<Option<Transition>, Error> {
+        let from = from_state_id.to_owned();
+        let to = to_state_id.to_owned();
+        if let Some(t) = self.cache.get_transition(&from, &to).await {
+            return Ok(Some(t));
+        }
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached("select * from workflow_state_transitions where from_state_id = $1 and to_state_id = $2")
             .await?;
-        let from = from_state_id.to_owned();
-        let to = to_state_id.to_owned();
         let rows = connection.query(&stmt, &[&from, &to]).await?;
-        Ok(rows.into_iter().next().map(Transition::from))
+        if let Some(transition) = rows.into_iter().next().map(Transition::from) {
+            self.cache.set_transition(&transition).await;
+            return Ok(Some(transition));
+        }
+        Ok(None)
     }
 
     /* transitions */
@@ -1367,7 +1559,7 @@ impl WorkflowDataStore {
             collection_id: request.collection_id,
             profile_id: request.profile_id,
             finished: None,
-            max_failures: 10
+            max_failures: 10,
         })
     }
 
@@ -1376,7 +1568,9 @@ impl WorkflowDataStore {
         ctx: &BoscaContext,
         request: &mut EnqueueRequest,
     ) -> Result<Vec<WorkflowExecutionPlan>, Error> {
-        if (request.workflow_id.is_some() || request.workflow.is_some()) && request.trait_id.is_some() {
+        if (request.workflow_id.is_some() || request.workflow.is_some())
+            && request.trait_id.is_some()
+        {
             return Err(Error::new("cannot enqueue workflow and trait"));
         }
         if let Some(trait_id) = &request.trait_id {
