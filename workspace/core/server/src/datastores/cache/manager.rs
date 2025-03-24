@@ -34,7 +34,9 @@ impl BoscaCacheManager {
     {
         info!("adding new memory cache: {} with size: {}", name, size);
         let cache = BoscaCache::MemoryCache(MemoryCache::<K, V>::new(size));
+        info!("storing cache added", name, size);
         self.caches.insert(name.to_string(), cache.to_managed());
+        info!("cache added", name, size);
         cache
     }
 
@@ -53,7 +55,9 @@ impl BoscaCacheManager {
         let cache = TieredCache::<Uuid, V>::new(memory_cache, redis_cache);
         cache.watch_changes(Arc::clone(&self.notifier), tiered_cache);
         let tiered_cache = BoscaCache::TieredCache(cache);
+        info!("storing cache added", name, size);
         self.caches.insert(name.to_string(), tiered_cache.to_managed());
+        info!("cache added", name, size);
         tiered_cache
     }
 
@@ -72,7 +76,9 @@ impl BoscaCacheManager {
         let cache = TieredCache::<String, V>::new(memory_cache, redis_cache);
         cache.watch_changes(Arc::clone(&self.notifier), tiered_cache);
         let tiered_cache = BoscaCache::TieredCache(cache);
+        info!("storing cache added", name, size);
         self.caches.insert(name.to_string(), tiered_cache.to_managed());
+        info!("cache added", name, size);
         tiered_cache
     }
 
@@ -91,7 +97,9 @@ impl BoscaCacheManager {
         let cache = TieredCache::<i64, V>::new(memory_cache, redis_cache);
         cache.watch_changes(Arc::clone(&self.notifier), tiered_cache);
         let tiered_cache = BoscaCache::TieredCache(cache);
+        info!("storing cache added", name, size);
         self.caches.insert(name.to_string(), tiered_cache.to_managed());
+        info!("cache added", name, size);
         tiered_cache
     }
 
