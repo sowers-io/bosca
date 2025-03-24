@@ -8,6 +8,7 @@ use std::collections::HashMap;
 use std::hash::Hash;
 use std::sync::Arc;
 use std::time::Duration;
+use log::info;
 use uuid::Uuid;
 
 #[derive(Clone)]
@@ -31,6 +32,7 @@ impl BoscaCacheManager {
         K: Clone + Send + Sync + serde::ser::Serialize + Hash + Eq + redis::ToRedisArgs + 'static,
         V: Clone + Send + Sync + serde::ser::Serialize + serde::de::DeserializeOwned + 'static,
     {
+        info!("adding new memory cache: {} with size: {}", name, size);
         let cache = BoscaCache::MemoryCache(MemoryCache::<K, V>::new(size));
         self.caches.insert(name.to_string(), cache.to_managed());
         cache
@@ -45,6 +47,7 @@ impl BoscaCacheManager {
     where
         V: Clone + Send + Sync + serde::ser::Serialize + serde::de::DeserializeOwned + 'static,
     {
+        info!("adding new id tiered cache: {} with size: {}", name, size);
         let memory_cache = MemoryCache::<Uuid, V>::new_ttl(size, Duration::from_secs(3600));
         let redis_cache = RedisCache::new(self.redis.clone(), name.to_string());
         let cache = TieredCache::<Uuid, V>::new(memory_cache, redis_cache);
@@ -63,6 +66,7 @@ impl BoscaCacheManager {
     where
         V: Clone + Send + Sync + serde::ser::Serialize + serde::de::DeserializeOwned + 'static,
     {
+        info!("adding new string tiered cache: {} with size: {}", name, size);
         let memory_cache = MemoryCache::<String, V>::new_ttl(size, Duration::from_secs(3600));
         let redis_cache = RedisCache::new(self.redis.clone(), name.to_string());
         let cache = TieredCache::<String, V>::new(memory_cache, redis_cache);
@@ -81,6 +85,7 @@ impl BoscaCacheManager {
     where
         V: Clone + Send + Sync + serde::ser::Serialize + serde::de::DeserializeOwned + 'static,
     {
+        info!("adding new int tiered cache: {} with size: {}", name, size);
         let memory_cache = MemoryCache::<i64, V>::new_ttl(size, Duration::from_secs(3600));
         let redis_cache = RedisCache::new(self.redis.clone(), name.to_string());
         let cache = TieredCache::<i64, V>::new(memory_cache, redis_cache);

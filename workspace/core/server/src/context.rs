@@ -82,7 +82,7 @@ impl BoscaContext {
         let search = new_search_client()?;
         info!("Building Context");
         let mut cache = BoscaCacheManager::new(redis_cache_client, Arc::clone(&notifier));
-        Ok(BoscaContext {
+        let ctx = BoscaContext {
             security: SecurityDataStore::new(&mut cache, Arc::clone(&bosca_pool), new_jwt(), url_secret_key),
             workflow: WorkflowDataStore::new(
                 Arc::clone(&bosca_pool),
@@ -107,7 +107,9 @@ impl BoscaContext {
             storage: new_object_storage(),
             principal: get_anonymous_principal(),
             cache
-        })
+        };
+        info!("Context built");
+        Ok(ctx)
     }
 
     pub async fn check_metadata_action_principal(
