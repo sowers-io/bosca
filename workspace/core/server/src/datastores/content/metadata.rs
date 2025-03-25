@@ -29,9 +29,9 @@ pub struct MetadataDataStore {
 }
 
 impl MetadataDataStore {
-    pub fn new(pool: Arc<Pool>, cache: &mut BoscaCacheManager, notifier: Arc<Notifier>) -> Self {
+    pub async fn new(pool: Arc<Pool>, cache: &mut BoscaCacheManager, notifier: Arc<Notifier>) -> Self {
         Self {
-            cache: MetadataCache::new(cache),
+            cache: MetadataCache::new(cache).await,
             pool,
             notifier,
         }

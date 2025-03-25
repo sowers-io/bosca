@@ -16,11 +16,11 @@ pub struct SecurityCache {
 }
 
 impl SecurityCache {
-    pub fn new(cache: &mut BoscaCacheManager) -> Self {
+    pub async fn new(cache: &mut BoscaCacheManager) -> Self {
         Self {
-            principal_id: cache.new_cache(CACHE_SECURITY_PRINCIPAL_ID, 5000),
-            group_id: cache.new_cache(CACHE_SECURITY_GROUP_ID, 5000),
-            group_name: cache.new_cache(CACHE_SECURITY_GROUP_NAME, 5000),
+            principal_id: cache.new_cache(CACHE_SECURITY_PRINCIPAL_ID, 5000).await,
+            group_id: cache.new_cache(CACHE_SECURITY_GROUP_ID, 5000).await,
+            group_name: cache.new_cache(CACHE_SECURITY_GROUP_NAME, 5000).await,
         }
     }
 

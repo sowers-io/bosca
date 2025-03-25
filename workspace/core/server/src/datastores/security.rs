@@ -30,9 +30,9 @@ pub const WORKFLOW_MANAGERS_GROUP: &str = "workflow.managers";
 
 
 impl SecurityDataStore {
-    pub fn new(cache: &mut BoscaCacheManager, pool: Arc<Pool>, jwt: Jwt, url_secret_key: String) -> Self {
+    pub async fn new(cache: &mut BoscaCacheManager, pool: Arc<Pool>, jwt: Jwt, url_secret_key: String) -> Self {
         Self {
-            cache: SecurityCache::new(cache),
+            cache: SecurityCache::new(cache).await,
             pool,
             jwt,
             url_secret_key,

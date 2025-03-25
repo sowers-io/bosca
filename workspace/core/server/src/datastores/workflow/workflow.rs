@@ -44,7 +44,7 @@ pub struct WorkflowDataStore {
 }
 
 impl WorkflowDataStore {
-    pub fn new(
+    pub async fn new(
         pool: Arc<Pool>,
         cache: &mut BoscaCacheManager,
         queues: JobQueues,
@@ -53,7 +53,7 @@ impl WorkflowDataStore {
         Self {
             pool,
             queues,
-            cache: WorkflowCache::new(cache),
+            cache: WorkflowCache::new(cache).await,
             notifier,
         }
     }

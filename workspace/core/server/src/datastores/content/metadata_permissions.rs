@@ -21,14 +21,14 @@ pub struct MetadataPermissionsDataStore {
 }
 
 impl MetadataPermissionsDataStore {
-    pub fn new(pool: Arc<Pool>, cache: &mut BoscaCacheManager, notifier: Arc<Notifier>) -> Self {
+    pub async fn new(pool: Arc<Pool>, cache: &mut BoscaCacheManager, notifier: Arc<Notifier>) -> Self {
         Self {
             pool,
             permission_cache: cache.new_id_tiered_cache(
                 "metadata_permissions",
                 5000,
                 TieredCacheType::Metadata,
-            ),
+            ).await,
             notifier,
         }
     }

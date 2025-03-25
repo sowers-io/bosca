@@ -4,18 +4,19 @@ use crate::datastores::cache::redis_cache::RedisCache;
 use crate::datastores::cache::tiered_cache::{TieredCache, TieredCacheType};
 use crate::datastores::notifier::Notifier;
 use crate::redis::RedisClient;
+use log::info;
 use std::collections::HashMap;
 use std::hash::Hash;
 use std::sync::Arc;
 use std::time::Duration;
-use log::info;
+use tokio::sync::Mutex;
 use uuid::Uuid;
 
 #[derive(Clone)]
 pub struct BoscaCacheManager {
     redis: RedisClient,
     notifier: Arc<Notifier>,
-    caches: HashMap<String, Box<dyn ManagedBoscaCache>>,
+    caches: Arc<Mutex<HashMap<String, Box<dyn ManagedBoscaCache>>>>,
 }
 
 impl BoscaCacheManager {
@@ -23,24 +24,25 @@ impl BoscaCacheManager {
         Self {
             redis,
             notifier,
-            caches: HashMap::new(),
+            caches: Arc::new(Mutex::new(HashMap::new())),
         }
     }
 
-    pub fn new_cache<K, V>(&mut self, name: &str, size: u64) -> BoscaCache<K, V>
+    pub async fn new_cache<K, V>(&mut self, name: &str, size: u64) -> BoscaCache<K, V>
     where
         K: Clone + Send + Sync + serde::ser::Serialize + Hash + Eq + redis::ToRedisArgs + 'static,
         V: Clone + Send + Sync + serde::ser::Serialize + serde::de::DeserializeOwned + 'static,
     {
+        let mut caches = self.caches.lock().await;
         info!("adding new memory cache: {} with size: {}", name, size);
         let cache = BoscaCache::MemoryCache(MemoryCache::<K, V>::new(size));
         info!("storing cache added");
-        self.caches.insert(name.to_string(), cache.to_managed());
+        caches.insert(name.to_string(), cache.to_managed());
         info!("cache added");
         cache
     }
 
-    pub fn new_id_tiered_cache<V>(
+    pub async fn new_id_tiered_cache<V>(
         &mut self,
         name: &str,
         size: u64,
@@ -49,6 +51,7 @@ impl BoscaCacheManager {
     where
         V: Clone + Send + Sync + serde::ser::Serialize + serde::de::DeserializeOwned + 'static,
     {
+        let mut caches = self.caches.lock().await;
         info!("adding new id tiered cache: {} with size: {}", name, size);
         let memory_cache = MemoryCache::<Uuid, V>::new_ttl(size, Duration::from_secs(3600));
         let redis_cache = RedisCache::new(self.redis.clone(), name.to_string());
@@ -56,12 +59,12 @@ impl BoscaCacheManager {
         cache.watch_changes(Arc::clone(&self.notifier), tiered_cache);
         let tiered_cache = BoscaCache::TieredCache(cache);
         info!("storing cache added");
-        self.caches.insert(name.to_string(), tiered_cache.to_managed());
+        caches.insert(name.to_string(), tiered_cache.to_managed());
         info!("cache added");
         tiered_cache
     }
 
-    pub fn new_string_tiered_cache<V>(
+    pub async fn new_string_tiered_cache<V>(
         &mut self,
         name: &str,
         size: u64,
@@ -70,19 +73,23 @@ impl BoscaCacheManager {
     where
         V: Clone + Send + Sync + serde::ser::Serialize + serde::de::DeserializeOwned + 'static,
     {
-        info!("adding new string tiered cache: {} with size: {}", name, size);
+        let mut caches = self.caches.lock().await;
+        info!(
+            "adding new string tiered cache: {} with size: {}",
+            name, size
+        );
         let memory_cache = MemoryCache::<String, V>::new_ttl(size, Duration::from_secs(3600));
         let redis_cache = RedisCache::new(self.redis.clone(), name.to_string());
         let cache = TieredCache::<String, V>::new(memory_cache, redis_cache);
         cache.watch_changes(Arc::clone(&self.notifier), tiered_cache);
         let tiered_cache = BoscaCache::TieredCache(cache);
         info!("storing cache added");
-        self.caches.insert(name.to_string(), tiered_cache.to_managed());
+        caches.insert(name.to_string(), tiered_cache.to_managed());
         info!("cache added");
         tiered_cache
     }
 
-    pub fn new_int_tiered_cache<V>(
+    pub async fn new_int_tiered_cache<V>(
         &mut self,
         name: &str,
         size: u64,
@@ -91,6 +98,7 @@ impl BoscaCacheManager {
     where
         V: Clone + Send + Sync + serde::ser::Serialize + serde::de::DeserializeOwned + 'static,
     {
+        let mut caches = self.caches.lock().await;
         info!("adding new int tiered cache: {} with size: {}", name, size);
         let memory_cache = MemoryCache::<i64, V>::new_ttl(size, Duration::from_secs(3600));
         let redis_cache = RedisCache::new(self.redis.clone(), name.to_string());
@@ -98,13 +106,14 @@ impl BoscaCacheManager {
         cache.watch_changes(Arc::clone(&self.notifier), tiered_cache);
         let tiered_cache = BoscaCache::TieredCache(cache);
         info!("storing cache added");
-        self.caches.insert(name.to_string(), tiered_cache.to_managed());
+        caches.insert(name.to_string(), tiered_cache.to_managed());
         info!("cache added");
         tiered_cache
     }
 
     pub async fn clear_all(&self) {
-        for (_, cache) in self.caches.iter() {
+        let caches = self.caches.lock().await;
+        for cache in caches.values() {
             cache.clear().await;
         }
     }

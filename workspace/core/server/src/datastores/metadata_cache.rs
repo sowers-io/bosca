@@ -10,13 +10,13 @@ pub struct MetadataCache {
 }
 
 impl MetadataCache {
-    pub fn new(cache: &mut BoscaCacheManager) -> Self {
+    pub async fn new(cache: &mut BoscaCacheManager) -> Self {
         Self {
             metadata_id: cache.new_id_tiered_cache(
                 "metadata::id",
                 5000,
                 TieredCacheType::Metadata,
-            ),
+            ).await,
         }
     }
 

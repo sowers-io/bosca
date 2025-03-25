@@ -20,14 +20,14 @@ pub struct CollectionPermissionsDataStore {
 }
 
 impl CollectionPermissionsDataStore {
-    pub fn new(pool: Arc<Pool>, cache: &mut BoscaCacheManager, notifier: Arc<Notifier>) -> Self {
+    pub async fn new(pool: Arc<Pool>, cache: &mut BoscaCacheManager, notifier: Arc<Notifier>) -> Self {
         Self {
             pool,
             cache: cache.new_id_tiered_cache(
                 "collection_permissions",
                 5000,
                 TieredCacheType::Collection,
-            ),
+            ).await,
             notifier,
         }
     }

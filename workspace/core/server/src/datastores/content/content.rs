@@ -43,9 +43,9 @@ pub struct ContentDataStore {
 
 impl ContentDataStore {
 
-    pub fn new(pool: Arc<Pool>, cache: &mut BoscaCacheManager, notifier: Arc<Notifier>) -> Self {
+    pub async fn new(pool: Arc<Pool>, cache: &mut BoscaCacheManager, notifier: Arc<Notifier>) -> Self {
         Self {
-            slug_cache: cache.new_string_tiered_cache("slugs", 5000, TieredCacheType::Slug),
+            slug_cache: cache.new_string_tiered_cache("slugs", 5000, TieredCacheType::Slug).await,
             categories: CategoriesDataStore::new(Arc::clone(&pool), Arc::clone(&notifier)),
             collections: CollectionsDataStore::new(Arc::clone(&pool), Arc::clone(&notifier)),
             collection_supplementary: CollectionSupplementaryDataStore::new(Arc::clone(&pool), Arc::clone(&notifier)),
@@ -53,7 +53,7 @@ impl ContentDataStore {
                 Arc::clone(&pool),
                 cache,
                 Arc::clone(&notifier),
-            ),
+            ).await,
             collection_workflows: CollectionWorkflowsDataStore::new(
                 Arc::clone(&pool),
                 Arc::clone(&notifier),
@@ -61,13 +61,13 @@ impl ContentDataStore {
             collection_templates: CollectionTemplatesDataStore::new(
                 Arc::clone(&pool),
             ),
-            metadata: MetadataDataStore::new(Arc::clone(&pool), cache, Arc::clone(&notifier)),
+            metadata: MetadataDataStore::new(Arc::clone(&pool), cache, Arc::clone(&notifier)).await,
             metadata_supplementary: MetadataSupplementaryDataStore::new(Arc::clone(&pool), Arc::clone(&notifier)),
             metadata_permissions: MetadataPermissionsDataStore::new(
                 Arc::clone(&pool),
                 cache,
                 Arc::clone(&notifier),
-            ),
+            ).await,
             metadata_workflows: MetadataWorkflowsDataStore::new(
                 Arc::clone(&pool),
                 Arc::clone(&notifier),

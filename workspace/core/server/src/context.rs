@@ -1,35 +1,35 @@
+use crate::datastores::cache::manager::BoscaCacheManager;
 use crate::datastores::configurations::ConfigurationDataStore;
 use crate::datastores::content::content::ContentDataStore;
 use crate::datastores::content::workflow_schedules::WorkflowScheduleDataStore;
-use crate::datastores::persisted_queries::PersistedQueriesDataStore;
-use crate::datastores::security::SecurityDataStore;
-use crate::graphql::content::storage::ObjectStorage;
-use crate::models::content::collection::Collection;
-use crate::models::content::metadata::Metadata;
-use crate::models::security::permission::PermissionAction;
-use crate::models::security::principal::Principal;
-use async_graphql::{Context, Error};
-use bosca_database::build_pool;
-use deadpool_postgres::Transaction;
-use meilisearch_sdk::client::Client;
-use std::env;
-use std::sync::Arc;
-use log::info;
-use uuid::Uuid;
-use crate::datastores::cache::manager::BoscaCacheManager;
 use crate::datastores::notifier::Notifier;
+use crate::datastores::persisted_queries::PersistedQueriesDataStore;
 use crate::datastores::profile::ProfileDataStore;
+use crate::datastores::security::SecurityDataStore;
 use crate::datastores::workflow::workflow::WorkflowDataStore;
+use crate::graphql::content::storage::ObjectStorage;
 use crate::initialization::jwt::new_jwt;
 use crate::initialization::object_storage::new_object_storage;
 use crate::initialization::redis::new_redis_client;
 use crate::initialization::search::new_search_client;
+use crate::models::content::collection::Collection;
 use crate::models::content::collection_supplementary::CollectionSupplementary;
+use crate::models::content::metadata::Metadata;
 use crate::models::content::metadata_supplementary::MetadataSupplementary;
 use crate::models::profiles::profile::Profile;
 use crate::models::profiles::profile_visibility::ProfileVisibility;
+use crate::models::security::permission::PermissionAction;
+use crate::models::security::principal::Principal;
 use crate::security::authorization_extension::get_anonymous_principal;
 use crate::workflow::queue::JobQueues;
+use async_graphql::{Context, Error};
+use bosca_database::build_pool;
+use deadpool_postgres::Transaction;
+use log::info;
+use meilisearch_sdk::client::Client;
+use std::env;
+use std::sync::Arc;
+use uuid::Uuid;
 
 #[derive(Clone)]
 pub struct BoscaContext {
@@ -83,13 +83,20 @@ impl BoscaContext {
         info!("Building Context");
         let mut cache = BoscaCacheManager::new(redis_cache_client, Arc::clone(&notifier));
         let ctx = BoscaContext {
-            security: SecurityDataStore::new(&mut cache, Arc::clone(&bosca_pool), new_jwt(), url_secret_key),
+            security: SecurityDataStore::new(
+                &mut cache,
+                Arc::clone(&bosca_pool),
+                new_jwt(),
+                url_secret_key,
+            )
+            .await,
             workflow: WorkflowDataStore::new(
                 Arc::clone(&bosca_pool),
                 &mut cache,
                 jobs.clone(),
                 Arc::clone(&notifier),
-            ),
+            )
+            .await,
             workflow_schedule: WorkflowScheduleDataStore::new(
                 Arc::clone(&bosca_pool),
                 Arc::clone(&notifier),
@@ -101,12 +108,12 @@ impl BoscaContext {
             ),
             profile: ProfileDataStore::new(Arc::clone(&bosca_pool)),
             queries: PersistedQueriesDataStore::new(Arc::clone(&bosca_pool)).await,
-            content: ContentDataStore::new(bosca_pool, &mut cache, Arc::clone(&notifier)),
+            content: ContentDataStore::new(bosca_pool, &mut cache, Arc::clone(&notifier)).await,
             notifier,
             search,
             storage: new_object_storage(),
             principal: get_anonymous_principal(),
-            cache
+            cache,
         };
         info!("Context built");
         Ok(ctx)
