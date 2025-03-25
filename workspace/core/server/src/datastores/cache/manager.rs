@@ -55,8 +55,7 @@ impl BoscaCacheManager {
         info!("adding new id tiered cache: {} with size: {}", name, size);
         let memory_cache = MemoryCache::<Uuid, V>::new_ttl(size, Duration::from_secs(3600));
         let redis_cache = RedisCache::new(self.redis.clone(), name.to_string());
-        let cache = TieredCache::<Uuid, V>::new(memory_cache, redis_cache);
-        cache.watch_changes(Arc::clone(&self.notifier), tiered_cache);
+        let cache = TieredCache::<Uuid, V>::new(memory_cache, redis_cache, tiered_cache);
         let tiered_cache = BoscaCache::TieredCache(cache);
         info!("storing cache added");
         caches.insert(name.to_string(), tiered_cache.to_managed());
@@ -80,8 +79,7 @@ impl BoscaCacheManager {
         );
         let memory_cache = MemoryCache::<String, V>::new_ttl(size, Duration::from_secs(3600));
         let redis_cache = RedisCache::new(self.redis.clone(), name.to_string());
-        let cache = TieredCache::<String, V>::new(memory_cache, redis_cache);
-        cache.watch_changes(Arc::clone(&self.notifier), tiered_cache);
+        let cache = TieredCache::<String, V>::new(memory_cache, redis_cache, tiered_cache);
         let tiered_cache = BoscaCache::TieredCache(cache);
         info!("storing cache added");
         caches.insert(name.to_string(), tiered_cache.to_managed());
@@ -102,8 +100,7 @@ impl BoscaCacheManager {
         info!("adding new int tiered cache: {} with size: {}", name, size);
         let memory_cache = MemoryCache::<i64, V>::new_ttl(size, Duration::from_secs(3600));
         let redis_cache = RedisCache::new(self.redis.clone(), name.to_string());
-        let cache = TieredCache::<i64, V>::new(memory_cache, redis_cache);
-        cache.watch_changes(Arc::clone(&self.notifier), tiered_cache);
+        let cache = TieredCache::<i64, V>::new(memory_cache, redis_cache, tiered_cache);
         let tiered_cache = BoscaCache::TieredCache(cache);
         info!("storing cache added");
         caches.insert(name.to_string(), tiered_cache.to_managed());

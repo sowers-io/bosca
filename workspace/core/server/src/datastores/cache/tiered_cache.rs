@@ -8,6 +8,7 @@ use std::sync::Arc;
 use tokio_stream::StreamExt;
 use uuid::Uuid;
 
+#[derive(Clone)]
 pub enum TieredCacheType {
     Slug,
     Metadata,
@@ -31,6 +32,7 @@ where
 {
     memory: MemoryCache<K, V>,
     redis: RedisCache,
+    tiered_type: TieredCacheType,
 }
 
 impl<K, V> TieredCache<K, V>
@@ -38,10 +40,11 @@ where
     K: Clone + Send + Sync + serde::ser::Serialize + Hash + Eq + redis::ToRedisArgs,
     V: Clone + Send + Sync + serde::ser::Serialize + serde::de::DeserializeOwned,
 {
-    pub fn new(memory: MemoryCache<K, V>, redis: RedisCache) -> Self {
+    pub fn new(memory: MemoryCache<K, V>, redis: RedisCache, tiered_type: TieredCacheType) -> Self {
         Self {
             memory: memory.clone(),
             redis,
+            tiered_type,
         }
     }
 }
