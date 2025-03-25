@@ -300,7 +300,7 @@ class BoscaFeature : Feature {
         if (registered.contains(className)) return
         registered.add(className)
         try {
-            if (className.startsWith("java.lang")) return
+            if (className.startsWith("java.lang") || className.startsWith("java.util")) return
             val clazz = Class.forName(className)
             if (clazz.isPrimitive) return
             println("Registering $className...")

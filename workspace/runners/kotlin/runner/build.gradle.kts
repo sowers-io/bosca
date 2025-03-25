@@ -20,7 +20,7 @@ dependencies {
     implementation(project(":installers"))
     implementation(project(":activities"))
 
-    compileOnly("org.graalvm.nativeimage:svm:24.1.2")
+    compileOnly("org.graalvm.nativeimage:svm:24.2.0")
 
     testImplementation(kotlin("test"))
 }
@@ -66,7 +66,8 @@ graalvmNative {
                 "--initialize-at-run-time=ai.onnxruntime.OnnxRuntime",
                 "--initialize-at-build-time=com.oracle.truffle.trufflenode",
                 "--install-exit-handlers",
-                "--features=io.bosca.graalvm.BoscaFeature"
+                "--features=io.bosca.graalvm.BoscaFeature",
+                "--enable-preview"
             )
             if (System.getenv("MARCH") != null) {
                 args.add("-march=${System.getenv("MARCH")}")

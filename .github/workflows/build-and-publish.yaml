@@ -86,7 +86,7 @@ jobs:
 
       - uses: graalvm/setup-graalvm@v1
         with:
-          java-version: '23.0.2'
+          java-version: '24'
           distribution: 'graalvm-community'
 
       - run: cd workspace/runners/kotlin && ./gradlew nativeBuild
