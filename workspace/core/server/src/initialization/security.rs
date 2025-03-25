@@ -77,6 +77,11 @@ pub async fn initialize_security(ctx: &BoscaContext) -> Result<(), Error> {
             ctx.security
                 .add_principal_group(&principal.id, &group.id)
                 .await?;
+            // TODO: relax this
+            let group = ctx.security.get_administrators_group().await?;
+            ctx.security
+                .add_principal_group(&principal.id, &group.id)
+                .await?;
         }
     }
     Ok(())
