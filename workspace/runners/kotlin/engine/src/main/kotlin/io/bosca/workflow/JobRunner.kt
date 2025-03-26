@@ -28,16 +28,6 @@ class JobRunner(
     }
 
     suspend fun run() {
-        val jobs = mutableListOf<Job>()
-        coroutineScope {
-            for (i in 0..4) {
-                jobs.add(launch { process() })
-            }
-        }
-        jobs.forEach { it.join() }
-    }
-
-    private suspend fun process() {
         coroutineScope {
             while (!shutdown.get()) {
                 if (active.get() >= max) {
