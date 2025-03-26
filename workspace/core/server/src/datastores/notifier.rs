@@ -144,14 +144,14 @@ impl Notifier {
             .filter_map(|msg| async move { msg.get_payload().ok() }))
     }
 
-    pub async fn listen_workflow_activity_changes(&self) -> Result<impl Stream<Item = i64>, Error> {
-        let connection = self.redis.get().await?;
-        let mut pubsub = connection.get_pubsub().await?;
-        pubsub.subscribe("workflow_activity_changes").await?;
-        Ok(pubsub
-            .into_on_message()
-            .filter_map(|msg| async move { msg.get_payload().ok() }))
-    }
+    // pub async fn listen_workflow_activity_changes(&self) -> Result<impl Stream<Item = i64>, Error> {
+    //     let connection = self.redis.get().await?;
+    //     let mut pubsub = connection.get_pubsub().await?;
+    //     pubsub.subscribe("workflow_activity_changes").await?;
+    //     Ok(pubsub
+    //         .into_on_message()
+    //         .filter_map(|msg| async move { msg.get_payload().ok() }))
+    // }
 
     pub async fn listen_workflow_schedule_changes(
         &self,

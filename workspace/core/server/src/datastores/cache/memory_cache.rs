@@ -17,17 +17,17 @@ where
     K: Clone + Send + Sync + serde::ser::Serialize + Hash + Eq + 'static,
     V: Clone + Send + Sync + serde::ser::Serialize + serde::de::DeserializeOwned + 'static,
 {
-    pub fn new(size: u64) -> Self {
-        Self {
-            cache: Cache::builder().max_capacity(size).build(),
-        }
-    }
+    // pub fn new(size: u64) -> Self {
+    //     Self {
+    //         cache: Cache::builder().max_capacity(size).build(),
+    //     }
+    // }
 
     pub fn new_ttl(size: u64, ttl: Duration) -> Self {
         Self {
             cache: Cache::builder()
                 .max_capacity(size)
-                .time_to_live(ttl)
+                .time_to_idle(ttl)
                 .build(),
         }
     }
