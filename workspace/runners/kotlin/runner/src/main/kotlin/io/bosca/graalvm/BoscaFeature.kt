@@ -95,6 +95,10 @@ class BoscaFeature : Feature {
         register("dev.ai4j.openai4j.chat.ChatCompletionResponse", access)
         register("dev.ai4j.openai4j.chat.ChatCompletionResponse\$Builder", access)
 
+        register("dev.ai4j.openai4j.shared.Usage", access)
+        register("dev.ai4j.openai4j.shared.Usage\$Builder", access)
+
+
         // Register security classes
         registerSecurityProviders(access)
 
