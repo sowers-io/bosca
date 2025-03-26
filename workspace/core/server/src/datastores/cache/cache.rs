@@ -6,6 +6,8 @@ use std::hash::Hash;
 pub trait ManagedBoscaCache: Send + Sync {
     fn to_managed(&self) -> Box<dyn ManagedBoscaCache>;
 
+    fn watch(&self);
+
     async fn clear(&self);
 }
 
@@ -28,6 +30,8 @@ where
     async fn remove(&self, key: &K);
 
     async fn clear(&self);
+
+    fn watch(&self);
 }
 
 #[derive(Clone)]
@@ -49,6 +53,13 @@ where
 {
     fn to_managed(&self) -> Box<dyn ManagedBoscaCache> {
         Box::new(self.clone())
+    }
+
+    fn watch(&self) {
+        match self {
+            BoscaCache::MemoryCache(c) => c.watch(),
+            BoscaCache::TieredCache(c) => c.watch(),
+        }
     }
 
     async fn clear(&self) {
@@ -92,6 +103,16 @@ where
         match self {
             BoscaCache::MemoryCache(cache) => cache.clear().await,
             BoscaCache::TieredCache(cache) => cache.clear().await,
+            // BoscaCache::RedisCache(cache) => {
+            //     <RedisCache as BoscaCacheInterface<K, V>>::clear::<'_, '_>(cache).await
+            // }
+        }
+    }
+
+    fn watch(&self) {
+        match self {
+            BoscaCache::MemoryCache(cache) => cache.watch(),
+            BoscaCache::TieredCache(cache) => cache.watch()
             // BoscaCache::RedisCache(cache) => {
             //     <RedisCache as BoscaCacheInterface<K, V>>::clear::<'_, '_>(cache).await
             // }

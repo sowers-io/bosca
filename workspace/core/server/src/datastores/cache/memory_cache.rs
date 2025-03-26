@@ -54,4 +54,7 @@ where
     async fn clear(&self) {
         self.cache.invalidate_all();
     }
+
+    fn watch(&self) {
+    }
 }

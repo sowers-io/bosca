@@ -75,6 +75,7 @@ async fn main() {
         }
     };
 
+    ctx.cache.watch_all().await;
     initialize_security(&ctx).await.unwrap();
     initialize_content(&ctx).await.unwrap();
 

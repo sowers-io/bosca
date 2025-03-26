@@ -33,6 +33,7 @@ where
     memory: MemoryCache<K, V>,
     redis: RedisCache,
     tiered_type: TieredCacheType,
+    notifier: Arc<Notifier>,
 }
 
 impl<K, V> TieredCache<K, V>
@@ -40,11 +41,17 @@ where
     K: Clone + Send + Sync + serde::ser::Serialize + Hash + Eq + redis::ToRedisArgs,
     V: Clone + Send + Sync + serde::ser::Serialize + serde::de::DeserializeOwned,
 {
-    pub fn new(memory: MemoryCache<K, V>, redis: RedisCache, tiered_type: TieredCacheType) -> Self {
+    pub fn new(
+        memory: MemoryCache<K, V>,
+        redis: RedisCache,
+        tiered_type: TieredCacheType,
+        notifier: Arc<Notifier>,
+    ) -> Self {
         Self {
-            memory: memory.clone(),
+            memory,
             redis,
             tiered_type,
+            notifier,
         }
     }
 }
@@ -53,8 +60,10 @@ impl<V> TieredCache<Uuid, V>
 where
     V: Clone + Send + Sync + serde::ser::Serialize + serde::de::DeserializeOwned,
 {
-    pub fn watch_changes(&self, notifier: Arc<Notifier>, tiered_cache: TieredCacheType) {
+    fn watch_changes(&self) {
         let memory = self.memory.clone();
+        let tiered_cache = self.tiered_type.clone();
+        let notifier = Arc::clone(&self.notifier);
         tokio::spawn(async move {
             loop {
                 match tiered_cache {
@@ -105,8 +114,10 @@ impl<V> TieredCache<String, V>
 where
     V: Clone + Send + Sync + serde::ser::Serialize + serde::de::DeserializeOwned,
 {
-    pub fn watch_changes(&self, notifier: Arc<Notifier>, tiered_cache: TieredCacheType) {
+    fn watch_changes(&self) {
         let memory = self.memory.clone();
+        let tiered_cache = self.tiered_type.clone();
+        let notifier = Arc::clone(&self.notifier);
         tokio::spawn(async move {
             loop {
                 match tiered_cache {
@@ -162,8 +173,10 @@ impl<V> TieredCache<i64, V>
 where
     V: Clone + Send + Sync + serde::ser::Serialize + serde::de::DeserializeOwned,
 {
-    pub fn watch_changes(&self, notifier: Arc<Notifier>, tiered_cache: TieredCacheType) {
+    fn watch_changes(&self) {
         let memory = self.memory.clone();
+        let tiered_cache = self.tiered_type.clone();
+        let notifier = Arc::clone(&self.notifier);
         tokio::spawn(async move {
             loop {
                 if let TieredCacheType::WorkflowActivity = tiered_cache {
@@ -210,5 +223,25 @@ where
     async fn clear(&self) {
         self.memory.clear().await;
         <RedisCache as BoscaCacheInterface<K, V>>::clear::<'_, '_>(&self.redis).await;
+    }
+
+    fn watch(&self) {
+        let type_name = std::any::type_name::<K>();
+        if type_name.ends_with("::Uuid") {
+            #[allow(clippy::transmute_ptr_to_ptr)]
+            let uuid_cache =
+                unsafe { std::mem::transmute::<&TieredCache<K, V>, &TieredCache<Uuid, V>>(self) };
+            uuid_cache.watch_changes();
+        } else if type_name.ends_with("::String") {
+            #[allow(clippy::transmute_ptr_to_ptr)]
+            let string_cache =
+                unsafe { std::mem::transmute::<&TieredCache<K, V>, &TieredCache<String, V>>(self) };
+            string_cache.watch_changes();
+        } else if type_name == "i64" {
+            #[allow(clippy::transmute_ptr_to_ptr)]
+            let i64_cache =
+                unsafe { std::mem::transmute::<&TieredCache<K, V>, &TieredCache<i64, V>>(self) };
+            i64_cache.watch_changes();
+        }
     }
 }

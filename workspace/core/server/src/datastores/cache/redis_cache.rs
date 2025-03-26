@@ -77,4 +77,7 @@ where
             error!("failed to clear: {:?}", e);
         }
     }
+
+    fn watch(&self) {
+    }
 }

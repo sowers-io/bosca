@@ -16,14 +16,18 @@ export class NuxtNetworkClient extends NetworkClient {
 
   override get token(): string | null {
     if (!this._cookie) {
-      this._cookie = useCookie('_bat')
+      this._cookie = useCookie('_bat', {
+        domain: useRuntimeConfig().public.domain,
+      })
     }
     return this._cookie.value || null
   }
 
   override set token(value: string | null | undefined) {
     if (!this._cookie) {
-      this._cookie = useCookie('_bat')
+      this._cookie = useCookie('_bat', {
+        domain: useRuntimeConfig().public.domain,
+      })
     }
     this._cookie.value = value || ''
   }
