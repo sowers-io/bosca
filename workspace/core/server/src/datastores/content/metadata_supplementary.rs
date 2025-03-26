@@ -70,7 +70,24 @@ impl MetadataSupplementaryDataStore {
         &self,
         metadata_id: &Uuid,
         key: &str,
-        plan_id: Option<Uuid>,
+    ) -> Result<Option<MetadataSupplementary>, Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("select * from metadata_supplementary where metadata_id = $1 and key = $2 order by created desc limit 1")
+            .await?;
+        let key = key.to_owned();
+        let rows = connection.query(&stmt, &[metadata_id, &key]).await?;
+        if rows.is_empty() {
+            return Ok(None);
+        }
+        Ok(Some(rows.first().unwrap().into()))
+    }
+
+    pub async fn get_supplementary_by_key_and_plan_id(
+        &self,
+        metadata_id: &Uuid,
+        key: &str,
+        plan_id: &Uuid,
     ) -> Result<Option<MetadataSupplementary>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection

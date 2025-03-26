@@ -285,26 +285,48 @@ impl MetadataObject {
         let ctx = ctx.data::<BoscaContext>()?;
 
         if let Some(key) = key {
-            if ctx.check_metadata_supplementary_action(&self.metadata, PermissionAction::View).await.is_err() {
-                return Ok(vec![])
-            }
-            let plan_id = plan_id.map(|p| Uuid::parse_str(&p).unwrap());
-            if let Some(supplementary) = ctx
-                .content
-                .metadata_supplementary
-                .get_supplementary_by_key(&self.metadata.id, &key, plan_id)
-                .await?
+            if ctx
+                .check_metadata_supplementary_action(&self.metadata, PermissionAction::View)
+                .await
+                .is_err()
             {
-                return Ok(vec![MetadataSupplementaryObject::new(
-                    self.metadata.clone(),
-                    supplementary,
-                )]);
+                return Ok(vec![]);
             }
+            if let Some(plan_id) = plan_id.map(|p| Uuid::parse_str(&p).unwrap()) {
+                if let Some(supplementary) = ctx
+                    .content
+                    .metadata_supplementary
+                    .get_supplementary_by_key_and_plan_id(&self.metadata.id, &key, &plan_id)
+                    .await?
+                {
+                    return Ok(vec![MetadataSupplementaryObject::new(
+                        self.metadata.clone(),
+                        supplementary,
+                    )]);
+                }
+            } else {
+                if let Some(supplementary) = ctx
+                    .content
+                    .metadata_supplementary
+                    .get_supplementary_by_key(&self.metadata.id, &key)
+                    .await?
+                {
+                    return Ok(vec![MetadataSupplementaryObject::new(
+                        self.metadata.clone(),
+                        supplementary,
+                    )]);
+                }
+            }
+
             return Ok(vec![]);
         }
 
-        if ctx.check_metadata_supplementary_action(&self.metadata, PermissionAction::List).await.is_err() {
-            return Ok(vec![])
+        if ctx
+            .check_metadata_supplementary_action(&self.metadata, PermissionAction::List)
+            .await
+            .is_err()
+        {
+            return Ok(vec![]);
         }
 
         Ok(ctx

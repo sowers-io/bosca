@@ -18,10 +18,10 @@ pub async fn initialize_security(ctx: &BoscaContext) -> Result<(), Error> {
         }
     };
     let admin_password = match env::var("BOSCA_INIT_ADMIN_PASSWORD") {
-        Ok(admin_username) => admin_username,
+        Ok(admin_password) => admin_password,
         _ => {
             println!("Environment variable BOSCA_INIT_ADMIN_USERNAME could not be read, falling back to default value 'password'...");
-            "admin".to_string()
+            "password".to_string()
         }
     };
 
@@ -58,7 +58,7 @@ pub async fn initialize_security(ctx: &BoscaContext) -> Result<(), Error> {
         Ok(sa_password) => sa_password,
         _ => {
             println!("Environment variable BOSCA_INIT_SA_PASSWORD could not be read, falling back to default value 'password'...");
-            "admin".to_string()
+            "password".to_string()
         }
     };
 

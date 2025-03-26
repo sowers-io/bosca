@@ -48,7 +48,7 @@ export default defineNuxtConfig({
     graphqlUrl: 'http://localhost:8000/graphql',
     graphqlWsUrl: 'ws://localhost:8000/ws',
     public: {
-      domain: 'http://localhost',
+      domain: 'localhost',
       graphqlUrl: 'http://localhost:8000/graphql',
       graphqlWsUrl: 'ws://localhost:8000/ws',
     },
