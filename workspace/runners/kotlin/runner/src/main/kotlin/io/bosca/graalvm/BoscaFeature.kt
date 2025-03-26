@@ -92,6 +92,9 @@ class BoscaFeature : Feature {
         register("com.fasterxml.jackson.databind.PropertyNamingStrategies", access)
         register("com.fasterxml.jackson.databind.PropertyNamingStrategies\$SnakeCaseStrategy", access)
 
+        register("dev.ai4j.openai4j.chat.ChatCompletionResponse", access)
+        register("dev.ai4j.openai4j.chat.ChatCompletionResponse\$Builder", access)
+
         // Register security classes
         registerSecurityProviders(access)
 
