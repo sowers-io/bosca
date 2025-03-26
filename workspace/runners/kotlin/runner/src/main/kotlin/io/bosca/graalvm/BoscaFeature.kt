@@ -95,6 +95,7 @@ class BoscaFeature : Feature {
         register("dev.ai4j.openai4j.chat.ChatCompletionResponse", access, recursive = true)
         register("dev.ai4j.openai4j.shared.Usage", access, recursive = true)
         register("dev.ai4j.openai4j.shared.PromptTokensDetails", access, recursive = true)
+        register("dev.ai4j.openai4j.chat.ChatCompletionChoice", access, recursive = true)
 
 
         // Register security classes
