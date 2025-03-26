@@ -92,11 +92,9 @@ class BoscaFeature : Feature {
         register("com.fasterxml.jackson.databind.PropertyNamingStrategies", access)
         register("com.fasterxml.jackson.databind.PropertyNamingStrategies\$SnakeCaseStrategy", access)
 
-        register("dev.ai4j.openai4j.chat.ChatCompletionResponse", access)
-        register("dev.ai4j.openai4j.chat.ChatCompletionResponse\$Builder", access)
-
-        register("dev.ai4j.openai4j.shared.Usage", access)
-        register("dev.ai4j.openai4j.shared.Usage\$Builder", access)
+        register("dev.ai4j.openai4j.chat.ChatCompletionResponse", access, recursive = true)
+        register("dev.ai4j.openai4j.shared.Usage", access, recursive = true)
+        register("dev.ai4j.openai4j.shared.PromptTokensDetails", access, recursive = true)
 
 
         // Register security classes
@@ -390,7 +388,8 @@ class BoscaFeature : Feature {
             RuntimeReflection.registerAllSigners(clazz)
             try {
                 RuntimeReflection.registerForReflectiveInstantiation(clazz)
-            } catch (ignore: IllegalArgumentException) {}
+            } catch (ignore: IllegalArgumentException) {
+            }
         } catch (e: ClassNotFoundException) {
             println("Class not found: $className")
         }
