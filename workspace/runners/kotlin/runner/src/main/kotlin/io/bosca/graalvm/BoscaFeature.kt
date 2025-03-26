@@ -90,6 +90,7 @@ class BoscaFeature : Feature {
 
         register("com.fasterxml.jackson.databind.ext.Java7SupportImpl", access)
         register("com.fasterxml.jackson.databind.PropertyNamingStrategies", access)
+        register("com.fasterxml.jackson.databind.PropertyNamingStrategies\$SnakeCaseStrategy", access)
 
         // Register security classes
         registerSecurityProviders(access)
