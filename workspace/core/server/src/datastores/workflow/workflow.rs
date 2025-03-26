@@ -935,6 +935,8 @@ impl WorkflowDataStore {
         }
         txn.commit().await?;
 
+        self.cache.evict_storage_system(id).await;
+
         let mut request = EnqueueRequest {
             workflow_id: Some(STORAGE_INDEX_INITIALIZE.to_string()),
             storage_system_ids: Some(vec![*id]),
@@ -943,8 +945,6 @@ impl WorkflowDataStore {
         if let Err(e) = ctx.workflow.enqueue_workflow(ctx, &mut request).await {
             log::error!("Failed to initialize storage system: {:?}", e);
         }
-
-        self.cache.evict_storage_system(id).await;
 
         let id_str = id.to_string();
         self.notifier.storage_system_changed(&id_str).await?;
