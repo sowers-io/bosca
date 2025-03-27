@@ -3,6 +3,7 @@ use crate::models::workflow::activities::{
     WorkflowActivityParameter, WorkflowActivityPrompt, WorkflowActivityStorageSystem,
 };
 use crate::models::workflow::workflows::Workflow;
+use crate::workflow::queue::JobQueues;
 use crate::workflow::transaction::{RedisTransaction, RedisTransactionOp};
 use async_graphql::{Error, InputObject};
 use chrono::{DateTime, Utc};
@@ -13,7 +14,6 @@ use serde_json::Value;
 use std::collections::HashSet;
 use std::fmt::{Display, Formatter};
 use uuid::Uuid;
-use crate::workflow::queue::JobQueues;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
 pub struct WorkflowExecutionId {
@@ -143,7 +143,6 @@ pub enum WorkflowExecuteJobState {
 }
 
 impl WorkflowExecutionPlan {
-
     pub async fn enqueue(
         &mut self,
         db_txn: &Transaction<'_>,
@@ -160,7 +159,8 @@ impl WorkflowExecutionPlan {
                     error!(target: "workflow", "plan finished job state is invalid: {}", self.id);
                     return Ok(WorkflowExecutePlanState::Error);
                 }
-                self.try_set_parent_complete(db_txn, redis_txn, queues).await?;
+                self.try_set_parent_complete(db_txn, redis_txn, queues)
+                    .await?;
                 queues.set_plan(db_txn, self, false).await?;
                 return Ok(WorkflowExecutePlanState::Complete);
             }
@@ -177,7 +177,6 @@ impl WorkflowExecutionPlan {
             if !self.complete.contains(&job_index) {
                 let job = self.jobs.get(job_index as usize).unwrap();
                 self.active.insert(job_index);
-
                 if let Some(delay_until) = &self.delay_until {
                     let now = Utc::now();
                     if now < *delay_until {
@@ -191,7 +190,17 @@ impl WorkflowExecutionPlan {
                 }
             }
         }
-        queues.set_plan(db_txn, self, next_execution_group == 1).await?;
+        queues
+            .set_plan(db_txn, self, next_execution_group == 1)
+            .await?;
+        if next_execution_group == 1 {
+            if let Some(metadata_id) = self.metadata_id {
+                redis_txn.add_op(RedisTransactionOp::AddMetadataRunning(metadata_id));
+            }
+            if let Some(collection_id) = self.collection_id {
+                redis_txn.add_op(RedisTransactionOp::AddCollectionRunning(collection_id));
+            }
+        }
         Ok(WorkflowExecutePlanState::Running)
     }
 
@@ -202,19 +211,16 @@ impl WorkflowExecutionPlan {
         queues: &JobQueues,
     ) -> Result<(), Error> {
         if let Some(parent_id) = &self.parent {
-            let Some(mut parent_plan) = queues.get_plan_and_lock_by_job(db_txn, parent_id).await? else {
+            let Some(mut parent_plan) = queues.get_plan_and_lock_by_job(db_txn, parent_id).await?
+            else {
                 return Err(Error::new(
                     "can't mark execution complete, missing parent job",
                 ));
             };
             let job = parent_plan.jobs.get_mut(parent_id.index as usize).unwrap();
             job.completed_children.insert(self.id.clone());
-            Box::pin(parent_plan.try_set_job_complete(
-                db_txn,
-                redis_txn,
-                queues,
-                parent_id)
-            ).await?;
+            Box::pin(parent_plan.try_set_job_complete(db_txn, redis_txn, queues, parent_id))
+                .await?;
             queues.set_plan(db_txn, &parent_plan, false).await?;
         }
         Ok(())
@@ -249,11 +255,19 @@ impl WorkflowExecutionPlan {
             self.complete.insert(job.id.index);
         }
         let next_execution_group = job.workflow_activity.execution_group + 1;
-        let result = self.enqueue(db_txn, redis_txn, queues, next_execution_group).await?;
+        let result = self
+            .enqueue(db_txn, redis_txn, queues, next_execution_group)
+            .await?;
         if result == WorkflowExecutePlanState::Running {
             redis_txn.add_op(RedisTransactionOp::PlanCheckin(self.id.clone()));
         } else if result == WorkflowExecutePlanState::Complete {
             redis_txn.add_op(RedisTransactionOp::RemovePlanRunning(self.id.clone()));
+            if let Some(metadata_id) = self.metadata_id {
+                redis_txn.add_op(RedisTransactionOp::RemoveMetadataRunning(metadata_id));
+            }
+            if let Some(collection_id) = self.collection_id {
+                redis_txn.add_op(RedisTransactionOp::RemoveCollectionRunning(collection_id));
+            }
         }
         Ok(result)
     }
@@ -309,6 +323,12 @@ impl WorkflowExecutionPlan {
                 error!(target: "workflow", "job failed too many times, marking as failed: {}", self.id);
             }
             redis_txn.add_op(RedisTransactionOp::RemovePlanRunning(self.id.clone()));
+            if let Some(metadata_id) = self.metadata_id {
+                redis_txn.add_op(RedisTransactionOp::RemoveMetadataRunning(metadata_id));
+            }
+            if let Some(collection_id) = self.collection_id {
+                redis_txn.add_op(RedisTransactionOp::RemoveCollectionRunning(collection_id));
+            }
         }
         Ok(())
     }

@@ -23,6 +23,8 @@ const parents = ref<Array<ParentCollectionFragment> | null>()
 const document = ref<DocumentFragment>()
 const documentTemplate = ref<DocumentTemplateFragment | null>()
 const guide = ref<GuideFragment>()
+const guideMetadataId = ref<string | null>()
+const guideVersion = ref<number | null>()
 const guideTemplate = ref<GuideTemplateFragment | null>()
 const currentStep = ref<GuideStepFragment | null>(null)
 const currentModule = ref<GuideStepModuleFragment | null>(null)
@@ -85,7 +87,7 @@ watch(currentModule, async (module) => {
 })
 
 client.listeners.onMetadataChanged(async (id) => {
-  if (id === metadata.value?.id) {
+  if (id === metadata.value?.id || id === guideMetadataId.value) {
     try {
       document.value = await client.metadata.getDocument(id)
       parents.value = await client.metadata.getParents(id)
@@ -107,6 +109,8 @@ onMounted(async () => {
   if (metadata.value?.content.type === 'bosca/v-document') {
     await loadDocument(route.params.metadataId.toString())
   } else if (metadata.value?.content.type === 'bosca/v-guide') {
+    guideVersion.value = metadata.value.version
+    guideMetadataId.value = metadata.value.id
     await loadGuide(route.params.metadataId.toString())
   }
   const items: BreadcrumbLink[] = [
@@ -122,6 +126,8 @@ onMounted(async () => {
 <template>
   <ContentMetadataGuideEditor
     v-if="metadata && guide && document"
+    :guide-metadata-id="route.params.metadataId.toString()"
+    :guide-metadata-version="guideVersion || 1"
     :guide="guide"
     :guideTemplate="guideTemplate"
     :parents="parents || []"

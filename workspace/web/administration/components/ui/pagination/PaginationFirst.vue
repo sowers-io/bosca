@@ -6,7 +6,12 @@ import { PaginationFirst, type PaginationFirstProps } from 'reka-ui'
 import { computed, type HTMLAttributes } from 'vue'
 
 const props = withDefaults(
-  defineProps<PaginationFirstProps & { class?: HTMLAttributes['class'] }>(),
+  defineProps<
+    PaginationFirstProps & {
+      disabled?: boolean
+      class?: HTMLAttributes['class']
+    }
+  >(),
   {
     asChild: true,
   },
@@ -21,7 +26,11 @@ const delegatedProps = computed(() => {
 
 <template>
   <PaginationFirst v-bind="delegatedProps">
-    <Button :class="cn('w-9 h-9 p-0', props.class)" variant="outline">
+    <Button
+      :class="cn('w-9 h-9 p-0', props.class)"
+      variant="outline"
+      :disabled="props.disabled"
+    >
       <slot>
         <ChevronsLeft />
       </slot>

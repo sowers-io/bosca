@@ -1,7 +1,7 @@
-mutation AddGuideStep($parentCollectionId: String!, $metadataId: String!, $version: Int!, $sort: Int!, $templateId: String!, $templateStepId: Int!, $templateVersion: Int!) {
+mutation AddGuideStep($metadataId: String!, $version: Int!, $sort: Int!, $templateId: String!, $templateStepId: Int!, $templateVersion: Int!) {
     content {
         metadata {
-            addGuideStep(parentCollectionId: $parentCollectionId, metadataId: $metadataId, version: $version, sort: $sort, templateId: $templateId, templateStepId: $templateStepId, templateVersion: $templateVersion) {
+            addGuideStep(metadataId: $metadataId, metadataVersion: $version, sort: $sort, templateId: $templateId, templateStepId: $templateStepId, templateVersion: $templateVersion) {
                 ...GuideStep
             }
         }

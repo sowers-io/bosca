@@ -47,7 +47,8 @@ const { data: collection } = client.collections.findAsyncData({
 
 const collectionItems = computedAsync<CollectionItem[]>(async () => {
   if (!collection.value) return []
-  const items = (await client.collections.list(collection.value[0].id))?.items || []
+  const items =
+    (await client.collections.list(collection.value[0].id))?.items || []
   if (selectedId.value == '' && items.length > 0) {
     selectedId.value = items[0].id
   }
@@ -125,7 +126,10 @@ async function onAdd() {
     if (item.id === selectedId.value) {
       const templates = await client.metadata.find({
         attributes: [],
-        contentTypes: ['bosca/v-' + item.attributes['editor.type'].toLowerCase() + '-template'],
+        contentTypes: [
+          'bosca/v-' + item.attributes['editor.type'].toLowerCase() +
+          '-template',
+        ],
         categoryIds: categoryIds,
         offset: 0,
         limit: 1,
@@ -138,6 +142,7 @@ async function onAdd() {
         })
         return
       }
+      console.log(item.attributes['editor.type'])
       if (item.attributes['editor.type'] === 'Document') {
         await onAddDocument(item.id, template)
       } else if (item.attributes['editor.type'] === 'Guide') {

@@ -3,15 +3,16 @@ use crate::datastores::content::tag::update_metadata_etag;
 use crate::datastores::notifier::Notifier;
 use crate::graphql::content::metadata_mutation::WorkflowConfigurationInput;
 use crate::models::content::metadata::Metadata;
+use crate::models::security::permission::PermissionAction;
 use crate::models::security::principal::Principal;
 use crate::models::workflow::enqueue_request::EnqueueRequest;
+use crate::workflow::core_workflow_ids::METADATA_PROCESS;
 use async_graphql::*;
 use chrono::DateTime;
 use deadpool_postgres::{GenericClient, Pool};
 use log::error;
 use std::sync::Arc;
 use uuid::Uuid;
-use crate::workflow::core_workflow_ids::METADATA_PROCESS;
 
 #[derive(Clone)]
 pub struct MetadataWorkflowsDataStore {
@@ -179,6 +180,23 @@ impl MetadataWorkflowsDataStore {
             ..Default::default()
         };
         workflow.enqueue_workflow(ctx, &mut request).await?;
+        if metadata.content_type == "bosca/v-guide" {
+            let steps = ctx
+                .content
+                .guides
+                .get_guide_steps(&metadata.id, metadata.version, None, None)
+                .await?;
+            for step in steps {
+                let metadata = ctx
+                    .check_metadata_version_action(
+                        &step.step_metadata_id,
+                        step.step_metadata_version,
+                        PermissionAction::View,
+                    )
+                    .await?;
+                Box::pin(self.set_metadata_ready_and_enqueue(ctx, &metadata, None)).await?;
+            }
+        }
         Ok(true)
     }
 }

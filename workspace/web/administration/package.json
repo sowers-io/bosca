@@ -14,6 +14,7 @@
     "postinstall": "nuxt prepare",
     "typecheck": "vue-tsc --noEmit",
     "codegen": "graphql-codegen",
+    "install-queries": "cd installer && deno run -A main.ts",
     "build": "deno task nuxt-build",
     "compile": "cp -r public .output/server && cp deno.json .output/server && cd .output/server && deno install --allow-scripts=npm:maplibre-gl@2.4.0,npm:vue-demi@0.14.10,npm:json-editor-vue@0.17.3 && deno compile -A --output ../bosca-administration --include ../public ./index.mjs",
     "compile-and-run": "deno task compile && ./.output/bosca-administration"

@@ -380,6 +380,14 @@ impl WorkflowDataStore {
         Ok(())
     }
 
+    pub async fn get_metadata_count(&self, id: &Uuid) -> Result<i64, Error> {
+        self.queues.get_metadata_count(id).await
+    }
+
+    pub async fn get_collection_count(&self, id: &Uuid) -> Result<i64, Error> {
+        self.queues.get_collection_count(id).await
+    }
+
     pub async fn get_workflow(&self, id: &str) -> Result<Option<Workflow>, Error> {
         let id = id.to_owned();
         if let Some(workflow) = self.cache.get_workflow(&id).await {

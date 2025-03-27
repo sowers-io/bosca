@@ -45,7 +45,9 @@ export class NuxtNetworkClient extends NetworkClient {
     options: SubscriptionOptions<T>,
   ) {
     if (import.meta.server) return
-    const url = import.meta.client ? useRuntimeConfig().public.graphqlWsUrl : useRuntimeConfig().graphqlWsUrl
+    const url = import.meta.client
+      ? useRuntimeConfig().public.graphqlWsUrl
+      : useRuntimeConfig().graphqlWsUrl
     let ids = new Date().getTime()
     // deno-lint-ignore no-this-alias
     const self = this

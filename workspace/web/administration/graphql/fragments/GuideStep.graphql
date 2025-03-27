@@ -1,4 +1,5 @@
 fragment GuideStep on GuideStep {
+    id
     metadata {
         ...Metadata
     }

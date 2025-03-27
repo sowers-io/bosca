@@ -304,18 +304,16 @@ impl MetadataObject {
                         supplementary,
                     )]);
                 }
-            } else {
-                if let Some(supplementary) = ctx
-                    .content
-                    .metadata_supplementary
-                    .get_supplementary_by_key(&self.metadata.id, &key)
-                    .await?
-                {
-                    return Ok(vec![MetadataSupplementaryObject::new(
-                        self.metadata.clone(),
-                        supplementary,
-                    )]);
-                }
+            } else if let Some(supplementary) = ctx
+                .content
+                .metadata_supplementary
+                .get_supplementary_by_key(&self.metadata.id, &key)
+                .await?
+            {
+                return Ok(vec![MetadataSupplementaryObject::new(
+                    self.metadata.clone(),
+                    supplementary,
+                )]);
             }
 
             return Ok(vec![]);

@@ -73,7 +73,7 @@ impl ContentDataStore {
                 Arc::clone(&notifier),
             ),
             documents: DocumentsDataStore::new(Arc::clone(&pool), Arc::clone(&notifier)),
-            guides: GuidesDataStore::new(Arc::clone(&pool)),
+            guides: GuidesDataStore::new(Arc::clone(&pool), Arc::clone(&notifier)),
             sources: SourcesDataStore::new(Arc::clone(&pool)),
             pool,
         }

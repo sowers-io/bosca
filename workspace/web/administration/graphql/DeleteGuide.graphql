@@ -1,0 +1,7 @@
+mutation DeleteGuide($id: String!, $version: Int!) {
+    content {
+        metadata {
+            deleteGuide(metadataId: $id, metadataVersion: $version)
+        }
+    }
+}

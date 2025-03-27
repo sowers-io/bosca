@@ -16,6 +16,8 @@ const router = useRouter()
 const client = useBoscaClient()
 
 const props = defineProps<{
+  guideMetadataId: string
+  guideMetadataVersion: number
   metadata: MetadataFragment
   relationships: Array<MetadataRelationshipFragment>
   parents: Array<ParentCollectionFragment>
@@ -27,6 +29,7 @@ const props = defineProps<{
   currentModule: GuideStepModuleFragment | null | undefined
 }>()
 
+const loading = ref(false)
 const currentStep = defineModel('currentStep', { type: Object, default: null })
 const currentModule = defineModel('currentModule', {
   type: Object,
@@ -82,6 +85,7 @@ async function onPublish() {
   if (props.metadata.workflow.pending) {
     return
   }
+  startLoading()
   const states = await client.workflows.getStates() || []
   const published =
     states.find((s) => s.type === WorkflowStateType.Published)?.id || ''
@@ -164,17 +168,10 @@ function onDelete() {
 
 async function doDelete() {
   confirmDelete.value = false
-  for (const step of props.guide.steps || []) {
-    for (const module of step.modules || []) {
-      if (module.metadata) {
-        await client.metadata.delete(module.metadata.id)
-      }
-    }
-    if (step.metadata) {
-      await client.metadata.delete(step.metadata.id)
-    }
-  }
-  await client.metadata.delete(props.metadata.id)
+  await client.metadata.deleteGuide(
+    props.guideMetadataId,
+    props.guideMetadataVersion,
+  )
   await router.push('/content')
 }
 
@@ -214,6 +211,7 @@ async function buildModules() {
       documentTemplate: documentTemplate,
     })
   }
+  // @ts-ignore
   modules.value = modulesParts
 }
 
@@ -234,14 +232,65 @@ watch(currentPage, (page) => {
   }
 })
 
+onUpdated(() => {
+  if (currentPage.value === 1) {
+    currentStep.value = null
+    currentModule.value = null
+  } else if (currentPage.value > 1) {
+    currentStep.value = props.guide.steps[currentPage.value - 2]
+  }
+})
+
+let loadingIntervalCheck: any
+
+function startLoading() {
+  loading.value = true
+  if (loadingIntervalCheck) clearInterval(loadingIntervalCheck)
+  const id = props.metadata.id
+  loadingIntervalCheck = setInterval(async () => {
+    if (!loading.value) {
+      clearInterval(loadingIntervalCheck)
+      return
+    }
+    const running = await client.metadata.getRunningWorkflowCount(id)
+    if (!running) {
+      loading.value = false
+      clearInterval(loadingIntervalCheck)
+    }
+  }, 1000)
+}
+
 onMounted(() => {
   buildModules()
 })
 
 async function onAddStep() {
   if (!props.guideTemplate) return
-  const step = props.guideTemplate.steps[0]
-  if (!step.metadata) return
+  startLoading()
+  const templateStep = props.guideTemplate.steps[0]
+  if (!templateStep.metadata) return
+  const id = await client.metadata.addGuideStep(
+    props.guideMetadataId,
+    props.guideMetadataVersion,
+    currentPage.value - 1,
+    templateStep.metadata.id,
+    templateStep.metadata.version,
+    templateStep.id,
+  )
+  await client.metadata.setReady(id)
+  currentPage.value = currentPage.value + 1
+}
+
+async function onDeleteStep() {
+  const id = currentStep.value?.id
+  if (!id) return
+  startLoading()
+  await client.metadata.deleteGuideStep(
+    props.guideMetadataId,
+    props.guideMetadataVersion,
+    id,
+  )
+  currentPage.value = currentPage.value - 1
 }
 </script>
 <template>
@@ -249,12 +298,12 @@ async function onAddStep() {
     <div class="flex items-center">
       <div class="flex">
         <div>
-          <Badge variant="secondary">{{ stateName }}
-            <span v-if="metadata.workflow.pending">*</span></Badge>
+          <Badge variant="secondary">{{ stateName }}<span
+              v-if="metadata.workflow.pending"
+            >*</span></Badge>
           <Badge variant="secondary" class="ms-4" v-if="pendingStateName">{{
-              pendingStateName
-            }}
-          </Badge>
+            pendingStateName
+          }}</Badge>
           <Badge
             variant="outline"
             :class="
@@ -267,6 +316,20 @@ async function onAddStep() {
             variant="destructive"
             :class="'ms-2 ' + (!outOfDate ? ' invisible' : '')"
           >Out of Date
+          </Badge>
+          <Badge
+            variant="outline"
+            :class="
+              'ms-2 ' + (loading || metadata.workflow.running > 0
+              ? ''
+              : ' invisible')
+            "
+          >
+            <Icon
+              name="i-lucide-loader-circle"
+              class="size-4 text-primary animate-spin mr-2"
+            />
+            Workflow Running
           </Badge>
         </div>
       </div>
@@ -393,7 +456,7 @@ async function onAddStep() {
       </div>
     </div>
     <div class="border-none p-0 outline-none mt-4">
-      <div class="flex gap-4">
+      <div class="flex gap-6 w-full">
         <Pagination
           v-slot="{ page }"
           :items-per-page="1"
@@ -404,8 +467,8 @@ async function onAddStep() {
           v-model:page="currentPage"
         >
           <PaginationList v-slot="{ items }" class="flex items-center gap-1">
-            <PaginationFirst />
-            <PaginationPrev />
+            <PaginationFirst :disabled="hasChanges" />
+            <PaginationPrev :disabled="hasChanges" />
             <template v-for="(item, index) in items">
               <PaginationListItem
                 v-if="item.type === 'page'"
@@ -417,6 +480,7 @@ async function onAddStep() {
                   <TooltipTrigger as-child>
                     <Button
                       class="h-9"
+                      :disabled="hasChanges"
                       :variant="
                         item.value === page
                         ? 'default'
@@ -449,13 +513,24 @@ async function onAddStep() {
               </PaginationListItem>
               <PaginationEllipsis v-else :key="item.type" :index="index" />
             </template>
-            <PaginationNext />
-            <PaginationLast />
+            <PaginationNext :disabled="hasChanges" />
+            <PaginationLast :disabled="hasChanges" />
           </PaginationList>
         </Pagination>
-        <Button @click="onAddStep" class="flex gap-2">
-          <Icon name="i-lucide-plus" class="size-4" />
-        </Button>
+        <div class="flex gap-2">
+          <Button @click="onAddStep" class="flex gap-2" :disabled="hasChanges">
+            <Icon name="i-lucide-plus" class="size-4" />
+          </Button>
+          <Button
+            @click="onDeleteStep"
+            class="flex"
+            variant="ghost"
+            :disabled="hasChanges"
+            v-if="currentStep && metadata.workflow.state !== 'published'"
+          >
+            <Icon name="i-lucide-trash" class="size-4" />
+          </Button>
+        </div>
       </div>
       <div class="flex mt-5 justify-center" v-if="document">
         <Carousel

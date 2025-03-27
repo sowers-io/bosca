@@ -65,6 +65,28 @@ impl JobQueues {
         Ok(())
     }
 
+    pub async fn get_metadata_count(&self, id: &Uuid) -> Result<i64, Error> {
+        let redis = self.redis.get().await?;
+        let mut conn = redis.get_connection().await?;
+        let id = id.to_string();
+        if let Some(count) = conn.hget("running::metadata", &id).await? {
+            Ok(count)
+        } else {
+            Ok(0)
+        }
+    }
+
+    pub async fn get_collection_count(&self, id: &Uuid) -> Result<i64, Error> {
+        let redis = self.redis.get().await?;
+        let mut conn = redis.get_connection().await?;
+        let id = id.to_string();
+        if let Some(count) = conn.hget("running::collections", &id).await? {
+            Ok(count)
+        } else {
+            Ok(0)
+        }
+    }
+
     pub async fn get_plan(
         &self,
         id: &WorkflowExecutionId,
@@ -164,6 +186,12 @@ impl JobQueues {
             plan.finished = Some(Utc::now());
             plan.cancelled = true;
             redis_txn.add_op(RemovePlanRunning(plan.id.clone()));
+            if let Some(metadata_id) = plan.metadata_id {
+                redis_txn.add_op(RedisTransactionOp::RemoveMetadataRunning(metadata_id));
+            }
+            if let Some(collection_id) = plan.collection_id {
+                redis_txn.add_op(RedisTransactionOp::RemoveCollectionRunning(collection_id));
+            }
             self.set_plan(&db_txn, &plan, false).await?;
         }
 
@@ -215,9 +243,14 @@ impl JobQueues {
                     )
                     .await?;
                 let plan_id = &plan.id;
-                transaction
+                if let Err(e) = transaction
                     .execute(&stmt, &[metadata_id, &plan_id.id, &plan_id.queue])
-                    .await?;
+                    .await
+                {
+                    if !e.to_string().contains("metadata_workflow_plans_id_fkey") {
+                        return Err(e.into());
+                    }
+                }
             }
             if let Some(collection_id) = &plan.collection_id {
                 let stmt = transaction
@@ -226,9 +259,14 @@ impl JobQueues {
                     )
                     .await?;
                 let plan_id = &plan.id;
-                transaction
+                if let Err(e) = transaction
                     .execute(&stmt, &[collection_id, &plan_id.id, &plan_id.queue])
-                    .await?;
+                    .await
+                {
+                    if !e.to_string().contains("collection_workflow_plans_id_fkey") {
+                        return Err(e.into());
+                    }
+                }
             }
         }
         Ok(())
@@ -461,6 +499,12 @@ impl JobQueues {
                     txn.add_op(RemoveJobRunning(job.id.clone()));
                 }
                 txn.add_op(RemovePlanRunning(plan.id.clone()));
+                if let Some(metadata_id) = plan.metadata_id {
+                    txn.add_op(RedisTransactionOp::RemoveMetadataRunning(metadata_id));
+                }
+                if let Some(collection_id) = plan.collection_id {
+                    txn.add_op(RedisTransactionOp::RemoveCollectionRunning(collection_id));
+                }
                 txn.execute(&self.redis).await?;
                 return Ok(None);
             }

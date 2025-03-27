@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { CollectionItem } from '~/lib/bosca/contentcollection'
-import {computedAsync, useStorage} from '@vueuse/core'
+import { computedAsync, useStorage } from '@vueuse/core'
 import {
   type CollectionInput,
   CollectionType,

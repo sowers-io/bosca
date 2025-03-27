@@ -43,7 +43,8 @@ impl MetadataMutationObject {
             Some(id) => Uuid::parse_str(id),
             None => Uuid::parse_str("00000000-0000-0000-0000-000000000000"),
         }?;
-        ctx.check_collection_action(&parent_collection_id, PermissionAction::Edit).await?;
+        ctx.check_collection_action(&parent_collection_id, PermissionAction::Edit)
+            .await?;
         let (metadata_id, version, active_version) = ctx
             .content
             .metadata
@@ -110,6 +111,41 @@ impl MetadataMutationObject {
         Ok(metadata.map(MetadataObject::new))
     }
 
+    async fn delete_guide_step(
+        &self,
+        ctx: &Context<'_>,
+        metadata_id: String,
+        metadata_version: i32,
+        step_id: i64,
+    ) -> Result<bool, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let metadata_id = Uuid::parse_str(&metadata_id)?;
+        ctx.check_metadata_version_action(&metadata_id, metadata_version, PermissionAction::Delete)
+            .await?;
+        ctx.content
+            .guides
+            .delete_guide_step(ctx, &metadata_id, metadata_version, step_id)
+            .await?;
+        Ok(true)
+    }
+
+    async fn delete_guide(
+        &self,
+        ctx: &Context<'_>,
+        metadata_id: String,
+        metadata_version: i32,
+    ) -> Result<bool, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let metadata_id = Uuid::parse_str(&metadata_id)?;
+        ctx.check_metadata_version_action(&metadata_id, metadata_version, PermissionAction::Delete)
+            .await?;
+        ctx.content
+            .guides
+            .delete_guide(ctx, &metadata_id, metadata_version)
+            .await?;
+        Ok(true)
+    }
+
     #[allow(clippy::too_many_arguments)]
     async fn add_guide_step(
         &self,
@@ -129,7 +165,7 @@ impl MetadataMutationObject {
         let template = ctx
             .check_metadata_version_action(&template_id, template_version, PermissionAction::View)
             .await?;
-        if template.content_type != "bosca/v-guide-step-template" {
+        if template.content_type != "bosca/v-document-template" {
             return Err(Error::new("invalid template"));
         }
         let Some(template_step) = ctx
@@ -243,11 +279,16 @@ impl MetadataMutationObject {
                 Some(id) => Uuid::parse_str(id)?,
                 None => root_collection_id,
             };
-            ctx.check_collection_action(&parent_collection_id, PermissionAction::Edit).await?;
+            ctx.check_collection_action(&parent_collection_id, PermissionAction::Edit)
+                .await?;
         }
 
         let mut metadatas = metadatas;
-        let metadata_ids = ctx.content.metadata.add_all(ctx, &mut metadatas, true).await?;
+        let metadata_ids = ctx
+            .content
+            .metadata
+            .add_all(ctx, &mut metadatas, true)
+            .await?;
         let mut metadatas = Vec::new();
         for (id, version, active_version) in metadata_ids {
             let metadata = if version == active_version {

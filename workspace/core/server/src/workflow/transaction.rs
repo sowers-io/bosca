@@ -5,6 +5,7 @@ use async_graphql::Error;
 use chrono::Utc;
 use log::error;
 use redis::Script;
+use uuid::Uuid;
 
 pub struct RedisTransaction {
     ops: Vec<RedisTransactionOp>,
@@ -52,6 +53,21 @@ impl RedisTransaction {
                     key_ix += 2;
                     arg_ix += 2;
                     script.push_str(&zadd_incr);
+                }
+                RedisTransactionOp::AddMetadataRunning(_)
+                | RedisTransactionOp::AddCollectionRunning(_) => {
+                    let incrby = format!(
+                        "redis.call('HINCRBY', 'running::metadata', tostring(KEYS[{}]), 1)\n",
+                        key_ix + 1
+                    );
+                    script.push_str(&incrby);
+                    key_ix += 1;
+                }
+                RedisTransactionOp::RemoveMetadataRunning(_)
+                | RedisTransactionOp::RemoveCollectionRunning(_) => {
+                    let incrby = format!("local c = redis.call('HINCRBY', 'running::metadata', tostring(KEYS[{}]), -1)\nif c == 0 then\nredis.call('HDEL', 'running::metadata', tostring(KEYS[{}]))\nend\n", key_ix + 1, key_ix + 2);
+                    script.push_str(&incrby);
+                    key_ix += 2;
                 }
             }
         }
@@ -109,6 +125,28 @@ impl RedisTransaction {
                         .arg(Utc::now().timestamp())
                         .arg(1800);
                 }
+                RedisTransactionOp::AddMetadataRunning(op) => {
+                    let key = op.to_string();
+                    invocation
+                        .key(&key);
+                }
+                RedisTransactionOp::AddCollectionRunning(op) => {
+                    let key = op.to_string();
+                    invocation
+                        .key(&key);
+                }
+                RedisTransactionOp::RemoveMetadataRunning(op) => {
+                    let key = op.to_string();
+                    invocation
+                        .key(&key)
+                        .key(&key);
+                }
+                RedisTransactionOp::RemoveCollectionRunning(op) => {
+                    let key = op.to_string();
+                    invocation
+                        .key(&key)
+                        .key(&key);
+                }
             }
         }
         let connection = redis.get().await?;
@@ -137,4 +175,8 @@ pub enum RedisTransactionOp {
     CancelQueueJob(WorkflowJobId),
     RemovePlanRunning(WorkflowExecutionId),
     RemoveJobRunning(WorkflowJobId),
+    AddMetadataRunning(Uuid),
+    AddCollectionRunning(Uuid),
+    RemoveMetadataRunning(Uuid),
+    RemoveCollectionRunning(Uuid),
 }

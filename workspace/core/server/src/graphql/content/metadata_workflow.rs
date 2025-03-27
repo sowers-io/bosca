@@ -1,9 +1,9 @@
-use async_graphql::{Context, Error, Object};
-use chrono::{DateTime, Utc};
 use crate::context::BoscaContext;
 use crate::graphql::workflows::workflow_execution_plan::WorkflowExecutionPlanObject;
 use crate::models::content::metadata::Metadata;
 use crate::models::workflow::execution_plan::WorkflowExecutionId;
+use async_graphql::{Context, Error, Object};
+use chrono::{DateTime, Utc};
 
 pub struct MetadataWorkflowObject {
     pub metadata: Metadata,
@@ -27,15 +27,22 @@ impl MetadataWorkflowObject {
         &self.metadata.delete_workflow_id
     }
 
+    async fn running(&self, ctx: &Context<'_>) -> Result<i64, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let running = ctx.workflow.get_metadata_count(&self.metadata.id).await?;
+        Ok(running)
+    }
+
     async fn plans(&self, ctx: &Context<'_>) -> Result<Vec<WorkflowExecutionPlanObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        let plans_ids = ctx.content.metadata_workflows.get_metadata_plans(&self.metadata.id).await?;
+        let plans_ids = ctx
+            .content
+            .metadata_workflows
+            .get_metadata_plans(&self.metadata.id)
+            .await?;
         let mut plans = Vec::<WorkflowExecutionPlanObject>::new();
         for (plan_id, queue) in plans_ids {
-            let id = WorkflowExecutionId {
-                id: plan_id,
-                queue,
-            };
+            let id = WorkflowExecutionId { id: plan_id, queue };
             let plan = ctx.workflow.get_execution_plan(&id).await?;
             if plan.is_none() {
                 continue;

@@ -23,7 +23,9 @@ import {
   GetCollectionDocument,
   GetCollectionListDocument,
   GetCollectionMetadataRelationshipsDocument,
-  GetCollectionParentsDocument, GetCollectionSupplementaryDocument, GetMetadataSupplementaryDocument,
+  GetCollectionParentsDocument,
+  GetCollectionSupplementaryDocument,
+  GetMetadataSupplementaryDocument,
   type MetadataFragment,
   type ParentCollectionFragment,
   RemoveCollectionCollectionDocument,
@@ -103,7 +105,10 @@ export class ContentCollections<T extends NetworkClient> extends Api<T> {
     id: string,
     offset: number | Ref<number>,
     limit: number | Ref<number>,
-  ): AsyncData<{ metadata: Array<MetadataFragment>; count: number } | null, any> {
+  ): AsyncData<
+    { metadata: Array<MetadataFragment>; count: number } | null,
+    any
+  > {
     return this.executeAndTransformAsyncData(
       GetCollectionChildrenMetadataDocument,
       {
@@ -249,18 +254,18 @@ export class ContentCollections<T extends NetworkClient> extends Api<T> {
   }
 
   async getSupplementary(
-      id: string,
-      key: string,
+    id: string,
+    key: string,
   ): Promise<CollectionSupplementaryFragment | null> {
     const response = await this.network.execute(
-        GetCollectionSupplementaryDocument,
-        {
-          id: id,
-          key,
-        },
+      GetCollectionSupplementaryDocument,
+      {
+        id: id,
+        key,
+      },
     )
     const supplementary = response?.content?.collection?.supplementary?.find(
-        (s) => s.key === key,
+      (s) => s.key === key,
     )
     return supplementary as CollectionSupplementaryFragment | null
   }

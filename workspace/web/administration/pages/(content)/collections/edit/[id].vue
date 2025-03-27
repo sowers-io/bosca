@@ -74,7 +74,10 @@ onMounted(() => {
       <ContentAttributes class="col-span-2" :content="list.collection" />
     </TabsContent>
     <TabsContent value="supplementary" class="border-none p-0 outline-none">
-      <ContentCollectionsSupplementary class="col-span-2" :collection="list.collection" />
+      <ContentCollectionsSupplementary
+        class="col-span-2"
+        :collection="list.collection"
+      />
     </TabsContent>
     <TabsContent value="items" class="border-none p-0 outline-none">
       <ContentCollectionsItems

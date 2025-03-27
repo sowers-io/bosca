@@ -14,16 +14,27 @@ use deadpool_postgres::{GenericClient, Pool, Transaction};
 use rrule::RRuleSet;
 use serde_json::json;
 use std::sync::Arc;
+use log::{error, info};
 use uuid::Uuid;
+use crate::datastores::notifier::Notifier;
 
 #[derive(Clone)]
 pub struct GuidesDataStore {
     pool: Arc<Pool>,
+    notifier: Arc<Notifier>,
 }
 
 impl GuidesDataStore {
-    pub fn new(pool: Arc<Pool>) -> Self {
-        Self { pool }
+    pub fn new(pool: Arc<Pool>, notifier: Arc<Notifier>) -> Self {
+        Self { pool, notifier }
+    }
+
+    async fn on_metadata_changed(&self, ctx: &BoscaContext, id: &Uuid) -> Result<(), Error> {
+        ctx.content.metadata.update_storage(ctx, id).await?;
+        if let Err(e) = self.notifier.metadata_changed(id).await {
+            error!("Failed to notify metadata changes: {:?}", e);
+        }
+        Ok(())
     }
 
     pub async fn get_templates(&self) -> Result<Vec<GuideTemplate>, Error> {
@@ -67,9 +78,10 @@ impl GuidesDataStore {
         version: i32,
         id: i64,
     ) -> Result<Option<GuideTemplateStep>, Error> {
+        info!("ID: {:?}", metadata_id);
         let connection = self.pool.get().await?;
         let stmt = connection
-            .prepare_cached("select * from guide_template_steps where metadata_id = $1 and version = $2 and id = $3")
+            .prepare_cached("select * from guide_template_steps where template_metadata_id = $1 and template_metadata_version = $2 and id = $3")
             .await?;
         let rows = connection
             .query(&stmt, &[metadata_id, &version, &id])
@@ -444,6 +456,22 @@ impl GuidesDataStore {
         })
     }
 
+    pub async fn delete_guide_step_txn(
+        &self,
+        txn: &Transaction<'_>,
+        metadata_id: &Uuid,
+        version: i32,
+        step_id: i64,
+    ) -> Result<(), Error> {
+        let stmt = txn.prepare_cached("delete from guide_steps where metadata_id = $1 and version = $2 and id = $3").await?;
+        txn.execute(
+            &stmt,
+            &[metadata_id, &version, &step_id],
+        )
+            .await?;
+        Ok(())
+    }
+
     #[allow(clippy::too_many_arguments)]
     async fn add_guide_step_module_txn(
         &self,
@@ -487,6 +515,24 @@ impl GuidesDataStore {
             module_metadata_id,
             module_metadata_version,
         })
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    pub async fn delete_guide_step_module_txn(
+        &self,
+        txn: &Transaction<'_>,
+        metadata_id: &Uuid,
+        version: i32,
+        step_id: i64,
+        module_id: i64,
+    ) -> Result<(), Error> {
+        let stmt = txn.prepare_cached("delete from guide_step_modules where metadata_id = $1 and version = $2 and step_id = $3 and id = $4").await?;
+        txn.execute(
+            &stmt,
+            &[metadata_id, &version, &step_id, &module_id],
+        )
+            .await?;
+        Ok(())
     }
 
     pub async fn add_guide_from_template(
@@ -589,6 +635,7 @@ impl GuidesDataStore {
             )
             .await?;
         }
+        txn.commit().await?;
         Ok((metadata_id, version))
     }
 
@@ -606,6 +653,7 @@ impl GuidesDataStore {
             .add_guide_step_from_template_txn(ctx, &txn, metadata_id, metadata_version, index, step)
             .await?;
         txn.commit().await?;
+        self.on_metadata_changed(ctx, metadata_id).await?;
         Ok(step)
     }
 
@@ -638,8 +686,12 @@ impl GuidesDataStore {
             )
             .await?;
 
-        let stmt = txn.prepare_cached("insert into guide_steps (metadata_id, version, step_metadata_id, step_metadata_version, sort) values ($1, $2, $3, $4, $5) returning id").await?;
         let sort = index as i32;
+        let stmt = txn.prepare_cached("update guide_steps set sort = sort + 1 where metadata_id = $1 and sort >= $2").await?;
+        txn.execute(&stmt, &[metadata_id, &sort]).await?;
+
+        let stmt = txn.prepare_cached("insert into guide_steps (metadata_id, version, step_metadata_id, step_metadata_version, sort) values ($1, $2, $3, $4, $5) returning id").await?;
+
         let result = txn
             .query_one(
                 &stmt,
@@ -765,5 +817,48 @@ impl GuidesDataStore {
             module_metadata_id,
             module_metadata_version,
         })
+    }
+
+    pub async fn delete_guide_step(
+        &self,
+        ctx: &BoscaContext,
+        metadata_id: &Uuid,
+        version: i32,
+        step_id: i64,
+    ) -> Result<(), Error> {
+        let Some(step) = self.get_guide_step(metadata_id, version, step_id).await? else {
+            return Err(Error::new("missing step"));
+        };
+        let modules = self.get_guide_step_modules(metadata_id, version, step_id).await?;
+        let mut conn = self.pool.get().await?;
+        let txn = conn.transaction().await?;
+        for module in modules.iter() {
+            self.delete_guide_step_module_txn(&txn, metadata_id, version, step_id, module.id).await?;
+            ctx.content.metadata.mark_deleted(ctx, &module.module_metadata_id).await?;
+        }
+        self.delete_guide_step_txn(&txn, metadata_id, version, step_id).await?;
+        txn.commit().await?;
+        ctx.content.metadata.mark_deleted(ctx, &step.step_metadata_id).await?;
+        for module in modules {
+            self.on_metadata_changed(ctx, &module.module_metadata_id).await?;
+        }
+        self.on_metadata_changed(ctx, &step.step_metadata_id).await?;
+        self.on_metadata_changed(ctx, metadata_id).await?;
+        Ok(())
+    }
+
+    pub async fn delete_guide(
+        &self,
+        ctx: &BoscaContext,
+        metadata_id: &Uuid,
+        version: i32,
+    ) -> Result<(), Error> {
+        let steps = self.get_guide_steps(metadata_id, version, None, None).await?;
+        for step in steps.iter() {
+            self.delete_guide_step(ctx, metadata_id, version, step.id).await?;
+        }
+        ctx.content.metadata.mark_deleted(ctx, metadata_id).await?;
+        self.on_metadata_changed(ctx, metadata_id).await?;
+        Ok(())
     }
 }

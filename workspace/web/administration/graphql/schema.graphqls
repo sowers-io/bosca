@@ -181,6 +181,7 @@ type CollectionWorkflow {
     deleteWorkflow: String
     pending: String
     plans: [WorkflowExecutionPlan!]!
+    running: Int!
     state: String!
     stateValid: DateTime
 }
@@ -300,12 +301,15 @@ type Groups {
 
 type Guide {
     rrule: String
-    steps: [GuideStep!]!
+    step(stepId: Int!): GuideStep
+    stepCount: Int!
+    steps(limit: Int, offset: Int): [GuideStep!]!
     template: Metadata
     type: GuideType!
 }
 
 type GuideStep {
+    id: Int!
     metadata: Metadata
     modules: [GuideStepModule!]!
 }
@@ -409,8 +413,8 @@ type MetadataMutation {
     addCategory(categoryId: String!, metadataId: String!): Boolean!
     addDocument(parentCollectionId: String!, templateId: String!, templateVersion: Int!): Metadata
     addGuide(parentCollectionId: String!, templateId: String!, templateVersion: Int!): Metadata
-    addGuideStep(metadataId: String!, parentCollectionId: String!, sort: Int!, templateId: String!, templateStepId: Int!, templateVersion: Int!, version: Int!): GuideStep!
-    addGuideStepModule(metadataId: String!, parentCollectionId: String!, sort: Int!, templateId: String!, templateModuleId: Int!, templateStepId: Int!, templateVersion: Int!, version: Int!): GuideStepModule!
+    addGuideStep(metadataId: String!, metadataVersion: Int!, sort: Int!, templateId: String!, templateStepId: Int!, templateVersion: Int!): GuideStep!
+    addGuideStepModule(metadataId: String!, metadataVersion: Int!, sort: Int!, stepId: Int!, templateId: String!, templateModuleId: Int!, templateStepId: Int!, templateVersion: Int!): GuideStepModule!
     addPermission(permission: PermissionInput!): Permission!
     addRelationship(relationship: MetadataRelationshipInput!): MetadataRelationship!
     addSupplementary(supplementary: MetadataSupplementaryInput!): MetadataSupplementary!
@@ -418,6 +422,8 @@ type MetadataMutation {
     delete(metadataId: String!): Boolean!
     deleteCategory(categoryId: String!, metadataId: String!): Boolean!
     deleteContent(metadataId: String!): Boolean!
+    deleteGuide(metadataId: String!, metadataVersion: Int!): Boolean!
+    deleteGuideStep(metadataId: String!, metadataVersion: Int!, stepId: Int!): Boolean!
     deletePermission(permission: PermissionInput!): Permission!
     deleteRelationship(id1: String!, id2: String!, relationship: String!): Boolean!
     deleteSupplementary(id: String!): Boolean!
@@ -498,6 +504,7 @@ type MetadataWorkflow {
     deleteWorkflow: String
     pending: String
     plans: [WorkflowExecutionPlan!]!
+    running: Int!
     state: String!
     stateValid: DateTime
 }
@@ -522,6 +529,7 @@ type ModelsMutation {
 }
 
 type Mutation {
+    clearCache: Boolean!
     configurations: ConfigurationsMutation!
     content: ContentMutation!
     persistedQueries: PersistedQueriesMutation!
@@ -656,9 +664,16 @@ type SearchDocument {
     profile: Profile
 }
 
+type SearchResultFacet {
+    count: Int!
+    field: String!
+    value: String!
+}
+
 type SearchResultObject {
     documents: [SearchDocument!]!
     estimatedHits: Int!
+    facets: [SearchResultFacet!]!
 }
 
 type Security {
@@ -1295,14 +1310,16 @@ input GuideInput {
 }
 
 input GuideStepInput {
+    metadata: MetadataInput
     modules: [GuideStepModuleInput!]!
     stepMetadataId: String
     stepMetadataVersion: Int
 }
 
 input GuideStepModuleInput {
-    moduleMetadataId: String!
-    moduleMetadataVersion: Int!
+    metadata: MetadataInput
+    moduleMetadataId: String
+    moduleMetadataVersion: Int
 }
 
 input GuideTemplateInput {
@@ -1313,8 +1330,8 @@ input GuideTemplateInput {
 
 input GuideTemplateStepInput {
     modules: [GuideTemplateStepModuleInput!]!
-    templateMetadataId: String
-    templateMetadataVersion: Int
+    templateMetadataId: String!
+    templateMetadataVersion: Int!
 }
 
 input GuideTemplateStepModuleInput {
@@ -1460,11 +1477,14 @@ input PromptInput {
 }
 
 input SearchQuery {
+    facets: [String!]
     filter: String
     limit: Int
     offset: Int
     query: String!
-    storageSystemId: String!
+    sort: [String!]
+    storageSystemId: String
+    storageSystemName: String
 }
 
 input SourceInput {

@@ -1,5 +1,8 @@
 <script lang="ts" setup>
-import type {CollectionFragment, MetadataFragment} from '~/lib/graphql/graphql.ts'
+import type {
+  CollectionFragment,
+  MetadataFragment,
+} from '~/lib/graphql/graphql.ts'
 import Table from '~/components/ui/table/Table.vue'
 import TableHeader from '~/components/ui/table/TableHeader.vue'
 import TableHead from '~/components/ui/table/TableHead.vue'

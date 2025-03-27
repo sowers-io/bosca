@@ -3,6 +3,7 @@ import { NetworkClient } from '~/lib/bosca/networkclient'
 import {
   AddDocumentDocument,
   AddGuideDocument,
+  AddGuideStepDocument,
   AddMetadataDocument,
   AddMetadataPermissionDocument,
   AddMetadataRelationshipDocument,
@@ -10,6 +11,8 @@ import {
   BeginMetadataTransitionDocument,
   CancelTransitionDocument,
   type CollectionTemplateFragment,
+  DeleteGuideDocument,
+  DeleteGuideStepDocument,
   DeleteMetadataDocument,
   type DocumentFragment,
   type DocumentTemplateFragment,
@@ -31,6 +34,7 @@ import {
   GetMetadataSupplementaryJsonDocument,
   GetMetadataSupplementaryTextDocument,
   GetMetadataUploadDocument,
+  GetRunningWorkflowCountDocument,
   type GuideFragment,
   type GuideTemplateFragment,
   type MetadataFragment,
@@ -338,6 +342,20 @@ export class ContentMetadata<T extends NetworkClient> extends Api<T> {
     return supplementary[0]?.content?.json
   }
 
+  async getRunningWorkflowCount(id: string): Promise<number> {
+    try {
+      const response = await this.network.execute(
+        GetRunningWorkflowCountDocument,
+        {
+          id,
+        },
+      )
+      return response!.content?.metadata?.workflow?.running || 0
+    } catch (e) {
+      return 0
+    }
+  }
+
   async add(metadata: MetadataInput): Promise<string> {
     const response = await this.network.execute(AddMetadataDocument, {
       metadata,
@@ -369,6 +387,37 @@ export class ContentMetadata<T extends NetworkClient> extends Api<T> {
       templateVersion,
     })
     return response!.content.metadata.addGuide!.id
+  }
+
+  async addGuideStep(
+    metadataId: string,
+    version: number,
+    sort: number,
+    templateId: string,
+    templateVersion: number,
+    templateStepId: number,
+  ): Promise<string> {
+    const response = await this.network.execute(AddGuideStepDocument, {
+      metadataId,
+      version,
+      sort,
+      templateId,
+      templateVersion,
+      templateStepId,
+    })
+    return response!.content.metadata.addGuideStep!.metadata?.id || ''
+  }
+
+  async deleteGuideStep(
+    metadataId: string,
+    version: number,
+    stepId: number,
+  ): Promise<void> {
+    await this.network.execute(DeleteGuideStepDocument, {
+      metadataId,
+      version,
+      stepId,
+    })
   }
 
   async edit(id: string, metadata: MetadataInput): Promise<string> {
@@ -404,6 +453,13 @@ export class ContentMetadata<T extends NetworkClient> extends Api<T> {
 
   async delete(id: string): Promise<void> {
     await this.network.execute(DeleteMetadataDocument, { id })
+  }
+
+  async deleteGuide(id: string, version: number): Promise<void> {
+    await this.network.execute(DeleteGuideDocument, {
+      id,
+      version,
+    })
   }
 
   async find(query: {

@@ -29,7 +29,8 @@ async function onDownload(supplementary: CollectionSupplementaryFragment) {
   <Card>
     <CardHeader>
       <CardTitle>Supplementary</CardTitle>
-      <CardDescription>View the supplementary content for this collection.</CardDescription>
+      <CardDescription>View the supplementary content for this
+        collection.</CardDescription>
     </CardHeader>
     <CardContent>
       <Table>

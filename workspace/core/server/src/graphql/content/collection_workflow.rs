@@ -24,6 +24,11 @@ impl CollectionWorkflowObject<'_> {
         &self.collection.workflow_state_pending_id
     }
 
+    async fn running(&self, ctx: &Context<'_>) -> Result<i64, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        ctx.workflow.get_collection_count(&self.collection.id).await
+    }
+
     async fn delete_workflow(&self) -> &Option<String> {
         &self.collection.delete_workflow_id
     }
