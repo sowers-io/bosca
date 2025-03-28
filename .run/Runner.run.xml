@@ -7,6 +7,8 @@
       <env name="BOSCA_QUEUES" value="profiles,10;video,4;media,2;default,10;bible,20;bible-ai,10;bible-book,20;bible-chapter,20;bible-verse,10;media-transcription,1;media-upload,5;metadata,200;search-index,100;traits,100;transition,100;ai,10" />
       <env name="BOSCA_URL" value="http://127.0.0.1:8000/graphql" />
       <env name="BOSCA_USERNAME" value="admin" />
+      <env name="SEARCH_KEY" value="p8JcB_HuMHRxN7uVXfrG2wU06b5k7oTvaAAYo6nsi9M" />
+      <env name="SEARCH_URL" value="http://127.0.0.1:7701" />
     </envs>
     <option name="MAIN_CLASS_NAME" value="io.bosca.MainKt" />
     <module name="bosca-runner.runner.main" />

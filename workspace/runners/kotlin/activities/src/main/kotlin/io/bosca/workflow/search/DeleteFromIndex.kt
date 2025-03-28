@@ -28,11 +28,11 @@ class DeleteFromIndex(client: io.bosca.api.Client) : Activity(client) {
     }
 
     override suspend fun execute(context: ActivityContext, job: WorkflowJob) {
-        val meilisearchConfig = client.configurations.get<Configuration>("meilisearch") ?: error("meilisearch configuration missing")
+        val meilisearchConfig = newMeilisearchConfig()
         val configuration = getConfiguration<AddToIndexConfiguration>(job)
         val storageSystem = client.workflows.getStorageSystems().firstOrNull { it.storageSystem.name == configuration.storageSystem }
                 ?: error("storage system missing")
-        val client = Client(meilisearchConfig.toConfig())
+        val client = Client(meilisearchConfig)
         val cfg = storageSystem.storageSystem.configuration.decode<IndexConfiguration>()
             ?: error("index configuration missing")
         val index = client.index(cfg.name)

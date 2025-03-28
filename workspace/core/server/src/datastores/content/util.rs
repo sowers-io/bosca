@@ -1,14 +1,17 @@
-use postgres_types::ToSql;
-use uuid::Uuid;
 use crate::models::content::attribute_type::AttributeType;
 use crate::models::content::find_query::{ExtensionFilterType, FindQueryInput};
 use crate::models::content::ordering::Order::Ascending;
 use crate::models::content::ordering::Ordering;
+use postgres_types::ToSql;
+use serde_json::json;
+use uuid::Uuid;
 
 pub fn build_ordering_names(ordering: &[Ordering], names: &mut Vec<String>) {
     for attr in ordering {
-        for p in attr.path.iter() {
-            names.push(p.clone());
+        if let Some(path) = &attr.path {
+            for p in path.iter() {
+                names.push(p.clone());
+            }
         }
     }
 }
@@ -19,33 +22,41 @@ pub fn build_ordering<'a>(
     ordering: &[Ordering],
     values: &mut Vec<&'a (dyn ToSql + Sync)>,
     names: &'a [String],
-) -> String {
+) -> (String, i32) {
     let mut index = start_index;
     let mut buf = "order by ".to_owned();
     let mut n = 0;
     for (i, attr) in ordering.iter().enumerate() {
+        let field = attr.get_field();
+        if attr.path.is_none() && field.is_none() {
+            continue;
+        }
         if i > 0 {
             buf.push_str(", ");
         }
-        buf.push('(');
-        buf.push_str(attributes_column);
-        for _ in attr.path.iter() {
-            let name = names.get(n).unwrap();
-            n += 1;
-            values.push(name as &(dyn ToSql + Sync));
-            buf.push_str(format!("->>${}", index).as_str());
-            index += 1;
-        }
-        buf.push_str(")::");
-        match attr.attribute_type {
-            AttributeType::String => buf.push_str("varchar"),
-            AttributeType::Int => buf.push_str("bigint"),
-            AttributeType::Float => buf.push_str("double precision"),
-            AttributeType::Date => buf.push_str("int"),
-            AttributeType::DateTime => buf.push_str("bigint"),
-            AttributeType::Profile => buf.push_str("uuid"),
-            AttributeType::Metadata => buf.push_str("uuid"),
-            AttributeType::Collection => buf.push_str("uuid"),
+        if let Some(path) = &attr.path {
+            buf.push('(');
+            buf.push_str(attributes_column);
+            for _ in path.iter() {
+                let name = names.get(n).unwrap();
+                n += 1;
+                values.push(name as &(dyn ToSql + Sync));
+                buf.push_str(format!("->>${}", index).as_str());
+                index += 1;
+            }
+            buf.push_str(")::");
+            match attr.attribute_type.unwrap_or(AttributeType::String) {
+                AttributeType::String => buf.push_str("varchar"),
+                AttributeType::Int => buf.push_str("bigint"),
+                AttributeType::Float => buf.push_str("double precision"),
+                AttributeType::Date => buf.push_str("int"),
+                AttributeType::DateTime => buf.push_str("bigint"),
+                AttributeType::Profile => buf.push_str("uuid"),
+                AttributeType::Metadata => buf.push_str("uuid"),
+                AttributeType::Collection => buf.push_str("uuid"),
+            }
+        } else if let Some(field) = field {
+            buf.push_str(field);
         }
         buf.push(' ');
         buf.push_str(if attr.order == Ascending {
@@ -55,9 +66,9 @@ pub fn build_ordering<'a>(
         });
     }
     if buf == "order by " {
-        return "".to_owned();
+        return ("".to_owned(), index);
     }
-    buf
+    (buf, index)
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -67,7 +78,8 @@ pub fn build_find_args<'a>(
     alias: &str,
     find_query: &'a FindQueryInput,
     category_ids: &'a Option<Vec<Uuid>>,
-    count: bool
+    count: bool,
+    names: &'a mut Vec<String>,
 ) -> (String, Vec<&'a (dyn ToSql + Sync)>) {
     let mut q = query.to_string();
     let mut values = Vec::new();
@@ -91,7 +103,13 @@ pub fn build_find_args<'a>(
             q.push_str(format!(" inner join document_templates dt on ({}.id = dt.metadata_id and {}.version = dt.version) ", alias, alias).as_str());
         }
         Some(ExtensionFilterType::Guide) => {
-            q.push_str(format!(" inner join guides g on ({}.id = g.metadata_id and {}.version = g.version) ", alias, alias).as_str());
+            q.push_str(
+                format!(
+                    " inner join guides g on ({}.id = g.metadata_id and {}.version = g.version) ",
+                    alias, alias
+                )
+                .as_str(),
+            );
         }
         Some(ExtensionFilterType::GuideTemplate) => {
             q.push_str(format!(" inner join guide_templates gt on ({}.id = gt.metadata_id and {}.version = gt.version) ", alias, alias).as_str());
@@ -112,7 +130,12 @@ pub fn build_find_args<'a>(
         }
     }
 
-    if !find_query.attributes.is_empty() && find_query.attributes.iter().any(|a| !a.attributes.is_empty()) {
+    if !find_query.attributes.is_empty()
+        && find_query
+            .attributes
+            .iter()
+            .any(|a| !a.attributes.is_empty())
+    {
         q.push_str(" and ");
         for i in 0..find_query.attributes.len() {
             let attrs = find_query.attributes.get(i).unwrap();
@@ -128,7 +151,15 @@ pub fn build_find_args<'a>(
                     q.push_str(" and ");
                 }
                 let attr = attrs.attributes.get(j).unwrap();
-                q.push_str(format!(" {}.attributes->>(${}::varchar) = ${}::varchar ", alias, pos, pos + 1).as_str());
+                q.push_str(
+                    format!(
+                        " {}.attributes->>(${}::varchar) = ${}::varchar ",
+                        alias,
+                        pos,
+                        pos + 1
+                    )
+                    .as_str(),
+                );
                 pos += 2;
                 values.push(&attr.key as &(dyn ToSql + Sync));
                 values.push(&attr.value as &(dyn ToSql + Sync));
@@ -153,7 +184,18 @@ pub fn build_find_args<'a>(
     }
 
     if !count {
-        q.push_str(format!(" order by lower({}.name) asc ", alias).as_str()); // TODO: when adding MetadataIndex & CollectionIndex, make this configurable so it is based on an index
+        if let Some(ordering) = &find_query.ordering {
+            let js = json!(ordering);
+            let ordering: Vec<Ordering> = serde_json::from_value(js).unwrap();
+            build_ordering_names(&ordering, names);
+            let (ordering_sql, index) = build_ordering(alias, pos, &ordering, &mut values, names);
+            pos = index;
+            if !ordering_sql.is_empty() {
+                q.push_str(ordering_sql.as_str());
+            }
+        } else {
+            q.push_str(format!(" order by lower({}.name) asc ", alias).as_str()); // TODO: when adding MetadataIndex & CollectionIndex, make this configurable so it is based on an index
+        }
         if find_query.offset.is_some() {
             q.push_str(format!(" offset ${}", pos).as_str());
             values.push(find_query.offset.as_ref().unwrap() as &(dyn ToSql + Sync));

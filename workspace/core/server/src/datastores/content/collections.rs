@@ -66,6 +66,7 @@ impl CollectionsDataStore {
     pub async fn find(&self, query: &mut FindQueryInput) -> Result<Vec<Collection>, Error> {
         let connection = self.pool.get().await?;
         let category_ids = query.get_category_ids();
+        let mut names = Vec::new();
         let (query, values) = build_find_args(
             "collection",
             "select c.* from collections as c ",
@@ -73,6 +74,7 @@ impl CollectionsDataStore {
             query,
             &category_ids,
             false,
+            &mut names,
         );
         let stmt = connection.prepare_cached(query.as_str()).await?;
         let rows = connection.query(&stmt, values.as_slice()).await?;
@@ -82,6 +84,7 @@ impl CollectionsDataStore {
     pub async fn find_count(&self, query: &mut FindQueryInput) -> Result<i64, Error> {
         let connection = self.pool.get().await?;
         let category_ids = query.get_category_ids();
+        let mut names = Vec::new();
         let (query, values) = build_find_args(
             "collection",
             "select count(*) as count from collections c ",
@@ -89,6 +92,7 @@ impl CollectionsDataStore {
             query,
             &category_ids,
             true,
+            &mut names,
         );
         let stmt = connection.prepare_cached(query.as_str()).await?;
         let rows = connection.query(&stmt, values.as_slice()).await?;
@@ -289,7 +293,7 @@ impl CollectionsDataStore {
                 ordering,
                 &mut values,
                 &names,
-            )
+            ).0
         } else {
             String::new()
         };
@@ -335,7 +339,7 @@ impl CollectionsDataStore {
         values.push(&collection.id as &(dyn ToSql + Sync));
         let ordering = if let Some(ordering) = &collection.ordering {
             build_ordering_names(ordering, &mut names);
-            build_ordering("ci.attributes", 2, ordering, &mut values, &names)
+            build_ordering("ci.attributes", 2, ordering, &mut values, &names).0
         } else {
             String::new()
         };
@@ -378,7 +382,7 @@ impl CollectionsDataStore {
         values.push(&collection.id as &(dyn ToSql + Sync));
         let ordering = if let Some(ordering) = &collection.ordering {
             build_ordering_names(ordering, &mut names);
-            build_ordering("ci.attributes", 2, ordering, &mut values, &names)
+            build_ordering("ci.attributes", 2, ordering, &mut values, &names).0
         } else {
             String::new()
         };

@@ -2,6 +2,7 @@ use crate::models::content::collection::CollectionType;
 use async_graphql::{Enum, InputObject, SimpleObject};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+use crate::models::content::ordering::OrderingInput;
 
 #[derive(Enum, Clone, Copy, Eq, PartialEq, Hash, Serialize, Deserialize, Debug)]
 pub enum ExtensionFilterType {
@@ -30,6 +31,7 @@ pub struct FindQueryInput {
     pub category_ids: Option<Vec<String>>,
     pub extension_filter: Option<ExtensionFilterType>,
     pub collection_type: Option<CollectionType>,
+    pub ordering: Option<Vec<OrderingInput>>, // TODO: remove once we have indexes
     pub limit: Option<i64>,
     pub offset: Option<i64>,
 }

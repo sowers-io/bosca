@@ -8,8 +8,8 @@ import io.bosca.graphql.type.StorageSystemType
 import io.bosca.util.decode
 import io.bosca.workflow.Activity
 import io.bosca.workflow.ActivityContext
-import io.bosca.workflow.search.Configuration
 import io.bosca.workflow.search.IndexConfiguration
+import io.bosca.workflow.search.newMeilisearchConfig
 import io.bosca.workflow.search.suspendWaitForTask
 
 class RebuildData(client: io.bosca.api.Client) : Activity(client) {
@@ -29,9 +29,8 @@ class RebuildData(client: io.bosca.api.Client) : Activity(client) {
     private suspend fun deleteAll(system: GetStorageSystemsQuery.All) {
         when (system.storageSystem.type) {
             StorageSystemType.SEARCH -> {
-                val meilisearchConfig = client.configurations.get<Configuration>("meilisearch")
-                    ?: error("meilisearch configuration missing")
-                val client = Client(meilisearchConfig.toConfig())
+                val meilisearchConfig = newMeilisearchConfig()
+                val client = Client(meilisearchConfig)
                 val cfg = system.storageSystem.configuration.decode<IndexConfiguration>()
                     ?: error("index configuration missing")
                 val index = client.index(cfg.name)

@@ -181,6 +181,7 @@ type CollectionWorkflow {
     deleteWorkflow: String
     pending: String
     plans: [WorkflowExecutionPlan!]!
+    running: Int!
     state: String!
     stateValid: DateTime
 }
@@ -421,6 +422,8 @@ type MetadataMutation {
     delete(metadataId: String!): Boolean!
     deleteCategory(categoryId: String!, metadataId: String!): Boolean!
     deleteContent(metadataId: String!): Boolean!
+    deleteGuide(metadataId: String!, metadataVersion: Int!): Boolean!
+    deleteGuideStep(metadataId: String!, metadataVersion: Int!, stepId: Int!): Boolean!
     deletePermission(permission: PermissionInput!): Permission!
     deleteRelationship(id1: String!, id2: String!, relationship: String!): Boolean!
     deleteSupplementary(id: String!): Boolean!
@@ -501,6 +504,7 @@ type MetadataWorkflow {
     deleteWorkflow: String
     pending: String
     plans: [WorkflowExecutionPlan!]!
+    running: Int!
     state: String!
     stateValid: DateTime
 }
@@ -535,9 +539,10 @@ type Mutation {
 }
 
 type Ordering {
+    field: String
     order: Order!
-    path: [String!]!
-    type: AttributeType!
+    path: [String!]
+    type: AttributeType
 }
 
 type Permission {
@@ -1419,9 +1424,10 @@ input ModelInput {
 }
 
 input OrderingInput {
+    field: String
     order: Order!
-    path: [String!]!
-    type: AttributeType!
+    path: [String!]
+    type: AttributeType
 }
 
 input PermissionInput {

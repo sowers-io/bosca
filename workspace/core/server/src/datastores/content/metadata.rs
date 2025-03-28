@@ -67,6 +67,7 @@ impl MetadataDataStore {
 
     pub async fn find(&self, query: &mut FindQueryInput) -> Result<Vec<Metadata>, Error> {
         let category_ids = query.get_category_ids();
+        let mut names = Vec::new();
         let (query, values) = build_find_args(
             "metadata",
             "select m.* from metadata m ",
@@ -74,6 +75,7 @@ impl MetadataDataStore {
             query,
             &category_ids,
             false,
+            &mut names,
         );
         let connection = self.pool.get().await?;
         let stmt = connection.prepare_cached(query.as_str()).await?;
@@ -83,6 +85,7 @@ impl MetadataDataStore {
 
     pub async fn find_count(&self, query: &mut FindQueryInput) -> Result<i64, Error> {
         let category_ids = query.get_category_ids();
+        let mut names = Vec::new();
         let (query, values) = build_find_args(
             "metadata",
             "select count(*) as count from metadata m ",
@@ -90,6 +93,7 @@ impl MetadataDataStore {
             query,
             &category_ids,
             true,
+            &mut names,
         );
         let connection = self.pool.get().await?;
         let stmt = connection.prepare_cached(query.as_str()).await?;

@@ -70,8 +70,8 @@ services:
         condition: service_healthy
 
   runner:
-    #    image: ghcr.io/sowers-io/bosca/kotlin-runner-community:latest
-    image: ghcr.io/sowers-io/bosca/kotlin-runner-enterprise:latest
+    image: ghcr.io/sowers-io/bosca/kotlin-runner-community:latest
+#    image: ghcr.io/sowers-io/bosca/kotlin-runner-enterprise:latest
     platform: linux/amd64
     environment:
       BOSCA_USERNAME: admin
@@ -79,74 +79,8 @@ services:
       BOSCA_QUEUES: "profiles,10;video,4;media,2;default,10;media-transcription,1;media-upload,5;metadata,200;search-index,100;traits,100;transition,100;ai,10;"
       BOSCA_GRAPHQL_URL: http://server:8000/graphql
       BOSCA_WS_URL: ws://server:8000/ws
-    restart: always
-    networks:
-      - boscanet
-    depends_on:
-      server:
-        condition: service_started
-
-  runner2:
-    #    image: ghcr.io/sowers-io/bosca/kotlin-runner-community:latest
-    image: ghcr.io/sowers-io/bosca/kotlin-runner-enterprise:latest
-    platform: linux/amd64
-    environment:
-      BOSCA_USERNAME: admin
-      BOSCA_PASSWORD: password
-      BOSCA_QUEUES: "profiles,10;video,4;media,2;default,10;media-transcription,1;media-upload,5;metadata,200;search-index,100;traits,100;transition,100;ai,10;"
-      BOSCA_GRAPHQL_URL: http://server:8000/graphql
-      BOSCA_WS_URL: ws://server:8000/ws
-    restart: always
-    networks:
-      - boscanet
-    depends_on:
-      server:
-        condition: service_started
-
-  runner3:
-    #    image: ghcr.io/sowers-io/bosca/kotlin-runner-community:latest
-    image: ghcr.io/sowers-io/bosca/kotlin-runner-enterprise:latest
-    platform: linux/amd64
-    environment:
-      BOSCA_USERNAME: admin
-      BOSCA_PASSWORD: password
-      BOSCA_QUEUES: "profiles,10;video,4;media,2;default,10;media-transcription,1;media-upload,5;metadata,200;search-index,100;traits,100;transition,100;ai,10;"
-      BOSCA_GRAPHQL_URL: http://server:8000/graphql
-      BOSCA_WS_URL: ws://server:8000/ws
-    restart: always
-    networks:
-      - boscanet
-    depends_on:
-      server:
-        condition: service_started
-
-  runner4:
-    #    image: ghcr.io/sowers-io/bosca/kotlin-runner-community:latest
-    image: ghcr.io/sowers-io/bosca/kotlin-runner-enterprise:latest
-    platform: linux/amd64
-    environment:
-      BOSCA_USERNAME: admin
-      BOSCA_PASSWORD: password
-      BOSCA_QUEUES: "profiles,10;video,4;media,2;default,10;media-transcription,1;media-upload,5;metadata,200;search-index,100;traits,100;transition,100;ai,10;"
-      BOSCA_GRAPHQL_URL: http://server:8000/graphql
-      BOSCA_WS_URL: ws://server:8000/ws
-    restart: always
-    networks:
-      - boscanet
-    depends_on:
-      server:
-        condition: service_started
-
-  runner5:
-    #    image: ghcr.io/sowers-io/bosca/kotlin-runner-community:latest
-    image: ghcr.io/sowers-io/bosca/kotlin-runner-enterprise:latest
-    platform: linux/amd64
-    environment:
-      BOSCA_USERNAME: admin
-      BOSCA_PASSWORD: password
-      BOSCA_QUEUES: "profiles,10;video,4;media,2;default,10;media-transcription,1;media-upload,5;metadata,200;search-index,100;traits,100;transition,100;ai,10;"
-      BOSCA_GRAPHQL_URL: http://server:8000/graphql
-      BOSCA_WS_URL: ws://server:8000/ws
+      SEARCH_KEY: p8JcB_HuMHRxN7uVXfrG2wU06b5k7oTvaAAYo6nsi9M
+      SEARCH_URL: http://meilisearch:7700
     restart: always
     networks:
       - boscanet

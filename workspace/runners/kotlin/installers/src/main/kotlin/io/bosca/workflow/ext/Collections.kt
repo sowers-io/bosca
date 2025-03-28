@@ -26,9 +26,10 @@ fun CollectionDefinition.toInput(categories: Map<String, Category>): CollectionI
         }.toOptional(),
         ordering = ordering?.map {
             OrderingInput(
-                it.order,
-                it.path,
-                it.type
+                order = it.order,
+                field = it.field.toOptional(),
+                path = it.path.toOptional(),
+                type = it.type.toOptional()
             )
         }.toOptional()
     )

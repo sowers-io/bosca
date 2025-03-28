@@ -539,9 +539,10 @@ type Mutation {
 }
 
 type Ordering {
+    field: String
     order: Order!
-    path: [String!]!
-    type: AttributeType!
+    path: [String!]
+    type: AttributeType
 }
 
 type Permission {
@@ -1294,6 +1295,7 @@ input FindQueryInput {
     extensionFilter: ExtensionFilterType
     limit: Int
     offset: Int
+    ordering: [OrderingInput!]
 }
 
 input FindQueryOptionInput {
@@ -1423,9 +1425,10 @@ input ModelInput {
 }
 
 input OrderingInput {
+    field: String
     order: Order!
-    path: [String!]!
-    type: AttributeType!
+    path: [String!]
+    type: AttributeType
 }
 
 input PermissionInput {

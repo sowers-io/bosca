@@ -10,18 +10,32 @@ pub enum Order {
 
 #[derive(SimpleObject, Clone, Serialize, Deserialize, Debug)]
 pub struct Ordering {
-    pub path: Vec<String>,
+    pub field: Option<String>,
+    pub path: Option<Vec<String>>,
     pub order: Order,
     #[graphql(name = "type")]
     #[serde(rename = "type")]
-    pub attribute_type: AttributeType,
+    pub attribute_type: Option<AttributeType>,
+}
+
+impl Ordering {
+    pub fn get_field(&self) -> Option<&String> {
+        if let Some(field) = &self.field {
+            if field != "created" {
+                return None;
+            }
+            return Some(field);
+        }
+        None
+    }
 }
 
 #[derive(InputObject, Clone, Serialize, Deserialize, Debug)]
 pub struct OrderingInput {
-    pub path: Vec<String>,
+    pub field: Option<String>,
+    pub path: Option<Vec<String>>,
     pub order: Order,
     #[graphql(name = "type")]
     #[serde(rename = "type")]
-    pub attribute_type: AttributeType,
+    pub attribute_type: Option<AttributeType>,
 }

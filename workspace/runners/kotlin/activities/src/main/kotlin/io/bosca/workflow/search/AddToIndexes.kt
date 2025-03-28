@@ -31,9 +31,9 @@ class AddToIndexes(client: io.bosca.api.Client) : Activity(client) {
     }
 
     override suspend fun execute(context: ActivityContext, job: WorkflowJob) {
-        val meilisearchConfig = client.configurations.get<Configuration>("meilisearch") ?: error("meilisearch configuration missing")
+        val meilisearchConfig = newMeilisearchConfig()
         val storageSystems = client.workflows.getStorageSystems()
-        val client = Client(meilisearchConfig.toConfig())
+        val client = Client(meilisearchConfig)
         val document = getInputSupplementaryText(context, job, INPUT_NAME)
         val taskIds = mutableListOf<Pair<Index, Int>>()
         for (system in storageSystems.filter { it.storageSystem.type == StorageSystemType.SEARCH }) {

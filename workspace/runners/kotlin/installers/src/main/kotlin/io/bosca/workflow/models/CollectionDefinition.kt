@@ -7,9 +7,10 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class Ordering(
-    val order: Order,
-    val path: List<String>,
-    val type: AttributeType
+    val order: Order = Order.ASCENDING,
+    val type: AttributeType? = null,
+    val field: String? = null,
+    val path: List<String>? = null
 )
 
 @Serializable

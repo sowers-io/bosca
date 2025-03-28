@@ -6,15 +6,6 @@ configurations:
       key:
         env.variable: OPENAI_KEY
 
-  - key: ollama
-    public: false
-    description: Ollama
-    value:
-      url: http://localhost:11434
-      apiKey: ollama
-      models:
-        default: phi4
-
   - key: mux
     public: false
     description: Mux Token ID
@@ -32,20 +23,3 @@ configurations:
     description: Preview Content URL
     value:
       value: http://localhost:3000/preview
-
-  - key: qdrant
-    public: false
-    description: Qdrant
-    value:
-      host:
-        env.variable: QDRANT_HOST
-      port:
-        env.variable: QDRANT_PORT
-
-  - key: meilisearch
-    public: false
-    description: Meilisearch
-    value:
-      host: http://meilisearch:7700
-      apiKey: p8JcB_HuMHRxN7uVXfrG2wU06b5k7oTvaAAYo6nsi9M
-

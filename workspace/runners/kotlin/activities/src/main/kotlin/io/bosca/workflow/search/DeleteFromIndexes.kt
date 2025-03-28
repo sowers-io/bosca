@@ -24,8 +24,8 @@ class DeleteFromIndexes(client: io.bosca.api.Client) : Activity(client) {
 
     override suspend fun execute(context: ActivityContext, job: WorkflowJob) {
         val metadata = job.metadata?.metadata ?: error("metadata missing")
-        val meilisearchConfig = client.configurations.get<Configuration>("meilisearch") ?: error("meilisearch configuration missing")
-        val client = Client(meilisearchConfig.toConfig())
+        val meilisearchConfig = newMeilisearchConfig()
+        val client = Client(meilisearchConfig)
         val taskIds = mutableListOf<Pair<Index, Int>>()
         for (system in job.storageSystems.filter { it.system.storageSystem.type == StorageSystemType.SEARCH }) {
             val cfg = system.system.storageSystem.configuration.decode<IndexConfiguration>() ?: error("index configuration missing")

@@ -8,8 +8,8 @@ import io.bosca.graphql.type.StorageSystemType
 import io.bosca.util.decode
 import io.bosca.workflow.Activity
 import io.bosca.workflow.ActivityContext
-import io.bosca.workflow.search.Configuration
 import io.bosca.workflow.search.IndexConfiguration
+import io.bosca.workflow.search.newMeilisearchConfig
 import io.bosca.workflow.search.suspendWaitForTask
 
 class InitializeIndex(client: Client) : Activity(client) {
@@ -26,8 +26,8 @@ class InitializeIndex(client: Client) : Activity(client) {
     }
 
     override suspend fun execute(context: ActivityContext, job: WorkflowJob) {
-        val meilisearchConfig = client.configurations.get<Configuration>("meilisearch") ?: error("meilisearch configuration missing")
-        val client = com.meilisearch.sdk.Client(meilisearchConfig.toConfig())
+        val meilisearchConfig = newMeilisearchConfig()
+        val client = com.meilisearch.sdk.Client(meilisearchConfig)
         for (system in job.storageSystems.filter { it.system.storageSystem.type == StorageSystemType.SEARCH }) {
             val cfg = system.system.storageSystem.configuration.decode<IndexConfiguration>() ?: error("index configuration missing")
             val index = try {

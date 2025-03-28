@@ -42,6 +42,7 @@ import {
   type MetadataRelationshipFragment,
   type MetadataRelationshipInput,
   type MetadataSupplementaryFragment,
+  type Ordering,
   type ParentCollectionFragment,
   type PermissionFragment,
   type PermissionInput,
@@ -499,6 +500,7 @@ export class ContentMetadata<T extends NetworkClient> extends Api<T> {
     extension?: ExtensionFilterType | Ref<ExtensionFilterType> | null
     categoryIds?: Array<string> | Ref<string[]> | null
     contentTypes?: Array<string> | Ref<string[]> | null
+    ordering?: Ordering[] | Ref<Ordering[]> | null
     offset?: number | Ref<number>
     limit?: number | Ref<number>
   }): AsyncData<MetadataFragment[] | null, any> {
@@ -507,6 +509,7 @@ export class ContentMetadata<T extends NetworkClient> extends Api<T> {
         attributes: unref(query.attributes),
         extension: unref(query.extension),
         categoryIds: unref(query.categoryIds),
+        ordering: unref(query.ordering),
         // @ts-ignore: this should be fine
         contentTypes: unref(query.contentTypes),
         offset: unref(query.offset),
