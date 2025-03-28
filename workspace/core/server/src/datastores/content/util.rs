@@ -17,6 +17,7 @@ pub fn build_ordering_names(ordering: &[Ordering], names: &mut Vec<String>) {
 }
 
 pub fn build_ordering<'a>(
+    alias: &str,
     attributes_column: &str,
     start_index: i32,
     ordering: &[Ordering],
@@ -56,6 +57,8 @@ pub fn build_ordering<'a>(
                 AttributeType::Collection => buf.push_str("uuid"),
             }
         } else if let Some(field) = field {
+            buf.push_str(alias);
+            buf.push('.');
             buf.push_str(field);
         }
         buf.push(' ');
@@ -188,7 +191,7 @@ pub fn build_find_args<'a>(
             let js = json!(ordering);
             let ordering: Vec<Ordering> = serde_json::from_value(js).unwrap();
             build_ordering_names(&ordering, names);
-            let (ordering_sql, index) = build_ordering(alias, pos, &ordering, &mut values, names);
+            let (ordering_sql, index) = build_ordering(alias, alias, pos, &ordering, &mut values, names);
             pos = index;
             if !ordering_sql.is_empty() {
                 q.push_str(ordering_sql.as_str());

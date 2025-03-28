@@ -237,6 +237,7 @@ export class ContentCollections<T extends NetworkClient> extends Api<T> {
       GetCollectionListDocument,
       { id },
       (data) => {
+        console.error(data)
         if (!data) return null
         return {
           collection: data!.content!.collection!,

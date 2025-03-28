@@ -34,17 +34,23 @@ export class Configurations<T extends NetworkClient> extends Api<T> {
       const response = await this.network.execute(GetConfigurationsDocument)
       return response?.configurations.all as Array<ConfigurationFragment>
     } catch (e) {
+      console.error('failed to get configurations', e)
       return []
     }
   }
 
   async getConfiguration(key: string): Promise<ConfigurationFragment | null> {
-    const response = await this.network.execute(GetConfigurationDocument, {
-      key,
-    })
-    return response?.configurations.configuration as
-      | ConfigurationFragment
-      | null
+    try {
+      const response = await this.network.execute(GetConfigurationDocument, {
+        key,
+      })
+      return response?.configurations.configuration as
+        | ConfigurationFragment
+        | null
+    } catch (e) {
+      console.error('failed to get configuration: ' + key, e)
+      return null
+    }
   }
 
   async setConfiguration(

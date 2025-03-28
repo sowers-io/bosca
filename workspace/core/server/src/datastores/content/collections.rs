@@ -288,6 +288,7 @@ impl CollectionsDataStore {
         let ordering = if let Some(ordering) = &collection.ordering {
             build_ordering_names(ordering, &mut names);
             build_ordering(
+                "collections",
                 "collection_items.attributes",
                 2,
                 ordering,
@@ -339,7 +340,7 @@ impl CollectionsDataStore {
         values.push(&collection.id as &(dyn ToSql + Sync));
         let ordering = if let Some(ordering) = &collection.ordering {
             build_ordering_names(ordering, &mut names);
-            build_ordering("ci.attributes", 2, ordering, &mut values, &names).0
+            build_ordering("c", "ci.attributes", 2, ordering, &mut values, &names).0
         } else {
             String::new()
         };
@@ -382,7 +383,7 @@ impl CollectionsDataStore {
         values.push(&collection.id as &(dyn ToSql + Sync));
         let ordering = if let Some(ordering) = &collection.ordering {
             build_ordering_names(ordering, &mut names);
-            build_ordering("ci.attributes", 2, ordering, &mut values, &names).0
+            build_ordering("m", "ci.attributes", 2, ordering, &mut values, &names).0
         } else {
             String::new()
         };

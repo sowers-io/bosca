@@ -141,5 +141,6 @@
   "88dfbc42f59ab4c1f7af5a4f2f314967944567a6": "mutation SetMetadataSupplementaryPublic($id: String!, $public: Boolean!) { content { metadata { setPublicSupplementary(id: $id, public: $public) { id } } } }",
   "297d41a39573c91af926ad4845f3ef19d51b264e": "mutation SetTextContents($content: String!, $contentType: String!, $id: String!) { content { metadata { setMetadataTextContents(id: $id, contentType: $contentType, content: $content) } } }",
   "2b752bb563da8531229f20469b38788335daed98": "mutation SignUp($identifier: String!, $password: String!, $profile: ProfileInput!) { security { signup { password(profile: $profile, identifier: $identifier, password: $password) { id } } } }",
+  "bf49ddac6c52ce996e2dec2ad137af46b589b1c2": "query ValidatePrincipal { security { principal { id } } }",
   "ef2592134a686b7148d4fcdd5ecb0db3b104717c": "mutation VerifySignUp($token: String!) { security { signup { passwordVerify(verificationToken: $token) } } }"
 }

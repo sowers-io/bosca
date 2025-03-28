@@ -1,0 +1,7 @@
+query ValidatePrincipal {
+    security {
+        principal {
+            id
+        }
+    }
+}

@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import type {CollectionItem} from '~/lib/bosca/contentcollection'
-import {type MetadataFragment, Order} from '~/lib/graphql/graphql'
-import {computedAsync, useStorage} from '@vueuse/core'
+import type { CollectionItem } from '~/lib/bosca/contentcollection'
+import { type MetadataFragment, Order } from '~/lib/graphql/graphql'
+import { computedAsync, useStorage } from '@vueuse/core'
 import TableFooter from '~/components/ui/table/TableFooter.vue'
-import {toast} from '~/components/ui/toast'
+import { toast } from '~/components/ui/toast'
 import {
   Pagination,
   PaginationEllipsis,
@@ -79,8 +79,8 @@ const { data: items } = client.metadata.findAsyncData({
   ordering: [
     {
       field: 'created',
-      order: Order.Descending
-    }
+      order: Order.Descending,
+    },
   ],
   offset: offset,
   limit: limit,
