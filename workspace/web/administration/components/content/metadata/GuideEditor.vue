@@ -20,6 +20,7 @@ const client = useBoscaClient()
 const props = defineProps<{
   guideMetadataId: string
   guideMetadataVersion: number
+  guideMetadataSlug: string
   metadata: MetadataFragment
   relationships: Array<MetadataRelationshipFragment>
   parents: Array<ParentCollectionFragment>
@@ -158,7 +159,8 @@ async function onPreview() {
   )
   if (!configuration || !props.metadata?.slug) return
   window.open(
-    configuration.value.value + '?slug=' + props.metadata!.slug,
+    configuration.value.value + '?slug=' + props.guideMetadataSlug + '&step=' +
+      currentStep.value?.id,
     '_blank',
   )
 }

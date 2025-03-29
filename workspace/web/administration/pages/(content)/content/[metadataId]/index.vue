@@ -25,6 +25,7 @@ const documentTemplate = ref<DocumentTemplateFragment | null>()
 const guide = ref<GuideFragment>()
 const guideMetadataId = ref<string | null>()
 const guideVersion = ref<number | null>()
+const guideSlug = ref<string | null>()
 const guideTemplate = ref<GuideTemplateFragment | null>()
 const currentStep = ref<GuideStepFragment | null>(null)
 const currentModule = ref<GuideStepModuleFragment | null>(null)
@@ -111,6 +112,7 @@ onMounted(async () => {
   } else if (metadata.value?.content.type === 'bosca/v-guide') {
     guideVersion.value = metadata.value.version
     guideMetadataId.value = metadata.value.id
+    guideSlug.value = metadata.value.slug
     await loadGuide(route.params.metadataId.toString())
   }
   const items: BreadcrumbLink[] = [
@@ -128,6 +130,7 @@ onMounted(async () => {
     v-if="metadata && guide && document"
     :guide-metadata-id="route.params.metadataId.toString()"
     :guide-metadata-version="guideVersion || 1"
+    :guide-metadata-slug="guideSlug || ''"
     :guide="guide"
     :guideTemplate="guideTemplate"
     :parents="parents || []"
