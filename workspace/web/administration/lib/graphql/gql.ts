@@ -331,7 +331,7 @@ type Documents = {
   'fragment Group on Group {\n  id\n  name\n}': typeof types.GroupFragmentDoc
   'fragment Guide on Guide {\n  template {\n    id\n    version\n  }\n  type\n  rrule\n  steps {\n    ...GuideStep\n  }\n}':
     typeof types.GuideFragmentDoc
-  'fragment GuideStep on GuideStep {\n  id\n  metadata {\n    ...Metadata\n  }\n  modules {\n    ...GuideStepModule\n  }\n}':
+  'fragment GuideStep on GuideStep {\n  id\n  date\n  metadata {\n    ...Metadata\n  }\n  modules {\n    ...GuideStepModule\n  }\n}':
     typeof types.GuideStepFragmentDoc
   'fragment GuideStepModule on GuideStepModule {\n  metadata {\n    ...Metadata\n  }\n}':
     typeof types.GuideStepModuleFragmentDoc
@@ -711,7 +711,7 @@ const documents: Documents = {
   'fragment Group on Group {\n  id\n  name\n}': types.GroupFragmentDoc,
   'fragment Guide on Guide {\n  template {\n    id\n    version\n  }\n  type\n  rrule\n  steps {\n    ...GuideStep\n  }\n}':
     types.GuideFragmentDoc,
-  'fragment GuideStep on GuideStep {\n  id\n  metadata {\n    ...Metadata\n  }\n  modules {\n    ...GuideStepModule\n  }\n}':
+  'fragment GuideStep on GuideStep {\n  id\n  date\n  metadata {\n    ...Metadata\n  }\n  modules {\n    ...GuideStepModule\n  }\n}':
     types.GuideStepFragmentDoc,
   'fragment GuideStepModule on GuideStepModule {\n  metadata {\n    ...Metadata\n  }\n}':
     types.GuideStepModuleFragmentDoc,
@@ -2196,9 +2196,9 @@ export function graphql(
  */
 export function graphql(
   source:
-    'fragment GuideStep on GuideStep {\n  id\n  metadata {\n    ...Metadata\n  }\n  modules {\n    ...GuideStepModule\n  }\n}',
+    'fragment GuideStep on GuideStep {\n  id\n  date\n  metadata {\n    ...Metadata\n  }\n  modules {\n    ...GuideStepModule\n  }\n}',
 ): (typeof documents)[
-  'fragment GuideStep on GuideStep {\n  id\n  metadata {\n    ...Metadata\n  }\n  modules {\n    ...GuideStepModule\n  }\n}'
+  'fragment GuideStep on GuideStep {\n  id\n  date\n  metadata {\n    ...Metadata\n  }\n  modules {\n    ...GuideStepModule\n  }\n}'
 ]
 /**
  * The graphql function is used to parse GraphQL queries into a document that can be used by GraphQL clients.

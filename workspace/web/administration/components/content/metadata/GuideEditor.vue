@@ -6,11 +6,13 @@ import {
   type GuideStepFragment,
   type GuideStepModuleFragment,
   type GuideTemplateFragment,
+  GuideType,
   type MetadataFragment,
   type MetadataRelationshipFragment,
   type ParentCollectionFragment,
   WorkflowStateType,
 } from '~/lib/graphql/graphql.ts'
+import { type DateValue, getLocalTimeZone } from '@internationalized/date'
 
 const router = useRouter()
 const client = useBoscaClient()
@@ -65,7 +67,6 @@ const hasChanges = ref(false)
 const confirmDelete = ref(false)
 const confirmReset = ref(false)
 const outOfDate = ref(false)
-const slidesInView = ref([])
 
 function onSave() {
   window.dispatchEvent(new Event('save-document'))
@@ -90,7 +91,7 @@ async function onPublish() {
   const published =
     states.find((s) => s.type === WorkflowStateType.Published)?.id || ''
   let stateValid: Date | null = null
-  if (props.metadata.attributes['published']) {
+  if (props.metadata.attributes && props.metadata.attributes['published']) {
     if (typeof props.metadata.attributes['published'] === 'number') {
       stateValid = new Date(props.metadata.attributes['published'])
     } else {
@@ -175,17 +176,24 @@ async function doDelete() {
   await router.push('/content')
 }
 
-function onBackClick() {
-  if (currentModule.value) {
-    currentModule.value = null
-  } else {
-    currentStep.value = null
-  }
-}
-
 const selected = ref('guide')
 const currentPage = ref(1)
 const modules = ref([])
+
+const currentDate = ref<DateValue>()
+
+watch(currentDate, () => {
+  const date = currentDate.value?.toDate(getLocalTimeZone())?.getTime() || 0
+  let index = 1
+  for (const step of props.guide.steps) {
+    const d = step.date ? Date.parse(step.date) : 0
+    if (d >= date) {
+      break
+    }
+    index++
+  }
+  currentPage.value = index
+})
 
 async function buildModules() {
   const modulesParts = []
@@ -258,6 +266,16 @@ function startLoading() {
       clearInterval(loadingIntervalCheck)
     }
   }, 1000)
+}
+
+function formatDate(date: string) {
+  const d = new Date(Date.parse(date))
+  return new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
+    .toLocaleDateString('en', {
+      year: '2-digit',
+      month: 'numeric',
+      day: 'numeric',
+    })
 }
 
 onMounted(() => {
@@ -457,11 +475,26 @@ async function onDeleteStep() {
     </div>
     <div class="border-none p-0 outline-none mt-4">
       <div class="flex gap-6 w-full">
+        <Popover
+          v-if="
+            guide.type === GuideType.Calendar ||
+            guide.type === GuideType.CalendarProgress
+          "
+        >
+          <PopoverTrigger as-child>
+            <Button variant="outline">
+              <Icon name="i-lucide-calendar" class="h-4 w-4" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent class="w-auto p-0">
+            <Calendar v-model="currentDate" initial-focus />
+          </PopoverContent>
+        </Popover>
         <Pagination
           v-slot="{ page }"
           :items-per-page="1"
           :total="(guide.steps?.length || 0) + 1"
-          :sibling-count="6"
+          :sibling-count="guide.type === GuideType.Calendar ? 2 : 6"
           show-edges
           :default-page="1"
           v-model:page="currentPage"
@@ -492,7 +525,24 @@ async function onDeleteStep() {
                         <Icon name="i-lucide-info" class="size-4" />
                       </template>
                       <template v-else>
-                        {{ item.value - 1 }}
+                        <template
+                          v-if="
+                            guide.type ===
+                            GuideType.Calendar
+                          "
+                        >
+                          {{
+                            formatDate(
+                              guide
+                                .steps[
+                                  item.value - 2
+                                ].date,
+                            )
+                          }}
+                        </template>
+                        <template v-else>
+                          {{ item.value - 1 }}
+                        </template>
                       </template>
                     </Button>
                   </TooltipTrigger>
@@ -502,10 +552,15 @@ async function onDeleteStep() {
                     </template>
                     <template v-else>
                       {{
-                        guide.steps[item.value - 2]
-                        ?.metadata?.name ||
-                        'Step ' +
-                          (item.value - 2)
+                        guide.type ===
+                          GuideType.Calendar
+                        ? formatDate(
+                          guide.steps[item.value - 2]
+                            .date,
+                        )
+                        : guide.steps[item.value - 2]
+                          ?.metadata?.name ||
+                          'Step ' + (item.value - 2)
                       }}
                     </template>
                   </TooltipContent>

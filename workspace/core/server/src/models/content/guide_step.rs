@@ -12,6 +12,7 @@ pub struct GuideStep {
     pub id: i64,
     pub step_metadata_id: Uuid,
     pub step_metadata_version: i32,
+    pub sort: i32,
 }
 
 #[derive(InputObject, Clone, Default, Serialize, Deserialize)]
@@ -30,6 +31,7 @@ impl From<&Row> for GuideStep {
             metadata_version: row.get("version"),
             step_metadata_id: row.get("step_metadata_id"),
             step_metadata_version: row.get("step_metadata_version"),
+            sort: row.get("sort"),
         }
     }
 }

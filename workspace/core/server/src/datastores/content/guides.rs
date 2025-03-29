@@ -453,6 +453,7 @@ impl GuidesDataStore {
             step_metadata_version,
             metadata_id: *metadata_id,
             metadata_version: version,
+            sort
         })
     }
 
@@ -738,6 +739,7 @@ impl GuidesDataStore {
             metadata_version,
             step_metadata_id,
             step_metadata_version,
+            sort
         })
     }
 

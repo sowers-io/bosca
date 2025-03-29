@@ -300,8 +300,9 @@ type Groups {
 }
 
 type Guide {
+    recurrences: [DateTime!]
     rrule: String
-    step(stepId: Int!): GuideStep
+    step(date: DateTime, stepId: Int): GuideStep
     stepCount: Int!
     steps(limit: Int, offset: Int): [GuideStep!]!
     template: Metadata
@@ -309,6 +310,7 @@ type Guide {
 }
 
 type GuideStep {
+    date: DateTime
     id: Int!
     metadata: Metadata
     modules: [GuideStepModule!]!

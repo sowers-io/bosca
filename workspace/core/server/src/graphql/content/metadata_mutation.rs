@@ -176,6 +176,14 @@ impl MetadataMutationObject {
         else {
             return Err(Error::new("invalid step"));
         };
+        let Some(guide) = ctx
+            .content
+            .guides
+            .get_guide(&metadata_id, metadata_version)
+            .await?
+        else {
+            return Err(Error::new("guide not found"));
+        };
         let step = ctx
             .content
             .guides
@@ -187,7 +195,14 @@ impl MetadataMutationObject {
                 &template_step,
             )
             .await?;
-        Ok(GuideStepObject::new(step))
+        Ok(if let Some(rrule) = guide.rrule.clone() {
+            // TODO: cache this somewhere
+            let recurrences = rrule.all((step.sort + 1) as u16);
+            let date = recurrences.dates.into_iter().map(|d| d.to_utc()).last();
+            GuideStepObject::new(step, date)
+        } else {
+            GuideStepObject::new(step, None)
+        })
     }
 
     #[allow(clippy::too_many_arguments)]

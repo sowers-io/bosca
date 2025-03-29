@@ -818,6 +818,7 @@ export type GroupsAllArgs = {
 
 export type Guide = {
   __typename?: 'Guide'
+  recurrences?: Maybe<Array<Scalars['DateTime']['output']>>
   rrule?: Maybe<Scalars['String']['output']>
   step?: Maybe<GuideStep>
   stepCount: Scalars['Int']['output']
@@ -827,7 +828,8 @@ export type Guide = {
 }
 
 export type GuideStepArgs = {
-  stepId: Scalars['Int']['input']
+  date?: InputMaybe<Scalars['DateTime']['input']>
+  stepId?: InputMaybe<Scalars['Int']['input']>
 }
 
 export type GuideStepsArgs = {
@@ -845,6 +847,7 @@ export type GuideInput = {
 
 export type GuideStep = {
   __typename?: 'GuideStep'
+  date?: Maybe<Scalars['DateTime']['output']>
   id: Scalars['Int']['output']
   metadata?: Maybe<Metadata>
   modules: Array<GuideStepModule>
@@ -2970,6 +2973,7 @@ export type AddGuideStepMutation = {
       addGuideStep: {
         __typename?: 'GuideStep'
         id: number
+        date?: any | null
         metadata?: {
           __typename: 'Metadata'
           id: string
@@ -5708,6 +5712,7 @@ export type GetMetadataGuideQuery = {
           {
             __typename?: 'GuideStep'
             id: number
+            date?: any | null
             metadata?: {
               __typename: 'Metadata'
               id: string
@@ -9132,6 +9137,7 @@ export type GuideFragment = {
     {
       __typename?: 'GuideStep'
       id: number
+      date?: any | null
       metadata?: {
         __typename: 'Metadata'
         id: string
@@ -9400,6 +9406,7 @@ export type GuideFragment = {
 export type GuideStepFragment = {
   __typename?: 'GuideStep'
   id: number
+  date?: any | null
   metadata?: {
     __typename: 'Metadata'
     id: string
@@ -15137,30 +15144,32 @@ export const GuideStepFragmentDoc = {
     },
     'selectionSet': {
       'kind': 'SelectionSet',
-      'selections': [{
-        'kind': 'Field',
-        'name': { 'kind': 'Name', 'value': 'id' },
-      }, {
-        'kind': 'Field',
-        'name': { 'kind': 'Name', 'value': 'metadata' },
-        'selectionSet': {
-          'kind': 'SelectionSet',
-          'selections': [{
-            'kind': 'FragmentSpread',
-            'name': { 'kind': 'Name', 'value': 'Metadata' },
-          }],
+      'selections': [
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'id' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'date' } },
+        {
+          'kind': 'Field',
+          'name': { 'kind': 'Name', 'value': 'metadata' },
+          'selectionSet': {
+            'kind': 'SelectionSet',
+            'selections': [{
+              'kind': 'FragmentSpread',
+              'name': { 'kind': 'Name', 'value': 'Metadata' },
+            }],
+          },
         },
-      }, {
-        'kind': 'Field',
-        'name': { 'kind': 'Name', 'value': 'modules' },
-        'selectionSet': {
-          'kind': 'SelectionSet',
-          'selections': [{
-            'kind': 'FragmentSpread',
-            'name': { 'kind': 'Name', 'value': 'GuideStepModule' },
-          }],
+        {
+          'kind': 'Field',
+          'name': { 'kind': 'Name', 'value': 'modules' },
+          'selectionSet': {
+            'kind': 'SelectionSet',
+            'selections': [{
+              'kind': 'FragmentSpread',
+              'name': { 'kind': 'Name', 'value': 'GuideStepModule' },
+            }],
+          },
         },
-      }],
+      ],
     },
   }, {
     'kind': 'FragmentDefinition',
@@ -16018,30 +16027,32 @@ export const GuideFragmentDoc = {
     },
     'selectionSet': {
       'kind': 'SelectionSet',
-      'selections': [{
-        'kind': 'Field',
-        'name': { 'kind': 'Name', 'value': 'id' },
-      }, {
-        'kind': 'Field',
-        'name': { 'kind': 'Name', 'value': 'metadata' },
-        'selectionSet': {
-          'kind': 'SelectionSet',
-          'selections': [{
-            'kind': 'FragmentSpread',
-            'name': { 'kind': 'Name', 'value': 'Metadata' },
-          }],
+      'selections': [
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'id' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'date' } },
+        {
+          'kind': 'Field',
+          'name': { 'kind': 'Name', 'value': 'metadata' },
+          'selectionSet': {
+            'kind': 'SelectionSet',
+            'selections': [{
+              'kind': 'FragmentSpread',
+              'name': { 'kind': 'Name', 'value': 'Metadata' },
+            }],
+          },
         },
-      }, {
-        'kind': 'Field',
-        'name': { 'kind': 'Name', 'value': 'modules' },
-        'selectionSet': {
-          'kind': 'SelectionSet',
-          'selections': [{
-            'kind': 'FragmentSpread',
-            'name': { 'kind': 'Name', 'value': 'GuideStepModule' },
-          }],
+        {
+          'kind': 'Field',
+          'name': { 'kind': 'Name', 'value': 'modules' },
+          'selectionSet': {
+            'kind': 'SelectionSet',
+            'selections': [{
+              'kind': 'FragmentSpread',
+              'name': { 'kind': 'Name', 'value': 'GuideStepModule' },
+            }],
+          },
         },
-      }],
+      ],
     },
   }],
 } as unknown as DocumentNode<GuideFragment, unknown>
@@ -19477,7 +19488,7 @@ export const AddGuideDocument = {
   }],
 } as unknown as DocumentNode<AddGuideMutation, AddGuideMutationVariables>
 export const AddGuideStepDocument = {
-  '__meta__': { 'hash': '86b801f591b6ebce62dc6ed54ab3a5fbd4e5a3ad' },
+  '__meta__': { 'hash': '0cd2dfac44d0795856d0e127c57c94d0062cdda0' },
   'kind': 'Document',
   'definitions': [{
     'kind': 'OperationDefinition',
@@ -20044,30 +20055,32 @@ export const AddGuideStepDocument = {
     },
     'selectionSet': {
       'kind': 'SelectionSet',
-      'selections': [{
-        'kind': 'Field',
-        'name': { 'kind': 'Name', 'value': 'id' },
-      }, {
-        'kind': 'Field',
-        'name': { 'kind': 'Name', 'value': 'metadata' },
-        'selectionSet': {
-          'kind': 'SelectionSet',
-          'selections': [{
-            'kind': 'FragmentSpread',
-            'name': { 'kind': 'Name', 'value': 'Metadata' },
-          }],
+      'selections': [
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'id' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'date' } },
+        {
+          'kind': 'Field',
+          'name': { 'kind': 'Name', 'value': 'metadata' },
+          'selectionSet': {
+            'kind': 'SelectionSet',
+            'selections': [{
+              'kind': 'FragmentSpread',
+              'name': { 'kind': 'Name', 'value': 'Metadata' },
+            }],
+          },
         },
-      }, {
-        'kind': 'Field',
-        'name': { 'kind': 'Name', 'value': 'modules' },
-        'selectionSet': {
-          'kind': 'SelectionSet',
-          'selections': [{
-            'kind': 'FragmentSpread',
-            'name': { 'kind': 'Name', 'value': 'GuideStepModule' },
-          }],
+        {
+          'kind': 'Field',
+          'name': { 'kind': 'Name', 'value': 'modules' },
+          'selectionSet': {
+            'kind': 'SelectionSet',
+            'selections': [{
+              'kind': 'FragmentSpread',
+              'name': { 'kind': 'Name', 'value': 'GuideStepModule' },
+            }],
+          },
         },
-      }],
+      ],
     },
   }],
 } as unknown as DocumentNode<
@@ -29218,7 +29231,7 @@ export const GetMetadataDocumentTemplateDocument = {
   GetMetadataDocumentTemplateQueryVariables
 >
 export const GetMetadataGuideDocument = {
-  '__meta__': { 'hash': 'd187e80eecb9fb15815c4326baa3745016b901d0' },
+  '__meta__': { 'hash': '10468dc001aaff4b1f6c96aeaef81e0ac1e2a306' },
   'kind': 'Document',
   'definitions': [{
     'kind': 'OperationDefinition',
@@ -29685,30 +29698,32 @@ export const GetMetadataGuideDocument = {
     },
     'selectionSet': {
       'kind': 'SelectionSet',
-      'selections': [{
-        'kind': 'Field',
-        'name': { 'kind': 'Name', 'value': 'id' },
-      }, {
-        'kind': 'Field',
-        'name': { 'kind': 'Name', 'value': 'metadata' },
-        'selectionSet': {
-          'kind': 'SelectionSet',
-          'selections': [{
-            'kind': 'FragmentSpread',
-            'name': { 'kind': 'Name', 'value': 'Metadata' },
-          }],
+      'selections': [
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'id' } },
+        { 'kind': 'Field', 'name': { 'kind': 'Name', 'value': 'date' } },
+        {
+          'kind': 'Field',
+          'name': { 'kind': 'Name', 'value': 'metadata' },
+          'selectionSet': {
+            'kind': 'SelectionSet',
+            'selections': [{
+              'kind': 'FragmentSpread',
+              'name': { 'kind': 'Name', 'value': 'Metadata' },
+            }],
+          },
         },
-      }, {
-        'kind': 'Field',
-        'name': { 'kind': 'Name', 'value': 'modules' },
-        'selectionSet': {
-          'kind': 'SelectionSet',
-          'selections': [{
-            'kind': 'FragmentSpread',
-            'name': { 'kind': 'Name', 'value': 'GuideStepModule' },
-          }],
+        {
+          'kind': 'Field',
+          'name': { 'kind': 'Name', 'value': 'modules' },
+          'selectionSet': {
+            'kind': 'SelectionSet',
+            'selections': [{
+              'kind': 'FragmentSpread',
+              'name': { 'kind': 'Name', 'value': 'GuideStepModule' },
+            }],
+          },
         },
-      }],
+      ],
     },
   }, {
     'kind': 'FragmentDefinition',

@@ -4,14 +4,16 @@ use crate::graphql::content::metadata::MetadataObject;
 use crate::models::content::guide_step::GuideStep;
 use crate::models::security::permission::PermissionAction;
 use async_graphql::{Context, Error, Object};
+use chrono::{DateTime, Utc};
 
 pub struct GuideStepObject {
     pub step: GuideStep,
+    pub date: Option<DateTime<Utc>>,
 }
 
 impl GuideStepObject {
-    pub fn new(step: GuideStep) -> Self {
-        Self { step }
+    pub fn new(step: GuideStep, date: Option<DateTime<Utc>>) -> Self {
+        Self { step, date }
     }
 }
 
@@ -19,6 +21,10 @@ impl GuideStepObject {
 impl GuideStepObject {
     pub async fn id(&self) -> i64 {
         self.step.id
+    }
+
+    pub async fn date(&self) -> Option<DateTime<Utc>> {
+        self.date
     }
 
     pub async fn metadata(&self, ctx: &Context<'_>) -> Result<Option<MetadataObject>, Error> {
