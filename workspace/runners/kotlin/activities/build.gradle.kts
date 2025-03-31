@@ -12,7 +12,7 @@ repositories {
 }
 
 dependencies {
-    implementation("com.apollographql.apollo:apollo-runtime:4.1.0")
+    implementation("com.apollographql.apollo:apollo-runtime:4.1.1")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.10.1")
     implementation("com.dashjoin:jsonata:0.9.8")
     implementation("com.fleeksoft.ksoup:ksoup:0.2.2")
@@ -20,6 +20,10 @@ dependencies {
     implementation("org.graalvm.polyglot:polyglot:24.2.0")
     implementation("com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.18.3")
     implementation("com.meilisearch.sdk:meilisearch-java:0.14.2")
+
+    implementation("com.sun.mail:jakarta.mail:2.0.1")
+    implementation("com.sendgrid:sendgrid-java:4.10.2")
+    implementation("org.thymeleaf:thymeleaf:3.1.2.RELEASE")
 
     implementation(project(":engine"))
 

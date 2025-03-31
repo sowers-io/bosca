@@ -4,6 +4,10 @@ import VerifySignUp from '~/components/auth/VerifySignUp.vue'
 definePageMeta({
   layout: 'blank',
 })
+const client = useBoscaClient()
+const adminOverrides = await client.configurations.getConfiguration(
+  'admin.overrides',
+)
 </script>
 
 <template>
@@ -12,11 +16,25 @@ definePageMeta({
   >
     <div class="max-w-sm w-full flex flex-col gap-6">
       <NuxtLink
-        to="/public"
+        to="/"
         class="flex items-center self-center gap-2 font-bold"
       >
-        <img src="/logo.svg" alt="Bosca" class="size-6" />
-        Bosca
+        <img
+          src="/logo.svg"
+          alt="logo"
+          class="size-6"
+          v-if="!adminOverrides?.value?.logo?.slug"
+        />
+        <img
+          :src="'/content/image?slug=' + adminOverrides.value.logo.slug"
+          alt="logo"
+          class="size-6"
+          v-else
+        />
+        <span class="ml-3 font-bold">{{
+          adminOverrides?.value?.title?.replace(' ', '&nbsp;') ||
+          'Bosca'
+        }}</span>
       </NuxtLink>
       <div class="flex flex-col gap-6">
         <Card>

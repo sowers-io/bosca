@@ -42,7 +42,7 @@ pub async fn initialize_security(ctx: &BoscaContext) -> Result<(), Error> {
                 add_password_principal(ctx, &admin_username, &admin_password, &profile, true, false).await?;
             let group = ctx.security.get_administrators_group().await?;
             ctx.security
-                .add_principal_group(&principal.id, &group.id)
+                .add_principal_group(&principal.0.id, &group.id)
                 .await?;
         }
     }
@@ -75,12 +75,12 @@ pub async fn initialize_security(ctx: &BoscaContext) -> Result<(), Error> {
                 add_password_principal(ctx, &sa_username, &sa_password, &profile, true, false).await?;
             let group = ctx.security.get_service_account_group().await?;
             ctx.security
-                .add_principal_group(&principal.id, &group.id)
+                .add_principal_group(&principal.0.id, &group.id)
                 .await?;
             // TODO: relax this
             let group = ctx.security.get_administrators_group().await?;
             ctx.security
-                .add_principal_group(&principal.id, &group.id)
+                .add_principal_group(&principal.0.id, &group.id)
                 .await?;
         }
     }

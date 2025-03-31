@@ -43,29 +43,39 @@ suspend fun AssetFolder.install(client: Client, parentCollectionId: String, dire
 }
 
 suspend fun AssetDefinition.install(client: Client, parentCollectionId: String, directory: File) {
-    val file = File(directory, file)
-    val mimeType = mimeType ?: withContext(Dispatchers.IO) {
-        Files.probeContentType(file.toPath())
-    } ?: "application/octet-stream"
+    val (file, mimeType) = file?.let {
+        val file = File(directory, file)
+        val mimeType = mimeType ?: withContext(Dispatchers.IO) {
+            Files.probeContentType(file.toPath())
+        } ?: "application/octet-stream"
+        Pair(file, mimeType)
+    } ?: Pair(null, null)
+    val attributes = attributes as? Map<*, *> ?: emptyMap<String, Any>()
     val metadata = MetadataInput(
-        name = file.name,
-        attributes = mapOf(
+        name = name,
+        attributes = (attributes + mapOf(
             "description" to description,
-            "original.name" to file.name
-        ).toOptional(),
-        contentType = mimeType,
+            "original.name" to file?.name
+        )).toOptional(),
+        contentType = mimeType ?: "application/octet-stream",
         languageTag = "en",
         metadataType = MetadataType.STANDARD.toOptional(),
         parentCollectionId = parentCollectionId.toOptional(),
-        slug = file.name.split(".").first().toOptional(),
+        slug = slug.toOptional()
     )
     val current = client.get(metadata.slug.getOrThrow()!!)
     val id = if (current == null) {
         client.metadata.add(metadata)
     } else {
-        current.metadata?.id
-    } ?: error("failed to add metadata for file ${file.name}")
-    client.metadata.setFileContents(id, file.toUpload(mimeType))
+        if (current.metadata?.workflow?.metadataWorkflow?.state == "draft") {
+            client.metadata.edit(current.metadata?.id ?: error("failed to edit metadata for asset $name"), metadata)
+        } else {
+            current.metadata?.id
+        }
+    } ?: error("failed to add metadata for asset $name")
+    file?.let {
+        client.metadata.setFileContents(id, it.toUpload(mimeType!!))
+    }
     client.metadata.setPublic(id, public)
     client.metadata.setPublicContent(id, publicContent)
     if (ready) {

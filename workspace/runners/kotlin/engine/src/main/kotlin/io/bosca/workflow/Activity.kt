@@ -9,7 +9,6 @@ import io.bosca.util.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerializationStrategy
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.encodeToJsonElement
@@ -168,7 +167,7 @@ abstract class Activity(protected val client: Client) {
         key: String
     ): T {
         val text = getInputSupplementaryText(context, job, key)
-        return Json.decodeFromString(text)
+        return json.decodeFromString(text)
     }
 
     protected suspend fun setContents(
@@ -298,7 +297,7 @@ abstract class Activity(protected val client: Client) {
             client.metadata.setSupplementaryTextContent(
                 supplementary.id,
                 "application/json",
-                if (value is String) value else Json.encodeToString(serializer, value),
+                if (value is String) value else json.encodeToString(serializer, value),
             )
         } ?: job.collection?.collection?.let {
             val supplementary = getOrAddCollectionSupplementary(
@@ -312,7 +311,7 @@ abstract class Activity(protected val client: Client) {
             client.collections.setSupplementaryTextContent(
                 supplementary.id,
                 "application/json",
-                if (value is String) value else Json.encodeToString(serializer, value),
+                if (value is String) value else json.encodeToString(serializer, value),
             )
         } ?: error("missing metadata or collection")
     }
@@ -325,11 +324,11 @@ abstract class Activity(protected val client: Client) {
 
         @Suppress("UNCHECKED_CAST")
         val values = attributes[name] as? Map<String, Any?> ?: emptyMap()
-        return Json.decodeFromJsonElement<T>(values.toJsonElement())
+        return json.decodeFromJsonElement<T>(values.toJsonElement())
     }
 
     protected suspend inline fun <reified T> setAttribute(job: WorkflowJob, name: String, value: T) {
-        val data = Json.encodeToJsonElement(value).toAny()
+        val data = json.encodeToJsonElement(value).toAny()
         if (job.metadata != null) {
             @Suppress("UNCHECKED_CAST")
             val attrs = job.metadata.metadata.attributes as MutableMap<String, Any?>? ?: mutableMapOf()
@@ -372,16 +371,16 @@ abstract class Activity(protected val client: Client) {
     }
 
     protected inline fun <reified T> getContext(job: WorkflowJob): T {
-        return Json.decodeFromJsonElement<T>((job.context ?: emptyMap<String, Any>()).toJsonElement())
+        return json.decodeFromJsonElement<T>((job.context ?: emptyMap<String, Any>()).toJsonElement())
     }
 
     protected suspend inline fun <reified T> setContext(job: WorkflowJob, value: T) {
-        val data = Json.encodeToJsonElement(value).toAny()
+        val data = json.encodeToJsonElement(value).toAny()
         client.workflows.setWorkflowJobContext(job.id, data ?: emptyMap<String, Any>())
     }
 
     protected inline fun <reified T> getConfiguration(job: WorkflowJob): T {
-        return Json.decodeFromJsonElement<T>((job.workflowActivity.workflowActivity.configuration).toJsonElement())
+        return json.decodeFromJsonElement<T>((job.workflowActivity.workflowActivity.configuration).toJsonElement())
     }
 
     abstract suspend fun execute(context: ActivityContext, job: WorkflowJob)

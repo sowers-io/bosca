@@ -33,6 +33,7 @@ import io.bosca.workflow.collection.DeleteAllSupplementary as CollectionDeleteAl
 import io.bosca.workflow.collection.DeleteAllPlanSupplementary as CollectionDeleteAllPlanSupplementary
 
 import io.bosca.workflow.ai.embeddings.GenerateEmbeddings
+import io.bosca.workflow.email.EmailActivity
 import io.bosca.workflow.general.Delay
 import io.bosca.workflow.general.If
 import io.bosca.workflow.json.JSONata
@@ -51,6 +52,8 @@ class ActivitiesInstaller(client: Client) : Installer, ActivityRegistry {
         Jq(client),
 
         Delay(client),
+
+        EmailActivity(client),
 
         CollectionToJson(client),
         MetadataToJson(client),

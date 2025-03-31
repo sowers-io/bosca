@@ -2,16 +2,17 @@
 import { Loader2 } from 'lucide-vue-next'
 import { toast } from '~/components/ui/toast'
 
+const route = useRoute()
 const client = useBoscaClient()
 const isLoading = ref(false)
-const token = ref('')
+const token = ref(route.query.token as string | undefined)
 
 async function onSubmit(event: Event) {
   event.preventDefault()
   event.stopImmediatePropagation()
   isLoading.value = true
   try {
-    await client.security.verify(token.value)
+    await client.security.verify(token.value || '')
     toast({
       title: 'Verify succeeded, please login.',
     })

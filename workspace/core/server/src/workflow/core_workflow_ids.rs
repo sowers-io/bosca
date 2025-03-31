@@ -1,4 +1,6 @@
 pub const PROFILE_UPDATE_STORAGE: &str = "profile.update.storage";
+pub const PROFILE_SIGNUP: &str = "profile.signup";
+pub const SEND_EMAIL: &str = "email.send";
 
 pub const REBUILD_STORAGE: &str = "rebuild.storage.systems.content";
 

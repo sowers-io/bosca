@@ -11,6 +11,7 @@ pub struct Principal {
     pub verified: bool,
     pub anonymous: bool,
     pub attributes: Value,
+    pub verification_token: Option<String>,
     groups: Option<Vec<Group>>,
     group_ids: HashSet<Uuid>,
 }
@@ -33,6 +34,7 @@ impl Principal {
             anonymous,
             attributes,
             groups: Some(groups),
+            verification_token: None,
             group_ids,
         }
     }
@@ -67,6 +69,7 @@ impl From<&Row> for Principal {
             verified: row.get("verified"),
             anonymous: row.get("anonymous"),
             attributes: row.get("attributes"),
+            verification_token: row.get("verification_token"),
             groups: None,
             group_ids: HashSet::new(),
         }

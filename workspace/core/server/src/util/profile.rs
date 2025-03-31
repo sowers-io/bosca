@@ -4,6 +4,7 @@ use crate::models::security::credentials::PasswordCredential;
 use crate::models::security::permission::{Permission, PermissionAction};
 use crate::models::security::principal::Principal;
 use async_graphql::Error;
+use uuid::Uuid;
 use crate::context::BoscaContext;
 
 pub async fn add_password_principal(
@@ -13,7 +14,7 @@ pub async fn add_password_principal(
     profile: &ProfileInput,
     auto_verify: bool,
     set_ready: bool
-) -> Result<Principal, Error> {
+) -> Result<(Principal, Uuid), Error> {
     let password_credential = PasswordCredential::new(identifier.to_string(), password.to_string());
     let groups = vec![];
     let principal_id = ctx.security
@@ -43,7 +44,7 @@ pub async fn add_password_principal(
     ctx.security
         .add_principal_group(&principal_id, &group.id)
         .await?;
-    ctx.profile
+    let profile = ctx.profile
         .add(ctx, Some(principal_id), profile, Some(collection_id))
         .await?;
     let principal = ctx.security.get_principal_by_id(&principal_id).await?;
@@ -58,5 +59,5 @@ pub async fn add_password_principal(
         ctx.content.collection_workflows.set_ready_and_enqueue(ctx, &principal, &collection, None).await?;
     }
 
-    Ok(principal)
+    Ok((principal, profile))
 }

@@ -36,6 +36,12 @@ class ContentMetadata(network: NetworkClient) : Api(network) {
         return response.data?.content?.metadata?.metadata
     }
 
+    suspend fun getBySlug(slug: String): Metadata? {
+        val response = network.graphql.query(GetSlugQuery(slug)).execute()
+        response.validate()
+        return response.data?.content?.slug?.onMetadata?.metadata
+    }
+
     suspend fun getDocument(id: String, version: Int): Document? {
         val response = network.graphql.query(GetMetadataDocumentQuery(id, version)).execute()
         response.validate()
