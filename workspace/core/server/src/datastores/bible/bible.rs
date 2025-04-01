@@ -8,6 +8,7 @@ use async_graphql::Error;
 use deadpool_postgres::{GenericClient, Pool};
 use serde_json::json;
 use std::sync::Arc;
+use log::error;
 use uuid::Uuid;
 
 #[derive(Clone)]
@@ -19,6 +20,13 @@ pub struct BiblesDataStore {
 impl BiblesDataStore {
     pub fn new(pool: Arc<Pool>, notifier: Arc<Notifier>) -> Self {
         Self { pool, notifier }
+    }
+
+    async fn on_metadata_changed(&self, id: &Uuid) -> async_graphql::Result<(), Error> {
+        if let Err(e) = self.notifier.metadata_changed(id).await {
+            error!("Failed to notify metadata changes: {:?}", e);
+        }
+        Ok(())
     }
 
     pub async fn set_bible(
@@ -107,6 +115,7 @@ impl BiblesDataStore {
             }
         }
         txn.commit().await?;
+        self.on_metadata_changed(metadata_id).await?;
         Ok(())
     }
 

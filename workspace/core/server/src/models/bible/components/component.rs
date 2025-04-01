@@ -18,7 +18,7 @@ pub enum Component {
     #[serde(rename = "t")]
     Text(Text),
     #[serde(rename = "cc")]
-    ComponentContainer(ComponentContainer),
+    Container(ComponentContainer),
 }
 
 #[derive(InputObject)]
@@ -42,7 +42,7 @@ impl From<&ComponentInput> for Component {
         } else if let Some(text) = component.text.as_ref() {
             Component::Text(text.into())
         } else if let Some(container) = component.container.as_ref() {
-            Component::ComponentContainer(container.into())
+            Component::Container(container.into())
         } else {
             panic!("Invalid component input")
         }

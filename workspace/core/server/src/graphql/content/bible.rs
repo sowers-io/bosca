@@ -49,7 +49,7 @@ impl BibleObject {
             .await?;
         Ok(languages
             .into_iter()
-            .map(|l| BibleLanguageObject::new(l))
+            .map(BibleLanguageObject::new)
             .collect())
     }
 
@@ -60,6 +60,6 @@ impl BibleObject {
             .bibles
             .get_books(&self.bible.metadata_id, self.bible.version)
             .await?;
-        Ok(books.into_iter().map(|b| BibleBookObject::new(b)).collect())
+        Ok(books.into_iter().map(BibleBookObject::new).collect())
     }
 }

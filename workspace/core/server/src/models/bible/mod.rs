@@ -1,4 +1,5 @@
 pub mod chapter;
+#[allow(clippy::module_inception)]
 pub mod bible;
 pub mod bible_language;
 pub mod book;

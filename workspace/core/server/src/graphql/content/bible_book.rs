@@ -45,7 +45,7 @@ impl BibleBookObject {
             .await?;
         Ok(chapters
             .into_iter()
-            .map(|c| BibleChapterObject::new(c))
+            .map(BibleChapterObject::new)
             .collect())
     }
 }
