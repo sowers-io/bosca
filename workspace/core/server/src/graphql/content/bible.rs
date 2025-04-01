@@ -80,7 +80,7 @@ impl BibleObject {
         let mut results = parse(ctx, &self.bible, &human).await?;
         let mut items = Vec::new();
         for result in results.iter_mut() {
-            if let Some(_) = result.verse_usfm() {
+            if result.verse_usfm().is_some() {
                 if let Some(chapter_usfm) = result.chapter_usfm() {
                     if let Some(chapter) = ctx
                         .content

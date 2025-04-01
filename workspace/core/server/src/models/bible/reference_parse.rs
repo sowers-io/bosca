@@ -24,7 +24,7 @@ pub async fn parse(
         if let Some(chapter) = reference.chapter_usfm() {
             let usfms = joined_references
                 .entry(chapter)
-                .or_insert_with(String::new);
+                .or_default();
 
             if !usfms.is_empty() {
                 usfms.push('+');
@@ -33,7 +33,7 @@ pub async fn parse(
         } else if let Some(book) = reference.book_usfm() {
             let usfms = joined_references
                 .entry(book)
-                .or_insert_with(String::new);
+                .or_default();
             if usfms.is_empty() {
                 usfms.push_str(reference.usfm());
             }
