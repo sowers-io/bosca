@@ -162,6 +162,11 @@ class ContentMetadata(network: NetworkClient) : Api(network) {
         response.validate()
     }
 
+    suspend fun setBible(id: String, version: Int, bible: BibleInput) {
+        val response = network.graphql.mutation(SetBibleMutation(id, version, bible)).execute()
+        response.validate()
+    }
+
     suspend fun setSupplementaryTextContent(
         supplementaryId: String,
         contentType: String,

@@ -8,6 +8,7 @@ create table bibles
     description        varchar not null,
     abbreviation       varchar not null,
     abbreviation_local varchar not null,
+    styles             jsonb,
     primary key (metadata_id, version),
     foreign key (metadata_id) references metadata (id) on delete cascade
 );
@@ -38,16 +39,6 @@ create table bible_books
     sort         int     not null,
     primary key (metadata_id, version, usfm),
     foreign key (metadata_id, version) references bibles (metadata_id, version) on delete cascade
-);
-
-create table bible_book_usx
-(
-    metadata_id uuid    not null,
-    version     int     not null,
-    usfm        varchar not null,
-    usx         varchar not null,
-    primary key (metadata_id, version, usfm),
-    foreign key (metadata_id, version, usfm) references bible_books (metadata_id, version, usfm) on delete cascade
 );
 
 create table bible_chapters

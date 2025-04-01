@@ -1,7 +1,7 @@
 pub mod component;
-mod verse_start;
-mod verse_end;
-mod text;
-mod style;
-mod break_component;
-mod container;
+pub mod verse_start;
+pub mod verse_end;
+pub mod text;
+pub mod style;
+pub mod break_component;
+pub mod container;

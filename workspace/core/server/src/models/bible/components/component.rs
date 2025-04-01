@@ -5,6 +5,7 @@ use crate::models::bible::components::verse_end::{VerseEnd, VerseEndInput};
 use crate::models::bible::components::verse_start::{VerseStart, VerseStartInput};
 use async_graphql::{InputObject, Union};
 use serde::{Deserialize, Serialize};
+use crate::models::bible::reference::Reference;
 
 #[derive(Union, Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(tag = "_")]
@@ -19,6 +20,64 @@ pub enum Component {
     Text(Text),
     #[serde(rename = "cc")]
     Container(ComponentContainer),
+}
+
+struct FilterContext {
+    found_starts: i32,
+}
+
+impl Component {
+    pub fn filter(&self, reference: &Reference) -> Option<Component> {
+        let mut ctx = FilterContext { found_starts: 0 };
+        let refs = reference.references();
+        self.filter_inner(&refs, &mut ctx)
+    }
+
+    fn filter_inner(&self, reference: &Vec<Reference>, ctx: &mut FilterContext) -> Option<Component> {
+        match self {
+            Component::VerseStart(vs) => {
+                if reference.iter().any(|r| r.is_usfm(vs.reference.usfm())) {
+                    ctx.found_starts += 1;
+                    Some(Component::VerseStart(vs.clone()))
+                } else {
+                    None
+                }
+            }
+            Component::VerseEnd(end) => {
+                if ctx.found_starts > 0 {
+                    ctx.found_starts -= 1;
+                    Some(Component::VerseEnd(end.clone()))
+                } else {
+                    None
+                }
+            }
+            Component::Break(b) => {
+                if ctx.found_starts > 0 {
+                    Some(Component::Break(b.clone()))
+                } else {
+                    None
+                }
+            }
+            Component::Text(txt) => {
+                if ctx.found_starts > 0 {
+                    Some(Component::Text(txt.clone()))
+                } else {
+                    None
+                }
+            }
+            Component::Container(c) => {
+                let filtered: Vec<Component> = c.components.iter().filter_map(|c| c.filter_inner(reference, ctx)).collect();
+                if filtered.is_empty() {
+                    None
+                } else {
+                    Some(Component::Container(ComponentContainer {
+                        components: filtered,
+                        ..c.clone()
+                    }))
+                }
+            }
+        }
+    }
 }
 
 #[derive(InputObject)]

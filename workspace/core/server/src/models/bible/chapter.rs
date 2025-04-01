@@ -22,9 +22,7 @@ impl From<&Row> for Chapter {
         let j: Value = row.get("components");
         let c: Component = serde_json::from_value(j).unwrap();
         Self {
-            reference: Reference {
-                usfm: row.get("reference"),
-            },
+            reference: Reference::new(row.get("usfm")),
             component: c,
         }
     }

@@ -1,8 +1,10 @@
 use crate::models::bible::bible_language::BibleLanguageInput;
 use crate::models::bible::book::BookInput;
 use async_graphql::InputObject;
+use serde_json::Value;
 use tokio_postgres::Row;
 use uuid::Uuid;
+use crate::models::bible::components::style::{Style, StyleInput};
 
 pub struct Bible {
     pub metadata_id: Uuid,
@@ -13,6 +15,7 @@ pub struct Bible {
     pub description: String,
     pub abbreviation: String,
     pub abbreviation_local: String,
+    pub styles: Vec<Style>
 }
 
 #[derive(InputObject)]
@@ -25,10 +28,13 @@ pub struct BibleInput {
     pub abbreviation_local: String,
     pub language: BibleLanguageInput,
     pub books: Vec<BookInput>,
+    pub styles: Vec<StyleInput>
 }
 
 impl From<&Row> for Bible {
     fn from(row: &Row) -> Self {
+        let styles: Value = row.get("styles");
+        let styles: Vec<Style> = serde_json::from_value(styles).unwrap();
         Self {
             metadata_id: row.get("metadata_id"),
             version: row.get("version"),
@@ -38,6 +44,7 @@ impl From<&Row> for Bible {
             description: row.get("description"),
             abbreviation: row.get("abbreviation"),
             abbreviation_local: row.get("abbreviation_local"),
+            styles
         }
     }
 }

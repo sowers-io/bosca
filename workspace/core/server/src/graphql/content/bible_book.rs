@@ -1,7 +1,6 @@
 use crate::context::BoscaContext;
 use crate::graphql::content::bible_chapter::BibleChapterObject;
 use crate::models::bible::book::Book;
-use crate::models::bible::reference::ReferenceInput;
 use async_graphql::{Context, Error, Object};
 
 pub struct BibleBookObject {
@@ -17,7 +16,7 @@ impl BibleBookObject {
 #[Object(name = "BibleBook")]
 impl BibleBookObject {
     async fn usfm(&self) -> &String {
-        &self.book.usfm
+        self.book.reference.usfm()
     }
 
     async fn name_short(&self) -> &String {
@@ -35,13 +34,12 @@ impl BibleBookObject {
     async fn chapters(
         &self,
         ctx: &Context<'_>,
-        reference: ReferenceInput,
     ) -> Result<Vec<BibleChapterObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let chapters = ctx
             .content
             .bibles
-            .get_chapters(&self.book.metadata_id, self.book.version, &reference.usfm)
+            .get_chapters(&self.book.metadata_id, self.book.version, self.book.reference.usfm())
             .await?;
         Ok(chapters
             .into_iter()

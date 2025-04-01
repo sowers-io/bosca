@@ -17,6 +17,8 @@ union CollectionItem = Collection | Metadata
 
 union ContentItem = Collection | Metadata | Profile
 
+union Style = DeclaredStyle | StyleReference
+
 union WorkflowExecution = WorkflowExecutionPlan | WorkflowJob
 
 type Activities {
@@ -43,6 +45,39 @@ type Activity {
 type ActivityParameter {
     name: String!
     type: ActivityParameterType!
+}
+
+type Bible {
+    abbreviation: String!
+    abbreviationLocal: String!
+    books: [BibleBook!]!
+    description: String!
+    languages: [BibleLanguage!]!
+    name: String!
+    nameLocal: String!
+    styles: [Style!]!
+    systemId: String!
+}
+
+type BibleBook {
+    abbreviation: String!
+    chapters(reference: ReferenceInput!): [BibleChapter!]!
+    nameLong: String!
+    nameShort: String!
+    usfm: String!
+}
+
+type BibleChapter {
+    usfm: String!
+}
+
+type BibleLanguage {
+    iso: String!
+    name: String!
+    nameLocal: String!
+    script: String!
+    scriptCode: String!
+    scriptDirection: String!
 }
 
 type Categories {
@@ -234,6 +269,13 @@ type ContentMutation {
     sources: SourceMutation!
 }
 
+type DeclaredStyle {
+    align: String
+    fontWeight: String
+    id: String!
+    textIndent: TextIndent
+}
+
 type Document {
     content: JSON!
     template: Metadata
@@ -300,8 +342,9 @@ type Groups {
 }
 
 type Guide {
+    recurrences: [DateTime!]
     rrule: String
-    step(stepId: Int!): GuideStep
+    step(date: DateTime, stepId: Int): GuideStep
     stepCount: Int!
     steps(limit: Int, offset: Int): [GuideStep!]!
     template: Metadata
@@ -309,6 +352,7 @@ type Guide {
 }
 
 type GuideStep {
+    date: DateTime
     id: Int!
     metadata: Metadata
     modules: [GuideStepModule!]!
@@ -358,6 +402,7 @@ type LoginResponse {
 
 type Metadata {
     attributes(filter: AttributesFilterInput): JSON
+    bible: Bible
     categories: [Category!]!
     collectionTemplate: CollectionTemplate
     content: MetadataContent!
@@ -433,6 +478,7 @@ type MetadataMutation {
     editRelationship(relationship: MetadataRelationshipInput!): Boolean!
     permanentlyDelete(metadataId: String!): Boolean!
     setMetadataAttributes(attributes: JSON!, id: String!): Boolean!
+    setMetadataBible(bible: BibleInput!, id: String!, version: Int!): Boolean!
     setMetadataContents(contentType: String, file: Upload!, id: String!): Boolean!
     setMetadataDocument(document: DocumentInput!, id: String!, version: Int!): Boolean!
     setMetadataJsonContents(content: JSON!, contentType: String, id: String!): Boolean!
@@ -753,6 +799,10 @@ type StorageSystemsMutation {
     edit(id: String!, storageSystem: StorageSystemInput!): StorageSystem
 }
 
+type StyleReference {
+    id: String!
+}
+
 type Subscription {
     activity: String!
     category: String!
@@ -795,6 +845,11 @@ type TemplateAttribute {
 type TemplateWorkflow {
     autoRun: Boolean!
     workflow: Workflow
+}
+
+type TextIndent {
+    size: Float!
+    unit: String!
 }
 
 type Token {
@@ -1067,6 +1122,15 @@ enum CollectionType {
     SYSTEM
 }
 
+enum ContainerType {
+    COLUMN
+    DIV
+    PARAGRAPH
+    ROW
+    SPAN
+    TABLE
+}
+
 enum ExtensionFilterType {
     COLLECTION_TEMPLATE
     DOCUMENT
@@ -1171,8 +1235,46 @@ input BeginTransitionInput {
     waitForCompletion: Boolean
 }
 
+input BibleInput {
+    abbreviation: String!
+    abbreviationLocal: String!
+    books: [BookInput!]!
+    description: String!
+    language: BibleLanguageInput!
+    name: String!
+    nameLocal: String!
+    styles: [StyleInput!]!
+    systemId: String!
+}
+
+input BibleLanguageInput {
+    iso: String!
+    name: String!
+    nameLocal: String!
+    script: String!
+    scriptCode: String!
+    scriptDirection: String!
+}
+
+input BookInput {
+    abbreviation: String!
+    chapters: [ChapterInput!]!
+    nameLong: String!
+    nameShort: String!
+    reference: ReferenceInput!
+}
+
+input BreakInput {
+    style: StyleInput
+}
+
 input CategoryInput {
     name: String!
+}
+
+input ChapterInput {
+    component: ComponentInput!
+    reference: ReferenceInput!
 }
 
 input CollectionChildInput {
@@ -1242,6 +1344,20 @@ input CollectionWorkflowState {
     status: String!
 }
 
+input ComponentContainerInput {
+    components: [ComponentInput!]!
+    style: StyleInput
+    type: ContainerType!
+}
+
+input ComponentInput {
+    break: BreakInput
+    container: ComponentContainerInput
+    end: VerseEndInput
+    start: VerseStartInput
+    text: TextInput
+}
+
 input ConfigurationInput {
     description: String!
     key: String!
@@ -1295,6 +1411,7 @@ input FindQueryInput {
     extensionFilter: ExtensionFilterType
     limit: Int
     offset: Int
+    ordering: [OrderingInput!]
 }
 
 input FindQueryOptionInput {
@@ -1478,6 +1595,10 @@ input PromptInput {
     userPrompt: String!
 }
 
+input ReferenceInput {
+    usfm: String!
+}
+
 input SearchQuery {
     facets: [String!]
     filter: String
@@ -1508,6 +1629,14 @@ input StorageSystemModelInput {
     modelId: String!
 }
 
+input StyleInput {
+    align: String
+    fontWeight: String
+    id: String!
+    reference: Boolean!
+    textIndent: TextIndentInput
+}
+
 input TemplateAttributeInput {
     configuration: JSON
     description: String!
@@ -1525,6 +1654,16 @@ input TemplateWorkflowInput {
     workflowId: String!
 }
 
+input TextIndentInput {
+    size: Float!
+    unit: String!
+}
+
+input TextInput {
+    style: StyleInput
+    text: String!
+}
+
 input TraitInput {
     contentTypes: [String!]!
     deleteWorkflowId: String
@@ -1538,6 +1677,14 @@ input TransitionInput {
     description: String!
     fromStateId: String!
     toStateId: String!
+}
+
+input VerseEndInput {
+    reference: ReferenceInput!
+}
+
+input VerseStartInput {
+    reference: ReferenceInput!
 }
 
 input WorkflowActivityInput {

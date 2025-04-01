@@ -10,6 +10,7 @@ use serde_json::json;
 use std::sync::Arc;
 use log::error;
 use uuid::Uuid;
+use crate::models::bible::components::style::Style;
 
 #[derive(Clone)]
 pub struct BiblesDataStore {
@@ -41,7 +42,9 @@ impl BiblesDataStore {
             .prepare("delete from bibles where metadata_id = $1 and version = $2")
             .await?;
         txn.execute(&stmt, &[metadata_id, &version]).await?;
-        let stmt = txn.prepare("insert into bibles (metadata_id, version, system_id, name, name_local, description, abbreviation, abbreviation_local) values ($1, $2, $3, $4, $5, $6, $7, $8)").await?;
+        let stmt = txn.prepare("insert into bibles (metadata_id, version, system_id, name, name_local, description, abbreviation, abbreviation_local, styles) values ($1, $2, $3, $4, $5, $6, $7, $8, $9)").await?;
+        let styles: Vec<Style> = bible.styles.iter().map(|s| s.into()).collect();
+        let styles_json = json!(styles);
         txn.execute(
             &stmt,
             &[
@@ -53,6 +56,7 @@ impl BiblesDataStore {
                 &bible.description,
                 &bible.abbreviation,
                 &bible.abbreviation_local,
+                &styles_json
             ],
         )
         .await?;
@@ -74,7 +78,6 @@ impl BiblesDataStore {
         )
         .await?;
         let stmt = txn.prepare("insert into bible_books (metadata_id, version, usfm, name_short, name_long, abbreviation, sort) values ($1, $2, $3, $4, $5, $6, $7)").await?;
-        let stmt_usx = txn.prepare("insert into bible_book_usx (metadata_id, version, usfm, usx) values ($1, $2, $3, $4)").await?;
         let stmt_chapter = txn.prepare("insert into bible_chapters (metadata_id, version, book_usfm, usfm, components, sort) values ($1, $2, $3, $4, $5, $6)").await?;
         for (sort, book) in bible.books.iter().enumerate() {
             let sort = sort as i32;
@@ -89,11 +92,6 @@ impl BiblesDataStore {
                     &book.abbreviation,
                     &sort,
                 ],
-            )
-            .await?;
-            txn.execute(
-                &stmt_usx,
-                &[metadata_id, &version, &book.reference.usfm, &book.usx],
             )
             .await?;
             for (sort, chapter) in book.chapters.iter().enumerate() {
@@ -142,19 +140,41 @@ impl BiblesDataStore {
     ) -> Result<Vec<BibleLanguage>, Error> {
         let conn = self.pool.get().await?;
         let stmt = conn
-            .prepare("select * from bible_languages where metadata_id = $1 and version = $2")
+            .prepare("select * from bible_languages where metadata_id = $1 and version = $2 order by sort asc")
             .await?;
         let row = conn.query(&stmt, &[metadata_id, &version]).await?;
         Ok(row.iter().map(|r| r.into()).collect())
     }
 
+    pub async fn get_book(&self, metadata_id: &Uuid, version: i32, usfm: &String) -> Result<Option<Book>, Error> {
+        let conn = self.pool.get().await?;
+        let stmt = conn
+            .prepare("select * from bible_books where metadata_id = $1 and version = $2 and usfm = $3")
+            .await?;
+        let row = conn.query(&stmt, &[metadata_id, &version, usfm]).await?;
+        Ok(row.first().map(|r| r.into()))
+    }
+
     pub async fn get_books(&self, metadata_id: &Uuid, version: i32) -> Result<Vec<Book>, Error> {
         let conn = self.pool.get().await?;
         let stmt = conn
-            .prepare("select * from bible_books where metadata_id = $1 and version = $2")
+            .prepare("select * from bible_books where metadata_id = $1 and version = $2 order by sort asc")
             .await?;
         let row = conn.query(&stmt, &[metadata_id, &version]).await?;
         Ok(row.iter().map(|r| r.into()).collect())
+    }
+
+    pub async fn get_chapter(
+        &self,
+        metadata_id: &Uuid,
+        version: i32,
+        usfm: &str,
+    ) -> Result<Option<Chapter>, Error> {
+        let usfm = usfm.to_string();
+        let conn = self.pool.get().await?;
+        let stmt = conn.prepare("select * from bible_chapters where metadata_id = $1 and version = $2 and usfm = $3 order by sort asc").await?;
+        let row = conn.query(&stmt, &[metadata_id, &version, &usfm]).await?;
+        Ok(row.first().map(|r| r.into()))
     }
 
     pub async fn get_chapters(
@@ -165,7 +185,7 @@ impl BiblesDataStore {
     ) -> Result<Vec<Chapter>, Error> {
         let usfm = usfm.to_string();
         let conn = self.pool.get().await?;
-        let stmt = conn.prepare("select * from bible_chapters where metadata_id = $1 and version = $2 and book_usfm = $3").await?;
+        let stmt = conn.prepare("select * from bible_chapters where metadata_id = $1 and version = $2 and book_usfm = $3 order by sort asc").await?;
         let row = conn.query(&stmt, &[metadata_id, &version, &usfm]).await?;
         Ok(row.iter().map(|r| r.into()).collect())
     }
