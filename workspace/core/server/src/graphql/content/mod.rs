@@ -40,3 +40,7 @@ pub mod guide;
 pub mod guide_step;
 pub mod guide_step_module;
 pub mod guide_templates;
+pub mod bible;
+pub mod bible_book;
+pub mod bible_chapter;
+pub mod bible_language;

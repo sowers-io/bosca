@@ -11,6 +11,7 @@ use async_graphql::Error;
 use deadpool_postgres::Pool;
 use std::sync::Arc;
 use uuid::Uuid;
+use crate::datastores::bible::bible::BiblesDataStore;
 use crate::datastores::cache::cache::{BoscaCache, BoscaCacheInterface};
 use crate::datastores::cache::manager::BoscaCacheManager;
 use crate::datastores::cache::tiered_cache::TieredCacheType;
@@ -38,6 +39,7 @@ pub struct ContentDataStore {
     pub metadata_workflows: MetadataWorkflowsDataStore,
     pub documents: DocumentsDataStore,
     pub guides: GuidesDataStore,
+    pub bibles: BiblesDataStore,
     pub sources: SourcesDataStore
 }
 
@@ -75,6 +77,7 @@ impl ContentDataStore {
             documents: DocumentsDataStore::new(Arc::clone(&pool), Arc::clone(&notifier)),
             guides: GuidesDataStore::new(Arc::clone(&pool), Arc::clone(&notifier)),
             sources: SourcesDataStore::new(Arc::clone(&pool)),
+            bibles: BiblesDataStore::new(Arc::clone(&pool), Arc::clone(&notifier)),
             pool,
         }
     }

@@ -21,6 +21,7 @@ use async_graphql::{Context, Error, Object};
 use chrono::{DateTime, Utc};
 use serde_json::Value;
 use uuid::Uuid;
+use crate::graphql::content::bible::BibleObject;
 
 pub struct MetadataObject {
     metadata: Metadata,
@@ -180,6 +181,16 @@ impl MetadataObject {
             .into_iter()
             .map(Permission::into)
             .collect())
+    }
+
+    async fn bible(&self, ctx: &Context<'_>) -> Result<Option<BibleObject>, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let bible = ctx
+            .content
+            .bibles
+            .get_bible(&self.metadata.id, self.metadata.version)
+            .await?;
+        Ok(bible.map(BibleObject::new))
     }
 
     async fn document(&self, ctx: &Context<'_>) -> Result<Option<DocumentObject>, Error> {

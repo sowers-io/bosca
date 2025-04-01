@@ -21,6 +21,7 @@ use crate::util::upload::upload_file;
 use async_graphql::*;
 use bytes::Bytes;
 use uuid::Uuid;
+use crate::models::bible::bible::BibleInput;
 
 #[derive(InputObject, Clone, Debug, Default)]
 pub struct WorkflowConfigurationInput {
@@ -819,6 +820,25 @@ impl MetadataMutationObject {
             .metadata_workflows
             .set_metadata_ready_and_enqueue(ctx, &metadata, configurations)
             .await
+    }
+
+    async fn set_metadata_bible(
+        &self,
+        ctx: &Context<'_>,
+        id: String,
+        version: i32,
+        bible: BibleInput,
+    ) -> Result<bool, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let metadata_id = Uuid::parse_str(id.as_str())?;
+        let metadata = ctx
+            .check_metadata_version_action(&metadata_id, version, PermissionAction::Manage)
+            .await?;
+        ctx.content
+            .bibles
+            .set_bible(&metadata.id, metadata.version, &bible)
+            .await?;
+        Ok(true)
     }
 
     async fn set_metadata_document(

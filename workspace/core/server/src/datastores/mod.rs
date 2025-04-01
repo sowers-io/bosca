@@ -8,3 +8,4 @@ pub mod configurations;
 pub mod security_cache;
 pub mod cache;
 pub mod metadata_cache;
+pub mod bible;
