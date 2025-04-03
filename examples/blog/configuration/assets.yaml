@@ -1,2 +1,32 @@
-folders: [ ]
+folders:
+  - slug: email
+    name: Email Assets
+    folders:
+      - slug: email-templates
+        name: Emails
+        assets:
+          - name: Welcome Email
+            slug: email.template.signup
+            public: false
+            publicContent: false
+            attributes: # TODO: make this an array of locale specific emails
+              locale: en
+              subject: Welcome to Bosca
+              profile:
+                email: bosca.profiles.email
+                name: bosca.profiles.name
+              html: |
+                <html>
+                  <head>
+                    <title>Welcome to Bosca</title>
+                  </head>
+                  <body>
+                    <h1>Welcome to Bosca!</h1>
+                    <p>Click <a th:href="@{https://localhost:3001/signup/verify(token=${verification_token})}">here</a> to verify your account.</p>
+                  </body>
+                </html>
+              text: |
+                Welcome to Bosca!
+
+                Click this link: http://localhost:3001/signup/verify?token=[(${verification_token})] to verify your account.
 assets: [ ]

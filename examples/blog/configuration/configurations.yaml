@@ -18,6 +18,16 @@ configurations:
       test:
         env.variable: MUX_TEST
 
+  - key: sendgrid
+    public: false
+    description: Sendgrid
+    value:
+      token:
+        env.variable: SENDGRID_API_KEY
+      from:
+        email: support@sowers.io
+        name: Sowers Support
+
   - key: preview.url
     public: false
     description: Preview Content URL

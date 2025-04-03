@@ -1,0 +1,10 @@
+id: profile.signup
+name: Signup a new Profile
+description: Signup a new Profile
+queue: profile
+activities:
+  - queue: transition
+    activity: email.send
+    description: Send a welcome email
+    configuration:
+      slug: email.template.signup

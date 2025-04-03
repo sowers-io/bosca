@@ -98,6 +98,7 @@ class BoscaFeature : Feature {
         register("dev.ai4j.openai4j.chat.ChatCompletionChoice", access, recursive = true)
         register("dev.ai4j.openai4j.chat.ToolCall", access, recursive = true)
 
+        register("org.apache.commons.logging.impl.LogFactoryImpl", access, recursive = false)
 
         // Register security classes
         registerSecurityProviders(access)
