@@ -150,12 +150,12 @@ jobs:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
       IMAGE_TAG: ${{ gitea.sha }}
-      GITHUB_TOKEN: ${{ secrets.PRIVATE_PAT }}
+      GITHUB_TOKEN: ${{ secrets.TOKEN }}
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
-          token: ${{ secrets.PRIVATE_PAT }}
+          token: ${{ secrets.TOKEN }}
       - uses: graalvm/setup-graalvm@v1
         with:
           java-version: '23.0.2'
@@ -186,13 +186,13 @@ jobs:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
       IMAGE_TAG: ${{ gitea.sha }}
-      GITHUB_TOKEN: ${{ secrets.PRIVATE_PAT }}
+      GITHUB_TOKEN: ${{ secrets.TOKEN }}
       MARCH: compatibility
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
-          token: ${{ secrets.PRIVATE_PAT }}
+          token: ${{ secrets.TOKEN }}
       - uses: graalvm/setup-graalvm@v1
         with:
           java-version: '23.0.2'
