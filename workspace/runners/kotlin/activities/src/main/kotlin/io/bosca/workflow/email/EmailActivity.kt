@@ -100,18 +100,12 @@ class EmailActivity(client: Client) : Activity(client) {
     }
 
     private fun send(cfg: SendGridConfiguration, subject: String, name: String, email: String, html: String, text: String) {
-        val client = SendGrid(cfg.token)
-        val response = client.api(Request().apply {
+        val response = SendGrid(cfg.token).api(Request().apply {
             endpoint = "mail/send"
             method = Method.POST
             body = Mail().apply {
                 setSubject(subject)
                 setFrom(Email(cfg.from.email, cfg.from.name))
-                    setTrackingSettings(TrackingSettings().apply {
-                        clickTrackingSetting = ClickTrackingSetting().apply {
-                            enable = false
-                        }
-                    })
                 addPersonalization(Personalization().apply {
                     addTo(Email(email, name))
                 })
