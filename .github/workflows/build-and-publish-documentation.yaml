@@ -103,5 +103,5 @@ jobs:
           file: docs-build/Dockerfile
           push: true
           tags: |
-            ghcr.io/sowers/bosca/documentation:latest
-            ghcr.io/sowers/bosca/documentation:${{ github.sha }}
+            ghcr.io/sowers-io/bosca/documentation:latest
+            ghcr.io/sowers-io/bosca/documentation:${{ github.sha }}

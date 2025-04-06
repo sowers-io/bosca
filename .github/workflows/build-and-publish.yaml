@@ -16,11 +16,11 @@ jobs:
     env:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-#      SCCACHE_GHA_ENABLED: "true"
-#      RUSTC_WRAPPER: "sccache"
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
     steps:
-#      - name: Run sccache-cache
-#        uses: mozilla-actions/sccache-action@v0.0.6
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.6
       - uses: actions/checkout@v3
       - run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
       - run: export PATH="$HOME/.cargo/bin:$PATH" && cargo clippy
@@ -31,11 +31,11 @@ jobs:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
       IMAGE_TAG: ${{ github.sha }}
-#      SCCACHE_GHA_ENABLED: "true"
-#      RUSTC_WRAPPER: "sccache"
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
     steps:
-#      - name: Run sccache-cache
-#        uses: mozilla-actions/sccache-action@v0.0.6
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.6
       - uses: actions/checkout@v3
       - run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
       - run: export PATH="$HOME/.cargo/bin:$PATH" && cargo build --release
@@ -54,8 +54,8 @@ jobs:
           file: Dockerfile-migrations
           push: true
           tags: |
-            ghcr.io/sowers/bosca/database-migrations:latest
-            ghcr.io/sowers/bosca/database-migrations:${{ github.sha }}
+            ghcr.io/sowers-io/bosca/database-migrations:latest
+            ghcr.io/sowers-io/bosca/database-migrations:${{ github.sha }}
       - name: Build and push server
         uses: docker/build-push-action@v3
         with:
@@ -63,8 +63,8 @@ jobs:
           file: Dockerfile-server
           push: true
           tags: |
-            ghcr.io/sowers/bosca/server:latest
-            ghcr.io/sowers/bosca/server:${{ github.sha }}
+            ghcr.io/sowers-io/bosca/server:latest
+            ghcr.io/sowers-io/bosca/server:${{ github.sha }}
       - name: Build and push analytics
         uses: docker/build-push-action@v3
         with:
@@ -72,8 +72,8 @@ jobs:
           file: Dockerfile-analytics
           push: true
           tags: |
-            ghcr.io/sowers/bosca/analytics:latest
-            ghcr.io/sowers/bosca/analytics:${{ github.sha }}
+            ghcr.io/sowers-io/bosca/analytics:latest
+            ghcr.io/sowers-io/bosca/analytics:${{ github.sha }}
 
   build-and-publish-runner-community:
     runs-on: ubuntu-22.04
@@ -109,8 +109,8 @@ jobs:
           file: Dockerfile-runner
           push: true
           tags: |
-            ghcr.io/sowers/bosca/kotlin-runner-community:latest
-            ghcr.io/sowers/bosca/kotlin-runner-community:${{ github.sha }}
+            ghcr.io/sowers-io/bosca/kotlin-runner-community:latest
+            ghcr.io/sowers-io/bosca/kotlin-runner-community:${{ github.sha }}
 
   build-and-publish-runner-community-compatibility:
     runs-on: ubuntu-22.04
@@ -143,8 +143,8 @@ jobs:
           file: Dockerfile-runner
           push: true
           tags: |
-            ghcr.io/sowers/bosca/kotlin-runner-community-compatibility:latest
-            ghcr.io/sowers/bosca/kotlin-runner-community-compatibility:${{ github.sha }}
+            ghcr.io/sowers-io/bosca/kotlin-runner-community-compatibility:latest
+            ghcr.io/sowers-io/bosca/kotlin-runner-community-compatibility:${{ github.sha }}
 
   build-and-publish-runner-enterprise:
     runs-on: ubuntu-22.04
@@ -152,12 +152,12 @@ jobs:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
       IMAGE_TAG: ${{ github.sha }}
-      GITHUB_TOKEN: ${{ secrets.TOKEN }}
+      GITHUB_TOKEN: ${{ secrets.PRIVATE_PAT }}
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
-          token: ${{ secrets.TOKEN }}
+          token: ${{ secrets.PRIVATE_PAT }}
       - uses: graalvm/setup-graalvm@v1
         with:
           java-version: '23.0.2'
@@ -179,8 +179,8 @@ jobs:
           file: Dockerfile-runner
           push: true
           tags: |
-            ghcr.io/sowers/bosca/kotlin-runner-enterprise:latest
-            ghcr.io/sowers/bosca/kotlin-runner-enterprise:${{ github.sha }}
+            ghcr.io/sowers-io/bosca/kotlin-runner-enterprise:latest
+            ghcr.io/sowers-io/bosca/kotlin-runner-enterprise:${{ github.sha }}
 
   build-and-publish-runner-enterprise-compatibility:
     runs-on: ubuntu-22.04
@@ -188,13 +188,13 @@ jobs:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
       IMAGE_TAG: ${{ github.sha }}
-      GITHUB_TOKEN: ${{ secrets.TOKEN }}
+      GITHUB_TOKEN: ${{ secrets.PRIVATE_PAT }}
       MARCH: compatibility
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
-          token: ${{ secrets.TOKEN }}
+          token: ${{ secrets.PRIVATE_PAT }}
       - uses: graalvm/setup-graalvm@v1
         with:
           java-version: '23.0.2'
@@ -216,8 +216,8 @@ jobs:
           file: Dockerfile-runner
           push: true
           tags: |
-            ghcr.io/sowers/bosca/kotlin-runner-enterprise-compatibility:latest
-            ghcr.io/sowers/bosca/kotlin-runner-enterprise-compatibility:${{ github.sha }}
+            ghcr.io/sowers-io/bosca/kotlin-runner-enterprise-compatibility:latest
+            ghcr.io/sowers-io/bosca/kotlin-runner-enterprise-compatibility:${{ github.sha }}
 
   build-and-publish-imageprocessor:
     runs-on: ubuntu-22.04
@@ -244,8 +244,8 @@ jobs:
           file: workspace/core/imageprocessor/Dockerfile
           push: true
           tags: |
-            ghcr.io/sowers/bosca/imageprocessor:latest
-            ghcr.io/sowers/bosca/imageprocessor:${{ github.sha }}
+            ghcr.io/sowers-io/bosca/imageprocessor:latest
+            ghcr.io/sowers-io/bosca/imageprocessor:${{ github.sha }}
 
   build-and-publish-administration:
     runs-on: ubuntu-22.04
@@ -276,8 +276,8 @@ jobs:
           file: Dockerfile-administration
           push: true
           tags: |
-            ghcr.io/sowers/bosca/administration:latest
-            ghcr.io/sowers/bosca/administration:${{ github.sha }}
+            ghcr.io/sowers-io/bosca/administration:latest
+            ghcr.io/sowers-io/bosca/administration:${{ github.sha }}
       - name: Build and Publish Administration Query Installer Image
         uses: docker/build-push-action@v3
         with:
@@ -285,5 +285,5 @@ jobs:
           file: Dockerfile-administration-query-installer
           push: true
           tags: |
-            ghcr.io/sowers/bosca/administration-query-installer:latest
-            ghcr.io/sowers/bosca/administration-query-installer:${{ github.sha }}
+            ghcr.io/sowers-io/bosca/administration-query-installer:latest
+            ghcr.io/sowers-io/bosca/administration-query-installer:${{ github.sha }}
