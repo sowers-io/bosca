@@ -112,6 +112,13 @@ impl WorkflowsMutationObject {
         Ok(true)
     }
 
+    async fn retry_all_failed(&self, ctx: &Context<'_>) -> Result<bool, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        ctx.check_has_service_account().await?;
+        ctx.workflow.retry_all_failed().await?;
+        Ok(true)
+    }
+
     async fn begin_transition(
         &self,
         ctx: &Context<'_>,

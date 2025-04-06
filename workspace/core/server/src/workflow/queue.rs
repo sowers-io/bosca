@@ -289,6 +289,41 @@ impl JobQueues {
         Ok(plans)
     }
 
+    pub async fn get_failed_ids(&self) -> Result<Vec<WorkflowJobId>, Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection.prepare("select id, queue, configuration->'failed' as failed from workflow_plans where finished is null and (jsonb_array_length(configuration->'failed') > 0)").await?;
+        let result = connection.query(&stmt, &[]).await?;
+        let mut ids = Vec::new();
+        for row in result {
+            let id: Uuid = row.get("id");
+            let queue: String = row.get("queue");
+            let job_ids: Value = row.get("failed");
+            for job_id in job_ids.as_array().unwrap() {
+                ids.push(WorkflowJobId {
+                    id,
+                    queue: queue.to_owned(),
+                    index: job_id.as_i64().unwrap() as i32,
+                })
+            }
+        }
+        Ok(ids)
+    }
+
+    pub async fn retry_jobs(&self, ids: Vec<WorkflowJobId>) -> Result<(), Error> {
+        let mut redis_txn = RedisTransaction::new();
+        let mut conn = self.pool.get().await?;
+        let db_txn = conn.transaction().await?;
+        for id in ids {
+            if let Some(mut plan) = self.get_plan_and_lock_by_job(&db_txn, &id).await? {
+                plan.set_job_delayed_until(&id, &db_txn, &mut redis_txn, self, Utc::now()).await?;
+                self.set_plan(&db_txn, &plan, false).await?
+            }
+        }
+        db_txn.commit().await?;
+        redis_txn.execute(&self.redis).await?;
+        Ok(())
+    }
+
     pub async fn check_for_expiration(&self, time: i64) -> Result<(), Error> {
         let pooled_connection = self.redis.get().await?;
         let mut connection = pooled_connection.get_connection().await?;

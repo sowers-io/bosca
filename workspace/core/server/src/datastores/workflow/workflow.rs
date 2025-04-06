@@ -1339,6 +1339,12 @@ impl WorkflowDataStore {
         Ok(())
     }
 
+    pub async fn retry_all_failed(&self) -> Result<(), Error> {
+        let ids = self.queues.get_failed_ids().await?;
+        self.queues.retry_jobs(ids).await?;
+        Ok(())
+    }
+
     pub async fn enqueue_job_child_workflows(
         &self,
         job_id: &WorkflowJobId,
