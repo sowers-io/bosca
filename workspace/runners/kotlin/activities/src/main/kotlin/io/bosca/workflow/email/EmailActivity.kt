@@ -100,6 +100,7 @@ class EmailActivity(client: Client) : Activity(client) {
     }
 
     private fun send(cfg: SendGridConfiguration, subject: String, name: String, email: String, html: String, text: String) {
+        println("Sending email to $email using $cfg")
         val response = SendGrid(cfg.token).api(Request().apply {
             endpoint = "mail/send"
             method = Method.POST
