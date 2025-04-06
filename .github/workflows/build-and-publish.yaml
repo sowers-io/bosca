@@ -22,8 +22,8 @@ jobs:
 #      - name: Run sccache-cache
 #        uses: mozilla-actions/sccache-action@v0.0.6
       - uses: actions/checkout@v3
-      - run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-      - run: cargo clippy
+      - run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+      - run: export PATH="$HOME/.cargo/bin:$PATH" && cargo clippy
 
   build-and-publish-backend:
     runs-on: ubuntu-22.04
@@ -37,8 +37,8 @@ jobs:
 #      - name: Run sccache-cache
 #        uses: mozilla-actions/sccache-action@v0.0.6
       - uses: actions/checkout@v3
-      - run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-      - run: cargo build --release
+      - run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+      - run: export PATH="$HOME/.cargo/bin:$PATH" && cargo build --release
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
       - name: Login to DockerHub
