@@ -30,7 +30,7 @@ jobs:
     env:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-      IMAGE_TAG: ${{ gitea.sha }}
+      IMAGE_TAG: ${{ github.sha }}
 #      SCCACHE_GHA_ENABLED: "true"
 #      RUSTC_WRAPPER: "sccache"
     steps:
@@ -44,7 +44,7 @@ jobs:
       - name: Login to DockerHub
         uses: docker/login-action@v2
         with:
-          registry: src.sowers.io
+          registry: ghcr.io
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
       - name: Build and push database migrations
@@ -54,8 +54,8 @@ jobs:
           file: Dockerfile-migrations
           push: true
           tags: |
-            src.sowers.io/sowers/bosca/database-migrations:latest
-            src.sowers.io/sowers/bosca/database-migrations:${{ gitea.sha }}
+            ghcr.io/sowers/bosca/database-migrations:latest
+            ghcr.io/sowers/bosca/database-migrations:${{ github.sha }}
       - name: Build and push server
         uses: docker/build-push-action@v3
         with:
@@ -63,8 +63,8 @@ jobs:
           file: Dockerfile-server
           push: true
           tags: |
-            src.sowers.io/sowers/bosca/server:latest
-            src.sowers.io/sowers/bosca/server:${{ gitea.sha }}
+            ghcr.io/sowers/bosca/server:latest
+            ghcr.io/sowers/bosca/server:${{ github.sha }}
       - name: Build and push analytics
         uses: docker/build-push-action@v3
         with:
@@ -72,15 +72,15 @@ jobs:
           file: Dockerfile-analytics
           push: true
           tags: |
-            src.sowers.io/sowers/bosca/analytics:latest
-            src.sowers.io/sowers/bosca/analytics:${{ gitea.sha }}
+            ghcr.io/sowers/bosca/analytics:latest
+            ghcr.io/sowers/bosca/analytics:${{ github.sha }}
 
   build-and-publish-runner-community:
     runs-on: ubuntu-22.04
     env:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-      IMAGE_TAG: ${{ gitea.sha }}
+      IMAGE_TAG: ${{ github.sha }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -98,7 +98,7 @@ jobs:
       - name: Login to DockerHub
         uses: docker/login-action@v2
         with:
-          registry: src.sowers.io
+          registry: ghcr.io
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
@@ -109,15 +109,15 @@ jobs:
           file: Dockerfile-runner
           push: true
           tags: |
-            src.sowers.io/sowers/bosca/kotlin-runner-community:latest
-            src.sowers.io/sowers/bosca/kotlin-runner-community:${{ gitea.sha }}
+            ghcr.io/sowers/bosca/kotlin-runner-community:latest
+            ghcr.io/sowers/bosca/kotlin-runner-community:${{ github.sha }}
 
   build-and-publish-runner-community-compatibility:
     runs-on: ubuntu-22.04
     env:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-      IMAGE_TAG: ${{ gitea.sha }}
+      IMAGE_TAG: ${{ github.sha }}
       MARCH: compatibility
     steps:
       - uses: actions/checkout@v4
@@ -133,7 +133,7 @@ jobs:
       - name: Login to DockerHub
         uses: docker/login-action@v2
         with:
-          registry: src.sowers.io
+          registry: ghcr.io
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
       - name: Build and Publish Runner Image
@@ -143,15 +143,15 @@ jobs:
           file: Dockerfile-runner
           push: true
           tags: |
-            src.sowers.io/sowers/bosca/kotlin-runner-community-compatibility:latest
-            src.sowers.io/sowers/bosca/kotlin-runner-community-compatibility:${{ gitea.sha }}
+            ghcr.io/sowers/bosca/kotlin-runner-community-compatibility:latest
+            ghcr.io/sowers/bosca/kotlin-runner-community-compatibility:${{ github.sha }}
 
   build-and-publish-runner-enterprise:
     runs-on: ubuntu-22.04
     env:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-      IMAGE_TAG: ${{ gitea.sha }}
+      IMAGE_TAG: ${{ github.sha }}
       GITHUB_TOKEN: ${{ secrets.TOKEN }}
     steps:
       - uses: actions/checkout@v4
@@ -169,7 +169,7 @@ jobs:
       - name: Login to DockerHub
         uses: docker/login-action@v2
         with:
-          registry: src.sowers.io
+          registry: ghcr.io
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
       - name: Build and Publish Runner Image
@@ -179,15 +179,15 @@ jobs:
           file: Dockerfile-runner
           push: true
           tags: |
-            src.sowers.io/sowers/bosca/kotlin-runner-enterprise:latest
-            src.sowers.io/sowers/bosca/kotlin-runner-enterprise:${{ gitea.sha }}
+            ghcr.io/sowers/bosca/kotlin-runner-enterprise:latest
+            ghcr.io/sowers/bosca/kotlin-runner-enterprise:${{ github.sha }}
 
   build-and-publish-runner-enterprise-compatibility:
     runs-on: ubuntu-22.04
     env:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-      IMAGE_TAG: ${{ gitea.sha }}
+      IMAGE_TAG: ${{ github.sha }}
       GITHUB_TOKEN: ${{ secrets.TOKEN }}
       MARCH: compatibility
     steps:
@@ -206,7 +206,7 @@ jobs:
       - name: Login to DockerHub
         uses: docker/login-action@v2
         with:
-          registry: src.sowers.io
+          registry: ghcr.io
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
       - name: Build and Publish Runner Image
@@ -216,15 +216,15 @@ jobs:
           file: Dockerfile-runner
           push: true
           tags: |
-            src.sowers.io/sowers/bosca/kotlin-runner-enterprise-compatibility:latest
-            src.sowers.io/sowers/bosca/kotlin-runner-enterprise-compatibility:${{ gitea.sha }}
+            ghcr.io/sowers/bosca/kotlin-runner-enterprise-compatibility:latest
+            ghcr.io/sowers/bosca/kotlin-runner-enterprise-compatibility:${{ github.sha }}
 
   build-and-publish-imageprocessor:
     runs-on: ubuntu-22.04
     env:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-      IMAGE_TAG: ${{ gitea.sha }}
+      IMAGE_TAG: ${{ github.sha }}
       SCCACHE_GHA_ENABLED: "true"
       RUSTC_WRAPPER: "sccache"
     steps:
@@ -234,7 +234,7 @@ jobs:
       - name: Login to DockerHub
         uses: docker/login-action@v2
         with:
-          registry: src.sowers.io
+          registry: ghcr.io
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
       - name: Build and push imageprocessor
@@ -244,15 +244,15 @@ jobs:
           file: workspace/core/imageprocessor/Dockerfile
           push: true
           tags: |
-            src.sowers.io/sowers/bosca/imageprocessor:latest
-            src.sowers.io/sowers/bosca/imageprocessor:${{ gitea.sha }}
+            ghcr.io/sowers/bosca/imageprocessor:latest
+            ghcr.io/sowers/bosca/imageprocessor:${{ github.sha }}
 
   build-and-publish-administration:
     runs-on: ubuntu-22.04
     env:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-      IMAGE_TAG: ${{ gitea.sha }}
+      IMAGE_TAG: ${{ github.sha }}
       SCCACHE_GHA_ENABLED: "true"
       RUSTC_WRAPPER: "sccache"
     steps:
@@ -266,7 +266,7 @@ jobs:
       - name: Login to DockerHub
         uses: docker/login-action@v2
         with:
-          registry: src.sowers.io
+          registry: ghcr.io
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
       - name: Build and Publish Administration Image
@@ -276,8 +276,8 @@ jobs:
           file: Dockerfile-administration
           push: true
           tags: |
-            src.sowers.io/sowers/bosca/administration:latest
-            src.sowers.io/sowers/bosca/administration:${{ gitea.sha }}
+            ghcr.io/sowers/bosca/administration:latest
+            ghcr.io/sowers/bosca/administration:${{ github.sha }}
       - name: Build and Publish Administration Query Installer Image
         uses: docker/build-push-action@v3
         with:
@@ -285,5 +285,5 @@ jobs:
           file: Dockerfile-administration-query-installer
           push: true
           tags: |
-            src.sowers.io/sowers/bosca/administration-query-installer:latest
-            src.sowers.io/sowers/bosca/administration-query-installer:${{ gitea.sha }}
+            ghcr.io/sowers/bosca/administration-query-installer:latest
+            ghcr.io/sowers/bosca/administration-query-installer:${{ github.sha }}
