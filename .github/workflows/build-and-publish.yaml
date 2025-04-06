@@ -152,13 +152,13 @@ jobs:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
       IMAGE_TAG: ${{ github.sha }}
-      GITHUB_TOKEN: ${{ secrets.PRIVATE_PAT }}
     steps:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
           ssh-known-hosts: ${{ secrets.KNOWN_HOSTS }}
           ssh-key: ${{ secrets.READ_SSH_KEY }}
+          token: ${{ secrets.PRIVATE_PAT }}
       - uses: graalvm/setup-graalvm@v1
         with:
           java-version: '23.0.2'
@@ -189,7 +189,6 @@ jobs:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
       IMAGE_TAG: ${{ github.sha }}
-      GITHUB_TOKEN: ${{ secrets.PRIVATE_PAT }}
       MARCH: compatibility
     steps:
       - uses: actions/checkout@v4
@@ -197,6 +196,7 @@ jobs:
           submodules: recursive
           ssh-known-hosts: ${{ secrets.KNOWN_HOSTS }}
           ssh-key: ${{ secrets.READ_SSH_KEY }}
+          token: ${{ secrets.PRIVATE_PAT }}
       - uses: graalvm/setup-graalvm@v1
         with:
           java-version: '23.0.2'
