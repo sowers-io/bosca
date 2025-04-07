@@ -3,9 +3,11 @@
 set -e
 
 export BOSCA_PASSWORD=password
-export BOSCA_QUEUES="video,10;media,20;default,10;bible,200;bible-ai,100;bible-book,200;bible-chapter,200;bible-verse,100;media-transcription,1;media-upload,5;metadata,100;search-index,500;traits,500;transition,500"
+export BOSCA_QUEUES="video,10;media,20;default,10;bible,200;bible-ai,100;bible-book,200;bible-chapter,200;bible-verse,100;media-transcription,1;media-upload,5;metadata,100;search-index,500;profile,500;traits,500;transition,500"
 export BOSCA_URL=http://127.0.0.1:8000/graphql
 export BOSCA_USERNAME=admin
+export SEARCH_URL=http://127.0.0.1:7701
+export SEARCH_KEY=p8JcB_HuMHRxN7uVXfrG2wU06b5k7oTvaAAYo6nsi9M
 export MUX_TEST=true
 export MUX_TOKEN_ID=
 export MUX_TOKEN_SECRET=

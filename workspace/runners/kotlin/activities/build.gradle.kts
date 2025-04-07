@@ -21,7 +21,6 @@ dependencies {
     implementation("com.meilisearch.sdk:meilisearch-java:0.14.2")
 
     implementation("com.sun.mail:jakarta.mail:2.0.1")
-    implementation("com.sendgrid:sendgrid-java:4.10.2")
     implementation("org.thymeleaf:thymeleaf:3.1.2.RELEASE")
 
     implementation(project(":engine"))

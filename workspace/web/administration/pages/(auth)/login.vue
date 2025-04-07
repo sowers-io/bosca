@@ -29,10 +29,7 @@ const adminOverrides = await client.configurations.getConfiguration(
           class="size-6"
           v-else
         />
-        <span class="ml-3 font-bold">{{
-          adminOverrides?.value?.title?.replace(' ', '&nbsp;') ||
-          'Bosca'
-        }}</span>
+        <span class="ml-3 font-bold">{{adminOverrides?.value?.title?.replace(' ', '&nbsp;') || 'Bosca'}}</span>
       </NuxtLink>
       <div class="flex flex-col gap-6">
         <Card>

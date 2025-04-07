@@ -1,22 +1,23 @@
 package io.bosca.workflow.email
 
-import com.sendgrid.Method
-import com.sendgrid.Request
-import com.sendgrid.SendGrid
-import com.sendgrid.helpers.mail.Mail
-import com.sendgrid.helpers.mail.objects.*
 import io.bosca.api.Client
 import io.bosca.graphql.fragment.WorkflowJob
 import io.bosca.graphql.type.ActivityInput
 import io.bosca.util.decode
+import io.bosca.util.json
 import io.bosca.util.toJsonElement
 import io.bosca.util.toOptional
 import io.bosca.workflow.Activity
 import io.bosca.workflow.ActivityContext
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.RequestBody.Companion.toRequestBody
 import org.thymeleaf.TemplateEngine
 import org.thymeleaf.context.Context
 import org.thymeleaf.templateresolver.StringTemplateResolver
@@ -44,15 +45,38 @@ data class TemplateAttributes(
 )
 
 @Serializable
-data class SendGridFrom(val email: String, val name: String)
-
-@Serializable
 data class SendGridConfiguration(
     val token: String?,
-    val from: SendGridFrom,
+    val from: SendGridEmail,
+)
+
+@Serializable
+data class SendGridEmail(
+    val email: String,
+    val name: String
+)
+
+@Serializable
+data class Personalization(
+    val subject: String,
+    val to: List<SendGridEmail>
+)
+
+@Serializable
+data class SendGridContent(val type: String, val value: String)
+
+@Serializable
+data class SendGridRequest(
+    val from: SendGridEmail,
+    val subject: String,
+    val content: List<SendGridContent>,
+    @SerialName("personalizations")
+    val personalization: List<Personalization>
 )
 
 class EmailActivity(client: Client) : Activity(client) {
+
+    private val api = OkHttpClient.Builder().build()
 
     override val id: String = ID
 
@@ -99,28 +123,36 @@ class EmailActivity(client: Client) : Activity(client) {
         }
     }
 
-    private fun send(cfg: SendGridConfiguration, subject: String, name: String, email: String, html: String, text: String) {
-        println("From: ${cfg.from}")
-        println("Subject: $subject")
-        println("Name: $name")
-        println("Email: $email")
-        println("HTML:\n$html")
-        println("Text:\n$text")
-        val response = SendGrid(cfg.token).api(Request().apply {
-            endpoint = "mail/send"
-            method = Method.POST
-            body = Mail().apply {
-                setSubject(subject)
-                setFrom(Email(cfg.from.email, cfg.from.name))
-                addPersonalization(Personalization().apply {
-                    addTo(Email(email, name))
-                })
-                addContent(Content("text/plain", text))
-                addContent(Content("text/html", html))
-            }.build()
-        })
-        if (response.statusCode >= 400) {
-            throw Exception("SendGrid error: ${response.body}")
+    private fun send(
+        cfg: SendGridConfiguration,
+        subject: String,
+        name: String,
+        email: String,
+        html: String,
+        text: String
+    ) {
+        val request = Request.Builder().apply {
+            url("https://api.sendgrid.com/v3/mail/send")
+            post(
+                json.encodeToString(
+                    SendGridRequest(
+                        from = cfg.from,
+                        subject = subject,
+                        personalization = listOf(Personalization(subject, listOf(SendGridEmail(email, name)))),
+                        content = listOf(
+                            SendGridContent("text/plain", text),
+                            SendGridContent("text/html", html)
+                        )
+                    )
+                ).toRequestBody("application/json".toMediaType())
+            )
+            addHeader("Authorization", "Bearer ${cfg.token}")
+            addHeader("Content-Type", "application/json")
+            addHeader("Accept", "application/json")
+        }
+        val response = api.newCall(request.build()).execute()
+        if (!response.isSuccessful) {
+            throw Exception("SendGrid error: ${response.body?.string()}")
         }
     }
 

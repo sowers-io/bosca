@@ -102,12 +102,7 @@ class BoscaFeature : Feature {
         register("org.apache.commons.logging.impl.NoOpLog", access, recursive = false)
         register("org.apache.commons.logging.impl.SimpleLog", access, recursive = false)
 
-        register("com.sendgrid.helpers.mail.Mail", access, recursive = true)
-
-        // Register security classes
         registerSecurityProviders(access)
-
-        // Register JNI proxies
         registerProxies(access)
     }
 

@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import Toaster from '@/components/ui/toast/Toaster.vue'
+
 const colorMode = useColorMode()
 const color = computed(() => colorMode.value === 'dark' ? '#09090b' : '#ffffff')
 const client = useBoscaClient()
@@ -95,10 +97,13 @@ useHead({
 </script>
 
 <template>
+  <Toaster />
   <NuxtLayout>
     <ClientOnly>
       <NuxtPage />
     </ClientOnly>
   </NuxtLayout>
-  <Toaster />
+  <ClientOnly>
+    <Toaster />
+  </ClientOnly>
 </template>
