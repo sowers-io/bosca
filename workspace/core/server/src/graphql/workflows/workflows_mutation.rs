@@ -303,6 +303,7 @@ impl WorkflowsMutationObject {
         workflow_id: String,
         collection_id: Option<String>,
         metadata_id: Option<String>,
+        profile_id: Option<String>,
         version: Option<i32>,
         configurations: Option<Vec<WorkflowConfigurationInput>>,
         delay_until: Option<DateTime<Utc>>,
@@ -314,6 +315,7 @@ impl WorkflowsMutationObject {
             metadata_id: metadata_id.map(|id| Uuid::parse_str(&id).unwrap()),
             metadata_version: version,
             collection_id: collection_id.map(|id| Uuid::parse_str(&id).unwrap()),
+            profile_id: profile_id.map(|id| Uuid::parse_str(&id).unwrap()),
             configurations,
             delay_until,
             ..Default::default()
