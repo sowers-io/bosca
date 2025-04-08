@@ -35,6 +35,9 @@ jobs:
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v3
+
       - name: Generate Site
         run: pnpm i && pnpm generate
 
