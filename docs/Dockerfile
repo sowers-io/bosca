@@ -6,6 +6,8 @@ FROM nginx:alpine
 COPY ./.output/public /usr/share/nginx/html
 COPY ./nginx.conf /etc/nginx/sites-enabled/default
 
+RUN echo "OK" > /usr/share/nginx/html/health
+
 # Expose port 80 to serve HTTP traffic
 EXPOSE 80
 
