@@ -1,9 +1,0 @@
-# Telemetry
-
-<primary-label ref="bosca"/>
-<secondary-label ref="alpha"/>
-
-## Open Telemetry
-
-We haven't fully instrumented everything, but we're moving towards Open Telemetry.  The Bosca Server has most routing
-hooked up, but not all operations (as an example).
