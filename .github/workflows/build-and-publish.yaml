@@ -20,7 +20,7 @@ jobs:
       RUSTC_WRAPPER: "sccache"
     steps:
       - name: Run sccache-cache
-        uses: mozilla-actions/sccache-action@v0.0.6
+        uses: mozilla-actions/sccache-action@v0.0.9
       - uses: actions/checkout@v3
       - run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
       - run: export PATH="$HOME/.cargo/bin:$PATH" && cargo clippy
@@ -35,7 +35,7 @@ jobs:
       RUSTC_WRAPPER: "sccache"
     steps:
       - name: Run sccache-cache
-        uses: mozilla-actions/sccache-action@v0.0.6
+        uses: mozilla-actions/sccache-action@v0.0.9
       - uses: actions/checkout@v3
       - run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
       - run: export PATH="$HOME/.cargo/bin:$PATH" && cargo build --release
@@ -227,8 +227,6 @@ jobs:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
       IMAGE_TAG: ${{ github.sha }}
-      SCCACHE_GHA_ENABLED: "true"
-      RUSTC_WRAPPER: "sccache"
     steps:
       - uses: actions/checkout@v3
       - name: Set up Docker Buildx
@@ -255,8 +253,6 @@ jobs:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
       IMAGE_TAG: ${{ github.sha }}
-      SCCACHE_GHA_ENABLED: "true"
-      RUSTC_WRAPPER: "sccache"
     steps:
       - uses: actions/checkout@v3
       - uses: denoland/setup-deno@v2
