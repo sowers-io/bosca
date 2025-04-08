@@ -58,12 +58,12 @@ export default defineNuxtConfig({
   },
 
   llms: {
-    domain: 'https://docs-template.nuxt.dev/',
-    title: 'Nuxt UI Pro - Docs template',
-    description: 'A template for building documentation with Nuxt UI Pro and Nuxt Content',
+    domain: 'https://bosca.io',
+    title: 'Bosca',
+    description: 'Bosca is an AI-powered Content Management, Analytics, and Personalization platform built to help organizations unlock the full potential of their content strategies.',
     full: {
-      title: 'Nuxt UI Pro - Docs template Full Documentation',
-      description: 'This is the full documentation for the Nuxt UI Pro - Docs template'
+      title: 'Bosca',
+      description: 'Bosca is an AI-powered Content Management, Analytics, and Personalization platform built to help organizations unlock the full potential of their content strategies.'
     },
     sections: [
       {
@@ -71,13 +71,6 @@ export default defineNuxtConfig({
         contentCollection: 'docs',
         contentFilters: [
           { field: 'path', operator: 'LIKE', value: '/getting-started%' }
-        ]
-      },
-      {
-        title: 'Essentials',
-        contentCollection: 'docs',
-        contentFilters: [
-          { field: 'path', operator: 'LIKE', value: '/essentials%' }
         ]
       }
     ]

@@ -12,7 +12,10 @@ orientation: horizontal
 ---
   :::prose-pre
   ---
-  code: npx nuxi init -t github:nuxt-ui-pro/docs
+  code: |
+    git clone git@github.com:sowers-io/bosca.git
+    cd bosca
+    docker compose up -d
   filename: Terminal
   ---
   ```bash
