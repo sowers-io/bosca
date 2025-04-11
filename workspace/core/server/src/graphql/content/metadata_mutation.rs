@@ -199,7 +199,7 @@ impl MetadataMutationObject {
         Ok(if let Some(rrule) = guide.rrule.clone() {
             // TODO: cache this somewhere
             let recurrences = rrule.all((step.sort + 1) as u16);
-            let date = recurrences.dates.into_iter().map(|d| d.to_utc()).last();
+            let date = recurrences.dates.into_iter().map(|d| d.to_utc()).next_back();
             GuideStepObject::new(step, date)
         } else {
             GuideStepObject::new(step, None)

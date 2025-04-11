@@ -119,7 +119,7 @@ impl CollectionPermissionsDataStore {
 
     pub async fn add(&self, permission: &Permission) -> Result<(), Error> {
         let connection = self.pool.get().await?;
-        let stmt = connection.prepare_cached("insert into collection_permissions (collection_id, group_id, action) values ($1, $2, $3)").await?;
+        let stmt = connection.prepare_cached("insert into collection_permissions (collection_id, group_id, action) values ($1, $2, $3) on conflict do nothing").await?;
         connection
             .execute(
                 &stmt,
@@ -139,7 +139,7 @@ impl CollectionPermissionsDataStore {
         txn: &Transaction<'_>,
         permission: &Permission,
     ) -> Result<(), Error> {
-        let stmt = txn.prepare_cached("insert into collection_permissions (collection_id, group_id, action) values ($1, $2, $3)").await?;
+        let stmt = txn.prepare_cached("insert into collection_permissions (collection_id, group_id, action) values ($1, $2, $3) on conflict do nothing").await?;
         txn.execute(
             &stmt,
             &[

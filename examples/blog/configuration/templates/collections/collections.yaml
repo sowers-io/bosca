@@ -2,6 +2,15 @@ slug: collections-collections
 name: Collections
 type: SYSTEM
 editorType: Collections
+permissions:
+  - group: editors
+    action: view
+  - group: editors
+    action: edit
+  - group: editors
+    action: delete
+  - group: editors
+    action: list
 collections:
   - $ref: ./collections/authors.yaml
   - $ref: ./collections/standard.yaml

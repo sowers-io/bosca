@@ -68,7 +68,7 @@ impl Reference {
     }
 
     pub fn number(&self) -> String {
-        self.usfm_.split('.').last().unwrap_or_default().to_string()
+        self.usfm_.split('.').next_back().unwrap_or_default().to_string()
     }
 
     pub fn references(&self) -> Vec<Reference> {

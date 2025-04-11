@@ -154,7 +154,7 @@ impl ProfileDataStore {
             )
             .await?;
         if results.is_empty() {
-            return Err(Error::new("failed to create principal"));
+            return Err(Error::new("failed to create profile"));
         }
         let id: Uuid = results[0].get("id");
         let stmt = txn.prepare_cached("insert into slugs (slug, profile_id) values (case when length($1) > 0 then $1 else slugify($2) end, $3) on conflict (slug) do update set slug = slugify($2) || nextval('duplicate_slug_seq')").await?;
@@ -211,7 +211,7 @@ impl ProfileDataStore {
             .query(&stmt, &[&profile.name, &profile.visibility, &principal])
             .await?;
         if results.is_empty() {
-            return Err(Error::new("failed to create principal"));
+            return Err(Error::new("failed to find profile by principal"));
         }
         let id: Uuid = results[0].get("id");
         self.edit_profile_attributes(&txn, &id, profile).await?;
@@ -230,19 +230,28 @@ impl ProfileDataStore {
         let txn = connection.transaction().await?;
         let stmt = txn
             .prepare_cached(
-                "update profiles set name = $1, visibility = $2 where id = $3",
+                "update profiles set name = $1, visibility = $2 where id = $3 returning id",
             )
             .await?;
         let results = txn
             .query(&stmt, &[&profile.name, &profile.visibility, &id])
             .await?;
         if results.is_empty() {
-            return Err(Error::new("failed to create principal"));
+            return Err(Error::new("failed find profile by id"));
         }
         let id: Uuid = results[0].get("id");
         self.edit_profile_attributes(&txn, &id, profile).await?;
         txn.commit().await?;
         self.update_storage(ctx, &id).await?;
+        Ok(())
+    }
+
+    pub async fn delete_profile_attribute(&self, profile_id: &Uuid, attribute_id: &Uuid) -> Result<(), Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("delete from profile_attributes where profile = $1 and id = $2")
+            .await?;
+        connection.execute(&stmt, &[profile_id, attribute_id]).await?;
         Ok(())
     }
 

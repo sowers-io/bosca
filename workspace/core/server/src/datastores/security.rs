@@ -1,6 +1,9 @@
-use crate::models::security::credentials::{Credential, CredentialType};
+use crate::datastores::cache::manager::BoscaCacheManager;
+use crate::datastores::security_cache::SecurityCache;
+use crate::models::security::credentials::{Credential, CredentialType, PasswordCredential};
 use crate::models::security::group::Group;
-use crate::models::security::password::{encrypt, verify};
+use crate::models::security::group_type::GroupType;
+use crate::models::security::password::verify;
 use crate::models::security::principal::Principal;
 use crate::security::jwt::Jwt;
 use crate::security::token::Token;
@@ -12,8 +15,6 @@ use log::warn;
 use serde_json::Value;
 use std::sync::Arc;
 use uuid::Uuid;
-use crate::datastores::cache::manager::BoscaCacheManager;
-use crate::datastores::security_cache::SecurityCache;
 
 #[derive(Clone)]
 pub struct SecurityDataStore {
@@ -28,9 +29,13 @@ pub const SERVICE_ACCOUNT_GROUP: &str = "sa";
 pub const MODEL_MANAGERS_GROUP: &str = "model.managers";
 pub const WORKFLOW_MANAGERS_GROUP: &str = "workflow.managers";
 
-
 impl SecurityDataStore {
-    pub async fn new(cache: &mut BoscaCacheManager, pool: Arc<Pool>, jwt: Jwt, url_secret_key: String) -> Self {
+    pub async fn new(
+        cache: &mut BoscaCacheManager,
+        pool: Arc<Pool>,
+        jwt: Jwt,
+        url_secret_key: String,
+    ) -> Self {
         Self {
             cache: SecurityCache::new(cache).await,
             pool,
@@ -48,14 +53,21 @@ impl SecurityDataStore {
     }
 
     #[allow(dead_code)]
-    pub async fn add_group(&self, name: &String, description: &String) -> Result<Group, Error> {
+    pub async fn add_group(
+        &self,
+        name: &String,
+        description: &String,
+        group_type: GroupType,
+    ) -> Result<Group, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
-            .prepare_cached("insert into groups (name, description) values ($1, $2) returning id")
+            .prepare_cached("insert into groups (name, description, type) values ($1, $2, $3::group_type) returning id")
             .await?;
-        let results = connection.query(&stmt, &[name, description]).await?;
+        let results = connection
+            .query(&stmt, &[name, description, &group_type])
+            .await?;
         let id: Uuid = results.first().unwrap().get(0);
-        let group = Group::new(id, name.clone());
+        let group = Group::new(id, name.clone(), group_type);
         self.cache.cache_group(&group).await;
         Ok(group)
     }
@@ -63,7 +75,7 @@ impl SecurityDataStore {
     pub async fn get_groups(&self, offset: i64, limit: i64) -> Result<Vec<Group>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
-            .prepare_cached("select * from groups order by id offset $1 limit $2")
+            .prepare_cached("select * from groups where type = 'system'::group_type order by id offset $1 limit $2")
             .await?;
         let results = connection.query(&stmt, &[&offset, &limit]).await?;
         Ok(results.iter().map(Group::from).collect())
@@ -183,7 +195,7 @@ impl SecurityDataStore {
         &self,
         verified: bool,
         attributes: Value,
-        credential: &impl Credential,
+        credential: &Credential,
         groups: &Vec<&Uuid>,
     ) -> Result<Uuid, Error> {
         let verification_token = if verified {
@@ -202,27 +214,10 @@ impl SecurityDataStore {
         }
         let id = results[0].get("id");
         drop(stmt);
-        match credential.get_type() {
-            CredentialType::Password => {
-                let attributes = Value::Object(match credential.get_attributes() {
-                    Value::Object(hash) => {
-                        let mut m = hash.clone();
-                        m.insert(
-                            "password".to_string(),
-                            Value::String(encrypt(
-                                hash.get("password").unwrap().as_str().unwrap().to_string(),
-                            )?),
-                        );
-                        m
-                    }
-                    _ => return Err(Error::new("missing attributes")),
-                });
-                let stmt = txn.prepare_cached("insert into principal_credentials (principal, type, attributes) values ($1, $2, $3)").await?;
-                txn.execute(&stmt, &[&id, &credential.get_type(), &attributes])
-                    .await?;
-            }
-            CredentialType::Oauth2 => return Err(Error::new("unsupported")),
-        }
+        let attributes = credential.get_attributes();
+        let stmt = txn.prepare_cached("insert into principal_credentials (principal, type, attributes) values ($1, $2, $3)").await?;
+        txn.execute(&stmt, &[&id, &credential.get_type(), &attributes])
+            .await?;
         let stmt = txn
             .prepare_cached("insert into principal_groups (principal, group_id) values ($1, $2)")
             .await?;
@@ -231,6 +226,44 @@ impl SecurityDataStore {
         }
         txn.commit().await?;
         Ok(id)
+    }
+
+    pub async fn get_principal_credentials(
+        &self,
+        id: &Uuid,
+    ) -> Result<Vec<Credential>, Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("select * from principal_credentials where principal = $1")
+            .await?;
+        let results = connection.query(&stmt, &[id]).await?;
+        let mut credentials = Vec::<Credential>::new();
+        for result in results.iter() {
+            let type_ = result.get("type");
+            let attributes = result.get("attributes");
+            let credential = match type_ {
+                CredentialType::Password => Credential::Password(PasswordCredential::new_from_attributes(attributes)),
+                CredentialType::Oauth2 => return Err(Error::new("unsupported")),
+            };
+            credentials.push(credential);
+        }
+        Ok(credentials)
+    }
+
+    pub async fn set_principal_credential(
+        &self,
+        id: &Uuid,
+        credential: &Credential,
+    ) -> Result<(), Error> {
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        let stmt = txn
+            .prepare_cached("update principal_credentials set attributes = $1 where principal = $2")
+            .await?;
+        let attributes = credential.get_attributes();
+        txn.execute(&stmt, &[&attributes, id]).await?;
+        txn.commit().await?;
+        Ok(())
     }
 
     pub async fn add_anonymous_principal<'a>(
@@ -265,6 +298,20 @@ impl SecurityDataStore {
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached("insert into principal_groups (principal, group_id) values ($1, $2)")
+            .await?;
+        connection.execute(&stmt, &[principal, group]).await?;
+        self.cache.evict_principal(principal).await;
+        Ok(())
+    }
+
+    pub async fn remove_principal_group(
+        &self,
+        principal: &Uuid,
+        group: &Uuid,
+    ) -> Result<(), Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("delete from principal_groups where principal = $1 and group_id = $2")
             .await?;
         connection.execute(&stmt, &[principal, group]).await?;
         self.cache.evict_principal(principal).await;
@@ -353,6 +400,16 @@ impl SecurityDataStore {
             return Err(Error::new("invalid credential"));
         }
         self.get_principal_by_id_internal(&connection, &id).await
+    }
+
+    pub fn verify_password(
+        &self,
+        credential: &Credential,
+        password: &str,
+    ) -> Result<bool, Error> {
+        let attrs = credential.get_attributes();
+        let hash = attrs.get("password").unwrap().as_str().unwrap();
+        Ok(verify(hash, password)?)
     }
 
     pub async fn set_principal_verified(&self, verification_token: &str) -> Result<Uuid, Error> {

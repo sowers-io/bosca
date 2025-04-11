@@ -1,9 +1,6 @@
 package io.bosca.api
 
-import io.bosca.graphql.GetGroupsQuery
-import io.bosca.graphql.GetPermissionActionsQuery
-import io.bosca.graphql.LoginMutation
-import io.bosca.graphql.RefreshTokenMutation
+import io.bosca.graphql.*
 import io.bosca.graphql.fragment.Group
 import io.bosca.graphql.fragment.LoginResponse
 import kotlinx.coroutines.DelicateCoroutinesApi
@@ -63,6 +60,11 @@ class Security(network: NetworkClient) : Api(network) {
     suspend fun login(identifier: String, password: String) {
         loginInternal(identifier, password)
         keepTokenUpdated(identifier, password)
+    }
+
+    suspend fun addGroup(name: String, description: String) {
+        val response = network.graphql.mutation(AddGroupMutation(name, description)).execute()
+        response.validate()
     }
 
     suspend fun getGroups(offset: Int, limit: Int): List<Group> {

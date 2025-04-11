@@ -1,0 +1,34 @@
+name: Lesson Step
+description: Default Lesson Step Template
+document:
+  configuration:
+    content: heading block+
+  containers:
+    - id: INTRODUCTION
+      name: Introduction
+      description: A container that represents the introduction of the document
+    - id: MAIN_CONTENT
+      name: Main Content
+      description: A container that represents the main content of the document
+  content:
+    document:
+      content:
+        - type: heading
+          attributes:
+            level: 1
+        - type: container
+          attributes:
+            name: INTRODUCTION
+          content:
+            - type: paragraph
+        - type: container
+          attributes:
+            name: MAIN_CONTENT
+          content:
+            - type: paragraph
+        - type: paragraph
+  defaultAttributes:
+    type: Lesson Step
+  attributes:
+    - $ref: ./attributes/document-description.yaml
+    - $ref: ./attributes/author.yaml

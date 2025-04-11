@@ -131,7 +131,7 @@ function onContinueWithGoogle() {
         </Button>
       </div>
     </form>
-    <Separator label="Or continue with" />
+    <Separator>Or continue with</Separator>
     <div class="flex flex-col gap-4">
       <Button
         variant="outline"

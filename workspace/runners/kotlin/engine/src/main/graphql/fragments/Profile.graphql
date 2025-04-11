@@ -14,4 +14,7 @@ fragment Profile on Profile {
         visibility
         attributes
     }
+    collection {
+        ...Collection
+    }
 }

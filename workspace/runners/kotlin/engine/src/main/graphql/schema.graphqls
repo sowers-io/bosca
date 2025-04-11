@@ -17,7 +17,7 @@ union CollectionItem = Collection | Metadata
 
 union ContentItem = Collection | Metadata | Profile
 
-union Style = DeclaredStyle | StyleReference
+union FindResultContent = BibleBook | BibleChapter | FilteredComponent
 
 union WorkflowExecution = WorkflowExecutionPlan | WorkflowJob
 
@@ -50,24 +50,28 @@ type ActivityParameter {
 type Bible {
     abbreviation: String!
     abbreviationLocal: String!
+    book(usfm: String!): BibleBook
     books: [BibleBook!]!
+    chapter(usfm: String!): BibleChapter
     description: String!
+    find(human: String!): [FindResult!]!
     languages: [BibleLanguage!]!
     name: String!
     nameLocal: String!
-    styles: [Style!]!
+    styles: JSON!
     systemId: String!
 }
 
 type BibleBook {
     abbreviation: String!
-    chapters(reference: ReferenceInput!): [BibleChapter!]!
+    chapters: [BibleChapter!]!
     nameLong: String!
     nameShort: String!
     usfm: String!
 }
 
 type BibleChapter {
+    component: JSON!
     usfm: String!
 }
 
@@ -269,13 +273,6 @@ type ContentMutation {
     sources: SourceMutation!
 }
 
-type DeclaredStyle {
-    align: String
-    fontWeight: String
-    id: String!
-    textIndent: TextIndent
-}
-
 type Document {
     content: JSON!
     template: Metadata
@@ -302,6 +299,10 @@ type DocumentTemplateContainer {
 
 type DocumentTemplates {
     all: [DocumentTemplate!]!
+}
+
+type FilteredComponent {
+    content: JSON!
 }
 
 type FindAttribute {
@@ -332,13 +333,23 @@ type FindQueryOption {
     query: FindQuery!
 }
 
+type FindResult {
+    content: FindResultContent!
+    usfm: String!
+}
+
 type Group {
     id: String!
     name: String!
+    type: GroupType!
 }
 
 type Groups {
     all(limit: Int!, offset: Int!): [Group!]!
+}
+
+type GroupsMutation {
+    addGroup(description: String!, groupType: GroupType!, name: String!): Group!
 }
 
 type Guide {
@@ -616,9 +627,19 @@ type PersistedQuery {
 }
 
 type Principal {
+    credentials: [PrincipalCredential!]!
     groups: [Group!]!
     id: String!
     verified: Boolean!
+}
+
+type PrincipalCredential {
+    identifier: String!
+    type: CredentialType!
+}
+
+type PrincipalMutation {
+    password(identifier: String, newPassword: String!, oldPassword: String!): Boolean!
 }
 
 type Principals {
@@ -628,8 +649,10 @@ type Principals {
 
 type Profile {
     attributes: [ProfileAttribute!]!
+    collection: Collection
     id: String!
     name: String!
+    principal: Principal
     slug: String
     visibility: ProfileVisibility!
 }
@@ -667,6 +690,7 @@ type Profiles {
 type ProfilesMutation {
     add(profile: ProfileInput!): Profile
     addAttributeType(attribute: ProfileAttributeTypeInput!): Boolean!
+    deleteAttribute(attributeId: String!, id: String): Boolean!
     deleteAttributeType(attributeId: String!): Boolean!
     edit(id: String, profile: ProfileInput!): Profile
     editAttributeType(attribute: ProfileAttributeTypeInput!): Boolean!
@@ -734,7 +758,10 @@ type Security {
 type SecurityMutation {
     addPrincipalGroup(groupId: String!, principalId: String!): Boolean!
     expireRefreshTokens: Boolean!
+    groups: GroupsMutation!
     login: LoginMutation!
+    principal(id: String): PrincipalMutation!
+    removePrincipalGroup(groupId: String!, principalId: String!): Boolean!
     signup: SignupMutation!
 }
 
@@ -799,10 +826,6 @@ type StorageSystemsMutation {
     edit(id: String!, storageSystem: StorageSystemInput!): StorageSystem
 }
 
-type StyleReference {
-    id: String!
-}
-
 type Subscription {
     activity: String!
     category: String!
@@ -845,11 +868,6 @@ type TemplateAttribute {
 type TemplateWorkflow {
     autoRun: Boolean!
     workflow: Workflow
-}
-
-type TextIndent {
-    size: Float!
-    unit: String!
 }
 
 type Token {
@@ -1069,11 +1087,12 @@ type WorkflowsMutation {
     edit(workflow: WorkflowInput!): Workflow!
     enqueueChildWorkflow(configurations: [WorkflowConfigurationInput!], delayUntil: DateTime, jobId: WorkflowJobIdInput!, workflowId: String!): WorkflowExecutionId!
     enqueueChildWorkflows(delayUntil: DateTime, jobId: WorkflowJobIdInput!, workflowIds: [String!]!): [WorkflowExecutionId!]!
-    enqueueWorkflow(collectionId: String, configurations: [WorkflowConfigurationInput!], delayUntil: DateTime, metadataId: String, version: Int, workflowId: String!): WorkflowExecutionId!
+    enqueueWorkflow(collectionId: String, configurations: [WorkflowConfigurationInput!], delayUntil: DateTime, metadataId: String, profileId: String, version: Int, workflowId: String!): WorkflowExecutionId!
     expireAll: Boolean!
     findAndEnqueueWorkflow(configurations: [WorkflowConfigurationInput!], delayUntil: DateTime, query: FindQueryInput!, workflowId: String!): [WorkflowExecutionId!]!
     models: ModelsMutation!
     prompts: PromptsMutation!
+    retryAllFailed: Boolean!
     schedules: WorkflowSchedulesMutation!
     setExecutionPlanContext(context: JSON!, planId: WorkflowExecutionIdInput!): Boolean!
     setExecutionPlanJobCheckin(jobId: WorkflowJobIdInput!): Boolean!
@@ -1131,12 +1150,22 @@ enum ContainerType {
     TABLE
 }
 
+enum CredentialType {
+    OAUTH_2
+    PASSWORD
+}
+
 enum ExtensionFilterType {
     COLLECTION_TEMPLATE
     DOCUMENT
     DOCUMENT_TEMPLATE
     GUIDE
     GUIDE_TEMPLATE
+}
+
+enum GroupType {
+    PRINCIPAL
+    SYSTEM
 }
 
 enum GuideType {

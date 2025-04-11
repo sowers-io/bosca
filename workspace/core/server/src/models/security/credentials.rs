@@ -1,16 +1,54 @@
+use crate::models::security::password::encrypt;
+use async_graphql::{Enum, Error};
 use bytes::{BufMut, BytesMut};
 use postgres_types::{to_sql_checked, FromSql, IsNull, ToSql, Type};
 use serde_json::{Map, Value};
 
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[derive(Enum, Debug, Copy, Clone, Eq, PartialEq)]
 pub enum CredentialType {
     Password,
     Oauth2,
 }
 
-pub trait Credential {
-    fn get_type(&self) -> CredentialType;
-    fn get_attributes(&self) -> Value;
+pub trait CredentialInterface {
+    fn identifier(&self) -> String;
+    fn set_identifier(&mut self, identifier: String);
+}
+
+pub enum Credential {
+    Password(PasswordCredential)
+}
+
+impl Credential {
+    pub fn get_type(&self) -> CredentialType {
+        match self {
+            Credential::Password(c) => c.credential_type
+        }
+    }
+
+    pub fn identifier(&self) -> String {
+        match self {
+            Credential::Password(c) => c.identifier()
+        }
+    }
+
+    pub fn get_attributes(&self) -> Value {
+        match self {
+            Credential::Password(c) => c.attributes.clone()
+        }
+    }
+
+    pub fn set_identifier(&mut self, identifier: String) {
+        match self {
+            Credential::Password(c) => c.set_identifier(identifier)
+        }
+    }
+
+    pub fn set_password(&mut self, password: String) -> Result<(), Error> {
+        match self {
+            Credential::Password(c) => c.set_password(password)
+        }
+    }
 }
 
 pub struct PasswordCredential {
@@ -19,31 +57,48 @@ pub struct PasswordCredential {
 }
 
 impl PasswordCredential {
-    pub fn new(identifier: String, password: String) -> Self {
+    pub fn new(identifier: String, password: String) -> Result<Self, Error> {
         let mut map = Map::<String, Value>::new();
         map.insert("identifier".to_string(), Value::String(identifier));
-        map.insert("password".to_string(), Value::String(password));
-        Self {
+        map.insert("password".to_string(), Value::String(encrypt(password)?));
+        Ok(Self {
             credential_type: CredentialType::Password,
             attributes: Value::Object(map),
+        })
+    }
+
+    pub fn new_from_attributes(attributes: Value) -> Self {
+        Self {
+            credential_type: CredentialType::Password,
+            attributes,
         }
     }
 
-    // fn get_identifier(&self) -> String {
-    //     self.attributes.as_object().unwrap().get("identifier").unwrap().as_str().unwrap().to_string()
-    // }
-    //
-    // fn get_password(&self) -> String {
-    //     self.attributes.as_object().unwrap().get("password").unwrap().as_str().unwrap().to_string()
-    // }
+    pub fn set_password(&mut self, password: String) -> Result<(), Error> {
+        let mut map = self.attributes.as_object_mut().unwrap().clone();
+        map.insert("password".to_string(), Value::String(encrypt(password)?));
+        self.attributes = Value::Object(map);
+        Ok(())
+    }
 }
 
-impl Credential for PasswordCredential {
-    fn get_type(&self) -> CredentialType {
-        self.credential_type
+impl CredentialInterface for PasswordCredential {
+
+    fn identifier(&self) -> String {
+        self.attributes
+            .as_object()
+            .unwrap()
+            .get("identifier")
+            .unwrap()
+            .as_str()
+            .unwrap()
+            .to_string()
     }
-    fn get_attributes(&self) -> Value {
-        self.attributes.clone()
+
+    fn set_identifier(&mut self, identifier: String) {
+        let mut map = self.attributes.as_object_mut().unwrap().clone();
+        map.insert("identifier".to_string(), Value::String(identifier));
+        self.attributes = Value::Object(map);
     }
 }
 
