@@ -17,7 +17,7 @@ impl ConfigurationsMutationObject {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = if let Some(cfg) = ctx.configuration.get_configuration_by_key(&configuration.key).await? {
             let permissions = ctx.configuration.get_permissions(&cfg.id).await?;
-            let evaluator = Evaluator::new(permissions);
+            let evaluator = Evaluator::new(cfg.id, permissions);
             if !evaluator.evaluate(&ctx.principal, &PermissionAction::Edit) {
                 ctx.check_has_admin_account().await?;
             }
@@ -45,7 +45,7 @@ impl ConfigurationsMutationObject {
         }
         let id = cfg.unwrap().id;
         let permissions = ctx.configuration.get_permissions(&id).await?;
-        let evaluator = Evaluator::new(permissions);
+        let evaluator = Evaluator::new(id, permissions);
         if !evaluator.evaluate(&ctx.principal, &PermissionAction::Delete) {
             ctx.check_has_admin_account().await?;
         }

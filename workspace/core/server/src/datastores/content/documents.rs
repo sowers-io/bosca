@@ -8,7 +8,7 @@ use crate::models::content::metadata::MetadataInput;
 use crate::models::content::metadata_profile::MetadataProfileInput;
 use crate::models::content::template_attribute::TemplateAttribute;
 use crate::models::content::template_workflow::TemplateWorkflow;
-use crate::models::security::permission::PermissionAction;
+use crate::models::security::permission::{Permission, PermissionAction};
 use async_graphql::*;
 use deadpool_postgres::{GenericClient, Pool, Transaction};
 use log::error;
@@ -354,6 +354,7 @@ impl DocumentsDataStore {
         Ok(())
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn add_document_from_template(
         &self,
         ctx: &BoscaContext,
@@ -362,6 +363,7 @@ impl DocumentsDataStore {
         template_version: i32,
         title: &str,
         content_type: &str,
+        permissions: &[Permission],
     ) -> Result<(Uuid, i32), Error> {
         let mut conn = self.pool.get().await?;
         let txn = conn.transaction().await?;
@@ -374,6 +376,7 @@ impl DocumentsDataStore {
                 template_id,
                 template_version,
                 content_type,
+                permissions,
             )
             .await?;
         txn.commit().await?;
@@ -390,6 +393,7 @@ impl DocumentsDataStore {
         template_id: &Uuid,
         template_version: i32,
         content_type: &str,
+        permissions: &[Permission],
     ) -> Result<(Uuid, i32), Error> {
         let template = ctx
             .check_metadata_version_action(template_id, template_version, PermissionAction::View)
@@ -450,6 +454,7 @@ impl DocumentsDataStore {
             .metadata
             .add_txn(ctx, txn, &metadata, true, &None)
             .await?;
+        ctx.content.metadata_permissions.add_metadata_permissions_txn(txn, &id, permissions).await?;
         Ok((id, version))
     }
 }

@@ -1,5 +1,10 @@
 name: Blog Post
 description: Default Blog Post Template
+permissions:
+  - group: editors
+    action: view
+  - group: editors
+    action: list
 document:
   configuration:
     content: heading block+

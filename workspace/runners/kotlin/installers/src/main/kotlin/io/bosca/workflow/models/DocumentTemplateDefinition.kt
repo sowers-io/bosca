@@ -6,6 +6,7 @@ import kotlinx.serialization.Serializable
 data class DocumentTemplateDefinition(
     val name: String = "",
     val description: String = "",
+    val permissions: List<CollectionPermissionDefinition>? = null,
     val document: DocumentTemplateDocument = DocumentTemplateDocument()
 )
 

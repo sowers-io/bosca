@@ -50,7 +50,7 @@ pub async fn begin_transition(
         let id = Uuid::parse_str(metadata_id.as_str())?;
         if let Some(version) = request.version {
             let metadata = ctx
-                .check_metadata_version_action(&id, version, PermissionAction::Manage)
+                .check_metadata_version_action(&id, version, PermissionAction::Edit)
                 .await?;
             if (request.restart.is_none() || !request.restart.unwrap())
                 && metadata.workflow_state_id == request.state_id
@@ -65,7 +65,7 @@ pub async fn begin_transition(
     } else if let Some(collection_id) = &request.collection_id {
         let id = Uuid::parse_str(collection_id.as_str())?;
         let collection = ctx
-            .check_collection_action(&id, PermissionAction::Manage)
+            .check_collection_action(&id, PermissionAction::Edit)
             .await?;
         if (request.restart.is_none() || !request.restart.unwrap())
             && collection.workflow_state_id == request.state_id

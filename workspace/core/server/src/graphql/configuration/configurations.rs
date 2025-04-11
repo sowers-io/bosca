@@ -26,7 +26,7 @@ impl ConfigurationsObject {
                 cfg.push(c);
                 continue;
             }
-            let evaluator = Evaluator::new(permissions);
+            let evaluator = Evaluator::new(c.id, permissions);
             if evaluator.evaluate(&ctx.principal, &PermissionAction::List) {
                 cfg.push(c);
             }
@@ -53,7 +53,7 @@ impl ConfigurationsObject {
             ctx.check_has_admin_account().await?;
             Ok(Some(ConfigurationObject::new(configuration)))
         } else {
-            let evaluator = Evaluator::new(permissions);
+            let evaluator = Evaluator::new(configuration.id, permissions);
             if evaluator.evaluate(&ctx.principal, &PermissionAction::View) {
                 Ok(Some(ConfigurationObject::new(configuration)))
             } else {

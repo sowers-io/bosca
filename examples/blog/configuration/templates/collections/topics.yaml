@@ -19,6 +19,11 @@ templates:
   collection:
     name: Topic
     description: Default Topic Collection Template
+    permissions:
+      - group: editors
+        action: view
+      - group: editors
+        action: list
     collection:
       defaultAttributes:
         type: Topic

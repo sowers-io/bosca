@@ -1,9 +1,11 @@
 use crate::models::security::permission::{Permission, PermissionAction};
 use crate::models::security::principal::Principal;
 use std::collections::HashMap;
+use log::debug;
 use uuid::Uuid;
 
 pub struct Evaluator {
+    id: Uuid,
     permissions: HashMap<PermissionAction, Vec<Uuid>>,
 }
 
@@ -22,7 +24,7 @@ impl Evaluator {
         }
     }
 
-    pub fn new(permissions: Vec<Permission>) -> Self {
+    pub fn new(id: Uuid, permissions: Vec<Permission>) -> Self {
         let mut p = HashMap::<PermissionAction, Vec<Uuid>>::new();
         for permission in permissions {
             Self::add_permissions(&mut p, &permission.action, &permission.group_id);
@@ -36,7 +38,7 @@ impl Evaluator {
                 Self::add_permissions(&mut p, &PermissionAction::List, &permission.group_id);
             }
         }
-        Self { permissions: p }
+        Self { id, permissions: p }
     }
 
     pub fn evaluate(&self, p: &Principal, action: &PermissionAction) -> bool {
@@ -47,9 +49,13 @@ impl Evaluator {
                         return true;
                     }
                 }
+                debug!("Principal {} does not have permission {:?} to {}", p.id, action, self.id);
                 false
             }
-            None => false,
+            None => {
+                debug!("Principal {} does not have permission {:?} to {}", p.id, action, self.id);
+                false
+            },
         }
     }
 }

@@ -60,7 +60,7 @@ impl CollectionPermissionsDataStore {
         {
             return Ok(true);
         }
-        let eval = Evaluator::new(self.get(&collection.id).await?);
+        let eval = Evaluator::new(collection.id, self.get(&collection.id).await?);
         Ok(eval.evaluate(principal, &action))
     }
 
@@ -86,7 +86,7 @@ impl CollectionPermissionsDataStore {
         {
             return Ok(true);
         }
-        let eval = Evaluator::new(self.get_txn(txn, &collection.id).await?);
+        let eval = Evaluator::new(collection.id, self.get_txn(txn, &collection.id).await?);
         Ok(eval.evaluate(principal, &action))
     }
 
@@ -185,7 +185,7 @@ impl CollectionPermissionsDataStore {
         {
             return Ok(true);
         }
-        let eval = Evaluator::new(self.get(&collection.id).await?);
+        let eval = Evaluator::new(collection.id, self.get(&collection.id).await?);
         Ok(eval.evaluate(principal, &action))
     }
 }

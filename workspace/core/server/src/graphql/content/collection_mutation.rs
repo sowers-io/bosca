@@ -233,7 +233,7 @@ impl CollectionMutationObject {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::parse_str(id.as_str())?;
         let mut collection = ctx
-            .check_collection_action(&id, PermissionAction::Manage)
+            .check_collection_action(&id, PermissionAction::Edit)
             .await?;
         ctx.content.collections.set_public(ctx, &id, public).await?;
         collection.public = public;
@@ -505,7 +505,7 @@ impl CollectionMutationObject {
         let ctx = ctx.data::<BoscaContext>()?;
         let collection_id = Uuid::parse_str(id.as_str())?;
         let collection = ctx
-            .check_collection_action(&collection_id, PermissionAction::Manage)
+            .check_collection_action(&collection_id, PermissionAction::Edit)
             .await?;
         if collection.ready.is_some() {
             return Err(Error::new("collection already ready"));

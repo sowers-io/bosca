@@ -1,6 +1,8 @@
 use crate::models::workflow::states::{WorkflowState, WorkflowStateType};
-use async_graphql::Object;
+use async_graphql::{Context, Error, Object};
 use serde_json::Value;
+use crate::datastores::security::WORKFLOW_MANAGERS_GROUP;
+use crate::security::util::check_has_group;
 
 pub struct WorkflowStateObject {
     state: WorkflowState,
@@ -31,18 +33,22 @@ impl WorkflowStateObject {
         &self.state.description
     }
 
-    async fn configuration(&self) -> &Option<Value> {
-        &self.state.configuration
+    async fn configuration(&self, ctx: &Context<'_>) -> Result<&Option<Value>, Error> {
+        check_has_group(ctx, WORKFLOW_MANAGERS_GROUP).await?;
+        Ok(&self.state.configuration)
     }
 
-    async fn workflow_id(&self) -> Option<&String> {
-        self.state.workflow_id.as_ref()
+    async fn workflow_id(&self, ctx: &Context<'_>) -> Result<&Option<String>, Error> {
+        check_has_group(ctx, WORKFLOW_MANAGERS_GROUP).await?;
+        Ok(&self.state.workflow_id)
     }
-    async fn entry_workflow_id(&self) -> Option<&String> {
-        self.state.entry_workflow_id.as_ref()
+    async fn entry_workflow_id(&self, ctx: &Context<'_>) -> Result<&Option<String>, Error> {
+        check_has_group(ctx, WORKFLOW_MANAGERS_GROUP).await?;
+        Ok(&self.state.entry_workflow_id)
     }
-    async fn exit_workflow_id(&self) -> Option<&String> {
-        self.state.exit_workflow_id.as_ref()
+    async fn exit_workflow_id(&self, ctx: &Context<'_>) -> Result<&Option<String>, Error> {
+        check_has_group(ctx, WORKFLOW_MANAGERS_GROUP).await?;
+        Ok(&self.state.exit_workflow_id)
     }
 }
 
