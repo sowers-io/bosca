@@ -57,7 +57,7 @@ function onContinueWithGoogle() {
         Continue with Google
       </Button>
     </div>
-    <Separator label="Or continue with" />
+    <Separator>Or continue with</Separator>
     <div class="grid gap-2">
       <Label for="email">
         Email

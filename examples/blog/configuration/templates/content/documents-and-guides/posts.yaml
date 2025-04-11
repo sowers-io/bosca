@@ -6,6 +6,15 @@ attributes:
   collection: Blog Post
 categories:
   - Blog Post Document
+permissions:
+  - group: editors
+    action: view
+  - group: editors
+    action: edit
+  - group: editors
+    action: delete
+  - group: editors
+    action: list
 ordering:
   - order: DESCENDING
     path:
@@ -13,4 +22,4 @@ ordering:
     type: DATE_TIME
 templates:
   document:
-    $ref: ./content/documents/templates/posts.yaml
+    $ref: ./content/documents-and-guides/documents/posts.yaml

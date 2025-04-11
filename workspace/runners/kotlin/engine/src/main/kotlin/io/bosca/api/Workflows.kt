@@ -377,11 +377,12 @@ class Workflows(network: NetworkClient) : Api(network) {
     ) {
         val response = network.graphql.mutation(
             EnqueueWorkflowMutation(
-                workflowId,
-                Optional.absent(),
-                Optional.presentIfNotNull(metadataId),
-                Optional.presentIfNotNull(version),
-                Optional.presentIfNotNull(configuration),
+                workflowId = workflowId,
+                collectionId = Optional.absent(),
+                profileId = Optional.absent(),
+                metadataId = Optional.presentIfNotNull(metadataId),
+                version = Optional.presentIfNotNull(version),
+                configurations = Optional.presentIfNotNull(configuration),
             )
         ).execute()
         response.validate()
@@ -394,11 +395,30 @@ class Workflows(network: NetworkClient) : Api(network) {
     ) {
         val response = network.graphql.mutation(
             EnqueueWorkflowMutation(
-                workflowId,
-                Optional.presentIfNotNull(collectionId),
-                Optional.absent(),
-                Optional.absent(),
-                Optional.presentIfNotNull(configuration),
+                workflowId = workflowId,
+                collectionId = Optional.presentIfNotNull(collectionId),
+                profileId = Optional.absent(),
+                metadataId = Optional.absent(),
+                version = Optional.absent(),
+                configurations = Optional.presentIfNotNull(configuration),
+            )
+        ).execute()
+        response.validate()
+    }
+
+    suspend fun enqueueProfileWorkflow(
+        workflowId: String,
+        profileId: String,
+        configuration: List<WorkflowConfigurationInput>? = null
+    ) {
+        val response = network.graphql.mutation(
+            EnqueueWorkflowMutation(
+                workflowId = workflowId,
+                collectionId = Optional.absent(),
+                profileId = Optional.presentIfNotNull(profileId),
+                metadataId = Optional.absent(),
+                version = Optional.absent(),
+                configurations = Optional.presentIfNotNull(configuration),
             )
         ).execute()
         response.validate()

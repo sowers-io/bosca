@@ -3,6 +3,9 @@ use crate::graphql::profiles::profile_attribute::ProfileAttributeObject;
 use crate::models::profiles::profile::Profile;
 use crate::models::profiles::profile_visibility::ProfileVisibility;
 use async_graphql::{Context, Error, Object};
+use crate::graphql::content::collection::CollectionObject;
+use crate::graphql::security::principal::PrincipalObject;
+use crate::models::security::permission::PermissionAction;
 
 pub struct ProfileObject {
     profile: Profile,
@@ -23,6 +26,25 @@ impl ProfileObject {
         } else {
             "00000000-0000-0000-0000-000000000000".to_string()
         })
+    }
+
+    async fn principal(&self, ctx: &Context<'_>) -> Result<Option<PrincipalObject>, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        ctx.check_has_admin_account().await?;
+        if let Some(principal_id) = &self.profile.principal {
+            let principal = ctx.security.get_principal_by_id(principal_id).await?;
+            return Ok(Some(PrincipalObject::new(principal)))
+        }
+        Ok(None)
+    }
+
+    async fn collection(&self, ctx: &Context<'_>) -> Result<Option<CollectionObject>, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        if let Some(collection_id) = &self.profile.collection_id {
+            let collection = ctx.check_collection_action(collection_id, PermissionAction::View).await?;
+            return Ok(Some(CollectionObject::new(collection)))
+        }
+        Ok(None)
     }
 
     async fn slug(&self, ctx: &Context<'_>) -> Result<Option<String>, Error> {

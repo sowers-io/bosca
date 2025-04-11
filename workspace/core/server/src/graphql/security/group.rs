@@ -1,5 +1,6 @@
 use crate::models::security::group::Group;
 use async_graphql::Object;
+use crate::models::security::group_type::GroupType;
 
 pub struct GroupObject {
     group: Group,
@@ -19,6 +20,11 @@ impl GroupObject {
 
     async fn name(&self) -> &String {
         &self.group.name
+    }
+
+    #[graphql(name = "type")]
+    async fn group_type(&self) -> &GroupType {
+        &self.group.group_type
     }
 }
 

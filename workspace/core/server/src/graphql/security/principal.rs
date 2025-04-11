@@ -1,6 +1,8 @@
+use crate::context::BoscaContext;
 use crate::graphql::security::group::GroupObject;
 use crate::models::security::principal::Principal;
-use async_graphql::Object;
+use async_graphql::{Context, Object};
+use crate::graphql::security::principal_credential::PrincipalCredentialObject;
 
 pub struct PrincipalObject {
     principal: Principal,
@@ -27,5 +29,20 @@ impl PrincipalObject {
             Some(groups) => groups.iter().map(|g| GroupObject::new(g.clone())).collect(),
             None => Vec::new(),
         }
+    }
+
+    async fn credentials(
+        &self,
+        ctx: &Context<'_>,
+    ) -> Result<Vec<PrincipalCredentialObject>, async_graphql::Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let credentials = ctx
+            .security
+            .get_principal_credentials(&ctx.principal.id)
+            .await?;
+        Ok(credentials
+            .into_iter()
+            .map(|c| PrincipalCredentialObject::new(c.identifier(), c.get_type()))
+            .collect())
     }
 }

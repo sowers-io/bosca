@@ -14,6 +14,12 @@ data class Ordering(
 )
 
 @Serializable
+data class CollectionPermissionDefinition(
+    val group: String,
+    val action: String
+)
+
+@Serializable
 data class CollectionDefinition(
     val slug: String,
     val name: String,
@@ -23,6 +29,7 @@ data class CollectionDefinition(
     val categories: List<String>? = null,
     val collections: List<CollectionDefinition>? = null,
     val templates: CollectionTemplates? = null,
+    val permissions: List<CollectionPermissionDefinition>? = null,
     val ordering: List<Ordering>? = null
 )
 

@@ -10,6 +10,7 @@ pub struct Profile {
     pub principal: Option<Uuid>,
     pub name: String,
     pub visibility: ProfileVisibility,
+    pub collection_id: Option<Uuid>,
 }
 
 #[derive(InputObject, Debug, Clone, PartialEq, Eq)]
@@ -27,6 +28,7 @@ impl From<&Row> for Profile {
             principal: row.get("principal"),
             name: row.get("name"),
             visibility: row.get("visibility"),
+            collection_id: row.get("collection_id"),
         }
     }
 }

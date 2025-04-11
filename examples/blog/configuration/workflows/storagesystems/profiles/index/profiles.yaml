@@ -1,0 +1,12 @@
+id: profile.index.profiles
+name: Index Metadata
+description: Add Profile to Profiles Search Index
+queue: metadata
+activities:
+  - queue: metadata
+    activity: search.index.item
+    configuration:
+      storageSystem: Profiles
+    inputs:
+      - name: supplementary
+        supplementary: search.json

@@ -21,4 +21,4 @@ document:
     - $ref: ./attributes/document-description.yaml
     - $ref: ./attributes/document-topics.yaml
     - $ref: ./attributes/featured-image.yaml
-    - $ref: ./attributes/document-author.yaml
+    - $ref: ./attributes/author.yaml

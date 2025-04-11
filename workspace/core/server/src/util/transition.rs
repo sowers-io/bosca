@@ -11,6 +11,7 @@ use crate::workflow::core_workflow_ids::{
 };
 use async_graphql::Error;
 use chrono::{DateTime, Utc};
+use log::info;
 use uuid::Uuid;
 
 pub async fn verify_transition_exists(
@@ -97,6 +98,7 @@ async fn do_transition(
         true,
         None,
         request.restart,
+        false
     )
     .await?;
     // ensure we can enter our state
@@ -109,6 +111,7 @@ async fn do_transition(
         true,
         None,
         request.restart,
+        false
     )
     .await?;
     // log what's about to happen
@@ -158,6 +161,7 @@ async fn do_transition(
         request.wait_for_completion.unwrap_or(false),
         request.state_valid,
         request.restart,
+        delay
     )
     .await?
     {
@@ -221,6 +225,7 @@ async fn do_transition(
         }
         Some(_) => {
             // something got planned!
+            info!("transition plan queued");
         }
     }
     Ok(())
@@ -236,6 +241,7 @@ pub async fn transition(
     wait_for_completion: bool,
     delay_until: Option<DateTime<Utc>>,
     restart: Option<bool>,
+    delay: bool
 ) -> Result<Option<WorkflowExecutionPlan>, Error> {
     if let Some(state) = ctx.workflow.get_state(item.workflow_state_id()).await? {
         if state.state_type == WorkflowStateType::Pending {
@@ -268,8 +274,11 @@ pub async fn transition(
                 TransitionType::Default => state.workflow_id,
             } {
                 let Some(workflow) = ctx.workflow.get_workflow(&workflow_id).await? else {
-                    return Err(Error::new("missing workflow"));
+                    return Err(Error::new(format!("missing workflow: {}", workflow_id)))
                 };
+                if delay {
+                    return Ok(None);
+                }
                 let mut request = EnqueueRequest {
                     workflow: Some(workflow),
                     configurations: configurations.clone(),

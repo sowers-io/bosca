@@ -1,0 +1,25 @@
+slug: lessons-guides
+name: Lessons
+type: SYSTEM
+editorType: Guide
+attributes:
+  collection: Lesson
+categories:
+  - Lesson Guide
+permissions:
+  - group: editors
+    action: view
+  - group: editors
+    action: edit
+  - group: editors
+    action: delete
+  - group: editors
+    action: list
+ordering:
+  - order: DESCENDING
+    path:
+      - published
+    type: DATE_TIME
+templates:
+  guide:
+    $ref: ./content/documents-and-guides/guides/lesson.yaml

@@ -1,0 +1,21 @@
+name: Lesson
+description: Default Lesson Template
+document:
+  configuration:
+    content: heading block+
+  containers: [ ]
+  content:
+    document:
+      content:
+        - type: heading
+          attributes:
+            level: 1
+        - type: paragraph
+  defaultAttributes:
+    type: Lesson
+  attributes:
+    - $ref: ./attributes/published.yaml
+    - $ref: ./attributes/guide-description.yaml
+    - $ref: ./attributes/guide-topics.yaml
+    - $ref: ./attributes/featured-image.yaml
+    - $ref: ./attributes/author.yaml

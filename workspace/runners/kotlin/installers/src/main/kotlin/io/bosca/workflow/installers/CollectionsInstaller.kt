@@ -50,10 +50,22 @@ class CollectionsInstaller(val client: Client) : Installer {
     ) {
         val install = collection.toPendingInstall(currentCategories)
         val slug = client.get(collection.slug)
-        if (slug?.collection?.id == null) {
+        val id = if (slug?.collection?.id == null) {
             client.collections.add(collection.toInput(currentCategories))
         } else {
             client.collections.edit(slug.collection!!.id, install.collection)
+        } ?: error("Collection not found")
+        val groups = client.security.getGroups(0, 100).associateBy { it.name }
+        collection.permissions?.let {
+            for (permission in it) {
+                client.collections.addPermission(
+                    PermissionInput(
+                        action = PermissionAction.valueOf(permission.action.uppercase()),
+                        entityId = id,
+                        groupId = groups[permission.group]?.id ?: error("Group not found: ${permission.group}")
+                    )
+                )
+            }
         }
         collection.templates?.collection?.let {
             val templateSlug = client.get(collection.slug + "-collection-template")
