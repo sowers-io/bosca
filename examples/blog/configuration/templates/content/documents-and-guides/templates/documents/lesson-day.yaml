@@ -1,5 +1,10 @@
 name: Lesson Step
 description: Default Lesson Step Template
+permissions:
+  - group: editors
+    action: view
+  - group: editors
+    action: list
 document:
   configuration:
     content: heading block+

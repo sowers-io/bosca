@@ -1,9 +1,0 @@
-name: Lesson
-description: Default Lesson Template
-guide:
-  type: LINEAR_PROGRESS
-  template:
-    $ref: ./content/documents-and-guides/documents/lesson.yaml
-  steps:
-    - template:
-        $ref: ./content/documents-and-guides/documents/lesson-day.yaml

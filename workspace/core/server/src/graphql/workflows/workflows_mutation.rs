@@ -143,7 +143,7 @@ impl WorkflowsMutationObject {
             let id = Uuid::parse_str(metadata_id.as_str())?;
             if let Some(version) = metadata_version {
                 let metadata = ctx
-                    .check_metadata_version_action(&id, version, PermissionAction::Manage)
+                    .check_metadata_version_action(&id, version, PermissionAction::Edit)
                     .await?;
                 ctx.workflow
                     .cancel_workflows(

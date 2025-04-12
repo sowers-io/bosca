@@ -19,6 +19,11 @@ templates:
   collection:
     name: Standard
     description: Default Standard Collection Template
+    permissions:
+      - group: editors
+        action: view
+      - group: editors
+        action: list
     collection:
       defaultAttributes:
         type: Standard

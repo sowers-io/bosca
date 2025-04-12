@@ -126,11 +126,15 @@ impl BiblesDataStore {
         let stmt = conn
             .prepare("select * from bibles where metadata_id = $1 and version = $2")
             .await?;
-        let row = conn.query_one(&stmt, &[metadata_id, &version]).await?;
-        if row.is_empty() {
+        let rows = conn.query(&stmt, &[metadata_id, &version]).await?;
+        if rows.is_empty() {
             return Ok(None);
         }
-        Ok(Some((&row).into()))
+        if let Some(row) = rows.first() {
+            Ok(Some(row.into()))
+        } else {
+            Ok(None)
+        }
     }
 
     pub async fn get_bible_languages(

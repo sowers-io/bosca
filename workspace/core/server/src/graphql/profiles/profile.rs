@@ -41,7 +41,9 @@ impl ProfileObject {
     async fn collection(&self, ctx: &Context<'_>) -> Result<Option<CollectionObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         if let Some(collection_id) = &self.profile.collection_id {
-            let collection = ctx.check_collection_action(collection_id, PermissionAction::View).await?;
+            let Ok(collection) = ctx.check_collection_action(collection_id, PermissionAction::View).await else {
+                return Ok(None);
+            };
             return Ok(Some(CollectionObject::new(collection)))
         }
         Ok(None)

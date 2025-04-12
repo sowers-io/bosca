@@ -294,6 +294,7 @@ type DocumentTemplateContainer {
     id: String!
     name: String!
     supplementaryKey: String
+    type: DocumentTemplateContainerType!
     workflows: [TemplateWorkflow!]!
 }
 
@@ -639,6 +640,7 @@ type PrincipalCredential {
 }
 
 type PrincipalMutation {
+    identifier(identifier: String!): Boolean!
     password(identifier: String, newPassword: String!, oldPassword: String!): Boolean!
 }
 
@@ -1155,6 +1157,11 @@ enum CredentialType {
     PASSWORD
 }
 
+enum DocumentTemplateContainerType {
+    BIBLE
+    STANDARD
+}
+
 enum ExtensionFilterType {
     COLLECTION_TEMPLATE
     DOCUMENT
@@ -1403,6 +1410,7 @@ input DocumentInput {
 }
 
 input DocumentTemplateContainerInput {
+    containerType: DocumentTemplateContainerType
     description: String!
     id: String!
     name: String!

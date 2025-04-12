@@ -8,13 +8,14 @@ use crate::models::content::metadata::MetadataInput;
 use crate::models::content::metadata_profile::MetadataProfileInput;
 use crate::models::content::template_attribute::TemplateAttribute;
 use crate::models::content::template_workflow::TemplateWorkflow;
-use crate::models::security::permission::PermissionAction;
+use crate::models::security::permission::{Permission, PermissionAction};
 use async_graphql::*;
 use deadpool_postgres::{GenericClient, Pool, Transaction};
 use log::error;
 use serde_json::json;
 use std::sync::Arc;
 use uuid::Uuid;
+use crate::models::content::document_template_container_type::DocumentTemplateContainerType;
 
 #[derive(Clone)]
 pub struct DocumentsDataStore {
@@ -216,10 +217,11 @@ impl DocumentsDataStore {
             }
         }
         if let Some(containers) = &template.containers {
-            let stmt = txn.prepare_cached("insert into document_template_containers (metadata_id, version, id, name, description, supplementary_key, sort) values ($1, $2, $3, $4, $5, $6, $7)").await?;
+            let stmt = txn.prepare_cached("insert into document_template_containers (metadata_id, version, id, name, description, supplementary_key, type, sort) values ($1, $2, $3, $4, $5, $6, $7, $8)").await?;
             let stmt_wid = txn.prepare_cached("insert into document_template_container_workflows (metadata_id, version, id, workflow_id, auto_run) values ($1, $2, $3, $4, $5)").await?;
             for (index, container) in containers.iter().enumerate() {
                 let sort = index as i32;
+                let ct = container.container_type.unwrap_or(DocumentTemplateContainerType::Standard);
                 txn.execute(
                     &stmt,
                     &[
@@ -229,6 +231,7 @@ impl DocumentsDataStore {
                         &container.name,
                         &container.description,
                         &container.supplementary_key,
+                        &ct,
                         &sort,
                     ],
                 )
@@ -354,6 +357,7 @@ impl DocumentsDataStore {
         Ok(())
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn add_document_from_template(
         &self,
         ctx: &BoscaContext,
@@ -362,6 +366,7 @@ impl DocumentsDataStore {
         template_version: i32,
         title: &str,
         content_type: &str,
+        permissions: &[Permission],
     ) -> Result<(Uuid, i32), Error> {
         let mut conn = self.pool.get().await?;
         let txn = conn.transaction().await?;
@@ -374,6 +379,7 @@ impl DocumentsDataStore {
                 template_id,
                 template_version,
                 content_type,
+                permissions,
             )
             .await?;
         txn.commit().await?;
@@ -390,6 +396,7 @@ impl DocumentsDataStore {
         template_id: &Uuid,
         template_version: i32,
         content_type: &str,
+        permissions: &[Permission],
     ) -> Result<(Uuid, i32), Error> {
         let template = ctx
             .check_metadata_version_action(template_id, template_version, PermissionAction::View)
@@ -450,6 +457,7 @@ impl DocumentsDataStore {
             .metadata
             .add_txn(ctx, txn, &metadata, true, &None)
             .await?;
+        ctx.content.metadata_permissions.add_metadata_permissions_txn(txn, &id, permissions).await?;
         Ok((id, version))
     }
 }

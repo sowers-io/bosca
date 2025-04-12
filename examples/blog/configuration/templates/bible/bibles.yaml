@@ -1,0 +1,6 @@
+slug: bibles
+name: Bibles
+type: SYSTEM
+editorType: none
+attributes:
+  collection: bibles

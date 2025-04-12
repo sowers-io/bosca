@@ -1,4 +1,5 @@
 use crate::context::BoscaContext;
+use crate::datastores::notifier::Notifier;
 use crate::models::content::document::DocumentInput;
 use crate::models::content::guide::{Guide, GuideInput};
 use crate::models::content::guide_step::{GuideStep, GuideStepInput};
@@ -8,15 +9,14 @@ use crate::models::content::guide_template_step::GuideTemplateStep;
 use crate::models::content::guide_template_step_module::GuideTemplateStepModule;
 use crate::models::content::metadata::MetadataInput;
 use crate::models::content::metadata_profile::MetadataProfileInput;
-use crate::models::security::permission::PermissionAction;
+use crate::models::security::permission::{Permission, PermissionAction};
 use async_graphql::*;
 use deadpool_postgres::{GenericClient, Pool, Transaction};
+use log::{error, info};
 use rrule::RRuleSet;
 use serde_json::json;
 use std::sync::Arc;
-use log::{error, info};
 use uuid::Uuid;
-use crate::datastores::notifier::Notifier;
 
 #[derive(Clone)]
 pub struct GuidesDataStore {
@@ -453,7 +453,7 @@ impl GuidesDataStore {
             step_metadata_version,
             metadata_id: *metadata_id,
             metadata_version: version,
-            sort
+            sort,
         })
     }
 
@@ -464,11 +464,12 @@ impl GuidesDataStore {
         version: i32,
         step_id: i64,
     ) -> Result<(), Error> {
-        let stmt = txn.prepare_cached("delete from guide_steps where metadata_id = $1 and version = $2 and id = $3").await?;
-        txn.execute(
-            &stmt,
-            &[metadata_id, &version, &step_id],
-        )
+        let stmt = txn
+            .prepare_cached(
+                "delete from guide_steps where metadata_id = $1 and version = $2 and id = $3",
+            )
+            .await?;
+        txn.execute(&stmt, &[metadata_id, &version, &step_id])
             .await?;
         Ok(())
     }
@@ -528,10 +529,7 @@ impl GuidesDataStore {
         module_id: i64,
     ) -> Result<(), Error> {
         let stmt = txn.prepare_cached("delete from guide_step_modules where metadata_id = $1 and version = $2 and step_id = $3 and id = $4").await?;
-        txn.execute(
-            &stmt,
-            &[metadata_id, &version, &step_id, &module_id],
-        )
+        txn.execute(&stmt, &[metadata_id, &version, &step_id, &module_id])
             .await?;
         Ok(())
     }
@@ -542,6 +540,7 @@ impl GuidesDataStore {
         parent_collection_id: &Uuid,
         tempate_metadata_id: &Uuid,
         tempate_metadata_version: i32,
+        permissions: &[Permission],
     ) -> Result<(Uuid, i32), Error> {
         let mut conn = self.pool.get().await?;
         let txn = conn.transaction().await?;
@@ -633,6 +632,7 @@ impl GuidesDataStore {
                 version,
                 index,
                 template_step,
+                permissions
             )
             .await?;
         }
@@ -647,17 +647,19 @@ impl GuidesDataStore {
         metadata_version: i32,
         index: usize,
         step: &GuideTemplateStep,
+        permissions: &[Permission],
     ) -> Result<GuideStep, Error> {
         let mut conn = self.pool.get().await?;
         let txn = conn.transaction().await?;
         let step = self
-            .add_guide_step_from_template_txn(ctx, &txn, metadata_id, metadata_version, index, step)
+            .add_guide_step_from_template_txn(ctx, &txn, metadata_id, metadata_version, index, step, permissions)
             .await?;
         txn.commit().await?;
         self.on_metadata_changed(ctx, metadata_id).await?;
         Ok(step)
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn add_guide_step_from_template_txn(
         &self,
         ctx: &BoscaContext,
@@ -666,6 +668,7 @@ impl GuidesDataStore {
         metadata_version: i32,
         index: usize,
         step: &GuideTemplateStep,
+        permissions: &[Permission],
     ) -> Result<GuideStep, Error> {
         let title = if index == 0 {
             "New Step".to_string()
@@ -684,11 +687,16 @@ impl GuidesDataStore {
                 &step.template_metadata_id,
                 step.template_metadata_version,
                 "bosca/v-guide-step",
+                permissions,
             )
             .await?;
 
         let sort = index as i32;
-        let stmt = txn.prepare_cached("update guide_steps set sort = sort + 1 where metadata_id = $1 and sort >= $2").await?;
+        let stmt = txn
+            .prepare_cached(
+                "update guide_steps set sort = sort + 1 where metadata_id = $1 and sort >= $2",
+            )
+            .await?;
         txn.execute(&stmt, &[metadata_id, &sort]).await?;
 
         let stmt = txn.prepare_cached("insert into guide_steps (metadata_id, version, step_metadata_id, step_metadata_version, sort) values ($1, $2, $3, $4, $5) returning id").await?;
@@ -728,10 +736,16 @@ impl GuidesDataStore {
                     step_id,
                     index,
                     module,
+                    permissions,
                 )
                 .await?;
             new_modules.push(module);
         }
+
+        ctx.content
+            .metadata_permissions
+            .add_metadata_permissions_txn(txn, metadata_id, permissions)
+            .await?;
 
         Ok(GuideStep {
             id: step_id,
@@ -739,10 +753,11 @@ impl GuidesDataStore {
             metadata_version,
             step_metadata_id,
             step_metadata_version,
-            sort
+            sort,
         })
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub async fn add_guide_module_from_template(
         &self,
         ctx: &BoscaContext,
@@ -751,6 +766,7 @@ impl GuidesDataStore {
         step_id: i64,
         index: usize,
         module: &GuideTemplateStepModule,
+        permissions: &[Permission],
     ) -> Result<GuideStepModule, Error> {
         let mut conn = self.pool.get().await?;
         let txn = conn.transaction().await?;
@@ -763,6 +779,7 @@ impl GuidesDataStore {
                 step_id,
                 index,
                 module,
+                permissions,
             )
             .await?;
         txn.commit().await?;
@@ -779,6 +796,7 @@ impl GuidesDataStore {
         step_id: i64,
         index: usize,
         module: &GuideTemplateStepModule,
+        permissions: &[Permission],
     ) -> Result<GuideStepModule, Error> {
         let title = if index == 0 {
             "New Module".to_string()
@@ -796,6 +814,7 @@ impl GuidesDataStore {
                 &module.template_metadata_id,
                 module.template_metadata_version,
                 "bosca/v-guide-module",
+                permissions
             )
             .await?;
         let stmt_module = txn.prepare_cached("insert into guide_step_modules (metadata_id, version, step, module_metadata_id, module_metadata_version, sort) values ($1, $2, $3, $4, $5, $6) returning id").await?;
@@ -813,6 +832,7 @@ impl GuidesDataStore {
                 ],
             )
             .await?;
+        ctx.content.metadata_permissions.add_metadata_permissions_txn(txn, metadata_id, permissions).await?;
         let module_id: i64 = result.get("id");
         Ok(GuideStepModule {
             id: module_id,
@@ -831,20 +851,32 @@ impl GuidesDataStore {
         let Some(step) = self.get_guide_step(metadata_id, version, step_id).await? else {
             return Err(Error::new("missing step"));
         };
-        let modules = self.get_guide_step_modules(metadata_id, version, step_id).await?;
+        let modules = self
+            .get_guide_step_modules(metadata_id, version, step_id)
+            .await?;
         let mut conn = self.pool.get().await?;
         let txn = conn.transaction().await?;
         for module in modules.iter() {
-            self.delete_guide_step_module_txn(&txn, metadata_id, version, step_id, module.id).await?;
-            ctx.content.metadata.mark_deleted(ctx, &module.module_metadata_id).await?;
+            self.delete_guide_step_module_txn(&txn, metadata_id, version, step_id, module.id)
+                .await?;
+            ctx.content
+                .metadata
+                .mark_deleted(ctx, &module.module_metadata_id)
+                .await?;
         }
-        self.delete_guide_step_txn(&txn, metadata_id, version, step_id).await?;
+        self.delete_guide_step_txn(&txn, metadata_id, version, step_id)
+            .await?;
         txn.commit().await?;
-        ctx.content.metadata.mark_deleted(ctx, &step.step_metadata_id).await?;
+        ctx.content
+            .metadata
+            .mark_deleted(ctx, &step.step_metadata_id)
+            .await?;
         for module in modules {
-            self.on_metadata_changed(ctx, &module.module_metadata_id).await?;
+            self.on_metadata_changed(ctx, &module.module_metadata_id)
+                .await?;
         }
-        self.on_metadata_changed(ctx, &step.step_metadata_id).await?;
+        self.on_metadata_changed(ctx, &step.step_metadata_id)
+            .await?;
         self.on_metadata_changed(ctx, metadata_id).await?;
         Ok(())
     }
@@ -855,9 +887,12 @@ impl GuidesDataStore {
         metadata_id: &Uuid,
         version: i32,
     ) -> Result<(), Error> {
-        let steps = self.get_guide_steps(metadata_id, version, None, None).await?;
+        let steps = self
+            .get_guide_steps(metadata_id, version, None, None)
+            .await?;
         for step in steps.iter() {
-            self.delete_guide_step(ctx, metadata_id, version, step.id).await?;
+            self.delete_guide_step(ctx, metadata_id, version, step.id)
+                .await?;
         }
         ctx.content.metadata.mark_deleted(ctx, metadata_id).await?;
         self.on_metadata_changed(ctx, metadata_id).await?;

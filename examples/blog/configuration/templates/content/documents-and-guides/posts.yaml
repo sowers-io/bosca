@@ -22,4 +22,4 @@ ordering:
     type: DATE_TIME
 templates:
   document:
-    $ref: ./content/documents-and-guides/documents/posts.yaml
+    $ref: ./content/documents-and-guides/templates/documents/posts.yaml

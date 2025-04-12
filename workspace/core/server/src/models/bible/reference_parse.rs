@@ -96,7 +96,7 @@ async fn parse_single(
 
     if let Some(chapter) = chapters
         .into_iter()
-        .find(|c| c.reference.number().eq_ignore_ascii_case(&number_parts[0]))
+        .find(|c| c.reference.chapter().unwrap_or_default().eq_ignore_ascii_case(&number_parts[0]))
     {
         if number_parts.len() == 1 {
             return Ok(Some(chapter.reference.clone()));
