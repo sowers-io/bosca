@@ -12,4 +12,6 @@ fun WorkflowJob.getMetadataSupplementary(parameter: WorkflowActivityParameter) =
 fun WorkflowJob.getCollectionSupplementary(parameter: WorkflowActivityParameter) =
     collection?.collection?.supplementary?.firstOrNull {
         it.collectionSupplementary.key == parameter.value && (it.collectionSupplementary.planId == planId.id || it.collectionSupplementary.planId == null || it.collectionSupplementary.planId == this.parent?.id)
+    }?.collectionSupplementary ?: profile?.profile?.collection?.collection?.supplementary?.firstOrNull {
+        it.collectionSupplementary.key == parameter.value && (it.collectionSupplementary.planId == planId.id || it.collectionSupplementary.planId == null || it.collectionSupplementary.planId == this.parent?.id)
     }?.collectionSupplementary

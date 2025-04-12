@@ -1,0 +1,49 @@
+id: profile.update.storage
+name: Update Profile Storage
+description: Update Profile Storage
+queue: metadata
+activities:
+  - queue: metadata
+    activity: workflow.general.delay
+    description: Wait for all supplementary data and relationships to be updated
+    configuration:
+      delayFor: 5 # 30 Seconds
+
+  - queue: metadata
+    activity: profile.to.json
+    outputs:
+      - name: supplementary
+        supplementary: search.json
+
+  - queue: metadata
+    activity: data.jsonata
+    inputs:
+      - name: supplementary
+        supplementary: search.json
+    outputs:
+      - name: supplementary
+        supplementary: search.json
+    configuration:
+      expression: |
+        {
+          "id": id,
+          "slug": slug,
+          "name": name,
+          "_type": _type
+        }
+
+  - queue: metadata
+    activity: workflow.execute.child
+    inputs:
+      - name: supplementary
+        supplementary: search.json
+    configuration:
+      workflows:
+        - profile.index.profiles
+
+  - queue: metadata
+    activity: collection.supplementary.delete
+    inputs:
+      - name: supplementary
+        supplementary: search.json
+

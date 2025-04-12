@@ -11,6 +11,7 @@ object InstallerExecutorFactory {
         client: Client, installers: List<Installer> = listOf(
             ConfigurationsInstaller(),
             CategoriesInstaller(client),
+            GroupsInstaller(),
             PromptsInstaller(),
             ModelsInstaller(),
             StorageSystemsInstaller(),

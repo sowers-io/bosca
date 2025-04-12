@@ -119,7 +119,7 @@ impl GuideObject {
             // TODO: cache this somewhere
             Ok(Some(if let Some(rrule) = self.guide.rrule.clone() {
                 let recurrences = rrule.all((step.sort + 1) as u16);
-                let date = recurrences.dates.into_iter().map(|d| d.to_utc()).last();
+                let date = recurrences.dates.into_iter().map(|d| d.to_utc()).next_back();
                 GuideStepObject::new(step, date)
             } else {
                 GuideStepObject::new(step, None)

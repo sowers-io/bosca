@@ -1,0 +1,12 @@
+groups:
+  - name: editors
+    description: Editors
+    permissions:
+      - slug: root
+        action: edit
+      - slug: root
+        action: list
+      - slug: root
+        action: view
+      - slug: root
+        action: delete

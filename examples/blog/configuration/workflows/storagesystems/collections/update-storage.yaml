@@ -7,7 +7,7 @@ activities:
     activity: workflow.general.delay
     description: Wait for all supplementary data and relationships to be updated
     configuration:
-      delayFor: 30 # 30 Seconds
+      delayFor: 5 # 5 Seconds
 
   - queue: metadata
     activity: collection.to.json

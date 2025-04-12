@@ -6,10 +6,24 @@ attributes:
   collection: Author
 categories:
   - Author Collection
+permissions:
+  - group: editors
+    action: view
+  - group: editors
+    action: edit
+  - group: editors
+    action: delete
+  - group: editors
+    action: list
 templates:
   collection:
     name: Author
     description: Default Author Template
+    permissions:
+      - group: editors
+        action: view
+      - group: editors
+        action: list
     collection:
       defaultAttributes:
         type: Author

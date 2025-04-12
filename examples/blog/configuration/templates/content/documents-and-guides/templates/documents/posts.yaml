@@ -1,5 +1,10 @@
 name: Blog Post
 description: Default Blog Post Template
+permissions:
+  - group: editors
+    action: view
+  - group: editors
+    action: list
 document:
   configuration:
     content: heading block+
@@ -7,6 +12,10 @@ document:
     - id: MAIN_CONTENT
       name: Main Content
       description: A container that represents the main content of the document
+    - id: BIBLE_REFERENCES
+      name: Bible References
+      description: A container that represents Bible References of the document
+      type: bible
   content:
     document:
       content:
@@ -21,4 +30,4 @@ document:
     - $ref: ./attributes/document-description.yaml
     - $ref: ./attributes/document-topics.yaml
     - $ref: ./attributes/featured-image.yaml
-    - $ref: ./attributes/document-author.yaml
+    - $ref: ./attributes/author.yaml

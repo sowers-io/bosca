@@ -6,6 +6,7 @@ import kotlinx.serialization.Serializable
 data class CollectionTemplateDefinition(
     val name: String = "",
     val description: String = "",
+    val permissions: List<CollectionPermissionDefinition>? = null,
     val collection: CollectionTemplateCollection = CollectionTemplateCollection()
 )
 

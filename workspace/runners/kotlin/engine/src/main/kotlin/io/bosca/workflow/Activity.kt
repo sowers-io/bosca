@@ -149,7 +149,15 @@ abstract class Activity(protected val client: Client) {
             client.files.download(download.urls.download, file)
             return file
         }
-        error("missing collection or metadata: $identifier")
+        job.profile?.profile?.let {
+            val supplementary = job.getCollectionSupplementary(parameter) ?: error("missing supplementary: ${job.planId.id} -> $identifier")
+            val download = client.collections.getSupplementaryContentDownload(supplementary.id)
+                ?: error("missing supplementary: ${job.planId.id} -> $identifier -> $identifier")
+            val file = context.newTemporaryFile(job, download.type.split("/").last())
+            client.files.download(download.urls.download, file)
+            return file
+        }
+        error("missing collection or metadata or profile: $identifier: ${job.planId.id}")
     }
 
     protected suspend fun getInputSupplementaryText(
@@ -217,7 +225,8 @@ abstract class Activity(protected val client: Client) {
         sourceIdentifier: String? = null
     ): CollectionSupplementary {
         val output = getOutputParameter(job, parameter) ?: error("missing supplementary: $parameter")
-        return job.collection?.collection?.supplementary?.firstOrNull {
+        val collection = job.collection?.collection ?: job.profile?.profile?.collection?.collection ?: error("missing collection or profile")
+        return collection.supplementary.firstOrNull {
             it.collectionSupplementary.key == output.value && (it.collectionSupplementary.planId == job.planId.id || it.collectionSupplementary.planId == null)
         }?.collectionSupplementary
             ?: client.collections.addSupplementary(
@@ -226,7 +235,7 @@ abstract class Activity(protected val client: Client) {
                     name = name,
                     contentType = contentType,
                     key = output.value,
-                    collectionId = job.collection?.collection?.id ?: error("missing collection id"),
+                    collectionId = collection.id,
                     sourceId = sourceId.toOptional(),
                     sourceIdentifier = sourceIdentifier.toOptional()
                 )
@@ -252,6 +261,13 @@ abstract class Activity(protected val client: Client) {
         } ?: job.collection?.collection?.let {
             val supplementary =
                 getOrAddCollectionSupplementary(job, parameter, name, contentType, sourceId, sourceIdentifier)
+            client.collections.setSupplementaryTextContent(
+                supplementary.id,
+                contentType,
+                content
+            )
+        } ?: job.profile?.profile?.let {
+            val supplementary = getOrAddCollectionSupplementary(job, parameter, name, contentType, sourceId, sourceIdentifier)
             client.collections.setSupplementaryTextContent(
                 supplementary.id,
                 contentType,
@@ -300,6 +316,20 @@ abstract class Activity(protected val client: Client) {
                 if (value is String) value else json.encodeToString(serializer, value),
             )
         } ?: job.collection?.collection?.let {
+            val supplementary = getOrAddCollectionSupplementary(
+                job,
+                output,
+                name,
+                "application/json",
+                sourceId,
+                sourceIdentifier
+            )
+            client.collections.setSupplementaryTextContent(
+                supplementary.id,
+                "application/json",
+                if (value is String) value else json.encodeToString(serializer, value),
+            )
+        } ?: job.profile?.profile?.let {
             val supplementary = getOrAddCollectionSupplementary(
                 job,
                 output,

@@ -6,10 +6,24 @@ attributes:
   collection: Topic
 categories:
   - Topic Collection
+permissions:
+  - group: editors
+    action: view
+  - group: editors
+    action: edit
+  - group: editors
+    action: delete
+  - group: editors
+    action: list
 templates:
   collection:
     name: Topic
     description: Default Topic Collection Template
+    permissions:
+      - group: editors
+        action: view
+      - group: editors
+        action: list
     collection:
       defaultAttributes:
         type: Topic

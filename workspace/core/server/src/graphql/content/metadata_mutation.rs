@@ -6,6 +6,7 @@ use crate::graphql::content::metadata_relationship::MetadataRelationshipObject;
 use crate::graphql::content::metadata_supplementary::MetadataSupplementaryObject;
 use crate::graphql::content::permission::PermissionObject;
 use crate::graphql::workflows::workflow_execution_plan::WorkflowExecutionPlanObject;
+use crate::models::bible::bible::BibleInput;
 use crate::models::content::collection::MetadataChildInput;
 use crate::models::content::document::DocumentInput;
 use crate::models::content::metadata::MetadataInput;
@@ -21,7 +22,6 @@ use crate::util::upload::upload_file;
 use async_graphql::*;
 use bytes::Bytes;
 use uuid::Uuid;
-use crate::models::bible::bible::BibleInput;
 
 #[derive(InputObject, Clone, Debug, Default)]
 pub struct WorkflowConfigurationInput {
@@ -75,6 +75,11 @@ impl MetadataMutationObject {
         ctx.check_collection_action(&parent_collection_id, PermissionAction::Edit)
             .await?;
         let template_id = Uuid::parse_str(template_id.as_str())?;
+        let permissions = ctx
+            .content
+            .collection_permissions
+            .get(&parent_collection_id)
+            .await?;
         let (id, _) = ctx
             .content
             .documents
@@ -85,6 +90,7 @@ impl MetadataMutationObject {
                 template_version,
                 "New Document",
                 "bosca/v-document",
+                &permissions,
             )
             .await?;
         let metadata = ctx.content.metadata.get(&id).await?;
@@ -102,11 +108,22 @@ impl MetadataMutationObject {
         let parent_collection_id = Uuid::parse_str(&parent_collection_id)?;
         ctx.check_collection_action(&parent_collection_id, PermissionAction::Edit)
             .await?;
+        let permissions = ctx
+            .content
+            .collection_permissions
+            .get(&parent_collection_id)
+            .await?;
         let template_id = Uuid::parse_str(&template_id)?;
         let (id, _) = ctx
             .content
             .guides
-            .add_guide_from_template(ctx, &parent_collection_id, &template_id, template_version)
+            .add_guide_from_template(
+                ctx,
+                &parent_collection_id,
+                &template_id,
+                template_version,
+                &permissions,
+            )
             .await?;
         let metadata = ctx.content.metadata.get(&id).await?;
         Ok(metadata.map(MetadataObject::new))
@@ -163,6 +180,11 @@ impl MetadataMutationObject {
         let metadata_id = Uuid::parse_str(&metadata_id)?;
         ctx.check_metadata_version_action(&metadata_id, metadata_version, PermissionAction::Edit)
             .await?;
+        let permissions = ctx
+            .content
+            .metadata_permissions
+            .get_metadata_permissions(&metadata_id)
+            .await?;
         let template = ctx
             .check_metadata_version_action(&template_id, template_version, PermissionAction::View)
             .await?;
@@ -194,12 +216,17 @@ impl MetadataMutationObject {
                 metadata_version,
                 sort as usize,
                 &template_step,
+                &permissions,
             )
             .await?;
         Ok(if let Some(rrule) = guide.rrule.clone() {
             // TODO: cache this somewhere
             let recurrences = rrule.all((step.sort + 1) as u16);
-            let date = recurrences.dates.into_iter().map(|d| d.to_utc()).last();
+            let date = recurrences
+                .dates
+                .into_iter()
+                .map(|d| d.to_utc())
+                .next_back();
             GuideStepObject::new(step, date)
         } else {
             GuideStepObject::new(step, None)
@@ -223,6 +250,11 @@ impl MetadataMutationObject {
         let template_id = Uuid::parse_str(template_id.as_str())?;
         let metadata_id = Uuid::parse_str(&metadata_id)?;
         ctx.check_metadata_version_action(&metadata_id, metadata_version, PermissionAction::Edit)
+            .await?;
+        let permissions = ctx
+            .content
+            .metadata_permissions
+            .get_metadata_permissions(&metadata_id)
             .await?;
         let template = ctx
             .check_metadata_version_action(&template_id, template_version, PermissionAction::View)
@@ -253,6 +285,7 @@ impl MetadataMutationObject {
                 step_id,
                 sort as usize,
                 &template_module,
+                &permissions,
             )
             .await?;
         Ok(GuideStepModuleObject::new(module))
@@ -462,7 +495,7 @@ impl MetadataMutationObject {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::parse_str(id.as_str())?;
         let mut metadata = ctx
-            .check_metadata_action(&id, PermissionAction::Manage)
+            .check_metadata_action(&id, PermissionAction::Edit)
             .await?;
         ctx.content.metadata.set_public(ctx, &id, public).await?;
         metadata.public = public;
@@ -478,7 +511,7 @@ impl MetadataMutationObject {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::parse_str(id.as_str())?;
         let mut metadata = ctx
-            .check_metadata_action(&id, PermissionAction::Manage)
+            .check_metadata_action(&id, PermissionAction::Edit)
             .await?;
         ctx.content
             .metadata
@@ -497,7 +530,7 @@ impl MetadataMutationObject {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::parse_str(id.as_str())?;
         let mut metadata = ctx
-            .check_metadata_action(&id, PermissionAction::Manage)
+            .check_metadata_action(&id, PermissionAction::Edit)
             .await?;
         ctx.content
             .metadata_supplementary

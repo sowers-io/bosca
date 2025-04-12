@@ -6,10 +6,24 @@ attributes:
   collection: Standard
 categories:
   - Standard Collection
+permissions:
+  - group: editors
+    action: view
+  - group: editors
+    action: edit
+  - group: editors
+    action: delete
+  - group: editors
+    action: list
 templates:
   collection:
     name: Standard
     description: Default Standard Collection Template
+    permissions:
+      - group: editors
+        action: view
+      - group: editors
+        action: list
     collection:
       defaultAttributes:
         type: Standard

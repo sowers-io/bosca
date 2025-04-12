@@ -80,6 +80,19 @@ class RebuildData(client: io.bosca.api.Client) : Activity(client) {
             }
             offset += 100
         } while (true)
+
+        offset = 0
+        do {
+            val profiles = client.profiles.getAll(offset, 100)
+            if (profiles.isEmpty()) break
+            for ((profile, _) in profiles) {
+                client.workflows.enqueueProfileWorkflow(
+                    "profile.update.storage",
+                    profile.id
+                )
+            }
+            offset += 100
+        } while (true)
     }
 
     companion object {

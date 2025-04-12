@@ -4,8 +4,9 @@ use crate::graphql::content::bible_chapter::BibleChapterObject;
 use crate::graphql::content::bible_language::BibleLanguageObject;
 use crate::models::bible::bible::Bible;
 use crate::models::bible::reference_parse::parse;
-use async_graphql::{Context, Error, Object, SimpleObject, Union};
+use async_graphql::{Context, Error, Object, SimpleObject};
 use serde_json::{json, Value};
+use crate::models::bible::reference::Reference;
 
 pub struct BibleObject {
     bible: Bible,
@@ -18,9 +19,12 @@ impl BibleObject {
 }
 
 #[derive(SimpleObject)]
-pub struct FindResult {
+pub struct FindBibleResult {
     pub usfm: String,
-    pub content: FindResultContent,
+    pub human: String,
+    pub book: BibleBookObject,
+    pub chapter: Option<BibleChapterObject>,
+    pub component: Option<FilteredComponent>
 }
 
 #[derive(SimpleObject)]
@@ -28,11 +32,10 @@ pub struct FilteredComponent {
     pub content: Value
 }
 
-#[derive(Union)]
-pub enum FindResultContent {
-    Book(BibleBookObject),
-    Chapter(BibleChapterObject),
-    Component(FilteredComponent),
+#[derive(SimpleObject)]
+pub struct BibleChapterComponent {
+    pub chapter: BibleChapterObject,
+    pub component: FilteredComponent
 }
 
 #[Object(name = "Bible")]
@@ -74,40 +77,29 @@ impl BibleObject {
             .collect())
     }
 
-    async fn find(&self, ctx: &Context<'_>, human: String) -> Result<Vec<FindResult>, Error> {
-        let original_ctx = ctx;
+    async fn find(&self, ctx: &Context<'_>, human: String) -> Result<Vec<FindBibleResult>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let mut results = parse(ctx, &self.bible, &human).await?;
         let mut items = Vec::new();
         for result in results.iter_mut() {
-            if result.verse_usfm().is_some() {
-                if let Some(chapter_usfm) = result.chapter_usfm() {
-                    if let Some(chapter) = ctx
-                        .content
-                        .bibles
-                        .get_chapter(&self.bible.metadata_id, self.bible.version, &chapter_usfm)
-                        .await?
-                    {
-                        if let Some(filtered) = chapter.component.filter(result) {
-                            items.push(FindResult {
-                                usfm: chapter_usfm,
-                                content: FindResultContent::Component(FilteredComponent{ content: json!(filtered) }),
-                            });
-                        }
-                    }
-                }
-            } else if let Some(chapter_usfm) = result.chapter_usfm() {
-                if let Some(chapter) = self.chapter(original_ctx, chapter_usfm.clone()).await? {
-                    items.push(FindResult {
-                        usfm: chapter_usfm,
-                        content: FindResultContent::Chapter(chapter),
-                    });
-                }
-            } else if let Some(book_usfm) = result.book_usfm() {
-                if let Some(book) = self.book(original_ctx, book_usfm.clone()).await? {
-                    items.push(FindResult {
-                        usfm: book_usfm,
-                        content: FindResultContent::Book(book),
+            if let Some(book_usfm) = result.book_usfm() {
+                if let Some(book) = ctx.content.bibles.get_book(&self.bible.metadata_id, self.bible.version, &book_usfm).await? {
+                    let chapter = if let Some(chapter_usfm) = result.chapter_usfm() {
+                        ctx.content.bibles.get_chapter(&self.bible.metadata_id, self.bible.version, &chapter_usfm).await?
+                    } else {
+                        None
+                    };
+                    let component = if let Some(chapter) = &chapter {
+                        chapter.component.filter(result)
+                    } else {
+                        None
+                    };
+                    items.push(FindBibleResult {
+                        human: result.format(&book),
+                        usfm: result.usfm().clone(),
+                        book: BibleBookObject::new(book.clone()),
+                        chapter: chapter.map(|c| BibleChapterObject::new(book.clone(), c, Some(result.clone()))),
+                        component: component.map(|c| FilteredComponent { content: json!(c) })
                     });
                 }
             }
@@ -145,12 +137,32 @@ impl BibleObject {
         usfm: String,
     ) -> Result<Option<BibleChapterObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        let books = ctx
+        let reference = Reference::new(usfm);
+        let Some(book_usfm) = reference.book_usfm() else {
+            return Ok(None);
+        };
+        let Some(chapter_usfm) = reference.chapter_usfm() else {
+            return Ok(None);
+        };
+        let Some(book) = ctx
             .content
             .bibles
-            .get_chapter(&self.bible.metadata_id, self.bible.version, &usfm)
-            .await?;
-        Ok(books.map(BibleChapterObject::new))
+            .get_book(&self.bible.metadata_id, self.bible.version, &book_usfm)
+            .await? else {
+            return Ok(None);
+        };
+        let Some(chapter) = ctx
+            .content
+            .bibles
+            .get_chapter(&self.bible.metadata_id, self.bible.version, &chapter_usfm)
+            .await? else {
+            return Ok(None)
+        };
+        if reference.verse().is_some() {
+            Ok(Some(BibleChapterObject::new(book, chapter, Some(reference))))
+        } else {
+            Ok(Some(BibleChapterObject::new(book, chapter, None)))
+        }
     }
 
     async fn styles(&self) -> Value {

@@ -50,17 +50,29 @@ class CollectionsInstaller(val client: Client) : Installer {
     ) {
         val install = collection.toPendingInstall(currentCategories)
         val slug = client.get(collection.slug)
-        if (slug?.collection?.id == null) {
+        val id = if (slug?.collection?.id == null) {
             client.collections.add(collection.toInput(currentCategories))
         } else {
             client.collections.edit(slug.collection!!.id, install.collection)
+        } ?: error("Collection not found")
+        val groups = client.security.getGroups(0, 100).associateBy { it.name }
+        collection.permissions?.let {
+            for (permission in it) {
+                client.collections.addPermission(
+                    PermissionInput(
+                        action = PermissionAction.valueOf(permission.action.uppercase()),
+                        entityId = id,
+                        groupId = groups[permission.group]?.id ?: error("Group not found: ${permission.group}")
+                    )
+                )
+            }
         }
         collection.templates?.collection?.let {
             val templateSlug = client.get(collection.slug + "-collection-template")
             if (templateSlug?.metadata?.ready != null && templateSlug.metadata?.workflow?.metadataWorkflow?.state == "published") {
                 return@let
             }
-            if (templateSlug?.metadata?.id == null) {
+            val metadataId = if (templateSlug?.metadata?.id == null) {
                 client.metadata.add(
                     collection.templates.collection.toCollectionTemplateInput(
                         templatesId,
@@ -77,6 +89,21 @@ class CollectionsInstaller(val client: Client) : Installer {
                         currentCategories
                     )
                 )
+            } else {
+                templateSlug.metadata?.id
+            }
+            metadataId?.let { mid ->
+                it.permissions?.let {
+                    for (permission in it) {
+                        client.metadata.addPermission(
+                            PermissionInput(
+                                action = PermissionAction.valueOf(permission.action.uppercase()),
+                                entityId = mid,
+                                groupId = groups[permission.group]?.id ?: error("Group not found: ${permission.group}")
+                            )
+                        )
+                    }
+                }
             }
         }
         collection.templates?.document?.let {
@@ -84,7 +111,7 @@ class CollectionsInstaller(val client: Client) : Installer {
             if (templateSlug?.metadata?.ready != null && templateSlug.metadata?.workflow?.metadataWorkflow?.state == "published") {
                 return@let
             }
-            if (templateSlug?.metadata?.id == null) {
+            val metadataId = if (templateSlug?.metadata?.id == null) {
                 client.metadata.add(
                     collection.templates.document.toDocumentTemplateInput(
                         templatesId,
@@ -102,6 +129,21 @@ class CollectionsInstaller(val client: Client) : Installer {
                         currentCategories
                     )
                 )
+            } else {
+                templateSlug.metadata?.id
+            }
+            metadataId?.let { mid ->
+                it.permissions?.let {
+                    for (permission in it) {
+                        client.metadata.addPermission(
+                            PermissionInput(
+                                action = PermissionAction.valueOf(permission.action.uppercase()),
+                                entityId = mid,
+                                groupId = groups[permission.group]?.id ?: error("Group not found: ${permission.group}")
+                            )
+                        )
+                    }
+                }
             }
         }
         collection.templates?.guide?.let {
@@ -109,7 +151,7 @@ class CollectionsInstaller(val client: Client) : Installer {
             if (templateSlug?.metadata?.ready != null && templateSlug.metadata?.workflow?.metadataWorkflow?.state == "published") {
                 return@let
             }
-            if (templateSlug?.metadata?.id == null) {
+            val metadataId = if (templateSlug?.metadata?.id == null) {
                 client.metadata.add(
                     collection.templates.guide.toGuideTemplateInput(
                         client,
@@ -128,6 +170,44 @@ class CollectionsInstaller(val client: Client) : Installer {
                         currentCategories
                     )
                 )
+            } else {
+                templateSlug.metadata?.id
+            }
+            metadataId?.let { mid ->
+                it.permissions?.let {
+                    for (permission in it) {
+                        client.metadata.addPermission(
+                            PermissionInput(
+                                action = PermissionAction.valueOf(permission.action.uppercase()),
+                                entityId = mid,
+                                groupId = groups[permission.group]?.id ?: error("Group not found: ${permission.group}")
+                            )
+                        )
+                    }
+                    val guide = client.metadata.getGuideTemplate(mid, templateSlug?.metadata?.version ?: 1)
+                    for (step in guide?.steps ?: emptyList()) {
+                        for (permission in it) {
+                            client.metadata.addPermission(
+                                PermissionInput(
+                                    action = PermissionAction.valueOf(permission.action.uppercase()),
+                                    entityId = step.guideTemplateStep.metadata?.metadata?.id ?: continue,
+                                    groupId = groups[permission.group]?.id ?: error("Group not found: ${permission.group}")
+                                )
+                            )
+                        }
+                        for (module in step.guideTemplateStep.modules) {
+                            for (permission in it) {
+                                client.metadata.addPermission(
+                                    PermissionInput(
+                                        action = PermissionAction.valueOf(permission.action.uppercase()),
+                                        entityId = module.guideTemplateStepModule.metadata?.metadata?.id ?: continue,
+                                        groupId = groups[permission.group]?.id ?: error("Group not found: ${permission.group}")
+                                    )
+                                )
+                            }
+                        }
+                    }
+                }
             }
         }
         val collections = collection.collections

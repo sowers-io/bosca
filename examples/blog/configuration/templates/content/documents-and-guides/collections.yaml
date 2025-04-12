@@ -1,0 +1,16 @@
+slug: documents-and-guides
+name: Documents and Guides
+type: SYSTEM
+editorType: DocumentsAndGuides
+permissions:
+  - group: editors
+    action: view
+  - group: editors
+    action: edit
+  - group: editors
+    action: delete
+  - group: editors
+    action: list
+collections:
+  - $ref: ./content/documents-and-guides/posts.yaml
+  - $ref: ./content/documents-and-guides/lessons.yaml

@@ -23,6 +23,7 @@ use async_graphql::{Context, Error, Object};
 use chrono::{DateTime, Utc};
 use serde_json::Value;
 use uuid::Uuid;
+use crate::workflow::core_workflow_ids::{COLLECTION_DELAYED_TRANSITION, METADATA_DELAYED_TRANSITION};
 
 pub(crate) struct WorkflowsMutationObject {}
 
@@ -44,7 +45,7 @@ impl WorkflowsMutationObject {
         {
             return Ok(workflow);
         }
-        Err(Error::new("missing workflow"))
+        Err(Error::new(format!("missing workflow: {}", workflow.id)))
     }
 
     async fn edit(
@@ -63,7 +64,7 @@ impl WorkflowsMutationObject {
         {
             return Ok(workflow);
         }
-        Err(Error::new("missing workflow"))
+        Err(Error::new(format!("missing workflow: {}", workflow.id)))
     }
 
     async fn delete(&self, ctx: &Context<'_>, id: String) -> Result<bool, Error> {
@@ -142,11 +143,11 @@ impl WorkflowsMutationObject {
             let id = Uuid::parse_str(metadata_id.as_str())?;
             if let Some(version) = metadata_version {
                 let metadata = ctx
-                    .check_metadata_version_action(&id, version, PermissionAction::Manage)
+                    .check_metadata_version_action(&id, version, PermissionAction::Edit)
                     .await?;
                 ctx.workflow
                     .cancel_workflows(
-                        "metadata.delayed.transition",
+                        METADATA_DELAYED_TRANSITION,
                         &Some(id),
                         &metadata_version,
                         &None,
@@ -173,7 +174,7 @@ impl WorkflowsMutationObject {
                 .await?;
             ctx.workflow
                 .cancel_workflows(
-                    "metadata.delayed.transition",
+                    COLLECTION_DELAYED_TRANSITION,
                     &Some(id),
                     &metadata_version,
                     &None,

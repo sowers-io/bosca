@@ -330,7 +330,8 @@ impl WorkflowDataStore {
         .await?;
         let mut ids = Vec::new();
         for activity in &workflow.activities {
-            let id = self.add_workflow_activity(&txn, &workflow.id, activity)
+            let id = self
+                .add_workflow_activity(&txn, &workflow.id, activity)
                 .await?;
             ids.push(id);
         }
@@ -1366,6 +1367,10 @@ impl WorkflowDataStore {
                 .as_ref()
                 .map(|id| Uuid::parse_str(id).unwrap()),
             metadata_version: job.metadata_version,
+            profile_id: job
+                .profile_id
+                .as_ref()
+                .map(|id| Uuid::parse_str(id).unwrap()),
             delay_until,
             ..Default::default()
         };
@@ -1450,10 +1455,10 @@ impl WorkflowDataStore {
             if let Some(workflow) = self.get_workflow(workflow_id).await? {
                 workflow
             } else {
-                return Err(Error::new("missing workflow"));
+                return Err(Error::new(format!("missing workflow: {}", workflow_id)));
             }
         } else {
-            return Err(Error::new("missing workflow"));
+            return Err(Error::new("workflow or workflow_id is required"));
         };
         let mut jobs = Vec::<WorkflowJob>::new();
         let activities = self.get_workflow_activities(&workflow.id).await?;

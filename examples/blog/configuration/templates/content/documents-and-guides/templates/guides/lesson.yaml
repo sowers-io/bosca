@@ -1,0 +1,14 @@
+name: Lesson
+description: Default Lesson Template
+permissions:
+  - group: editors
+    action: view
+  - group: editors
+    action: list
+guide:
+  type: LINEAR_PROGRESS
+  template:
+    $ref: ./content/documents-and-guides/templates/documents/lesson.yaml
+  steps:
+    - template:
+        $ref: ./content/documents-and-guides/templates/documents/lesson-day.yaml

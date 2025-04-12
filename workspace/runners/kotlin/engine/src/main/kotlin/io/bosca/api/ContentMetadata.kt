@@ -10,6 +10,7 @@ import io.bosca.graphql.fragment.Collection
 import io.bosca.graphql.fragment.Document
 import io.bosca.graphql.fragment.DocumentTemplate
 import io.bosca.graphql.fragment.Guide
+import io.bosca.graphql.fragment.GuideTemplate
 import io.bosca.graphql.fragment.Metadata
 import io.bosca.graphql.fragment.MetadataContent
 import io.bosca.graphql.fragment.MetadataRelationship
@@ -58,6 +59,12 @@ class ContentMetadata(network: NetworkClient) : Api(network) {
         val response = network.graphql.query(GetMetadataGuideQuery(id, version)).execute()
         response.validate()
         return response.data?.content?.metadata?.guide?.guide
+    }
+
+    suspend fun getGuideTemplate(id: String, version: Int): GuideTemplate? {
+        val response = network.graphql.query(GetMetadataGuideTemplateQuery(id, version)).execute()
+        response.validate()
+        return response.data?.content?.metadata?.guideTemplate?.guideTemplate
     }
 
     suspend fun getCategories(id: String, version: Int): List<Category>? {

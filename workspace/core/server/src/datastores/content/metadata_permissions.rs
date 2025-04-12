@@ -68,7 +68,7 @@ impl MetadataPermissionsDataStore {
         {
             return Ok(true);
         }
-        let eval = Evaluator::new(self.get_metadata_permissions(&metadata.id).await?);
+        let eval = Evaluator::new(metadata.id, self.get_metadata_permissions(&metadata.id).await?);
         Ok(eval.evaluate(principal, &action))
     }
 
@@ -88,7 +88,7 @@ impl MetadataPermissionsDataStore {
         {
             return Ok(true);
         }
-        let eval = Evaluator::new(self.get_metadata_permissions(&metadata.id).await?);
+        let eval = Evaluator::new(metadata.id, self.get_metadata_permissions(&metadata.id).await?);
         Ok(eval.evaluate(principal, &action))
     }
 
@@ -108,7 +108,7 @@ impl MetadataPermissionsDataStore {
         {
             return Ok(true);
         }
-        let eval = Evaluator::new(self.get_metadata_permissions(&metadata.id).await?);
+        let eval = Evaluator::new(metadata.id, self.get_metadata_permissions(&metadata.id).await?);
         Ok(eval.evaluate(principal, &action))
     }
 
@@ -121,13 +121,13 @@ impl MetadataPermissionsDataStore {
         if metadata.deleted {
             return Ok(false);
         }
-        let eval = Evaluator::new(self.get_metadata_permissions(&metadata.id).await?);
+        let eval = Evaluator::new(metadata.id, self.get_metadata_permissions(&metadata.id).await?);
         Ok(eval.evaluate(principal, &action))
     }
 
     pub async fn add_metadata_permission(&self, permission: &Permission) -> Result<(), Error> {
         let connection = self.pool.get().await?;
-        let stmt = connection.prepare_cached("insert into metadata_permissions (metadata_id, group_id, action) values ($1, $2, $3)").await?;
+        let stmt = connection.prepare_cached("insert into metadata_permissions (metadata_id, group_id, action) values ($1, $2, $3) on conflict do nothing").await?;
         connection
             .execute(
                 &stmt,
@@ -183,7 +183,7 @@ impl MetadataPermissionsDataStore {
         txn: &Transaction<'_>,
         permission: &Permission,
     ) -> Result<(), Error> {
-        let stmt = txn.prepare_cached("insert into metadata_permissions (metadata_id, group_id, action) values ($1, $2, $3)").await?;
+        let stmt = txn.prepare_cached("insert into metadata_permissions (metadata_id, group_id, action) values ($1, $2, $3) on conflict do nothing").await?;
         txn.execute(
             &stmt,
             &[

@@ -54,6 +54,28 @@ impl ProfilesMutationObject {
         }
     }
 
+    async fn delete_attribute(
+        &self,
+        ctx: &Context<'_>,
+        id: Option<String>,
+        attribute_id: String,
+    ) -> Result<bool, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        if let Some(id) = id {
+            ctx.check_has_service_account().await?;
+            let id = Uuid::parse_str(&id)?;
+            let attribute_id = Uuid::parse_str(&attribute_id)?;
+            ctx.profile.delete_profile_attribute(&id, &attribute_id).await?;
+        } else {
+            let Some(profile) = ctx.profile.get_by_principal(&ctx.principal.id).await? else {
+                return Err(Error::new("profile not found"));
+            };
+            let attribute_id = Uuid::parse_str(&attribute_id)?;
+            ctx.profile.delete_profile_attribute(&profile.id, &attribute_id).await?;
+        }
+        Ok(true)
+    }
+
     async fn add_attribute_type(
         &self,
         ctx: &Context<'_>,
