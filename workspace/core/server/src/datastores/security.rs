@@ -368,12 +368,12 @@ impl SecurityDataStore {
                 "select principal from principal_credentials where attributes->>'identifier' = $1",
             )
             .await?;
-        let id = String::from(identifier);
-        let results = connection.query_one(&stmt, &[&id]).await?;
+        let id = identifier.to_lowercase();
+        let results = connection.query(&stmt, &[&id]).await?;
         if results.is_empty() {
             return Err(Error::new("invalid credential"));
         }
-        let id: Uuid = results.get("principal");
+        let id: Uuid = results.first().unwrap().get("principal");
         drop(results);
         drop(stmt);
         self.get_principal_by_id_internal(&connection, &id).await
