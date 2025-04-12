@@ -59,7 +59,7 @@ pub struct PasswordCredential {
 impl PasswordCredential {
     pub fn new(identifier: String, password: String) -> Result<Self, Error> {
         let mut map = Map::<String, Value>::new();
-        map.insert("identifier".to_string(), Value::String(identifier));
+        map.insert("identifier".to_string(), Value::String(identifier.to_lowercase()));
         map.insert("password".to_string(), Value::String(encrypt(password)?));
         Ok(Self {
             credential_type: CredentialType::Password,
