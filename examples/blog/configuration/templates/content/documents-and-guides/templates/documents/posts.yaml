@@ -12,6 +12,10 @@ document:
     - id: MAIN_CONTENT
       name: Main Content
       description: A container that represents the main content of the document
+    - id: BIBLE_REFERENCES
+      name: Bible References
+      description: A container that represents Bible References of the document
+      type: bible
   content:
     document:
       content:

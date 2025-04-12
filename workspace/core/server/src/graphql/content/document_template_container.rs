@@ -3,6 +3,7 @@ use crate::graphql::content::template_workflow::TemplateWorkflowObject;
 use crate::models::content::document_template_container::DocumentTemplateContainer;
 use async_graphql::{Context, Error, Object};
 use uuid::Uuid;
+use crate::models::content::document_template_container_type::DocumentTemplateContainerType;
 
 pub struct DocumentTemplateContainerObject {
     pub metadata_id: Uuid,
@@ -36,6 +37,11 @@ impl DocumentTemplateContainerObject {
 
     pub async fn description(&self) -> &String {
         &self.container.description
+    }
+
+    #[graphql(name = "type")]
+    pub async fn container_type(&self) -> &DocumentTemplateContainerType {
+        &self.container.container_type
     }
 
     pub async fn supplementary_key(&self) -> &Option<String> {

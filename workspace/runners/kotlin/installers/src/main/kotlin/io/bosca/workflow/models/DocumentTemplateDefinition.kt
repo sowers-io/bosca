@@ -25,6 +25,7 @@ data class DocumentTemplateContainer(
     val name: String = "",
     val description: String = "",
     val supplementary: String? = null,
+    val type: String? = null,
     val workflows: List<WorkflowReferenceDefinition> = emptyList(),
 )
 

@@ -44,3 +44,4 @@ pub mod bible;
 pub mod bible_book;
 pub mod bible_chapter;
 pub mod bible_language;
+pub mod bible_reference;

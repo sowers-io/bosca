@@ -27,6 +27,37 @@ struct FilterContext {
 }
 
 impl Component {
+    pub fn find_verses(&self, reference: Option<Vec<Reference>>) -> Vec<Reference> {
+        let mut verses = Vec::new();
+        self.find_verses_inner(&mut verses, &reference);
+        verses
+    }
+
+    fn find_verses_inner(&self, verses: &mut Vec<Reference>, reference: &Option<Vec<Reference>>) {
+        match self {
+            Component::VerseStart(vs) => {
+                if let Some(ref r) = reference {
+                    if r.contains(&vs.reference) {
+                        verses.push(vs.reference.clone());
+                    }
+                } else {
+                    verses.push(vs.reference.clone());
+                }
+            }
+            Component::VerseEnd(_) => {
+            }
+            Component::Break(_) => {
+            }
+            Component::Text(_) => {
+            }
+            Component::Container(c) => {
+                for c in c.components.iter() {
+                    c.find_verses_inner(verses, reference);
+                }
+            }
+        }
+    }
+
     pub fn filter(&self, reference: &Reference) -> Option<Component> {
         let mut ctx = FilterContext { found_starts: 0 };
         let refs = reference.references();

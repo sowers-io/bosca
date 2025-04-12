@@ -1,3 +1,4 @@
 collections:
+  - $ref: ./bible/bibles.yaml
   - $ref: ./content/documents-and-guides/collections.yaml
   - $ref: ./collections/collections.yaml

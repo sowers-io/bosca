@@ -15,6 +15,7 @@ use log::error;
 use serde_json::json;
 use std::sync::Arc;
 use uuid::Uuid;
+use crate::models::content::document_template_container_type::DocumentTemplateContainerType;
 
 #[derive(Clone)]
 pub struct DocumentsDataStore {
@@ -216,10 +217,11 @@ impl DocumentsDataStore {
             }
         }
         if let Some(containers) = &template.containers {
-            let stmt = txn.prepare_cached("insert into document_template_containers (metadata_id, version, id, name, description, supplementary_key, sort) values ($1, $2, $3, $4, $5, $6, $7)").await?;
+            let stmt = txn.prepare_cached("insert into document_template_containers (metadata_id, version, id, name, description, supplementary_key, type, sort) values ($1, $2, $3, $4, $5, $6, $7, $8)").await?;
             let stmt_wid = txn.prepare_cached("insert into document_template_container_workflows (metadata_id, version, id, workflow_id, auto_run) values ($1, $2, $3, $4, $5)").await?;
             for (index, container) in containers.iter().enumerate() {
                 let sort = index as i32;
+                let ct = container.container_type.unwrap_or(DocumentTemplateContainerType::Standard);
                 txn.execute(
                     &stmt,
                     &[
@@ -229,6 +231,7 @@ impl DocumentsDataStore {
                         &container.name,
                         &container.description,
                         &container.supplementary_key,
+                        &ct,
                         &sort,
                     ],
                 )

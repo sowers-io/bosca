@@ -82,6 +82,7 @@ fun DocumentTemplateDefinition.toInput() = DocumentTemplateInput(
             name = it.name,
             description = it.description,
             supplementaryKey = it.supplementary.toOptional(),
+            containerType = it.type?.let { DocumentTemplateContainerType.valueOf(it.uppercase()) }.toOptional(),
             workflows = it.workflows.map { workflow ->
                 TemplateWorkflowInput(
                     autoRun = workflow.autoRun,

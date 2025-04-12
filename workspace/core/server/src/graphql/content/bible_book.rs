@@ -27,6 +27,10 @@ impl BibleBookObject {
         &self.book.name_long
     }
 
+    async fn human(&self) -> &String {
+        &self.book.name_short
+    }
+
     async fn abbreviation(&self) -> &String {
         &self.book.abbreviation
     }
@@ -43,7 +47,7 @@ impl BibleBookObject {
             .await?;
         Ok(chapters
             .into_iter()
-            .map(BibleChapterObject::new)
+            .map(|c| BibleChapterObject::new(self.book.clone(), c, None))
             .collect())
     }
 }
