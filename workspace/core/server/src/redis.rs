@@ -27,7 +27,6 @@ impl RedisConnection {
 
 impl RedisClient {
     pub async fn new(url: String) -> Result<Self, Error> {
-        info!("Connecting to Redis at {}", url);
         let cfg = ConnectionManagerConfig::new()
             .set_connection_timeout(Duration::from_millis(3000))
             .set_response_timeout(Duration::from_millis(3000));
