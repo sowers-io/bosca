@@ -69,9 +69,9 @@ impl BoscaContext {
             }
         };
         info!("Connecting to Redis");
-        let redis_jobs_queue_client = new_redis_client("REDIS_JOBS_QUEUE_URL").await?;
-        let redis_cache_client = new_redis_client("REDIS_CACHE_URL").await?;
-        let redis_notifier_client = new_redis_client("REDIS_NOTIFIER_PUBSUB_URL").await?;
+        let redis_jobs_queue_client = new_redis_client("REDIS_JOBS_QUEUE").await?;
+        let redis_cache_client = new_redis_client("REDIS_CACHE").await?;
+        let redis_notifier_client = new_redis_client("REDIS_NOTIFIER_PUBSUB").await?;
         let notifier = Arc::new(Notifier::new(redis_notifier_client.clone()));
         let jobs = JobQueues::new(
             Arc::clone(&bosca_pool),

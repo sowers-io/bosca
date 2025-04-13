@@ -1,7 +1,6 @@
 use async_graphql::Error;
-use log::info;
 use redis::aio::{ConnectionManager, ConnectionManagerConfig, PubSub};
-use redis::Client;
+use redis::{Client, ConnectionAddr, ConnectionInfo, RedisConnectionInfo};
 use std::time::Duration;
 
 #[derive(Clone)]
@@ -26,14 +25,22 @@ impl RedisConnection {
 }
 
 impl RedisClient {
-    pub async fn new(url: String) -> Result<Self, Error> {
+    pub async fn new(host: String, port: u16, username: Option<String>, password: Option<String>) -> Result<Self, Error> {
+        let info = ConnectionInfo {
+            addr: ConnectionAddr::Tcp(host, port),
+            redis: RedisConnectionInfo {
+                username,
+                password,
+                ..Default::default()
+            },
+        };
         let cfg = ConnectionManagerConfig::new()
             .set_connection_timeout(Duration::from_millis(3000))
             .set_response_timeout(Duration::from_millis(3000));
-        let mgr = ConnectionManager::new_with_config(Client::open(url.clone())?, cfg).await?;
+        let mgr = ConnectionManager::new_with_config(Client::open(info.clone())?, cfg).await?;
         Ok(Self {
             connection: RedisConnection {
-                client: Client::open(url.clone())?,
+                client: Client::open(info.clone())?,
                 manager: mgr,
             },
         })
