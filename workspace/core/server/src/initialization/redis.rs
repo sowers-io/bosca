@@ -11,13 +11,6 @@ pub async fn new_redis_client(key: &str) -> Result<RedisClient, Error> {
         Ok(port) => port.parse::<u16>()?,
         _ => 6380,
     };
-    let username = match env::var(format!("{}_USERNAME", key)) {
-        Ok(username) => Some(username),
-        _ => None,
-    };
-    let password = match env::var(format!("{}_PASSWORD", key)) {
-        Ok(password) => Some(password),
-        _ => None,
-    };
-    RedisClient::new(host, port, username, password).await
+    let password = env::var(format!("{}_PASSWORD", key)).ok();
+    RedisClient::new(host, port, password).await
 }
