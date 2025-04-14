@@ -1,9 +1,0 @@
-mutation EditActivity($input: ActivityInput!) {
-    workflows {
-        activities {
-            edit(activity: $input) {
-                ...Activity
-            }
-        }
-    }
-}

@@ -1,9 +1,0 @@
-mutation SetMetadataSupplementaryPublic($id: String!, $public: Boolean!) {
-    content {
-        metadata {
-            setPublicSupplementary(id: $id, public: $public) {
-                id
-            }
-        }
-    }
-}

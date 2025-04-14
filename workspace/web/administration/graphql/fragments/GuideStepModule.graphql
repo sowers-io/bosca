@@ -1,6 +1,0 @@
-fragment GuideStepModule on GuideStepModule {
-    metadata {
-        ...Metadata
-    }
-}
-

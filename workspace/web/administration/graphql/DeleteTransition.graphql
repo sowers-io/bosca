@@ -1,7 +1,0 @@
-mutation DeleteTransition($fromStateId: String!, $toStateId: String!) {
-    workflows {
-        transitions {
-            delete(fromStateId: $fromStateId, toStateId: $toStateId)
-        }
-    }
-}

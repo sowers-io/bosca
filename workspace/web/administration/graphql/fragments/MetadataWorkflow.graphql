@@ -1,6 +1,0 @@
-fragment MetadataWorkflow on MetadataWorkflow {
-    state
-    stateValid
-    pending
-    running
-}

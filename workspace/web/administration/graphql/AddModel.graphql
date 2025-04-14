@@ -1,9 +1,0 @@
-mutation AddModel($model: ModelInput!) {
-    workflows {
-        models {
-            add(model: $model) {
-                ...Model
-            }
-        }
-    }
-}

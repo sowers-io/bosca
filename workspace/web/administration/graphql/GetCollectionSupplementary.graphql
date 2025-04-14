@@ -1,9 +1,0 @@
-query GetCollectionSupplementary($id: String!, $key: String) {
-    content {
-        collection(id: $id) {
-            supplementary(key: $key) {
-                ...CollectionSupplementary
-            }
-        }
-    }
-}

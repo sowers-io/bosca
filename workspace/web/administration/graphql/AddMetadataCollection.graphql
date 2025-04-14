@@ -1,9 +1,0 @@
-mutation AddMetadataCollection($collectionId: String!, $id: String!) {
-    content {
-        collection {
-            addChildMetadata(id: $collectionId, metadataId: $id) {
-                id
-            }
-        }
-    }
-}

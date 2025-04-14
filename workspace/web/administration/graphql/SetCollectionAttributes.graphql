@@ -1,7 +1,0 @@
-mutation SetCollectionAttributes($id: String!, $attributes: JSON!) {
-    content {
-        collection {
-            setCollectionAttributes(id: $id, attributes: $attributes)
-        }
-    }
-}

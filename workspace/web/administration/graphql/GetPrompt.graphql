@@ -1,9 +1,0 @@
-query GetPrompt($id: String!) {
-    workflows {
-        prompts {
-            prompt(id: $id) {
-                ...Prompt
-            }
-        }
-    }
-}

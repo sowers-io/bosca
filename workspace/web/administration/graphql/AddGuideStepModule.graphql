@@ -1,9 +1,0 @@
-mutation AddGuideStepModule($metadataId: String!, $version: Int!, $stepId: Int! $sort: Int!, $templateId: String!, $templateVersion: Int!,  $templateStepId: Int!, $templateModuleId: Int!) {
-    content {
-        metadata {
-            addGuideStepModule(metadataId: $metadataId, metadataVersion: $version, stepId: $stepId, sort: $sort, templateId: $templateId, templateVersion: $templateVersion, templateStepId: $templateStepId, templateModuleId: $templateModuleId) {
-                ...GuideStepModule
-            }
-        }
-    }
-}

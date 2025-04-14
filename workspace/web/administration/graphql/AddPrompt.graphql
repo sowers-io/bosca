@@ -1,9 +1,0 @@
-mutation AddPrompt($prompt: PromptInput!) {
-    workflows {
-        prompts {
-            add(prompt: $prompt) {
-                ...Prompt
-            }
-        }
-    }
-}

@@ -1,7 +1,0 @@
-query GetCurrentProfile {
-    profiles {
-        current {
-            ...Profile
-        }
-    }
-}

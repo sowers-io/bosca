@@ -1,9 +1,0 @@
-query GetTransition($fromStateId: String!, $toStateId: String!) {
-    workflows {
-        transitions {
-            transition(fromStateId: $fromStateId, toStateId: $toStateId) {
-                ...Transition
-            }
-        }
-    }
-}

@@ -1,7 +1,0 @@
-mutation DeleteActivity($id: String!) {
-    workflows {
-        activities {
-            delete(activityId: $id)
-        }
-    }
-}

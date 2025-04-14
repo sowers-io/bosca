@@ -1,7 +1,0 @@
-query GetProfile($id: String!) {
-    profiles {
-        profile(id: $id) {
-            ...Profile
-        }
-    }
-}

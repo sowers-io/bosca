@@ -1,7 +1,0 @@
-query GetCollectionList($id: String) {
-    content {
-        collection(id: $id) {
-            ...CollectionList
-        }
-    }
-}

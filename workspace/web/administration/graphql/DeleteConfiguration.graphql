@@ -1,5 +1,0 @@
-mutation DeleteConfiguration($key: String!) {
-  configurations {
-    deleteConfiguration(key: $key)
-  }
-}

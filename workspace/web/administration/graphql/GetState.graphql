@@ -1,9 +1,0 @@
-query GetState($id: String!) {
-    workflows {
-        states {
-            state(id: $id) {
-                ...WorkflowState
-            }
-        }
-    }
-}

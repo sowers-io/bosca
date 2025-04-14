@@ -1,7 +1,0 @@
-mutation DeleteModel($id: String!) {
-    workflows {
-        models {
-            delete(id: $id)
-        }
-    }
-}

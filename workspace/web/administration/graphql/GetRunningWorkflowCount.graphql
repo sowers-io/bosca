@@ -1,9 +1,0 @@
-query GetRunningWorkflowCount($id: String!) {
-    content {
-        metadata(id: $id) {
-            workflow {
-                running
-            }
-        }
-    }
-}

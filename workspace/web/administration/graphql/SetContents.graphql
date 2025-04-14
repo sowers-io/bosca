@@ -1,7 +1,0 @@
-mutation SetContents($id: String!, $contentType: String, $file: Upload!) {
-    content {
-        metadata {
-            setMetadataContents(id: $id, contentType: $contentType, file: $file)
-        }
-    }
-}

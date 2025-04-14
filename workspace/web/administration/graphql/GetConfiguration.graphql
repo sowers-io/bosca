@@ -1,7 +1,0 @@
-query GetConfiguration($key: String!) {
-    configurations {
-        configuration(key: $key) {
-            ...Configuration
-        }
-    }
-}

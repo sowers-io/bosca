@@ -1,7 +1,0 @@
-mutation SetMetadataAttributes($id: String!, $attributes: JSON!) {
-    content {
-        metadata {
-            setMetadataAttributes(id: $id, attributes: $attributes)
-        }
-    }
-}

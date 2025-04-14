@@ -1,9 +1,0 @@
-query GetMetadataDocument($id: String!) {
-    content {
-        metadata(id: $id) {
-            document {
-                ...Document
-            }
-        }
-    }
-}

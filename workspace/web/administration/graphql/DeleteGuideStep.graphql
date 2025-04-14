@@ -1,7 +1,0 @@
-mutation DeleteGuideStep($metadataId: String!, $version: Int!, $stepId: Int!) {
-    content {
-        metadata {
-            deleteGuideStep(metadataId: $metadataId, metadataVersion: $version, stepId: $stepId)
-        }
-    }
-}

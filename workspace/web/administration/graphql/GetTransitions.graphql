@@ -1,9 +1,0 @@
-query GetTransitions {
-    workflows {
-        transitions {
-            all {
-                ...Transition
-            }
-        }
-    }
-}

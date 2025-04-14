@@ -1,7 +1,0 @@
-mutation DeleteState($id: String!) {
-    workflows {
-        states {
-            delete(id: $id)
-        }
-    }
-}

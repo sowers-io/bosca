@@ -1,9 +1,0 @@
-mutation EditModel($id: String!, $input: ModelInput!) {
-    workflows {
-        models {
-            edit(id: $id, model: $input) {
-                ...Model
-            }
-        }
-    }
-}

@@ -1,4 +1,0 @@
-fragment WorkflowActivityParameter on WorkflowActivityParameter {
-    name
-    value
-}

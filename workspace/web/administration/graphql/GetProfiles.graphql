@@ -1,7 +1,0 @@
-query GetProfiles($offset: Int!, $limit: Int!) {
-    profiles {
-        all(offset: $offset, limit: $limit) {
-            ...Profile
-        }
-    }
-}

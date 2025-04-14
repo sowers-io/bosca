@@ -1,7 +1,0 @@
-fragment Workflow on Workflow {
-    id
-    queue
-    name
-    description
-    configuration
-}

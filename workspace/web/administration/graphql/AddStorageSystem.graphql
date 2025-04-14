@@ -1,9 +1,0 @@
-mutation AddStorageSystem($system: StorageSystemInput!) {
-    workflows {
-        storageSystems {
-            add(storageSystem: $system) {
-                ...StorageSystem
-            }
-        }
-    }
-}

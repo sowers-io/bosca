@@ -1,7 +1,0 @@
-query GetCollectionParents($id: String) {
-    content {
-        collection(id: $id) {
-            ...CollectionParents
-        }
-    }
-}

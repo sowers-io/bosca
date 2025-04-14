@@ -1,9 +1,0 @@
-query GetTraits {
-    workflows {
-        traits {
-            all {
-                ...Trait
-            }
-        }
-    }
-}

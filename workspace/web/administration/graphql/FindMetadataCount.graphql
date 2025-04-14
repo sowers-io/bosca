@@ -1,5 +1,0 @@
-query FindMetadataCount($query: FindQueryInput!) {
-    content {
-        findMetadataCount(query: $query)
-    }
-}

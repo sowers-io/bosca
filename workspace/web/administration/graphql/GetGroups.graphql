@@ -1,9 +1,0 @@
-query GetGroups($offset: Int!, $limit: Int!) {
-    security {
-        groups {
-            all(offset: $offset, limit: $limit) {
-                ...Group
-            }
-        }
-    }
-}

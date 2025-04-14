@@ -1,9 +1,0 @@
-query GetModel($id: String!) {
-    workflows {
-        models {
-            model(id: $id) {
-                ...Model
-            }
-        }
-    }
-}

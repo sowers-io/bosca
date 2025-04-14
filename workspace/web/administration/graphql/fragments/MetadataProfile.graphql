@@ -1,6 +1,0 @@
-fragment MetadataProfile on MetadataProfile {
-    relationship
-    profile {
-        ...Profile
-    }
-}

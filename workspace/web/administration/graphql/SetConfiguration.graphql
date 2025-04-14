@@ -1,7 +1,0 @@
-mutation SetConfiguration($configuration: ConfigurationInput!) {
-    configurations {
-        setConfiguration(configuration: $configuration) {
-            ...Configuration
-        }
-    }
-}

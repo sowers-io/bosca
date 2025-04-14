@@ -1,7 +1,0 @@
-fragment TemplateWorkflow on TemplateWorkflow {
-    autoRun
-    workflow {
-        id
-        name
-    }
-}

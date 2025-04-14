@@ -1,9 +1,0 @@
-fragment Document on Document {
-    template {
-        id
-        version
-    }
-    title
-    content
-}
-

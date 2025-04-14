@@ -1,5 +1,0 @@
-query FindCollectionsCount($query: FindQueryInput!) {
-    content {
-        findCollectionsCount(query: $query)
-    }
-}

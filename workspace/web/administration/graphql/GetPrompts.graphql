@@ -1,9 +1,0 @@
-query GetPrompts {
-    workflows {
-        prompts {
-            all {
-                ...Prompt
-            }
-        }
-    }
-}

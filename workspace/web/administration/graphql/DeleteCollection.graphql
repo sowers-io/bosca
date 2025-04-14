@@ -1,7 +1,0 @@
-mutation DeleteCollection($id: String!) {
-    content {
-        collection {
-            delete(id: $id, recursive: true)
-        }
-    }
-}

@@ -1,7 +1,0 @@
-fragment Principal on Principal {
-    id
-    verified
-    groups {
-        ...Group
-    }
-}

@@ -1,9 +1,0 @@
-mutation EditTrait($input: TraitInput!) {
-    workflows {
-        traits {
-            edit(model: $input) {
-                ...Trait
-            }
-        }
-    }
-}

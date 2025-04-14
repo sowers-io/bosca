@@ -1,9 +1,0 @@
-mutation AddCollectionCollection($collectionId: String!, $id: String!) {
-    content {
-        collection {
-            addChildCollection(id: $collectionId, collectionId: $id) {
-                id
-            }
-        }
-    }
-}

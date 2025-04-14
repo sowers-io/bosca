@@ -1,9 +1,0 @@
-mutation EditPrompt($id: String!, $input: PromptInput!) {
-    workflows {
-        prompts {
-            edit(id: $id, prompt: $input) {
-                ...Prompt
-            }
-        }
-    }
-}

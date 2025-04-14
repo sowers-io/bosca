@@ -1,4 +1,0 @@
-fragment WorkflowExecutionId on WorkflowExecutionId {
-    id
-    queue
-}

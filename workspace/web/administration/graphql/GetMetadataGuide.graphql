@@ -1,9 +1,0 @@
-query GetMetadataGuide($id: String!) {
-    content {
-        metadata(id: $id) {
-            guide {
-                ...Guide
-            }
-        }
-    }
-}

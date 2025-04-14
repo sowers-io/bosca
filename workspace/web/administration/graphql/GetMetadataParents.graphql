@@ -1,9 +1,0 @@
-query GetMetadataParents($id: String!) {
-    content {
-        metadata(id: $id) {
-            parentCollections(offset: 0, limit: 100) {
-                ...ParentCollection
-            }
-        }
-    }
-}

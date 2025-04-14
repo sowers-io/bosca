@@ -1,7 +1,0 @@
-query GetWorkflows {
-    workflows {
-        all {
-            ...Workflow
-        }
-    }
-}

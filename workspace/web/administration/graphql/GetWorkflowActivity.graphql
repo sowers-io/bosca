@@ -1,7 +1,0 @@
-query GetWorkflowActivity($id: Int!) {
-    workflows {
-        workflowActivity(id: $id) {
-            ...WorkflowActivity
-        }
-    }
-}

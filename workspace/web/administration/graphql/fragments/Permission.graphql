@@ -1,6 +1,0 @@
-fragment Permission on Permission {
-    action
-    group {
-        ...Group
-    }
-}
