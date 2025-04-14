@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use async_graphql::extensions::OpenTelemetry;
 use async_graphql::Error;
 use log::info;
@@ -21,10 +22,15 @@ pub fn new_telemetry() -> Result<OpenTelemetry<Tracer>, Error> {
 
     if let Ok(endpoint) = env::var("OTLP_TRACE_ENDPOINT") {
         info!(target: "bosca", "sending traces to: {}", endpoint);
+        let mut headers = HashMap::<String, String>::new();
+        if let Ok(api_key) = env::var("OTLP_API_KEY") {
+            headers.insert("x-api-key".to_string(), api_key);
+        }
         let exporter = opentelemetry_otlp::SpanExporter::builder()
             .with_http()
             .with_http_client(reqwest::Client::new())
             .with_endpoint(endpoint)
+            .with_headers(headers)
             .build()?;
         let batch = BatchSpanProcessor::builder(exporter, Tokio)
             .with_batch_config(
