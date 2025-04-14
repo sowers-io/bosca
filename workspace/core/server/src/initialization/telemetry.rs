@@ -28,7 +28,6 @@ pub fn new_telemetry() -> Result<OpenTelemetry<Tracer>, Error> {
         }
         let exporter = opentelemetry_otlp::SpanExporter::builder()
             .with_http()
-            .with_protocol(opentelemetry_otlp::Protocol::Grpc)
             .with_http_client(reqwest::Client::new())
             .with_endpoint(endpoint)
             .with_headers(headers)
