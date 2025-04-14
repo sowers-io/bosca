@@ -4,6 +4,8 @@ set -e
 
 cd workspace/web/administration
 
+mkdir build
+
 deno install --allow-scripts=npm:json-editor-vue@0.18.1,npm:maplibre-gl@2.4.0,npm:vue-demi@0.14.10,npm:@parcel/watcher@2.5.1
 deno run build
 deno run compile
