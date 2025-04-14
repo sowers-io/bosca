@@ -38,7 +38,7 @@ impl PrincipalObject {
         let ctx = ctx.data::<BoscaContext>()?;
         let credentials = ctx
             .security
-            .get_principal_credentials(&ctx.principal.id)
+            .get_principal_credentials(&self.principal.id)
             .await?;
         Ok(credentials
             .into_iter()
