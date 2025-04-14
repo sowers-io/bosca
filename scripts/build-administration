@@ -4,8 +4,13 @@ set -e
 
 cd workspace/web/administration
 
-deno install --allow-scripts=npm:json-editor-vue@0.18.1,npm:maplibre-gl@2.4.0,npm:vue-demi@0.14.10
+echo "*** Installing...."
+deno install --allow-scripts=npm:json-editor-vue@0.18.1,npm:maplibre-gl@2.4.0,npm:vue-demi@0.14.10,npm:@parcel/watcher@2.5.1
+
+echo "*** Building...."
 deno run build
+
+echo "*** Compiling...."
 deno run compile
 
 cd installer
