@@ -4,18 +4,15 @@ set -e
 
 cd workspace/web/administration
 
-rm -Rf node_modules
-rm -Rf .nuxt
-rm -Rf .output
-
 echo "*** Installing...."
 deno install --allow-scripts=npm:json-editor-vue@0.18.1,npm:maplibre-gl@2.4.0,npm:vue-demi@0.14.10,npm:@parcel/watcher@2.5.1
 
 echo "*** Building...."
-deno run build
+deno task build
 
 echo "*** Compiling...."
-deno run compile
+deno task compile
 
+echo "*** Building Installer...."
 cd installer
 deno compile -A --no-check --output ../.output/query-installer --include ./persisted-documents.json ./main.ts
