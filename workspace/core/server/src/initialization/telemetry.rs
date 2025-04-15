@@ -10,9 +10,12 @@ use opentelemetry_sdk::trace::{
 };
 use opentelemetry_sdk::Resource;
 use std::env;
+use opentelemetry_sdk::propagation::TraceContextPropagator;
 use opentelemetry_sdk::runtime::Tokio;
 
 pub fn new_telemetry() -> Result<OpenTelemetry<Tracer>, Error> {
+    global::set_text_map_propagator(TraceContextPropagator::default());
+
     let mut provider_builder = TracerProvider::builder().with_resource(
         Resource::new_with_defaults(vec![KeyValue::new(
             opentelemetry_semantic_conventions::resource::SERVICE_NAME,
