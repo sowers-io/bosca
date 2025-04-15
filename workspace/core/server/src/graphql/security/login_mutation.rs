@@ -24,9 +24,9 @@ impl LoginMutationObject {
         let profile = ctx.profile.get_by_principal(&principal.id).await?;
         let token = ctx.security.new_token(&principal)?;
         let refresh_token = ctx.security.new_refresh_token(&principal)?;
-        ctx.security.add_refresh_token(&principal, refresh_token.as_str()).await?;
+        ctx.security.add_refresh_token(&principal, &refresh_token).await?;
         Ok(LoginResponse {
-            refresh_token,
+            refresh_token: refresh_token.token,
             profile,
             principal,
             token,
@@ -46,7 +46,7 @@ impl LoginMutationObject {
             let refresh_token = ctx.security.new_refresh_token(&principal)?;
             ctx.security.add_refresh_token(&principal, &refresh_token).await?;
             Ok(LoginResponse {
-                refresh_token,
+                refresh_token: refresh_token.token,
                 profile,
                 principal,
                 token,

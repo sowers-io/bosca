@@ -1,3 +1,4 @@
+use std::fmt::Debug;
 use crate::datastores::cache::cache::{BoscaCache, BoscaCacheInterface};
 use crate::datastores::cache::manager::BoscaCacheManager;
 use crate::datastores::cache::tiered_cache::TieredCacheType;
@@ -12,11 +13,17 @@ use log::error;
 use std::sync::Arc;
 use uuid::Uuid;
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct CollectionPermissionsDataStore {
     pool: Arc<Pool>,
     cache: BoscaCache<Uuid, Vec<Permission>>,
     notifier: Arc<Notifier>,
+}
+
+impl Debug for CollectionPermissionsDataStore {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CollectionPermissionsDataStore").finish()
+    }
 }
 
 impl CollectionPermissionsDataStore {

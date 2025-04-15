@@ -16,6 +16,7 @@ pub async fn graphiql_handler() -> impl IntoResponse {
     )
 }
 
+#[tracing::instrument(skip(schema, headers, request))]
 pub async fn graphql_handler(
     State(schema): State<BoscaSchema>,
     headers: HeaderMap,

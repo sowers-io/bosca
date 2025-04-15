@@ -1,11 +1,12 @@
 use crate::models::security::group::Group;
 use serde_json::Value;
 use std::collections::HashSet;
+use std::fmt::{Debug, Formatter};
 use serde::{Deserialize, Serialize};
 use tokio_postgres::Row;
 use uuid::Uuid;
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Principal {
     pub id: Uuid,
     pub verified: bool,
@@ -14,6 +15,16 @@ pub struct Principal {
     pub verification_token: Option<String>,
     groups: Option<Vec<Group>>,
     group_ids: HashSet<Uuid>,
+}
+
+impl Debug for Principal {
+    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), std::fmt::Error> {
+        f.debug_tuple("Principal")
+            .field(&self.id)
+            .field(&self.verified)
+            .field(&self.anonymous)
+            .finish()
+    }
 }
 
 impl Principal {

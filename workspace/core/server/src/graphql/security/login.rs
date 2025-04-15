@@ -1,3 +1,4 @@
+use std::fmt::{Debug, Formatter};
 use crate::context::BoscaContext;
 use crate::graphql::profiles::profile::ProfileObject;
 use crate::graphql::security::principal::PrincipalObject;
@@ -14,6 +15,12 @@ pub struct LoginResponse {
     pub principal: Principal,
     pub token: Token,
     pub refresh_token: String,
+}
+
+impl Debug for LoginResponse {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("LoginResponse").finish()
+    }
 }
 
 #[Object]
@@ -57,7 +64,7 @@ impl LoginObject {
         let refresh_token = ctx.security.new_refresh_token(&principal)?;
         ctx.security.add_refresh_token(&principal, &refresh_token).await?;
         Ok(LoginResponse {
-            refresh_token,
+            refresh_token: refresh_token.token,
             profile,
             principal,
             token,

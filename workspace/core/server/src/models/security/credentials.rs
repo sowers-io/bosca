@@ -1,3 +1,4 @@
+use std::fmt::{Debug, Formatter};
 use crate::models::security::password::encrypt;
 use async_graphql::{Enum, Error};
 use bytes::{BufMut, BytesMut};
@@ -54,6 +55,12 @@ impl Credential {
 pub struct PasswordCredential {
     credential_type: CredentialType,
     attributes: Value,
+}
+
+impl Debug for PasswordCredential {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("PasswordCredential").finish()
+    }
 }
 
 impl PasswordCredential {

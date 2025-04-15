@@ -1,3 +1,4 @@
+use std::fmt::Debug;
 use crate::datastores::cache::manager::BoscaCacheManager;
 use crate::datastores::security_cache::SecurityCache;
 use crate::models::security::credentials::{Credential, CredentialType, PasswordCredential};
@@ -16,7 +17,7 @@ use serde_json::Value;
 use std::sync::Arc;
 use uuid::Uuid;
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct SecurityDataStore {
     cache: SecurityCache,
     pool: Arc<Pool>,
@@ -24,10 +25,26 @@ pub struct SecurityDataStore {
     url_secret_key: String,
 }
 
+impl Debug for SecurityDataStore {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SecurityDataStore").finish()
+    }
+}
+
 pub const ADMINISTRATORS_GROUP: &str = "administrators";
 pub const SERVICE_ACCOUNT_GROUP: &str = "sa";
 pub const MODEL_MANAGERS_GROUP: &str = "model.managers";
 pub const WORKFLOW_MANAGERS_GROUP: &str = "workflow.managers";
+
+pub struct RefreshToken {
+    pub token: String
+}
+
+impl Debug for RefreshToken {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RefreshToken").finish()
+    }
+}
 
 impl SecurityDataStore {
     pub async fn new(
@@ -146,8 +163,8 @@ impl SecurityDataStore {
     pub fn new_refresh_token(
         &self,
         principal: &Principal,
-    ) -> Result<String, jsonwebtoken::errors::Error> {
-        self.jwt.new_refresh_token(principal)
+    ) -> Result<RefreshToken, jsonwebtoken::errors::Error> {
+        self.jwt.new_refresh_token(principal).map(|t| RefreshToken { token: t })
     }
 
     pub async fn validate_refresh_token(&self, refresh_token: &str) -> Result<Option<Uuid>, Error> {
@@ -172,7 +189,7 @@ impl SecurityDataStore {
     pub async fn add_refresh_token(
         &self,
         principal: &Principal,
-        refresh_token: &str,
+        refresh_token: &RefreshToken,
     ) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -180,7 +197,7 @@ impl SecurityDataStore {
                 "insert into principal_refresh_tokens (token, principal_id) values ($1, $2)",
             )
             .await?;
-        let token = refresh_token.to_string();
+        let token = refresh_token.token.to_string();
         connection.execute(&stmt, &[&token, &principal.id]).await?;
         Ok(())
     }

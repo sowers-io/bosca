@@ -1,10 +1,12 @@
 mod authed_subscription;
+mod caching_headers;
+mod collection_files;
 mod context;
 mod datastores;
-mod metadata_files;
 mod graphql;
 mod initialization;
 mod logger;
+mod metadata_files;
 mod models;
 mod queries;
 mod redis;
@@ -14,22 +16,18 @@ mod shutdown_hook;
 mod slugs;
 mod util;
 mod workflow;
-mod caching_headers;
-mod collection_files;
+
 use crate::metadata_files::{metadata_download, metadata_upload};
 use async_graphql::extensions::apollo_persisted_queries::ApolloPersistedQueries;
 use axum::extract::DefaultBodyLimit;
 use axum::routing::post;
-use axum::{
-    routing::get,
-    Router,
-};
+use axum::{routing::get, Router};
+use axum_tracing_opentelemetry::middleware::{OtelAxumLayer, OtelInResponseLayer};
+use http::StatusCode;
 use log::info;
 use std::env;
 use std::process::exit;
 use std::time::Duration;
-use axum_tracing_opentelemetry::middleware::{OtelAxumLayer, OtelInResponseLayer};
-use http::StatusCode;
 use tokio::net::TcpListener;
 
 use crate::context::BoscaContext;
@@ -38,19 +36,17 @@ use rustls::crypto::ring;
 use tokio::signal::windows::ctrl_c;
 use tower_http::timeout::TimeoutLayer;
 
-use mimalloc::MiMalloc;
-use tower_http::cors::CorsLayer;
-use tracing_subscriber::layer::SubscriberExt;
-use tracing_subscriber::Registry;
 use crate::authed_subscription::AuthGraphQLSubscription;
 use crate::collection_files::{collection_download, collection_upload};
+use crate::graphql::handlers::{graphiql_handler, graphql_handler};
 use crate::graphql::schema::new_schema;
 use crate::initialization::content::initialize_content;
 use crate::initialization::security::initialize_security;
+use crate::initialization::telemetry::new_tracing;
 use crate::shutdown_hook::shutdown_hook;
 use crate::slugs::slug;
-use crate::graphql::handlers::{graphiql_handler, graphql_handler};
-use crate::initialization::telemetry::new_tracer;
+use mimalloc::MiMalloc;
+use tower_http::cors::CorsLayer;
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
@@ -60,12 +56,13 @@ async fn health() -> Result<(StatusCode, String), (StatusCode, String)> {
 }
 #[tokio::main(flavor = "multi_thread")]
 async fn main() {
-    structured_logger::Builder::with_level("info")
-        .with_target_writer(
-            "*",
-            structured_logger::async_json::new_writer(tokio::io::stdout()),
-        )
-        .init();
+    let tracing_cfg = new_tracing().unwrap();
+    // structured_logger::Builder::with_level("info")
+    //     .with_target_writer(
+    //         "*",
+    //         structured_logger::async_json::new_writer(tokio::io::stdout()),
+    //     )
+    //     .init();
 
     ring::default_provider().install_default().unwrap();
 
@@ -83,12 +80,8 @@ async fn main() {
 
     ctx.workflow.start_monitoring_expirations();
 
-    let tracer = new_tracer().unwrap();
     let persisted_queries = ApolloPersistedQueries::new(ctx.queries.cache.clone());
     let schema = new_schema(ctx.clone(), persisted_queries);
-
-    let tracer_layer = tracing_opentelemetry::layer().with_tracer(tracer);
-    let _ = Registry::default().with(tracer_layer);
 
     let upload_limit: usize = match env::var("UPLOAD_LIMIT") {
         Ok(limit) => limit.parse().unwrap(),
@@ -110,7 +103,6 @@ async fn main() {
 
     let app = Router::new()
         .route("/", get(graphiql_handler))
-        .route("/health", get(health))
         .nest("/files/metadata", metadata_files)
         .nest("/files/collection", collection_files)
         .nest("/content", content)
@@ -122,7 +114,8 @@ async fn main() {
         .layer(DefaultBodyLimit::max(upload_limit))
         .layer(CorsLayer::permissive())
         .layer(TimeoutLayer::new(Duration::from_secs(600)))
-        .with_state(schema);
+        .with_state(schema)
+        .route("/health", get(health));
 
     info!(target: "bosca", "Listening on http://0.0.0.0:8000");
 
@@ -130,4 +123,6 @@ async fn main() {
         .with_graceful_shutdown(shutdown_hook())
         .await
         .unwrap();
+
+    tracing_cfg.shutdown();
 }

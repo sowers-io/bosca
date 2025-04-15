@@ -1,3 +1,4 @@
+use std::fmt::Debug;
 use crate::context::BoscaContext;
 use crate::models::profiles::profile::{Profile, ProfileInput};
 use crate::models::profiles::profile_attribute::ProfileAttribute;
@@ -11,9 +12,15 @@ use uuid::Uuid;
 use crate::models::workflow::enqueue_request::EnqueueRequest;
 use crate::workflow::core_workflow_ids::PROFILE_UPDATE_STORAGE;
 
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct ProfileDataStore {
     pool: Arc<Pool>,
+}
+
+impl Debug for ProfileDataStore {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ProfileDataStore").finish()
+    }
 }
 
 impl ProfileDataStore {
