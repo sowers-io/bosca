@@ -8,7 +8,7 @@ use redis::AsyncCommands;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Notifier {
     redis: RedisClient,
 }

@@ -17,6 +17,13 @@ pub struct Keys {
     secret: Vec<u8>,
 }
 
+impl std::fmt::Debug for Keys {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Keys")
+            .finish()
+    }
+}
+
 impl Keys {
     pub fn new(secret: &[u8]) -> Self {
         Self {
@@ -32,7 +39,7 @@ impl Keys {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Jwt {
     keys: Keys,
     aud: String,

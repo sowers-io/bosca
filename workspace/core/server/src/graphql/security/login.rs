@@ -37,6 +37,7 @@ impl LoginResponse {
 
 #[Object(name = "Login")]
 impl LoginObject {
+
     async fn password(
         &self,
         ctx: &Context<'_>,

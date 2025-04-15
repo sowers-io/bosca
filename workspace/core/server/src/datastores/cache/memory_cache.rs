@@ -1,5 +1,6 @@
 use crate::datastores::cache::cache::BoscaCacheInterface;
 use moka::future::Cache;
+use std::fmt::{Debug, Formatter};
 use std::hash::Hash;
 use std::time::Duration;
 
@@ -10,6 +11,17 @@ where
     V: Clone + Send + Sync + serde::ser::Serialize + serde::de::DeserializeOwned,
 {
     cache: Cache<K, V>,
+}
+
+impl<K, V> Debug for MemoryCache<K, V>
+where
+    K: Clone + Send + Sync + serde::ser::Serialize,
+    V: Clone + Send + Sync + serde::ser::Serialize + serde::de::DeserializeOwned,
+{
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("MemoryCache")
+            .finish()
+    }
 }
 
 impl<K, V> MemoryCache<K, V>
@@ -55,6 +67,5 @@ where
         self.cache.invalidate_all();
     }
 
-    fn watch(&self) {
-    }
+    fn watch(&self) {}
 }

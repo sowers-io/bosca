@@ -8,7 +8,7 @@ const CACHE_SECURITY_PRINCIPAL_ID: &str = "security::principal::id";
 const CACHE_SECURITY_GROUP_ID: &str = "security::group::id";
 const CACHE_SECURITY_GROUP_NAME: &str = "security::group::name";
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct SecurityCache {
     principal_id: BoscaCache<Uuid, Principal>,
     group_id: BoscaCache<Uuid, Group>,

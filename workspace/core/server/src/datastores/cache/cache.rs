@@ -34,7 +34,7 @@ where
     fn watch(&self);
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum BoscaCache<K, V>
 where
     K: Clone + Send + Sync + serde::ser::Serialize + Hash + Eq + redis::ToRedisArgs + 'static,

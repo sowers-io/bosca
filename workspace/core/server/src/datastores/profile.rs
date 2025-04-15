@@ -11,7 +11,7 @@ use uuid::Uuid;
 use crate::models::workflow::enqueue_request::EnqueueRequest;
 use crate::workflow::core_workflow_ids::PROFILE_UPDATE_STORAGE;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct ProfileDataStore {
     pool: Arc<Pool>,
 }
@@ -43,6 +43,7 @@ impl ProfileDataStore {
         Ok(rows.first().map(|r| r.into()))
     }
 
+    #[tracing::instrument]
     pub async fn get_by_principal(
         &self,
         id: &Uuid,

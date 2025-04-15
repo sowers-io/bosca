@@ -2,6 +2,7 @@ use crate::datastores::cache::cache::BoscaCacheInterface;
 use crate::redis::RedisClient;
 use log::error;
 use redis::AsyncCommands;
+use std::fmt::{Debug, Formatter};
 use std::hash::Hash;
 
 #[derive(Clone)]
@@ -10,9 +11,18 @@ pub struct RedisCache {
     redis: RedisClient,
 }
 
+impl Debug for RedisCache {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RedisCache").finish()
+    }
+}
+
 impl RedisCache {
     pub fn new(redis: RedisClient, name: String) -> Self {
-        Self { redis, name: format!("cache::{}", name) }
+        Self {
+            redis,
+            name: format!("cache::{}", name),
+        }
     }
 }
 
@@ -49,7 +59,10 @@ where
         let Ok(str) = serde_json::to_string(value) else {
             return;
         };
-        if let Err(e) = connection.hset::<String, K, String, i32>(self.name.clone(), key.clone(), str).await {
+        if let Err(e) = connection
+            .hset::<String, K, String, i32>(self.name.clone(), key.clone(), str)
+            .await
+        {
             error!("failed to set key: {:?}", e);
         }
     }
@@ -61,7 +74,10 @@ where
         let Ok(mut connection) = redis.get_connection().await else {
             return;
         };
-        if let Err(e) = connection.hdel::<String, K, i32>(self.name.clone(), key.clone()).await {
+        if let Err(e) = connection
+            .hdel::<String, K, i32>(self.name.clone(), key.clone())
+            .await
+        {
             error!("failed to set key: {:?}", e);
         }
     }
@@ -78,6 +94,5 @@ where
         }
     }
 
-    fn watch(&self) {
-    }
+    fn watch(&self) {}
 }

@@ -3,7 +3,7 @@ use redis::aio::{ConnectionManager, ConnectionManagerConfig, PubSub};
 use redis::{Client, ConnectionAddr, ConnectionInfo, RedisConnectionInfo};
 use std::time::Duration;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct RedisClient {
     connection: RedisConnection,
 }
@@ -12,6 +12,14 @@ pub struct RedisClient {
 pub struct RedisConnection {
     client: Client,
     manager: ConnectionManager,
+}
+
+impl std::fmt::Debug for RedisConnection {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RedisConnection")
+            .field("client", &self.client)
+            .finish()
+    }
 }
 
 impl RedisConnection {

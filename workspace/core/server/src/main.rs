@@ -28,6 +28,7 @@ use log::info;
 use std::env;
 use std::process::exit;
 use std::time::Duration;
+use axum_tracing_opentelemetry::middleware::{OtelAxumLayer, OtelInResponseLayer};
 use http::StatusCode;
 use tokio::net::TcpListener;
 
@@ -39,7 +40,8 @@ use tower_http::timeout::TimeoutLayer;
 
 use mimalloc::MiMalloc;
 use tower_http::cors::CorsLayer;
-
+use tracing_subscriber::layer::SubscriberExt;
+use tracing_subscriber::Registry;
 use crate::authed_subscription::AuthGraphQLSubscription;
 use crate::collection_files::{collection_download, collection_upload};
 use crate::graphql::schema::new_schema;
@@ -48,7 +50,7 @@ use crate::initialization::security::initialize_security;
 use crate::shutdown_hook::shutdown_hook;
 use crate::slugs::slug;
 use crate::graphql::handlers::{graphiql_handler, graphql_handler};
-use crate::initialization::telemetry::new_telemetry;
+use crate::initialization::telemetry::new_tracer;
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
@@ -81,9 +83,12 @@ async fn main() {
 
     ctx.workflow.start_monitoring_expirations();
 
-    let telemetry = new_telemetry().unwrap();
+    let tracer = new_tracer().unwrap();
     let persisted_queries = ApolloPersistedQueries::new(ctx.queries.cache.clone());
-    let schema = new_schema(ctx.clone(), telemetry, persisted_queries);
+    let schema = new_schema(ctx.clone(), persisted_queries);
+
+    let tracer_layer = tracing_opentelemetry::layer().with_tracer(tracer);
+    let _ = Registry::default().with(tracer_layer);
 
     let upload_limit: usize = match env::var("UPLOAD_LIMIT") {
         Ok(limit) => limit.parse().unwrap(),
@@ -112,6 +117,8 @@ async fn main() {
         .route("/graphql", post(graphql_handler))
         .route("/graphql", get(graphql_handler))
         .route_service("/ws", AuthGraphQLSubscription::new(schema.clone(), ctx))
+        .layer(OtelInResponseLayer::default())
+        .layer(OtelAxumLayer::default())
         .layer(DefaultBodyLimit::max(upload_limit))
         .layer(CorsLayer::permissive())
         .layer(TimeoutLayer::new(Duration::from_secs(600)))

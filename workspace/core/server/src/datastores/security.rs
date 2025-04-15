@@ -16,7 +16,7 @@ use serde_json::Value;
 use std::sync::Arc;
 use uuid::Uuid;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct SecurityDataStore {
     cache: SecurityCache,
     pool: Arc<Pool>,
@@ -137,10 +137,12 @@ impl SecurityDataStore {
         self.get_group_by_name(&group).await
     }
 
+    #[tracing::instrument]
     pub fn new_token(&self, principal: &Principal) -> Result<Token, jsonwebtoken::errors::Error> {
         self.jwt.new_token(principal)
     }
 
+    #[tracing::instrument]
     pub fn new_refresh_token(
         &self,
         principal: &Principal,
@@ -166,6 +168,7 @@ impl SecurityDataStore {
         Ok(None)
     }
 
+    #[tracing::instrument]
     pub async fn add_refresh_token(
         &self,
         principal: &Principal,
@@ -379,6 +382,7 @@ impl SecurityDataStore {
         self.get_principal_by_id_internal(&connection, &id).await
     }
 
+    #[tracing::instrument]
     pub async fn get_principal_by_password(
         &self,
         identifier: &str,

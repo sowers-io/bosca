@@ -12,7 +12,7 @@ use log::error;
 use std::sync::Arc;
 use uuid::Uuid;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct CollectionPermissionsDataStore {
     pool: Arc<Pool>,
     cache: BoscaCache<Uuid, Vec<Permission>>,
@@ -90,6 +90,7 @@ impl CollectionPermissionsDataStore {
         Ok(eval.evaluate(principal, &action))
     }
 
+    #[tracing::instrument]
     pub async fn get(&self, id: &Uuid) -> Result<Vec<Permission>, Error> {
         if let Some(permissions) = self.cache.get(id).await {
             return Ok(permissions);
