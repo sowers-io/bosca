@@ -20,7 +20,13 @@ pub fn build_pool(key: &str) -> Arc<Pool> {
             exit(1);
         }
     }
-    let mut pool_config = PoolConfig::new(75);
+    let max_connections_key = format!("{}_MAX_CONNECTIONS", key);
+    let max_connections = if let Ok(max_connections) = env::var(max_connections_key.as_str()) {
+        max_connections.parse::<u32>().unwrap_or(25)
+    } else {
+        25
+    };
+    let mut pool_config = PoolConfig::new(max_connections as usize);
     pool_config.timeouts = Timeouts::wait_millis(10000);
     config.pool = Some(pool_config);
     config.manager = Some(ManagerConfig {

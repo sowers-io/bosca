@@ -57,12 +57,6 @@ async fn health() -> Result<(StatusCode, String), (StatusCode, String)> {
 #[tokio::main(flavor = "multi_thread")]
 async fn main() {
     let tracing_cfg = new_tracing().unwrap();
-    // structured_logger::Builder::with_level("info")
-    //     .with_target_writer(
-    //         "*",
-    //         structured_logger::async_json::new_writer(tokio::io::stdout()),
-    //     )
-    //     .init();
 
     ring::default_provider().install_default().unwrap();
 
