@@ -117,7 +117,7 @@ async fn main() {
         .route("/graphql", post(graphql_handler))
         .route("/graphql", get(graphql_handler))
         .route_service("/ws", AuthGraphQLSubscription::new(schema.clone(), ctx))
-        .layer(OtelInResponseLayer::default())
+        .layer(OtelInResponseLayer)
         .layer(OtelAxumLayer::default())
         .layer(DefaultBodyLimit::max(upload_limit))
         .layer(CorsLayer::permissive())
