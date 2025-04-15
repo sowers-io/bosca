@@ -170,13 +170,13 @@ impl ObjectStorage {
         let url = if supplementary.is_none() {
             format!(
                 "{}/files/metadata/upload?id={}",
-                env::var("BOSCA_URL_PREFIX").unwrap_or("".to_string()),
+                env::var("BOSCA_UPLOAD_URL_PREFIX").unwrap_or(env::var("BOSCA_URL_PREFIX").unwrap_or("".to_string())),
                 metadata.id
             )
         } else {
             format!(
                 "{}/files/metadata/upload?id={}&supplementary_id={}",
-                env::var("BOSCA_URL_PREFIX").unwrap_or("".to_string()),
+                env::var("BOSCA_UPLOAD_URL_PREFIX").unwrap_or(env::var("BOSCA_URL_PREFIX").unwrap_or("".to_string())),
                 metadata.id,
                 supplementary.unwrap()
             )
