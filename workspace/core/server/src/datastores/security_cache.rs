@@ -1,8 +1,9 @@
+use crate::datastores::cache::cache::{BoscaCache, BoscaCacheInterface};
 use crate::datastores::cache::manager::BoscaCacheManager;
+use crate::datastores::cache::tiered_cache::TieredCacheType;
 use crate::models::security::group::Group;
 use crate::models::security::principal::Principal;
 use uuid::Uuid;
-use crate::datastores::cache::cache::{BoscaCache, BoscaCacheInterface};
 
 const CACHE_SECURITY_PRINCIPAL_ID: &str = "security::principal::id";
 const CACHE_SECURITY_GROUP_ID: &str = "security::group::id";
@@ -18,7 +19,13 @@ pub struct SecurityCache {
 impl SecurityCache {
     pub async fn new(cache: &mut BoscaCacheManager) -> Self {
         Self {
-            principal_id: cache.new_cache(CACHE_SECURITY_PRINCIPAL_ID, 5000).await,
+            principal_id: cache
+                .new_id_tiered_cache(
+                    CACHE_SECURITY_PRINCIPAL_ID,
+                    5000,
+                    TieredCacheType::Principal,
+                )
+                .await,
             group_id: cache.new_cache(CACHE_SECURITY_GROUP_ID, 5000).await,
             group_name: cache.new_cache(CACHE_SECURITY_GROUP_NAME, 5000).await,
         }

@@ -46,6 +46,7 @@ impl CollectionPermissionsDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, collection, principal, action))]
     pub async fn has(
         &self,
         collection: &Collection,
@@ -71,6 +72,7 @@ impl CollectionPermissionsDataStore {
         Ok(eval.evaluate(principal, &action))
     }
 
+    #[tracing::instrument(skip(self, txn, collection, principal, action))]
     pub async fn has_txn(
         &self,
         txn: &Transaction<'_>,
@@ -110,6 +112,7 @@ impl CollectionPermissionsDataStore {
         Ok(permissions)
     }
 
+    #[tracing::instrument(skip(self, txn, id))]
     pub async fn get_txn(
         &self,
         txn: &Transaction<'_>,
@@ -125,6 +128,7 @@ impl CollectionPermissionsDataStore {
         Ok(permissions)
     }
 
+    #[tracing::instrument(skip(self, permission))]
     pub async fn add(&self, permission: &Permission) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection.prepare_cached("insert into collection_permissions (collection_id, group_id, action) values ($1, $2, $3) on conflict do nothing").await?;
@@ -142,6 +146,7 @@ impl CollectionPermissionsDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, txn, permission))]
     pub async fn add_txn(
         &self,
         txn: &Transaction<'_>,
@@ -160,6 +165,7 @@ impl CollectionPermissionsDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, permission))]
     pub async fn delete(&self, permission: &Permission) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection.prepare_cached("delete from collection_permissions where collection_id = $1 and group_id = $2 and action = $3").await?;
@@ -177,6 +183,7 @@ impl CollectionPermissionsDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, collection, principal, action))]
     pub async fn has_supplementary_permission(
         &self,
         collection: &Collection,

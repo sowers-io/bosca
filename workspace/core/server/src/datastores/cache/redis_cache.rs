@@ -32,6 +32,7 @@ where
     K: Clone + Send + Sync + serde::ser::Serialize + Hash + Eq + redis::ToRedisArgs,
     V: Clone + Send + Sync + serde::ser::Serialize + serde::de::DeserializeOwned,
 {
+    #[tracing::instrument(skip(self, key))]
     async fn get(&self, key: &K) -> Option<V> {
         let Ok(redis) = self.redis.get().await else {
             return None;
@@ -49,6 +50,7 @@ where
         Some(value)
     }
 
+    #[tracing::instrument(skip(self, key, value))]
     async fn set(&self, key: &K, value: &V) {
         let Ok(redis) = self.redis.get().await else {
             return;
@@ -67,6 +69,7 @@ where
         }
     }
 
+    #[tracing::instrument(skip(self, key))]
     async fn remove(&self, key: &K) {
         let Ok(redis) = self.redis.get().await else {
             return;
@@ -82,6 +85,7 @@ where
         }
     }
 
+    #[tracing::instrument(skip(self))]
     async fn clear(&self) {
         let Ok(redis) = self.redis.get().await else {
             return;

@@ -53,6 +53,7 @@ impl MetadataDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn get_slug(&self, id: &Uuid) -> Result<Option<String>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -65,6 +66,7 @@ impl MetadataDataStore {
         Ok(rows.first().unwrap().get("slug"))
     }
 
+    #[tracing::instrument(skip(self, query))]
     pub async fn find(&self, query: &mut FindQueryInput) -> Result<Vec<Metadata>, Error> {
         let category_ids = query.get_category_ids();
         let mut names = Vec::new();
@@ -83,6 +85,7 @@ impl MetadataDataStore {
         Ok(rows.iter().map(|r| r.into()).collect())
     }
 
+    #[tracing::instrument(skip(self, query))]
     pub async fn find_count(&self, query: &mut FindQueryInput) -> Result<i64, Error> {
         let category_ids = query.get_category_ids();
         let mut names = Vec::new();
@@ -105,6 +108,7 @@ impl MetadataDataStore {
         }
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn get(&self, id: &Uuid) -> Result<Option<Metadata>, Error> {
         if let Some(metadata) = self.cache.get_metadata(id).await {
             return Ok(Some(metadata));
@@ -122,6 +126,7 @@ impl MetadataDataStore {
         Ok(Some(metadata))
     }
 
+    #[tracing::instrument(skip(self, id, version))]
     pub async fn get_by_version(&self, id: &Uuid, version: i32) -> Result<Option<Metadata>, Error> {
         if let Some(metadata) = self.cache.get_metadata_by_version(id, version).await {
             return Ok(Some(metadata));
@@ -139,6 +144,7 @@ impl MetadataDataStore {
         Ok(Some(metadata))
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn get_categories(&self, id: &Uuid) -> Result<Vec<Category>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -148,6 +154,7 @@ impl MetadataDataStore {
         Ok(rows.iter().map(|r| r.into()).collect())
     }
 
+    #[tracing::instrument(skip(self, id, offset, limit))]
     pub async fn get_parent_ids(
         &self,
         id: &Uuid,
@@ -162,6 +169,7 @@ impl MetadataDataStore {
         Ok(rows.iter().map(|r| r.get("collection_id")).collect())
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn get_trait_ids(&self, id: &Uuid) -> Result<Vec<String>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -177,6 +185,7 @@ impl MetadataDataStore {
             .collect())
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn get_profiles(&self, id: &Uuid) -> Result<Vec<MetadataProfile>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -188,6 +197,7 @@ impl MetadataDataStore {
         Ok(rows.iter().map(|r| r.into()).collect())
     }
 
+    #[tracing::instrument(skip(self, ctx, metadata_id))]
     pub async fn mark_deleted(&self, ctx: &BoscaContext, metadata_id: &Uuid) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -204,6 +214,7 @@ impl MetadataDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, metadata_id))]
     pub async fn delete(&self, ctx: &BoscaContext, metadata_id: &Uuid) -> Result<(), Error> {
         let Some(metadata) = self.get(metadata_id).await? else {
             return Ok(());
@@ -247,6 +258,7 @@ impl MetadataDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, id, public))]
     pub async fn set_public(
         &self,
         ctx: &BoscaContext,
@@ -266,6 +278,7 @@ impl MetadataDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, id, public))]
     pub async fn set_public_content(
         &self,
         ctx: &BoscaContext,
@@ -287,6 +300,7 @@ impl MetadataDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, id, metadata))]
     pub async fn edit(
         &self,
         ctx: &BoscaContext,
@@ -340,6 +354,7 @@ impl MetadataDataStore {
         }
     }
 
+    #[tracing::instrument(skip(self, ctx, metadata_id, attributes))]
     pub async fn set_attributes(
         &self,
         ctx: &BoscaContext,
@@ -359,6 +374,7 @@ impl MetadataDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, metadata_id, attributes))]
     pub async fn set_system_attributes(
         &self,
         ctx: &BoscaContext,
@@ -380,6 +396,7 @@ impl MetadataDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, metadata_id, original_file_name, content_type, len))]
     pub async fn set_uploaded(
         &self,
         ctx: &BoscaContext,
@@ -413,6 +430,7 @@ impl MetadataDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, metadata_id, content_type, txn))]
     async fn ensure_content_type_traits(
         &self,
         metadata_id: &Uuid,
@@ -435,6 +453,7 @@ impl MetadataDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, metadata_id))]
     pub async fn set_upload_removed(
         &self,
         ctx: &BoscaContext,
@@ -450,6 +469,7 @@ impl MetadataDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, txn, id, metadata, source_id, source_identifier, source_url))]
     #[allow(clippy::too_many_arguments)]
     async fn edit_txn<'a>(
         &'a self,
@@ -552,6 +572,7 @@ impl MetadataDataStore {
         Ok(version)
     }
 
+    #[tracing::instrument(skip(self, txn, id, profile_id, relationship, sort))]
     async fn add_profile_txn<'a>(
         &'a self,
         txn: &'a Transaction<'a>,
@@ -568,6 +589,7 @@ impl MetadataDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, txn, id))]
     async fn delete_profiles_txn<'a>(
         &'a self,
         txn: &'a Transaction<'a>,
@@ -580,6 +602,7 @@ impl MetadataDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, id, trait_id))]
     pub async fn delete_trait(
         &self,
         ctx: &BoscaContext,
@@ -596,6 +619,7 @@ impl MetadataDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, txn, id))]
     async fn delete_traits_txn<'a>(
         &'a self,
         txn: &'a Transaction<'a>,
@@ -608,6 +632,7 @@ impl MetadataDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, txn, id, trait_id))]
     async fn add_trait_txn<'a>(
         &'a self,
         txn: &'a Transaction<'a>,
@@ -621,6 +646,7 @@ impl MetadataDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, id, trait_id))]
     pub async fn add_trait(
         &self,
         ctx: &BoscaContext,
@@ -637,6 +663,7 @@ impl MetadataDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, txn, id, category_id))]
     async fn add_category_txn<'a>(
         &'a self,
         txn: &'a Transaction<'a>,
@@ -650,6 +677,7 @@ impl MetadataDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, txn, id))]
     async fn delete_categories_txn<'a>(
         &'a self,
         txn: &'a Transaction<'a>,
@@ -662,6 +690,7 @@ impl MetadataDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, id, category_id))]
     pub async fn add_category(
         &self,
         ctx: &BoscaContext,
@@ -680,6 +709,7 @@ impl MetadataDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, id, category_id))]
     pub async fn delete_category(
         &self,
         ctx: &BoscaContext,
@@ -698,6 +728,7 @@ impl MetadataDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, relationship))]
     pub async fn add_relationship(
         &self,
         ctx: &BoscaContext,
@@ -725,6 +756,7 @@ impl MetadataDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn get_relationships(&self, id: &Uuid) -> Result<Vec<MetadataRelationship>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -734,6 +766,7 @@ impl MetadataDataStore {
         Ok(rows.iter().map(MetadataRelationship::from).collect())
     }
 
+    #[tracing::instrument(skip(self, id1, id2))]
     pub async fn get_relationship(
         &self,
         id1: &Uuid,
@@ -748,6 +781,7 @@ impl MetadataDataStore {
         Ok(Some(rows.first().unwrap().into()))
     }
 
+    #[tracing::instrument(skip(self, ctx, id1, id2, relationship, attributes))]
     pub async fn edit_relationship(
         &self,
         ctx: &BoscaContext,
@@ -769,6 +803,7 @@ impl MetadataDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, id1, id2, relationship))]
     pub async fn delete_relationship(
         &self,
         ctx: &BoscaContext,
@@ -793,6 +828,7 @@ impl MetadataDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, metadata, collection_item_attributes))]
     pub async fn add(
         &self,
         ctx: &BoscaContext,
@@ -808,6 +844,7 @@ impl MetadataDataStore {
         Ok((id, version, active_version))
     }
 
+    #[tracing::instrument(skip(self, ctx, txn, metadata, inherit_permissions, collection_item_attributes))]
     pub async fn add_txn<'a>(
         &'a self,
         ctx: &BoscaContext,
@@ -928,6 +965,7 @@ impl MetadataDataStore {
         Ok((id, version, active_version))
     }
 
+    #[tracing::instrument(skip(self, ctx, metadatas, inherit_permissions))]
     pub async fn add_all(
         &self,
         ctx: &BoscaContext,
@@ -946,6 +984,7 @@ impl MetadataDataStore {
         Ok(ids)
     }
 
+    #[tracing::instrument(skip(self, ctx, txn, metadatas, inherit_permissions))]
     pub async fn add_all_txn(
         &self,
         ctx: &BoscaContext,
@@ -969,6 +1008,7 @@ impl MetadataDataStore {
         Ok(new_metadatas)
     }
 
+    #[tracing::instrument(skip(self, ctx, id))]
     pub async fn update_storage(&self, ctx: &BoscaContext, id: &Uuid) -> Result<(), Error> {
         let mut request = EnqueueRequest {
             workflow_id: Some(METADATA_UPDATE_STORAGE.to_string()),

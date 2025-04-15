@@ -40,6 +40,7 @@ impl MetadataPermissionsDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn get_metadata_permissions(&self, id: &Uuid) -> Result<Vec<Permission>, Error> {
         if let Some(permissions) = self.permission_cache.get(id).await {
             return Ok(permissions);
@@ -52,6 +53,7 @@ impl MetadataPermissionsDataStore {
         Ok(permissions)
     }
 
+    #[tracing::instrument(skip(self, metadata, principal, action))]
     pub async fn has(
         &self,
         metadata: &Metadata,
@@ -72,6 +74,7 @@ impl MetadataPermissionsDataStore {
         Ok(eval.evaluate(principal, &action))
     }
 
+    #[tracing::instrument(skip(self, metadata, principal, action))]
     pub async fn has_metadata_content_permission(
         &self,
         metadata: &Metadata,
@@ -92,6 +95,7 @@ impl MetadataPermissionsDataStore {
         Ok(eval.evaluate(principal, &action))
     }
 
+    #[tracing::instrument(skip(self, metadata, principal, action))]
     pub async fn has_supplementary_permission(
         &self,
         metadata: &Metadata,
@@ -112,6 +116,7 @@ impl MetadataPermissionsDataStore {
         Ok(eval.evaluate(principal, &action))
     }
 
+    #[tracing::instrument(skip(self, metadata, principal, action))]
     pub async fn has_metadata_version_permission(
         &self,
         metadata: &Metadata,
@@ -125,6 +130,7 @@ impl MetadataPermissionsDataStore {
         Ok(eval.evaluate(principal, &action))
     }
 
+    #[tracing::instrument(skip(self, permission))]
     pub async fn add_metadata_permission(&self, permission: &Permission) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection.prepare_cached("insert into metadata_permissions (metadata_id, group_id, action) values ($1, $2, $3) on conflict do nothing").await?;
@@ -143,6 +149,7 @@ impl MetadataPermissionsDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, txn, parent_collection_id, id))]
     pub async fn add_inherited_metadata_permissions_txn(
         &self,
         ctx: &BoscaContext,
@@ -160,6 +167,7 @@ impl MetadataPermissionsDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, txn, id, permissions))]
     pub async fn add_metadata_permissions_txn(
         &self,
         txn: &Transaction<'_>,
@@ -178,6 +186,7 @@ impl MetadataPermissionsDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, txn, permission))]
     pub async fn add_metadata_permission_txn(
         &self,
         txn: &Transaction<'_>,
@@ -196,6 +205,7 @@ impl MetadataPermissionsDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, permission))]
     pub async fn delete_metadata_permission(&self, permission: &Permission) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection.prepare_cached("delete from metadata_permissions where metadata_id = $1 and group_id = $2 and action = $3").await?;

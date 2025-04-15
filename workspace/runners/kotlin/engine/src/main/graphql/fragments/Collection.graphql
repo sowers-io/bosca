@@ -25,7 +25,6 @@ fragment Collection on Collection {
     created
     modified
     attributes
-    systemAttributes
     ready
     public
     publicList

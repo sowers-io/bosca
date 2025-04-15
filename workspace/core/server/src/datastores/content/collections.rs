@@ -51,6 +51,7 @@ impl CollectionsDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn get_slug(&self, id: &Uuid) -> Result<Option<String>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -63,6 +64,7 @@ impl CollectionsDataStore {
         Ok(rows.first().unwrap().get("slug"))
     }
 
+    #[tracing::instrument(skip(self, query))]
     pub async fn find(&self, query: &mut FindQueryInput) -> Result<Vec<Collection>, Error> {
         let connection = self.pool.get().await?;
         let category_ids = query.get_category_ids();
@@ -81,6 +83,7 @@ impl CollectionsDataStore {
         Ok(rows.iter().map(|r| r.into()).collect())
     }
 
+    #[tracing::instrument(skip(self, query))]
     pub async fn find_count(&self, query: &mut FindQueryInput) -> Result<i64, Error> {
         let connection = self.pool.get().await?;
         let category_ids = query.get_category_ids();
@@ -103,6 +106,7 @@ impl CollectionsDataStore {
         }
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn get_categories(&self, id: &Uuid) -> Result<Vec<Category>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -112,6 +116,7 @@ impl CollectionsDataStore {
         Ok(rows.iter().map(|r| r.into()).collect())
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn get_trait_ids(&self, id: &Uuid) -> Result<Vec<String>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -127,6 +132,7 @@ impl CollectionsDataStore {
             .collect())
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn get(&self, id: &Uuid) -> Result<Option<Collection>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -139,6 +145,7 @@ impl CollectionsDataStore {
         Ok(Some(rows.first().unwrap().into()))
     }
 
+    #[tracing::instrument(skip(self, txn, id))]
     #[allow(dead_code)]
     pub async fn get_txn(
         &self,
@@ -155,6 +162,7 @@ impl CollectionsDataStore {
         Ok(Some(rows.first().unwrap().into()))
     }
 
+    #[tracing::instrument(skip(self, id, offset, limit))]
     pub async fn get_parents(
         &self,
         id: &Uuid,
@@ -169,6 +177,7 @@ impl CollectionsDataStore {
         Ok(rows.iter().map(|r| r.into()).collect())
     }
 
+    #[tracing::instrument(skip(self, ctx, collection_id, child_collection_id, child_metadata_id, attributes))]
     pub async fn set_child_item_attributes(
         &self,
         ctx: &BoscaContext,
@@ -208,6 +217,7 @@ impl CollectionsDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, id, public))]
     pub async fn set_public(
         &self,
         ctx: &BoscaContext,
@@ -226,6 +236,7 @@ impl CollectionsDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, id, public))]
     pub async fn set_public_list(
         &self,
         ctx: &BoscaContext,
@@ -246,6 +257,7 @@ impl CollectionsDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, id))]
     pub async fn mark_deleted(&self, ctx: &BoscaContext, id: &Uuid) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -256,6 +268,7 @@ impl CollectionsDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, id))]
     pub async fn delete(&self, ctx: &BoscaContext, id: &Uuid) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -276,6 +289,7 @@ impl CollectionsDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, collection, offset, limit))]
     pub async fn get_children(
         &self,
         collection: &Collection,
@@ -318,6 +332,7 @@ impl CollectionsDataStore {
         Ok(rows.iter().map(|r| r.into()).collect())
     }
 
+    #[tracing::instrument(skip(self, collection))]
     pub async fn get_children_count(&self, collection: &Collection) -> Result<i64, Error> {
         let mut query = "select count(*) as count from collection_items ".to_owned();
         query.push_str(" left join collections on (child_collection_id = collections.id) ");
@@ -329,6 +344,7 @@ impl CollectionsDataStore {
         Ok(rows.get(0))
     }
 
+    #[tracing::instrument(skip(self, collection, offset, limit))]
     pub async fn get_child_collections(
         &self,
         collection: &Collection,
@@ -361,6 +377,7 @@ impl CollectionsDataStore {
         Ok(rows.iter().map(|r| r.into()).collect())
     }
 
+    #[tracing::instrument(skip(self, collection))]
     pub async fn get_child_collections_count(&self, collection: &Collection) -> Result<i64, Error> {
         let query = "select count(child_collection_id is not null) from collection_items ci inner join collections c on (ci.child_collection_id = c.id and c.deleted = false) where ci.collection_id = $1 ".to_owned();
         let connection = self.pool.get().await?;
@@ -372,6 +389,7 @@ impl CollectionsDataStore {
         Ok(rows.get(0))
     }
 
+    #[tracing::instrument(skip(self, collection, offset, limit))]
     pub async fn get_child_metadata(
         &self,
         collection: &Collection,
@@ -404,6 +422,7 @@ impl CollectionsDataStore {
         Ok(rows.iter().map(|r| r.into()).collect())
     }
 
+    #[tracing::instrument(skip(self, collection))]
     pub async fn get_child_metadata_count(&self, collection: &Collection) -> Result<i64, Error> {
         let query = "select count(child_metadata_id is not null) from collection_items ci inner join metadata m on (ci.child_metadata_id = m.id and m.deleted = false) where ci.collection_id = $1".to_owned();
         let connection = self.pool.get().await?;
@@ -415,6 +434,7 @@ impl CollectionsDataStore {
         Ok(rows.get(0))
     }
 
+    #[tracing::instrument(skip(self, ctx, collection))]
     pub async fn add(
         &self,
         ctx: &BoscaContext,
@@ -441,6 +461,7 @@ impl CollectionsDataStore {
         }
     }
 
+    #[tracing::instrument(skip(self, ctx, id, collection))]
     pub async fn edit(
         &self,
         ctx: &BoscaContext,
@@ -463,6 +484,7 @@ impl CollectionsDataStore {
         }
     }
 
+    #[tracing::instrument(skip(self, txn, collection, update_etag))]
     async fn add_txn<'a>(
         &'a self,
         txn: &'a Transaction<'a>,
@@ -527,6 +549,7 @@ impl CollectionsDataStore {
         Ok(id)
     }
 
+    #[tracing::instrument(skip(self, txn, id))]
     #[allow(dead_code)]
     async fn delete_trait_txn<'a>(
         &'a self,
@@ -540,6 +563,7 @@ impl CollectionsDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, txn, id, trait_id))]
     async fn add_trait_txn<'a>(
         &'a self,
         txn: &'a Transaction<'a>,
@@ -553,6 +577,7 @@ impl CollectionsDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, txn, id))]
     async fn delete_categories_txn<'a>(
         &'a self,
         txn: &'a Transaction<'a>,
@@ -565,6 +590,7 @@ impl CollectionsDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, txn, id, category_id))]
     async fn add_category_txn<'a>(
         &'a self,
         txn: &'a Transaction<'a>,
@@ -580,6 +606,7 @@ impl CollectionsDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, txn, id, collection))]
     async fn edit_txn<'a>(
         &'a self,
         txn: &'a Transaction<'a>,
@@ -641,6 +668,7 @@ impl CollectionsDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, id, collection_id, attributes))]
     pub async fn add_child_collection(
         &self,
         ctx: &BoscaContext,
@@ -658,6 +686,7 @@ impl CollectionsDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, txn, id, collection_id, attributes))]
     pub async fn add_child_collection_txn(
         &self,
         txn: &Transaction<'_>,
@@ -671,6 +700,7 @@ impl CollectionsDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, id, metadata_id, attributes))]
     pub async fn add_child_metadata(
         &self,
         ctx: &BoscaContext,
@@ -688,6 +718,7 @@ impl CollectionsDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, txn, id, metadata_id, attributes))]
     pub async fn add_child_metadata_txn(
         &self,
         txn: &Transaction<'_>,
@@ -705,6 +736,7 @@ impl CollectionsDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, id, collection_id))]
     pub async fn remove_child_collection(
         &self,
         ctx: &BoscaContext,
@@ -726,6 +758,7 @@ impl CollectionsDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, id, metadata_id))]
     pub async fn remove_child_metadata(
         &self,
         ctx: &BoscaContext,
@@ -747,6 +780,7 @@ impl CollectionsDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, collection_id, attributes))]
     pub async fn set_attributes(
         &self,
         ctx: &BoscaContext,
@@ -767,6 +801,7 @@ impl CollectionsDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, collection_id, ordering))]
     pub async fn set_ordering(
         &self,
         ctx: &BoscaContext,
@@ -785,6 +820,7 @@ impl CollectionsDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, collections))]
     pub async fn add_all(
         &self,
         ctx: &BoscaContext,
@@ -816,6 +852,8 @@ impl CollectionsDataStore {
         Ok(ids.into_iter().map(|(id, _, _)| id).collect())
     }
 
+    #[tracing::instrument(skip(self, ctx, txn, collections, ignore_permission_check, permissions))]
+    #[allow(clippy::type_complexity)]
     #[allow(clippy::too_many_arguments)]
     async fn add_all_txn(
         &self,
@@ -895,6 +933,7 @@ impl CollectionsDataStore {
         Ok(new_collections)
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn get_metadata_relationships(
         &self,
         id: &Uuid,
@@ -910,6 +949,7 @@ impl CollectionsDataStore {
             .collect())
     }
 
+    #[tracing::instrument(skip(self, id, metadata_id))]
     pub async fn get_metadata_relationship(
         &self,
         id: &Uuid,
@@ -923,6 +963,7 @@ impl CollectionsDataStore {
         Ok(rows.first().map(CollectionMetadataRelationship::from))
     }
 
+    #[tracing::instrument(skip(self, ctx, relationship))]
     pub async fn add_metadata_relationship(
         &self,
         ctx: &BoscaContext,
@@ -948,6 +989,7 @@ impl CollectionsDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, relationship))]
     pub async fn edit_metadata_relationship(
         &self,
         ctx: &BoscaContext,
@@ -974,6 +1016,7 @@ impl CollectionsDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, id, metadata_id, relationship))]
     pub async fn delete_metadata_relationship(
         &self,
         ctx: &BoscaContext,
@@ -996,6 +1039,7 @@ impl CollectionsDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, id))]
     pub async fn update_storage(&self, ctx: &BoscaContext, id: &Uuid) -> Result<(), Error> {
         let mut request = EnqueueRequest {
             workflow_id: Some(COLLECTION_UPDATE_STORAGE.to_string()),

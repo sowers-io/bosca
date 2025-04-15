@@ -12,4 +12,5 @@ pub enum TieredCacheType {
     Trait,
     Activity,
     WorkflowActivity,
+    Principal,
 }
