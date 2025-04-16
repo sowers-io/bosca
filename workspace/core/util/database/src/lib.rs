@@ -10,6 +10,7 @@ use rustls::pki_types::pem::PemObject;
 use rustls::RootCertStore;
 use tokio_postgres::NoTls;
 use tokio_postgres_rustls::MakeRustlsConnect;
+use log::info;
 
 pub fn build_pool(key: &str) -> Arc<Pool> {
     let mut config = Config::new();
@@ -26,8 +27,9 @@ pub fn build_pool(key: &str) -> Arc<Pool> {
     } else {
         25
     };
+    info!("Database Max Connections: {}", max_connections);
     let mut pool_config = PoolConfig::new(max_connections as usize);
-    pool_config.timeouts = Timeouts::wait_millis(10000);
+    pool_config.timeouts = Timeouts::wait_millis(5000);
     config.pool = Some(pool_config);
     config.manager = Some(ManagerConfig {
         recycling_method: RecyclingMethod::Fast,

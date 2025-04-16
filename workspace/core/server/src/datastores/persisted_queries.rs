@@ -30,6 +30,7 @@ impl PersistedQueriesDataStore {
         ds
     }
 
+    #[tracing::instrument(skip(self))]
     pub async fn update_cache(&self) -> Result<(), Error> {
         let queries = self.get_queries().await?;
         let mut documents = Vec::new();
@@ -42,7 +43,8 @@ impl PersistedQueriesDataStore {
         cache.extend(documents);
         Ok(())
     }
-    
+
+    #[tracing::instrument(skip(self))]
     pub async fn get_queries(&self) -> Result<Vec<PersistedQuery>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -59,6 +61,7 @@ impl PersistedQueriesDataStore {
             .collect())
     }
 
+    #[tracing::instrument(skip(self, sha256))]
     pub async fn get_query(&self, sha256: &str) -> Result<Option<PersistedQuery>, Error> {
         let sha256 = sha256.to_owned();
         let connection = self.pool.get().await?;
@@ -75,6 +78,7 @@ impl PersistedQueriesDataStore {
             }))
     }
 
+    #[tracing::instrument(skip(self, application, queries))]
     pub async fn add_queries(&self, application: &str, queries: &Vec<PersistedQueryInput>) -> Result<(), Error> {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
@@ -92,6 +96,7 @@ impl PersistedQueriesDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, sha256, application, query))]
     pub async fn add_query(&self, sha256: &str, application: &str, query: &str) -> Result<(), Error> {
         let sha256 = sha256.to_owned();
         let query = query.to_owned();
@@ -105,6 +110,7 @@ impl PersistedQueriesDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self))]
     pub async fn delete_queries(&self) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -114,7 +120,8 @@ impl PersistedQueriesDataStore {
         self.update_cache().await?;
         Ok(())
     }
-    
+
+    #[tracing::instrument(skip(self, application, sha256))]
     pub async fn delete_query(&self, application: &str, sha256: &str) -> Result<(), Error> {
         let sha256 = sha256.to_owned();
         let connection = self.pool.get().await?;

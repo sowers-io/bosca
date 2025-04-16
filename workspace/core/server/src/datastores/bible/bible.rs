@@ -30,6 +30,7 @@ impl BiblesDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, metadata_id, version, bible))]
     pub async fn set_bible(
         &self,
         metadata_id: &Uuid,
@@ -117,6 +118,7 @@ impl BiblesDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, metadata_id, version))]
     pub async fn get_bible(
         &self,
         metadata_id: &Uuid,
@@ -137,6 +139,7 @@ impl BiblesDataStore {
         }
     }
 
+    #[tracing::instrument(skip(self, metadata_id, version))]
     pub async fn get_bible_languages(
         &self,
         metadata_id: &Uuid,
@@ -150,6 +153,7 @@ impl BiblesDataStore {
         Ok(row.iter().map(|r| r.into()).collect())
     }
 
+    #[tracing::instrument(skip(self, metadata_id, version, usfm))]
     pub async fn get_book(&self, metadata_id: &Uuid, version: i32, usfm: &String) -> Result<Option<Book>, Error> {
         let conn = self.pool.get().await?;
         let stmt = conn
@@ -159,6 +163,7 @@ impl BiblesDataStore {
         Ok(row.first().map(|r| r.into()))
     }
 
+    #[tracing::instrument(skip(self, metadata_id, version))]
     pub async fn get_books(&self, metadata_id: &Uuid, version: i32) -> Result<Vec<Book>, Error> {
         let conn = self.pool.get().await?;
         let stmt = conn
@@ -168,6 +173,7 @@ impl BiblesDataStore {
         Ok(row.iter().map(|r| r.into()).collect())
     }
 
+    #[tracing::instrument(skip(self, metadata_id, version, usfm))]
     pub async fn get_chapter(
         &self,
         metadata_id: &Uuid,
@@ -181,6 +187,7 @@ impl BiblesDataStore {
         Ok(row.first().map(|r| r.into()))
     }
 
+    #[tracing::instrument(skip(self, metadata_id, version, usfm))]
     pub async fn get_chapters(
         &self,
         metadata_id: &Uuid,

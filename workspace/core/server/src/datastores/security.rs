@@ -89,6 +89,7 @@ impl SecurityDataStore {
         Ok(group)
     }
 
+    #[tracing::instrument(skip(self, offset, limit))]
     pub async fn get_groups(&self, offset: i64, limit: i64) -> Result<Vec<Group>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -98,6 +99,7 @@ impl SecurityDataStore {
         Ok(results.iter().map(Group::from).collect())
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn get_group(&self, id: &Uuid) -> Result<Group, Error> {
         if let Some(group) = self.cache.get_group_by_id(id).await {
             return Ok(group);
@@ -112,6 +114,7 @@ impl SecurityDataStore {
         Ok(group)
     }
 
+    #[tracing::instrument(skip(self, name))]
     pub async fn get_group_by_name(&self, name: &String) -> Result<Group, Error> {
         if let Some(group) = self.cache.get_group_by_name(name).await {
             return Ok(group);
@@ -126,6 +129,7 @@ impl SecurityDataStore {
         Ok(group)
     }
 
+    #[tracing::instrument(skip(self, offset, limit))]
     pub async fn get_principals(&self, offset: i64, limit: i64) -> Result<Vec<Principal>, Error> {
         let mut principals = Vec::<Principal>::new();
         let connection = self.pool.get().await?;
@@ -139,6 +143,7 @@ impl SecurityDataStore {
         Ok(principals)
     }
 
+    #[tracing::instrument(skip(self))]
     pub async fn get_administrators_group(&self) -> Result<Group, Error> {
         let group = ADMINISTRATORS_GROUP.to_string();
         self.get_group_by_name(&group).await
@@ -149,17 +154,18 @@ impl SecurityDataStore {
     //     self.get_group_by_name(&group).await
     // }
 
+    #[tracing::instrument(skip(self))]
     pub async fn get_service_account_group(&self) -> Result<Group, Error> {
         let group = SERVICE_ACCOUNT_GROUP.to_string();
         self.get_group_by_name(&group).await
     }
 
-    #[tracing::instrument]
+    #[tracing::instrument(skip(self, principal))]
     pub fn new_token(&self, principal: &Principal) -> Result<Token, jsonwebtoken::errors::Error> {
         self.jwt.new_token(principal)
     }
 
-    #[tracing::instrument]
+    #[tracing::instrument(skip(self, principal))]
     pub fn new_refresh_token(
         &self,
         principal: &Principal,
@@ -167,6 +173,7 @@ impl SecurityDataStore {
         self.jwt.new_refresh_token(principal).map(|t| RefreshToken { token: t })
     }
 
+    #[tracing::instrument(skip(self, refresh_token))]
     pub async fn validate_refresh_token(&self, refresh_token: &str) -> Result<Option<Uuid>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -185,7 +192,7 @@ impl SecurityDataStore {
         Ok(None)
     }
 
-    #[tracing::instrument]
+    #[tracing::instrument(skip(self, principal, refresh_token))]
     pub async fn add_refresh_token(
         &self,
         principal: &Principal,
@@ -202,6 +209,7 @@ impl SecurityDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self))]
     pub async fn expire_refresh_tokens(&self) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -211,6 +219,7 @@ impl SecurityDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, verified, attributes, credential, groups))]
     pub async fn add_principal(
         &self,
         verified: bool,
@@ -248,6 +257,7 @@ impl SecurityDataStore {
         Ok(id)
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn get_principal_credentials(
         &self,
         id: &Uuid,
@@ -270,6 +280,7 @@ impl SecurityDataStore {
         Ok(credentials)
     }
 
+    #[tracing::instrument(skip(self, id, credential))]
     pub async fn set_principal_credential(
         &self,
         id: &Uuid,
@@ -286,6 +297,7 @@ impl SecurityDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, attributes, groups))]
     pub async fn add_anonymous_principal<'a>(
         &'a self,
         attributes: Value,
@@ -314,6 +326,7 @@ impl SecurityDataStore {
         Ok(id)
     }
 
+    #[tracing::instrument(skip(self, principal, group))]
     pub async fn add_principal_group(&self, principal: &Uuid, group: &Uuid) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -324,6 +337,7 @@ impl SecurityDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, principal, group))]
     pub async fn remove_principal_group(
         &self,
         principal: &Uuid,
@@ -338,6 +352,7 @@ impl SecurityDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, connection, principal))]
     pub async fn get_principal_groups(
         &self,
         connection: &Object,
@@ -352,6 +367,7 @@ impl SecurityDataStore {
         Ok(groups)
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn get_principal_by_id(&self, id: &Uuid) -> Result<Principal, Error> {
         if let Some(principal) = self.cache.get_principal_by_id(id).await {
             return Ok(principal);
@@ -361,6 +377,7 @@ impl SecurityDataStore {
         Ok(principal)
     }
 
+    #[tracing::instrument(skip(self, connection, id))]
     async fn get_principal_by_id_internal(
         &self,
         connection: &Object,
@@ -381,6 +398,7 @@ impl SecurityDataStore {
         Ok(principal)
     }
 
+    #[tracing::instrument(skip(self, identifier))]
     pub async fn get_principal_by_identifier(&self, identifier: &str) -> Result<Principal, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -399,7 +417,7 @@ impl SecurityDataStore {
         self.get_principal_by_id_internal(&connection, &id).await
     }
 
-    #[tracing::instrument]
+    #[tracing::instrument(skip(self, identifier, password))]
     pub async fn get_principal_by_password(
         &self,
         identifier: &str,
@@ -423,6 +441,7 @@ impl SecurityDataStore {
         self.get_principal_by_id_internal(&connection, &id).await
     }
 
+    #[tracing::instrument(skip(self, credential, password))]
     pub fn verify_password(
         &self,
         credential: &Credential,
@@ -433,6 +452,7 @@ impl SecurityDataStore {
         Ok(verify(hash, password)?)
     }
 
+    #[tracing::instrument(skip(self, verification_token))]
     pub async fn set_principal_verified(&self, verification_token: &str) -> Result<Uuid, Error> {
         let connection = self.pool.get().await?;
         let token = verification_token.to_string();
@@ -448,6 +468,7 @@ impl SecurityDataStore {
         Ok(id)
     }
 
+    #[tracing::instrument(skip(self, token))]
     pub async fn get_principal_by_token(&self, token: &str) -> Result<Principal, Error> {
         let claims = self.jwt.validate_token(token)?;
         let id = Uuid::parse_str(claims.sub.as_str())?;
@@ -455,6 +476,7 @@ impl SecurityDataStore {
         Ok(principal)
     }
 
+    #[tracing::instrument(skip(self, cookie))]
     pub async fn get_principal_by_cookie(&self, cookie: &str) -> Result<Principal, Error> {
         let claims = self.jwt.validate_token(cookie)?;
         let id = Uuid::parse_str(claims.sub.as_str())?;

@@ -119,6 +119,7 @@ impl BoscaContext {
         Ok(ctx)
     }
 
+    #[tracing::instrument(skip(self, principal, id, action))]
     pub async fn check_metadata_action_principal(
         &self,
         principal: &Principal,
@@ -144,6 +145,7 @@ impl BoscaContext {
         }
     }
 
+    #[tracing::instrument(skip(self, principal, id, action))]
     pub async fn check_metadata_content_action_principal(
         &self,
         principal: &Principal,
@@ -169,6 +171,7 @@ impl BoscaContext {
         }
     }
 
+    #[tracing::instrument(skip(self, metadata, action))]
     pub async fn check_metadata_supplementary_action(
         &self,
         metadata: &Metadata,
@@ -188,6 +191,7 @@ impl BoscaContext {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, principal, supplementary_id, action))]
     pub async fn check_metadata_supplementary_action_principal(
         &self,
         principal: &Principal,
@@ -224,6 +228,7 @@ impl BoscaContext {
         }
     }
 
+    #[tracing::instrument(skip(self, principal, supplementary_id, action))]
     pub async fn check_collection_supplementary_action_principal(
         &self,
         principal: &Principal,
@@ -266,6 +271,7 @@ impl BoscaContext {
         Ok((collection, supplementary))
     }
 
+    #[tracing::instrument(skip(self, collection, action))]
     pub async fn check_collection_supplementary_action(
         &self,
         collection: &Collection,
@@ -285,6 +291,7 @@ impl BoscaContext {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, id, action))]
     pub async fn check_metadata_action(
         &self,
         id: &Uuid,
@@ -309,6 +316,7 @@ impl BoscaContext {
         }
     }
 
+    #[tracing::instrument(skip(self, id, version, action))]
     pub async fn check_metadata_version_action(
         &self,
         id: &Uuid,
@@ -341,6 +349,7 @@ impl BoscaContext {
         }
     }
 
+    #[tracing::instrument(skip(self, txn, id, action))]
     pub async fn check_collection_action_txn(
         &self,
         txn: &Transaction<'_>,
@@ -366,6 +375,7 @@ impl BoscaContext {
         }
     }
 
+    #[tracing::instrument(skip(self, id, action))]
     pub async fn check_collection_action(
         &self,
         id: &Uuid,
@@ -390,6 +400,7 @@ impl BoscaContext {
         }
     }
 
+    #[tracing::instrument(skip(self, id, action))]
     pub async fn check_profile_action(
         &self,
         id: &Uuid,
@@ -414,6 +425,7 @@ impl BoscaContext {
         }
     }
 
+    #[tracing::instrument(skip(self))]
     pub async fn check_has_admin_account(&self) -> Result<(), Error> {
         if !self.has_admin_account().await? {
             return Err(Error::new("invalid permissions"));
@@ -421,11 +433,13 @@ impl BoscaContext {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self))]
     pub async fn has_admin_account(&self) -> Result<bool, Error> {
         let admin = self.security.get_administrators_group().await?;
         Ok(self.principal.has_group(&admin.id))
     }
 
+    #[tracing::instrument(skip(self))]
     pub async fn check_has_service_account(&self) -> Result<(), Error> {
         let sa = self.security.get_service_account_group().await?;
         if !self.principal.has_group(&sa.id) {

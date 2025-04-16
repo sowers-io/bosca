@@ -28,6 +28,7 @@ impl ProfileDataStore {
         Self { pool }
     }
 
+    #[tracing::instrument(skip(self, offset, limit))]
     pub async fn get_all(
         &self,
         offset: i64,
@@ -41,6 +42,7 @@ impl ProfileDataStore {
         Ok(rows.iter().map(|r| r.into()).collect())
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn get_by_id(&self, id: &Uuid) -> async_graphql::Result<Option<Profile>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -50,7 +52,7 @@ impl ProfileDataStore {
         Ok(rows.first().map(|r| r.into()))
     }
 
-    #[tracing::instrument]
+    #[tracing::instrument(skip(self, id))]
     pub async fn get_by_principal(
         &self,
         id: &Uuid,
@@ -63,6 +65,7 @@ impl ProfileDataStore {
         Ok(rows.first().map(|r| r.into()))
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn get_slug(&self, id: &Uuid) -> Result<Option<String>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -75,6 +78,7 @@ impl ProfileDataStore {
         Ok(Some(rows.first().unwrap().get("slug")))
     }
 
+    #[tracing::instrument(skip(self))]
     pub async fn get_attribute_types(
         &self,
     ) -> async_graphql::Result<Vec<ProfileAttributeType>, Error> {
@@ -86,6 +90,7 @@ impl ProfileDataStore {
         Ok(rows.iter().map(|r| r.into()).collect())
     }
 
+    #[tracing::instrument(skip(self, attribute))]
     pub async fn add_profile_attribute_type(
         &self,
         attribute: &ProfileAttributeTypeInput,
@@ -108,6 +113,7 @@ impl ProfileDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, attribute))]
     pub async fn edit_profile_attribute_type(
         &self,
         attribute: &ProfileAttributeTypeInput,
@@ -130,6 +136,7 @@ impl ProfileDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn delete_profile_attribute_type(&self, id: &str) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -140,6 +147,7 @@ impl ProfileDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, principal, profile, collection_id))]
     pub async fn add(
         &self,
         ctx: &BoscaContext,
@@ -190,6 +198,7 @@ impl ProfileDataStore {
         Ok(id)
     }
 
+    #[tracing::instrument(skip(self, profile_id))]
     pub async fn get_attributes(
         &self,
         profile_id: &Uuid,
@@ -202,6 +211,7 @@ impl ProfileDataStore {
         Ok(rows.iter().map(|r| r.into()).collect())
     }
 
+    #[tracing::instrument(skip(self, ctx, principal, profile))]
     pub async fn edit_by_principal(
         &self,
         ctx: &BoscaContext,
@@ -228,6 +238,7 @@ impl ProfileDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, id, profile))]
     pub async fn edit_by_id(
         &self,
         ctx: &BoscaContext,
@@ -254,6 +265,7 @@ impl ProfileDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, profile_id, attribute_id))]
     pub async fn delete_profile_attribute(&self, profile_id: &Uuid, attribute_id: &Uuid) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -263,6 +275,7 @@ impl ProfileDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, txn, profile_id, profile))]
     async fn edit_profile_attributes(&self, txn: &Transaction<'_>, profile_id: &Uuid, profile: &ProfileInput) -> Result<(), Error> {
         if let Some(slug) = &profile.slug {
             let stmt = txn.prepare_cached("update slugs set slug = $1 where profile_id = $2").await?;
@@ -306,6 +319,7 @@ impl ProfileDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, id))]
     pub async fn update_storage(
         &self,
         ctx: &BoscaContext,

@@ -31,27 +31,33 @@ impl SecurityCache {
         }
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn get_principal_by_id(&self, id: &Uuid) -> Option<Principal> {
         self.principal_id.get(id).await
     }
 
+    #[tracing::instrument(skip(self, principal))]
     pub async fn cache_principal(&self, principal: &Principal) {
         self.principal_id.set(&principal.id, principal).await;
     }
 
+    #[tracing::instrument(skip(self, principal_id))]
     pub async fn evict_principal(&self, principal_id: &Uuid) {
         self.principal_id.remove(principal_id).await;
     }
 
+    #[tracing::instrument(skip(self, name))]
     pub async fn get_group_by_name(&self, name: &str) -> Option<Group> {
         let name_lower = name.to_lowercase();
         self.group_name.get(&name_lower).await
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn get_group_by_id(&self, id: &Uuid) -> Option<Group> {
         self.group_id.get(id).await
     }
 
+    #[tracing::instrument(skip(self, group))]
     pub async fn cache_group(&self, group: &Group) {
         let name_lower = group.name.to_lowercase();
         self.group_id.set(&group.id, group).await;

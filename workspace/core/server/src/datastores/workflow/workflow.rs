@@ -76,6 +76,7 @@ impl WorkflowDataStore {
 
     /* activities */
 
+    #[tracing::instrument(skip(self, activity))]
     pub async fn add_activity(&self, activity: &ActivityInput) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection.prepare_cached("insert into activities (id, name, description, child_workflow_id, configuration) values ($1, $2, $3, $4, $5)").await?;
@@ -117,6 +118,7 @@ impl WorkflowDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, activity))]
     pub async fn edit_activity(&self, activity: &ActivityInput) -> Result<(), Error> {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
@@ -165,6 +167,7 @@ impl WorkflowDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, activity_id))]
     pub async fn delete_activity(&self, activity_id: &str) -> Result<(), Error> {
         let activity_id = activity_id.to_owned();
         let connection = self.pool.get().await?;
@@ -176,6 +179,7 @@ impl WorkflowDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self))]
     pub async fn get_activities(&self) -> Result<Vec<Activity>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -185,6 +189,7 @@ impl WorkflowDataStore {
         Ok(rows.iter().map(Activity::from).collect())
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn get_activity(&self, id: &String) -> Result<Option<Activity>, Error> {
         if let Some(activity) = self.cache.get_activity(id).await {
             return Ok(Some(activity));
@@ -202,6 +207,7 @@ impl WorkflowDataStore {
         Ok(Some(activity))
     }
 
+    #[tracing::instrument(skip(self, activity_id))]
     pub async fn get_activity_inputs(
         &self,
         activity_id: &String,
@@ -221,6 +227,7 @@ impl WorkflowDataStore {
         Ok(parameters)
     }
 
+    #[tracing::instrument(skip(self, activity_id))]
     pub async fn get_activity_outputs(
         &self,
         activity_id: &String,
@@ -244,6 +251,7 @@ impl WorkflowDataStore {
 
     /* workflows */
 
+    #[tracing::instrument(skip(self))]
     pub async fn get_workflows(&self) -> Result<Vec<Workflow>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection.prepare_cached("select * from workflows").await?;
@@ -251,6 +259,7 @@ impl WorkflowDataStore {
         Ok(rows.into_iter().map(Workflow::from).collect())
     }
 
+    #[tracing::instrument(skip(self, trait_id))]
     pub async fn get_workflows_by_trait(&self, trait_id: &String) -> Result<Vec<Workflow>, Error> {
         if let Some(workflow_ids) = self.cache.get_trait_workflow_ids(trait_id).await {
             let mut workflows = Vec::new();
@@ -279,6 +288,7 @@ impl WorkflowDataStore {
         Ok(workflows)
     }
 
+    #[tracing::instrument(skip(self, workflow))]
     pub async fn add_workflow(&self, workflow: &WorkflowInput) -> Result<(), Error> {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
@@ -288,6 +298,7 @@ impl WorkflowDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, txn, workflow))]
     async fn add_workflow_txn(
         &self,
         txn: &Transaction<'_>,
@@ -312,6 +323,7 @@ impl WorkflowDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, workflow))]
     pub async fn edit_workflow(&self, workflow: &WorkflowInput) -> Result<(), Error> {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
@@ -347,6 +359,7 @@ impl WorkflowDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, txn, id, include_workflow))]
     async fn delete_workflow_txn(
         &self,
         txn: &Transaction<'_>,
@@ -370,6 +383,7 @@ impl WorkflowDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn delete_workflow(&self, id: &str) -> Result<(), Error> {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
@@ -381,14 +395,17 @@ impl WorkflowDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn get_metadata_count(&self, id: &Uuid) -> Result<i64, Error> {
         self.queues.get_metadata_count(id).await
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn get_collection_count(&self, id: &Uuid) -> Result<i64, Error> {
         self.queues.get_collection_count(id).await
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn get_workflow(&self, id: &str) -> Result<Option<Workflow>, Error> {
         let id = id.to_owned();
         if let Some(workflow) = self.cache.get_workflow(&id).await {
@@ -411,6 +428,7 @@ impl WorkflowDataStore {
 
     /* workflow activities */
 
+    #[tracing::instrument(skip(self, txn, workflow_id, activity))]
     async fn add_workflow_activity(
         &self,
         txn: &Transaction<'_>,
@@ -489,6 +507,7 @@ impl WorkflowDataStore {
         Ok(id)
     }
 
+    #[tracing::instrument(skip(self, activity_id))]
     pub async fn get_workflow_activity(
         &self,
         activity_id: &i64,
@@ -508,6 +527,7 @@ impl WorkflowDataStore {
         Ok(None)
     }
 
+    #[tracing::instrument(skip(self, workflow_id))]
     pub async fn get_workflow_activities(
         &self,
         workflow_id: &String,
@@ -541,6 +561,7 @@ impl WorkflowDataStore {
         Ok(activities)
     }
 
+    #[tracing::instrument(skip(self, activity_id))]
     pub async fn get_workflow_activity_inputs(
         &self,
         activity_id: &i64,
@@ -560,6 +581,7 @@ impl WorkflowDataStore {
         Ok(inputs)
     }
 
+    #[tracing::instrument(skip(self, activity_id))]
     pub async fn get_workflow_activity_outputs(
         &self,
         activity_id: &i64,
@@ -583,6 +605,7 @@ impl WorkflowDataStore {
 
     /* workflow activity models */
 
+    #[tracing::instrument(skip(self, activity_id))]
     pub async fn get_workflow_activity_models(
         &self,
         activity_id: &i64,
@@ -606,6 +629,7 @@ impl WorkflowDataStore {
 
     /* workflow activity prompts */
 
+    #[tracing::instrument(skip(self, activity_id))]
     pub async fn get_workflow_activity_prompts(
         &self,
         activity_id: &i64,
@@ -629,6 +653,7 @@ impl WorkflowDataStore {
 
     /* workflow activity storage systems */
 
+    #[tracing::instrument(skip(self, activity_id))]
     pub async fn get_workflow_activity_storage_systems(
         &self,
         activity_id: &i64,
@@ -661,6 +686,7 @@ impl WorkflowDataStore {
 
     /* models */
 
+    #[tracing::instrument(skip(self))]
     pub async fn get_models(&self) -> Result<Vec<Model>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection.prepare_cached("select * from models").await?;
@@ -668,6 +694,7 @@ impl WorkflowDataStore {
         Ok(rows.into_iter().map(Model::from).collect())
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn get_model(&self, id: &Uuid) -> Result<Option<Model>, Error> {
         if let Some(model) = self.cache.get_model(id).await {
             return Ok(Some(model));
@@ -685,6 +712,7 @@ impl WorkflowDataStore {
         Ok(Some(model))
     }
 
+    #[tracing::instrument(skip(self, model))]
     pub async fn add_model(&self, model: &ModelInput) -> Result<Uuid, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection.prepare_cached("insert into models (type, name, description, configuration) values ($1, $2, $3, $4) returning id").await?;
@@ -708,6 +736,7 @@ impl WorkflowDataStore {
         Ok(id)
     }
 
+    #[tracing::instrument(skip(self, id, model))]
     pub async fn edit_model(&self, id: &Uuid, model: &ModelInput) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection.prepare_cached("update models set type = $1, name = $2, description = $3, configuration = $4 where id = $5").await?;
@@ -729,6 +758,7 @@ impl WorkflowDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn delete_model(&self, id: &Uuid) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -745,6 +775,7 @@ impl WorkflowDataStore {
 
     /* states */
 
+    #[tracing::instrument(skip(self))]
     pub async fn get_states(&self) -> Result<Vec<WorkflowState>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -754,6 +785,7 @@ impl WorkflowDataStore {
         Ok(rows.into_iter().map(WorkflowState::from).collect())
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn get_state(&self, id: &str) -> Result<Option<WorkflowState>, Error> {
         let id = id.to_owned();
         if let Some(state) = self.cache.get_state(&id).await {
@@ -772,6 +804,7 @@ impl WorkflowDataStore {
         Ok(Some(state))
     }
 
+    #[tracing::instrument(skip(self, state))]
     pub async fn add_state(&self, state: &WorkflowStateInput) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection.prepare_cached("insert into workflow_states (id, type, name, description, configuration, workflow_id, entry_workflow_id, exit_workflow_id) values ($1, $2, $3, $4, $5, $6, $7, $8)").await?;
@@ -794,6 +827,7 @@ impl WorkflowDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, state))]
     pub async fn edit_state(&self, state: &WorkflowStateInput) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection.prepare_cached("update workflow_states set type = $2, name = $3, description = $4, configuration = $5, workflow_id = $6, entry_workflow_id = $7, exit_workflow_id = $8 where id = $1").await?;
@@ -817,6 +851,7 @@ impl WorkflowDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn delete_state(&self, id: &String) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -832,6 +867,7 @@ impl WorkflowDataStore {
 
     /* storage systems */
 
+    #[tracing::instrument(skip(self))]
     pub async fn get_storage_systems(&self) -> Result<Vec<StorageSystem>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -841,6 +877,7 @@ impl WorkflowDataStore {
         Ok(rows.iter().map(StorageSystem::from).collect())
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn get_storage_system(&self, id: &Uuid) -> Result<Option<StorageSystem>, Error> {
         if let Some(system) = self.cache.get_storage_system(id).await {
             return Ok(Some(system));
@@ -857,6 +894,7 @@ impl WorkflowDataStore {
         Ok(system)
     }
 
+    #[tracing::instrument(skip(self, name))]
     pub async fn get_storage_system_by_name(
         &self,
         name: &str,
@@ -870,6 +908,7 @@ impl WorkflowDataStore {
         Ok(rows.first().map(|r| r.into()))
     }
 
+    #[tracing::instrument(skip(self, ctx, system))]
     pub async fn add_storage_system(
         &self,
         ctx: &BoscaContext,
@@ -914,6 +953,7 @@ impl WorkflowDataStore {
         Ok(id)
     }
 
+    #[tracing::instrument(skip(self, ctx, id, system))]
     pub async fn edit_storage_system(
         &self,
         ctx: &BoscaContext,
@@ -965,6 +1005,7 @@ impl WorkflowDataStore {
 
     /* storage system models */
 
+    #[tracing::instrument(skip(self, txn, system_id, model))]
     async fn add_storage_system_model_txn(
         &self,
         txn: &mut Transaction<'_>,
@@ -978,6 +1019,7 @@ impl WorkflowDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn get_storage_system_models(
         &self,
         id: &Uuid,
@@ -995,6 +1037,7 @@ impl WorkflowDataStore {
         Ok(models)
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn delete_storage_system(&self, id: &Uuid) -> Result<bool, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -1011,6 +1054,7 @@ impl WorkflowDataStore {
 
     /* prompts */
 
+    #[tracing::instrument(skip(self, prompt))]
     pub async fn add_prompt(&self, prompt: &PromptInput) -> Result<Uuid, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection.prepare_cached("insert into prompts (name, description, system_prompt, user_prompt, input_type, output_type, schema) values ($1, $2, $3, $4, $5, $6, $7) returning id").await?;
@@ -1037,6 +1081,7 @@ impl WorkflowDataStore {
         Ok(id)
     }
 
+    #[tracing::instrument(skip(self, id, prompt))]
     pub async fn edit_prompt(&self, id: &Uuid, prompt: &PromptInput) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection.prepare_cached("update prompts set name = $1, description = $2, system_prompt = $3, user_prompt = $4, input_type = $5, output_type = $6, schema = $7 where id = $8").await?;
@@ -1061,6 +1106,7 @@ impl WorkflowDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn delete_prompt(&self, id: &Uuid) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -1073,6 +1119,7 @@ impl WorkflowDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self))]
     pub async fn get_prompts(&self) -> Result<Vec<Prompt>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection.prepare_cached("select * from prompts").await?;
@@ -1080,6 +1127,7 @@ impl WorkflowDataStore {
         Ok(rows.iter().map(Prompt::from).collect())
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn get_prompt(&self, id: &Uuid) -> Result<Option<Prompt>, Error> {
         if let Some(prompt) = self.cache.get_prompt(id).await {
             return Ok(Some(prompt));
@@ -1101,6 +1149,7 @@ impl WorkflowDataStore {
 
     /* traits */
 
+    #[tracing::instrument(skip(self))]
     pub async fn get_traits(&self) -> Result<Vec<Trait>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -1131,6 +1180,7 @@ impl WorkflowDataStore {
         Ok(traits)
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn get_trait(&self, id: &String) -> Result<Option<Trait>, Error> {
         if let Some(t) = self.cache.get_trait(id).await {
             return Ok(Some(t));
@@ -1164,6 +1214,7 @@ impl WorkflowDataStore {
         Ok(None)
     }
 
+    #[tracing::instrument(skip(self, t))]
     pub async fn add_trait(&self, t: &TraitInput) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -1194,6 +1245,7 @@ impl WorkflowDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, t))]
     pub async fn edit_trait(&self, t: &TraitInput) -> Result<(), Error> {
         let mut connection = self.pool.get().await?;
         let transaction = connection.transaction().await?;
@@ -1236,6 +1288,7 @@ impl WorkflowDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn delete_trait(&self, id: &String) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         connection
@@ -1250,6 +1303,7 @@ impl WorkflowDataStore {
 
     /* transitions */
 
+    #[tracing::instrument(skip(self, t))]
     pub async fn add_transition(&self, t: &TransitionInput) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection.prepare_cached("insert into workflow_state_transitions (from_state_id, to_state_id, description) values ($1, $2, $3)").await?;
@@ -1262,6 +1316,7 @@ impl WorkflowDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, t))]
     pub async fn edit_transition(&self, t: &TransitionInput) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection.prepare_cached("update workflow_state_transitions set description = $3 where from_state_id = $1 and to_state_id = $2").await?;
@@ -1277,6 +1332,7 @@ impl WorkflowDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, from_state_id, to_state_id))]
     pub async fn delete_transition(
         &self,
         from_state_id: &String,
@@ -1300,6 +1356,7 @@ impl WorkflowDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self))]
     pub async fn get_transitions(&self) -> Result<Vec<Transition>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -1309,6 +1366,7 @@ impl WorkflowDataStore {
         Ok(rows.into_iter().map(Transition::from).collect())
     }
 
+    #[tracing::instrument(skip(self, from_state_id, to_state_id))]
     pub async fn get_transition(
         &self,
         from_state_id: &str,
@@ -1335,17 +1393,20 @@ impl WorkflowDataStore {
 
     /* queues */
 
+    #[tracing::instrument(skip(self))]
     pub async fn expire_all(&self) -> Result<(), Error> {
         self.queues.check_for_expiration(i64::MAX).await?;
         Ok(())
     }
 
+    #[tracing::instrument(skip(self))]
     pub async fn retry_all_failed(&self) -> Result<(), Error> {
         let ids = self.queues.get_failed_ids().await?;
         self.queues.retry_jobs(ids).await?;
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, job_id, workflow_ids, delay_until))]
     pub async fn enqueue_job_child_workflows(
         &self,
         job_id: &WorkflowJobId,
@@ -1384,6 +1445,7 @@ impl WorkflowDataStore {
             .await
     }
 
+    #[tracing::instrument(skip(self, job_id, workflow_id, configurations, delay_until))]
     pub async fn enqueue_job_child_workflow(
         &self,
         job_id: &WorkflowJobId,
@@ -1425,10 +1487,12 @@ impl WorkflowDataStore {
             .clone())
     }
 
+    #[tracing::instrument(skip(self, queue))]
     pub async fn dequeue_next_execution(&self, queue: &str) -> Result<Option<WorkflowJob>, Error> {
         self.queues.dequeue(queue).await
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn get_execution_plan(
         &self,
         id: &WorkflowExecutionId,
@@ -1445,6 +1509,7 @@ impl WorkflowDataStore {
         self.queues.get_all_plans(queue, offset, limit).await
     }
 
+    #[tracing::instrument(skip(self, request))]
     pub async fn get_new_execution_plan(
         &self,
         request: &mut EnqueueRequest,
@@ -1583,6 +1648,7 @@ impl WorkflowDataStore {
         })
     }
 
+    #[tracing::instrument(skip(self, ctx, request))]
     pub async fn enqueue_workflow(
         &self,
         ctx: &BoscaContext,
@@ -1629,6 +1695,7 @@ impl WorkflowDataStore {
         }
     }
 
+    #[tracing::instrument(skip(self, workflow_id, metadata_id, metadata_version, collection_id))]
     pub async fn cancel_workflows(
         &self,
         workflow_id: &str,
@@ -1642,6 +1709,7 @@ impl WorkflowDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, id, delay_until))]
     async fn wait_for_execution_plan(
         &self,
         id: &WorkflowExecutionId,
@@ -1669,6 +1737,7 @@ impl WorkflowDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, plan_id, context))]
     pub async fn set_execution_plan_context(
         &self,
         plan_id: &WorkflowExecutionId,
@@ -1679,6 +1748,7 @@ impl WorkflowDataStore {
             .await
     }
 
+    #[tracing::instrument(skip(self, job_id, context))]
     pub async fn set_execution_plan_job_context(
         &self,
         job_id: &WorkflowJobId,
@@ -1689,6 +1759,7 @@ impl WorkflowDataStore {
             .await
     }
 
+    #[tracing::instrument(skip(self, job_id, delayed_until))]
     pub async fn set_execution_plan_job_delayed(
         &self,
         job_id: &WorkflowJobId,
@@ -1700,6 +1771,7 @@ impl WorkflowDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, job_id))]
     pub async fn set_execution_plan_job_checkin(
         &self,
         job_id: &WorkflowJobId,
@@ -1707,6 +1779,7 @@ impl WorkflowDataStore {
         self.queues.set_execution_plan_job_checkin(job_id).await
     }
 
+    #[tracing::instrument(skip(self, job_id))]
     pub async fn set_execution_plan_job_complete(
         &self,
         job_id: &WorkflowJobId,
@@ -1718,6 +1791,7 @@ impl WorkflowDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, job_id, error))]
     pub async fn set_execution_plan_job_failed(
         &self,
         job_id: &WorkflowJobId,
