@@ -1,4 +1,6 @@
-FROM gcr.io/distroless/base
+FROM debian:bookworm-slim
+
+RUN apt update && apt install -y ffmpeg
 
 COPY workspace/runners/kotlin/runner/build/native/nativeCompile/* /
 
