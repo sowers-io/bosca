@@ -11,7 +11,7 @@ use crate::workflow::transaction::{RedisTransaction, RedisTransactionOp};
 use async_graphql::Error;
 use chrono::{DateTime, Utc};
 use deadpool_postgres::{GenericClient, Pool, Transaction};
-use log::{debug, error};
+use log::{debug, error, info};
 use redis::{AsyncCommands, Script};
 use serde_json::{from_value, json, Value};
 use std::collections::HashSet;
@@ -368,7 +368,7 @@ impl JobQueues {
                 .invoke_async(&mut connection)
                 .await?;
             if result > 0 {
-                error!("found expired jobs: {}", result);
+                info!("found expired jobs: {}", result);
             }
         }
 
