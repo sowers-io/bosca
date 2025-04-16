@@ -16,6 +16,7 @@ impl CollectionTemplatesDataStore {
         Self { pool }
     }
 
+    #[tracing::instrument(skip(self))]
     pub async fn get_templates(&self) -> Result<Vec<CollectionTemplate>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -27,6 +28,7 @@ impl CollectionTemplatesDataStore {
         Ok(rows.iter().map(|r| r.into()).collect())
     }
 
+    #[tracing::instrument(skip(self, metadata_id, version))]
     pub async fn get_template(
         &self,
         metadata_id: &Uuid,
@@ -42,6 +44,7 @@ impl CollectionTemplatesDataStore {
         Ok(rows.first().map(|r| r.into()))
     }
 
+    #[tracing::instrument(skip(self, metadata_id, version))]
     pub async fn get_template_attributes(
         &self,
         metadata_id: &Uuid,
@@ -53,6 +56,7 @@ impl CollectionTemplatesDataStore {
         Ok(results.iter().map(|r| r.into()).collect())
     }
 
+    #[tracing::instrument(skip(self, metadata_id, version, key))]
     pub async fn get_template_attribute_workflows(
         &self,
         metadata_id: &Uuid,
@@ -67,6 +71,7 @@ impl CollectionTemplatesDataStore {
         Ok(results.iter().map(|r| r.into()).collect())
     }
 
+    #[tracing::instrument(skip(self, txn, metadata_id, version, template))]
     pub async fn add_template_txn(
         &self,
         txn: &Transaction<'_>,
@@ -94,6 +99,7 @@ impl CollectionTemplatesDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, txn, metadata_id, version, template))]
     pub async fn edit_template_txn(
         &self,
         txn: &Transaction<'_>,
@@ -131,6 +137,7 @@ impl CollectionTemplatesDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, txn, metadata_id, version, template))]
     async fn add_template_items_txn(
         &self,
         txn: &Transaction<'_>,

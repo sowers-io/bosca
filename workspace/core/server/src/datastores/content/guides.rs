@@ -29,6 +29,7 @@ impl GuidesDataStore {
         Self { pool, notifier }
     }
 
+    #[tracing::instrument(skip(self, ctx, id))]
     async fn on_metadata_changed(&self, ctx: &BoscaContext, id: &Uuid) -> Result<(), Error> {
         ctx.content.metadata.update_storage(ctx, id).await?;
         if let Err(e) = self.notifier.metadata_changed(id).await {
@@ -37,6 +38,7 @@ impl GuidesDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self))]
     pub async fn get_templates(&self) -> Result<Vec<GuideTemplate>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -46,6 +48,7 @@ impl GuidesDataStore {
         Ok(rows.iter().map(|r| r.into()).collect())
     }
 
+    #[tracing::instrument(skip(self, metadata_id, version))]
     pub async fn get_template(
         &self,
         metadata_id: &Uuid,
@@ -59,6 +62,7 @@ impl GuidesDataStore {
         Ok(rows.first().map(|r| r.into()))
     }
 
+    #[tracing::instrument(skip(self, metadata_id, version))]
     pub async fn get_template_steps(
         &self,
         metadata_id: &Uuid,
@@ -72,6 +76,7 @@ impl GuidesDataStore {
         Ok(rows.iter().map(|r| r.into()).collect())
     }
 
+    #[tracing::instrument(skip(self, metadata_id, version, id))]
     pub async fn get_template_step(
         &self,
         metadata_id: &Uuid,
@@ -89,6 +94,7 @@ impl GuidesDataStore {
         Ok(rows.first().map(|r| r.into()))
     }
 
+    #[tracing::instrument(skip(self, metadata_id, version, step_id))]
     pub async fn get_template_step_modules(
         &self,
         metadata_id: &Uuid,
@@ -105,6 +111,7 @@ impl GuidesDataStore {
         Ok(rows.iter().map(|r| r.into()).collect())
     }
 
+    #[tracing::instrument(skip(self, metadata_id, version, step_id, module_id))]
     pub async fn get_template_step_module(
         &self,
         metadata_id: &Uuid,
@@ -122,6 +129,7 @@ impl GuidesDataStore {
         Ok(rows.first().map(|r| r.into()))
     }
 
+    #[tracing::instrument(skip(self, txn, metadata_id, version, template))]
     pub async fn add_template_txn(
         &self,
         txn: &Transaction<'_>,
@@ -140,6 +148,7 @@ impl GuidesDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, txn, metadata_id, version, template))]
     pub async fn edit_template_txn(
         &self,
         txn: &Transaction<'_>,
@@ -168,6 +177,7 @@ impl GuidesDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, txn, metadata_id, version, template))]
     async fn add_template_steps_txn(
         &self,
         txn: &Transaction<'_>,
@@ -214,6 +224,7 @@ impl GuidesDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, metadata_id, version))]
     pub async fn get_guide(
         &self,
         metadata_id: &Uuid,
@@ -227,6 +238,7 @@ impl GuidesDataStore {
         Ok(rows.first().map(|r| r.into()))
     }
 
+    #[tracing::instrument(skip(self, metadata_id, version, id))]
     pub async fn get_guide_step(
         &self,
         metadata_id: &Uuid,
@@ -248,6 +260,7 @@ impl GuidesDataStore {
         Ok(Some((&rows).into()))
     }
 
+    #[tracing::instrument(skip(self, metadata_id, version, offset, limit))]
     pub async fn get_guide_steps(
         &self,
         metadata_id: &Uuid,
@@ -274,6 +287,7 @@ impl GuidesDataStore {
         Ok(rows.iter().map(|r| r.into()).collect())
     }
 
+    #[tracing::instrument(skip(self, metadata_id, version))]
     pub async fn get_guide_step_count(
         &self,
         metadata_id: &Uuid,
@@ -291,6 +305,7 @@ impl GuidesDataStore {
         Ok(rows.get("count"))
     }
 
+    #[tracing::instrument(skip(self, metadata_id, version, step_id))]
     pub async fn get_guide_step_modules(
         &self,
         metadata_id: &Uuid,
@@ -307,6 +322,7 @@ impl GuidesDataStore {
         Ok(rows.iter().map(|r| r.into()).collect())
     }
 
+    #[tracing::instrument(skip(self, ctx, txn, metadata_id, version, guide))]
     pub async fn add_guide_txn(
         &self,
         ctx: &BoscaContext,
@@ -341,6 +357,7 @@ impl GuidesDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, txn, metadata_id, version, guide))]
     pub async fn edit_guide_txn(
         &self,
         ctx: &BoscaContext,
@@ -378,6 +395,7 @@ impl GuidesDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, txn, metadata, metadata_id, metadata_version, collection_item_attributes))]
     async fn add_document_txn(
         &self,
         ctx: &BoscaContext,
@@ -408,6 +426,7 @@ impl GuidesDataStore {
         })
     }
 
+    #[tracing::instrument(skip(self, ctx, txn, metadata_id, version, index, step))]
     async fn add_guide_step_txn(
         &self,
         ctx: &BoscaContext,
@@ -457,6 +476,7 @@ impl GuidesDataStore {
         })
     }
 
+    #[tracing::instrument(skip(self, txn, metadata_id, version, step_id))]
     pub async fn delete_guide_step_txn(
         &self,
         txn: &Transaction<'_>,
@@ -474,6 +494,7 @@ impl GuidesDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, txn, metadata_id, version, step_id, index, module))]
     #[allow(clippy::too_many_arguments)]
     async fn add_guide_step_module_txn(
         &self,
@@ -519,6 +540,7 @@ impl GuidesDataStore {
         })
     }
 
+    #[tracing::instrument(skip(self, txn, metadata_id, version, step_id, module_id))]
     #[allow(clippy::too_many_arguments)]
     pub async fn delete_guide_step_module_txn(
         &self,
@@ -534,20 +556,21 @@ impl GuidesDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, parent_collection_id, template_metadata_id, template_metadata_version, permissions))]
     pub async fn add_guide_from_template(
         &self,
         ctx: &BoscaContext,
         parent_collection_id: &Uuid,
-        tempate_metadata_id: &Uuid,
-        tempate_metadata_version: i32,
+        template_metadata_id: &Uuid,
+        template_metadata_version: i32,
         permissions: &[Permission],
     ) -> Result<(Uuid, i32), Error> {
         let mut conn = self.pool.get().await?;
         let txn = conn.transaction().await?;
         let template = ctx
             .check_metadata_version_action(
-                tempate_metadata_id,
-                tempate_metadata_version,
+                template_metadata_id,
+                template_metadata_version,
                 PermissionAction::View,
             )
             .await?;
@@ -640,6 +663,7 @@ impl GuidesDataStore {
         Ok((metadata_id, version))
     }
 
+    #[tracing::instrument(skip(self, ctx, metadata_id, metadata_version, index, step, permissions))]
     pub async fn add_guide_step_from_template(
         &self,
         ctx: &BoscaContext,
@@ -659,6 +683,7 @@ impl GuidesDataStore {
         Ok(step)
     }
 
+    #[tracing::instrument(skip(self, ctx, txn, metadata_id, metadata_version, index, step, permissions))]
     #[allow(clippy::too_many_arguments)]
     pub async fn add_guide_step_from_template_txn(
         &self,
@@ -757,6 +782,7 @@ impl GuidesDataStore {
         })
     }
 
+    #[tracing::instrument(skip(self, ctx, metadata_id, metadata_version, step_id, index, module, permissions))]
     #[allow(clippy::too_many_arguments)]
     pub async fn add_guide_module_from_template(
         &self,
@@ -786,6 +812,7 @@ impl GuidesDataStore {
         Ok(module)
     }
 
+    #[tracing::instrument(skip(self, ctx, metadata_id, metadata_version, step_id, index, module, permissions))]
     #[allow(clippy::too_many_arguments)]
     pub async fn add_guide_module_from_template_txn(
         &self,
@@ -841,6 +868,7 @@ impl GuidesDataStore {
         })
     }
 
+    #[tracing::instrument(skip(self, ctx, metadata_id, version, step_id))]
     pub async fn delete_guide_step(
         &self,
         ctx: &BoscaContext,
@@ -881,6 +909,7 @@ impl GuidesDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, metadata_id, version))]
     pub async fn delete_guide(
         &self,
         ctx: &BoscaContext,

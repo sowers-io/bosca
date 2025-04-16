@@ -18,6 +18,7 @@ impl CollectionSupplementaryDataStore {
         Self { pool, notifier }
     }
 
+    #[tracing::instrument(skip(self, ctx, id))]
     async fn on_collection_changed(&self, ctx: &BoscaContext, id: &Uuid) -> Result<(), Error> {
         ctx.content.collections.update_storage(ctx, id).await?;
         if let Err(e) = self.notifier.collection_changed(id).await {
@@ -26,6 +27,7 @@ impl CollectionSupplementaryDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, supplementary_id, collection_id, key, plan_id))]
     async fn on_collection_supplementary_changed(&self, _: &BoscaContext, supplementary_id: &Uuid, collection_id: &Uuid, key: &str, plan_id: Option<Uuid>) -> Result<(), Error> {
         if let Err(e) = self.notifier.collection_supplementary_changed(supplementary_id, collection_id, key, plan_id).await {
             error!("Failed to notify collection supplementary changes: {:?}", e);
@@ -33,6 +35,7 @@ impl CollectionSupplementaryDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, supplementary_id))]
     pub async fn get_supplementary(
         &self,
         supplementary_id: &Uuid,
@@ -50,6 +53,7 @@ impl CollectionSupplementaryDataStore {
         Ok(Some(rows.first().unwrap().into()))
     }
 
+    #[tracing::instrument(skip(self, collection_id, key, plan_id))]
     pub async fn get_supplementary_by_key(
         &self,
         collection_id: &Uuid,
@@ -70,6 +74,7 @@ impl CollectionSupplementaryDataStore {
         Ok(Some(rows.first().unwrap().into()))
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn get_supplementaries(
         &self,
         id: &Uuid,
@@ -82,6 +87,7 @@ impl CollectionSupplementaryDataStore {
         Ok(rows.iter().map(|r| r.into()).collect())
     }
 
+    #[tracing::instrument(skip(self, ctx, supplementary))]
     pub async fn add_supplementary(
         &self,
         ctx: &BoscaContext,
@@ -120,6 +126,7 @@ impl CollectionSupplementaryDataStore {
         Ok(id)
     }
 
+    #[tracing::instrument(skip(self, ctx, supplementary_id, content_type, len))]
     pub async fn set_supplementary_uploaded(
         &self,
         ctx: &BoscaContext,
@@ -141,6 +148,7 @@ impl CollectionSupplementaryDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, supplementary_id))]
     pub async fn delete_supplementary(
         &self,
         ctx: &BoscaContext,
@@ -156,6 +164,7 @@ impl CollectionSupplementaryDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, id, public))]
     pub async fn set_supplementary_public(&self, ctx: &BoscaContext, id: &Uuid, public: bool) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection

@@ -28,6 +28,7 @@ impl DocumentsDataStore {
         Self { pool, notifier }
     }
 
+    #[tracing::instrument(skip(self, id))]
     async fn on_metadata_changed(&self, id: &Uuid) -> Result<(), Error> {
         if let Err(e) = self.notifier.metadata_changed(id).await {
             error!("Failed to notify metadata changes: {:?}", e);
@@ -35,6 +36,7 @@ impl DocumentsDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self))]
     pub async fn get_templates(&self) -> Result<Vec<DocumentTemplate>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -44,6 +46,7 @@ impl DocumentsDataStore {
         Ok(rows.iter().map(|r| r.into()).collect())
     }
 
+    #[tracing::instrument(skip(self, metadata_id, version))]
     pub async fn get_template(
         &self,
         metadata_id: &Uuid,
@@ -59,6 +62,7 @@ impl DocumentsDataStore {
         Ok(rows.first().map(|r| r.into()))
     }
 
+    #[tracing::instrument(skip(self, metadata_id, version))]
     pub async fn get_template_attributes(
         &self,
         metadata_id: &Uuid,
@@ -70,6 +74,7 @@ impl DocumentsDataStore {
         Ok(results.iter().map(|r| r.into()).collect())
     }
 
+    #[tracing::instrument(skip(self, metadata_id, version))]
     pub async fn get_template_containers(
         &self,
         metadata_id: &Uuid,
@@ -81,6 +86,7 @@ impl DocumentsDataStore {
         Ok(results.iter().map(|r| r.into()).collect())
     }
 
+    #[tracing::instrument(skip(self, metadata_id, version, id))]
     pub async fn get_container_template_workflows(
         &self,
         metadata_id: &Uuid,
@@ -95,6 +101,7 @@ impl DocumentsDataStore {
         Ok(results.iter().map(|r| r.into()).collect())
     }
 
+    #[tracing::instrument(skip(self, metadata_id, version, key))]
     pub async fn get_template_attribute_workflows(
         &self,
         metadata_id: &Uuid,
@@ -109,6 +116,7 @@ impl DocumentsDataStore {
         Ok(results.iter().map(|r| r.into()).collect())
     }
 
+    #[tracing::instrument(skip(self, txn, metadata_id, version, template))]
     pub async fn add_template_txn(
         &self,
         txn: &Transaction<'_>,
@@ -134,6 +142,7 @@ impl DocumentsDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, txn, metadata_id, version, template))]
     pub async fn edit_template_txn(
         &self,
         txn: &Transaction<'_>,
@@ -174,6 +183,7 @@ impl DocumentsDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, txn, metadata_id, version, template))]
     async fn add_template_items_txn(
         &self,
         txn: &Transaction<'_>,
@@ -254,6 +264,7 @@ impl DocumentsDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, metadata_id, version))]
     pub async fn get_document(
         &self,
         metadata_id: &Uuid,
@@ -267,6 +278,7 @@ impl DocumentsDataStore {
         Ok(rows.first().map(|r| r.into()))
     }
 
+    #[tracing::instrument(skip(self, txn, metadata_id, version, document))]
     pub async fn add_document_txn(
         &self,
         txn: &Transaction<'_>,
@@ -294,6 +306,7 @@ impl DocumentsDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, metadata_id, version, document))]
     pub async fn set_document(
         &self,
         metadata_id: &Uuid,
@@ -330,6 +343,7 @@ impl DocumentsDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, txn, metadata_id, version, document))]
     pub async fn edit_document_txn(
         &self,
         txn: &Transaction<'_>,
@@ -357,6 +371,7 @@ impl DocumentsDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, parent_collection_id, template_id, template_version, title, content_type, permissions))]
     #[allow(clippy::too_many_arguments)]
     pub async fn add_document_from_template(
         &self,
@@ -386,6 +401,7 @@ impl DocumentsDataStore {
         Ok((id, version))
     }
 
+    #[tracing::instrument(skip(self, ctx, txn, parent_collection_id, title, template_id, template_version, content_type, permissions))]
     #[allow(clippy::too_many_arguments)]
     pub async fn add_document_from_template_txn(
         &self,

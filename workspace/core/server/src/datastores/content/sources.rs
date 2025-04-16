@@ -14,6 +14,7 @@ impl SourcesDataStore {
         Self { pool }
     }
 
+    #[tracing::instrument(skip(self, source))]
     pub async fn add(&self, source: &SourceInput) -> Result<Uuid, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -24,6 +25,7 @@ impl SourcesDataStore {
         Ok(id)
     }
 
+    #[tracing::instrument(skip(self))]
     pub async fn get_sources(&self) -> Result<Vec<Source>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -33,6 +35,7 @@ impl SourcesDataStore {
         Ok(rows.iter().map(|r| r.into()).collect())
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn get_source_by_id(
         &self,
         id: &Uuid,
@@ -45,6 +48,7 @@ impl SourcesDataStore {
         Ok(rows.first().map(|r| r.into()))
     }
 
+    #[tracing::instrument(skip(self, name))]
     pub async fn get_source_by_name(
         &self,
         name: &String,

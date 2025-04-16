@@ -20,6 +20,7 @@ impl MetadataSupplementaryDataStore {
         Self { pool, notifier }
     }
 
+    #[tracing::instrument(skip(self, ctx, id))]
     async fn on_metadata_changed(&self, ctx: &BoscaContext, id: &Uuid) -> Result<(), Error> {
         ctx.content.metadata.update_storage(ctx, id).await?;
         if let Err(e) = self.notifier.metadata_changed(id).await {
@@ -28,6 +29,7 @@ impl MetadataSupplementaryDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, supplementary_id, metadata_id, key, plan_id))]
     async fn on_metadata_supplementary_changed(
         &self,
         _: &BoscaContext,
@@ -51,6 +53,7 @@ impl MetadataSupplementaryDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn get_supplementary(
         &self,
         id: &Uuid,
@@ -66,6 +69,7 @@ impl MetadataSupplementaryDataStore {
         Ok(Some(rows.first().unwrap().into()))
     }
 
+    #[tracing::instrument(skip(self, metadata_id, key))]
     pub async fn get_supplementary_by_key(
         &self,
         metadata_id: &Uuid,
@@ -83,6 +87,7 @@ impl MetadataSupplementaryDataStore {
         Ok(Some(rows.first().unwrap().into()))
     }
 
+    #[tracing::instrument(skip(self, metadata_id, key, plan_id))]
     pub async fn get_supplementary_by_key_and_plan_id(
         &self,
         metadata_id: &Uuid,
@@ -101,6 +106,7 @@ impl MetadataSupplementaryDataStore {
         Ok(Some(rows.first().unwrap().into()))
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn get_supplementaries(
         &self,
         id: &Uuid,
@@ -113,6 +119,7 @@ impl MetadataSupplementaryDataStore {
         Ok(rows.iter().map(|r| r.into()).collect())
     }
 
+    #[tracing::instrument(skip(self, ctx, supplementary))]
     pub async fn add_supplementary(
         &self,
         ctx: &BoscaContext,
@@ -157,6 +164,7 @@ impl MetadataSupplementaryDataStore {
         Ok(id)
     }
 
+    #[tracing::instrument(skip(self, ctx, supplementary_id, content_type, len))]
     pub async fn set_supplementary_uploaded(
         &self,
         ctx: &BoscaContext,
@@ -179,6 +187,7 @@ impl MetadataSupplementaryDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, id))]
     pub async fn delete_supplementary(
         &self,
         ctx: &BoscaContext,
@@ -201,6 +210,7 @@ impl MetadataSupplementaryDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, id))]
     pub async fn detach_supplementary(
         &self,
         ctx: &BoscaContext,
@@ -223,6 +233,7 @@ impl MetadataSupplementaryDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, id, public))]
     pub async fn set_supplementary_public(
         &self,
         ctx: &BoscaContext,

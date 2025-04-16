@@ -218,6 +218,7 @@ impl Notifier {
             .filter_map(|msg| async move { msg.get_payload().ok() }))
     }
 
+    #[tracing::instrument(skip(self, from_state_id, to_state_id))]
     pub async fn transition_changed(
         &self,
         from_state_id: &str,
@@ -235,6 +236,7 @@ impl Notifier {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn category_changed(&self, id: &Uuid) -> async_graphql::Result<(), Error> {
         let connection = self.redis.get().await?;
         let mut conn = connection.get_connection().await?;
@@ -244,6 +246,7 @@ impl Notifier {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn metadata_changed(&self, id: &Uuid) -> async_graphql::Result<(), Error> {
         let connection = self.redis.get().await?;
         let mut conn = connection.get_connection().await?;
@@ -253,6 +256,7 @@ impl Notifier {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, supplementary_id, metadata_id, key, plan_id))]
     pub async fn metadata_supplementary_changed(
         &self,
         supplementary_id: &Uuid,
@@ -274,6 +278,7 @@ impl Notifier {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn collection_changed(&self, id: &Uuid) -> async_graphql::Result<(), Error> {
         let connection = self.redis.get().await?;
         let mut conn = connection.get_connection().await?;
@@ -283,6 +288,7 @@ impl Notifier {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, supplementary_id, collection_id, key, plan_id))]
     pub async fn collection_supplementary_changed(
         &self,
         supplementary_id: &Uuid,
@@ -304,6 +310,7 @@ impl Notifier {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn workflow_changed(&self, id: &str) -> async_graphql::Result<(), Error> {
         let connection = self.redis.get().await?;
         let mut conn = connection.get_connection().await?;
@@ -313,6 +320,7 @@ impl Notifier {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn workflow_activity_changed(&self, id: i64) -> async_graphql::Result<(), Error> {
         let connection = self.redis.get().await?;
         let mut conn = connection.get_connection().await?;
@@ -321,6 +329,7 @@ impl Notifier {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn workflow_schedule_changed(&self, id: &Uuid) -> async_graphql::Result<(), Error> {
         let connection = self.redis.get().await?;
         let mut conn = connection.get_connection().await?;
@@ -330,6 +339,7 @@ impl Notifier {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn activity_changed(&self, id: &str) -> async_graphql::Result<(), Error> {
         let connection = self.redis.get().await?;
         let mut conn = connection.get_connection().await?;
@@ -339,6 +349,7 @@ impl Notifier {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn trait_changed(&self, id: &str) -> async_graphql::Result<(), Error> {
         let connection = self.redis.get().await?;
         let mut conn = connection.get_connection().await?;
@@ -348,6 +359,7 @@ impl Notifier {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn storage_system_changed(&self, id: &str) -> async_graphql::Result<(), Error> {
         let connection = self.redis.get().await?;
         let mut conn = connection.get_connection().await?;
@@ -357,6 +369,7 @@ impl Notifier {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn model_changed(&self, id: &str) -> async_graphql::Result<(), Error> {
         let connection = self.redis.get().await?;
         let mut conn = connection.get_connection().await?;
@@ -366,6 +379,7 @@ impl Notifier {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn prompt_changed(&self, id: &str) -> async_graphql::Result<(), Error> {
         let connection = self.redis.get().await?;
         let mut conn = connection.get_connection().await?;
@@ -375,6 +389,7 @@ impl Notifier {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn state_changed(&self, id: &str) -> async_graphql::Result<(), Error> {
         let connection = self.redis.get().await?;
         let mut conn = connection.get_connection().await?;
@@ -384,6 +399,7 @@ impl Notifier {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn configuration_changed(&self, id: &str) -> async_graphql::Result<(), Error> {
         let connection = self.redis.get().await?;
         let mut conn = connection.get_connection().await?;
@@ -393,6 +409,7 @@ impl Notifier {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn workflow_plan_failed(&self, id: &WorkflowExecutionId) -> Result<(), Error> {
         let connection = self.redis.get().await?;
         let mut conn = connection.get_connection().await?;
@@ -402,6 +419,7 @@ impl Notifier {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn workflow_plan_finished(&self, id: &WorkflowExecutionId) -> Result<(), Error> {
         let connection = self.redis.get().await?;
         let mut conn = connection.get_connection().await?;

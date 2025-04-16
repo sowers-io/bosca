@@ -25,6 +25,7 @@ impl MetadataWorkflowsDataStore {
         Self { pool, notifier }
     }
 
+    #[tracing::instrument(skip(self, ctx, id))]
     async fn on_metadata_changed(&self, ctx: &BoscaContext, id: &Uuid) -> Result<(), Error> {
         ctx.content.metadata.update_storage(ctx, id).await?;
         if let Err(e) = self.notifier.metadata_changed(id).await {
@@ -33,6 +34,7 @@ impl MetadataWorkflowsDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn get_metadata_plans(&self, id: &Uuid) -> Result<Vec<(Uuid, String)>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -49,6 +51,7 @@ impl MetadataWorkflowsDataStore {
             .collect())
     }
 
+    #[tracing::instrument(skip(self, ctx, principal, metadata, to_state_id, valid, status, success, complete))]
     #[allow(clippy::too_many_arguments)]
     pub async fn set_state(
         &self,
@@ -98,6 +101,7 @@ impl MetadataWorkflowsDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, id, version))]
     pub async fn validate(&self, ctx: &BoscaContext, id: &Uuid, version: i32) -> Result<(), Error> {
         self.validate_document(ctx, id, version).await?;
         self.validate_guide(ctx, id, version).await?;
@@ -109,6 +113,7 @@ impl MetadataWorkflowsDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, id, version))]
     pub async fn validate_document(
         &self,
         ctx: &BoscaContext,
@@ -136,6 +141,7 @@ impl MetadataWorkflowsDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, id))]
     async fn set_metadata_ready(&self, ctx: &BoscaContext, id: &Uuid) -> Result<(), Error> {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
@@ -149,6 +155,7 @@ impl MetadataWorkflowsDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, metadata, configurations))]
     pub async fn set_metadata_ready_and_enqueue(
         &self,
         ctx: &BoscaContext,

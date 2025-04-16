@@ -17,6 +17,7 @@ impl WorkflowScheduleDataStore {
         Self { pool, notifier }
     }
 
+    #[tracing::instrument(skip(self, id))]
     async fn on_schedule_changed(&self, id: &Uuid) -> Result<(), Error> {
         if let Err(e) = self.notifier.workflow_schedule_changed(id).await {
             error!("Failed to notify workflow schedule changes: {:?}", e);
@@ -24,6 +25,7 @@ impl WorkflowScheduleDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self))]
     pub async fn get_all(&self) -> Result<Vec<WorkflowSchedule>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -33,6 +35,7 @@ impl WorkflowScheduleDataStore {
         Ok(result.iter().map(|c| c.into()).collect())
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn get(&self, id: &Uuid) -> Result<Option<WorkflowSchedule>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -42,6 +45,7 @@ impl WorkflowScheduleDataStore {
         Ok(result.first().map(|c| c.into()))
     }
 
+    #[tracing::instrument(skip(self, metadata_id, collection_id, schedule))]
     pub async fn add(&self, metadata_id: Option<Uuid>, collection_id: Option<Uuid>, schedule: &WorkflowScheduleInput) -> Result<Uuid, Error> {
         let schedule = schedule.create_schedule(metadata_id, collection_id)?;
         let mut connection = self.pool.get().await?;
@@ -57,6 +61,7 @@ impl WorkflowScheduleDataStore {
         Ok(id)
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn delete(&self, id: &Uuid) -> Result<(), Error> {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;

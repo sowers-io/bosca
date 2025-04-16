@@ -32,6 +32,7 @@ impl ConfigurationDataStore {
         }
     }
 
+    #[tracing::instrument(skip(self))]
     pub async fn get_configurations(&self) -> Result<Vec<Configuration>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -41,6 +42,7 @@ impl ConfigurationDataStore {
         Ok(rows.iter().map(|r| r.into()).collect())
     }
 
+    #[tracing::instrument(skip(self, key))]
     pub async fn get_configuration_by_key(&self, key: &str) -> Result<Option<Configuration>, Error> {
         let connection = self.pool.get().await?;
         let key = key.to_string();
@@ -51,6 +53,7 @@ impl ConfigurationDataStore {
         Ok(rows.first().map(|r| r.into()))
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn get_configuration_by_id(&self, id: &Uuid) -> Result<Option<Configuration>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -60,6 +63,7 @@ impl ConfigurationDataStore {
         Ok(rows.first().map(|r| r.into()))
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn get_permissions(&self, id: &Uuid) -> Result<Vec<Permission>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -69,6 +73,7 @@ impl ConfigurationDataStore {
         Ok(rows.iter().map(|r| r.into()).collect())
     }
 
+    #[tracing::instrument(skip(self, configuration))]
     pub async fn set_configuration(&self, configuration: &ConfigurationInput) -> Result<Uuid, Error> {
         let json = configuration.value.to_string();
         let (value, nonce) = self.encrypt_value(&json)?;
@@ -97,6 +102,7 @@ impl ConfigurationDataStore {
         Ok(id)
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn delete_configuration(&self, id: &Uuid) -> Result<(), Error> {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
@@ -115,6 +121,7 @@ impl ConfigurationDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, key))]
     pub async fn get_configuration_value(&self, key: &str) -> Result<Option<Value>, Error> {
         {
             let cache = self.cache.read().await;
@@ -140,6 +147,7 @@ impl ConfigurationDataStore {
         Ok(Some(json))
     }
 
+    #[tracing::instrument(skip(self))]
     fn derive_key(&self) -> Key<Aes256Gcm> {
         let mut hasher = Sha256::new();
         hasher.update(&self.security_key);
@@ -147,6 +155,7 @@ impl ConfigurationDataStore {
         Key::<Aes256Gcm>::from_slice(&result[0..32]).to_owned()
     }
 
+    #[tracing::instrument(skip(self, plaintext))]
     fn encrypt_value(&self, plaintext: &str) -> Result<(Vec<u8>, Vec<u8>), Error> {
         let key = self.derive_key();
         let cipher = Aes256Gcm::new(&key);
@@ -159,6 +168,7 @@ impl ConfigurationDataStore {
         Ok((ciphertext, nonce.to_vec()))
     }
 
+    #[tracing::instrument(skip(self, ciphertext, nonce))]
     fn decrypt_value(&self, ciphertext: &[u8], nonce: &[u8]) -> Result<String, Error> {
         let key = self.derive_key();
         let cipher = Aes256Gcm::new(&key);

@@ -1500,6 +1500,7 @@ impl WorkflowDataStore {
         self.queues.get_plan(id).await
     }
 
+    #[tracing::instrument(skip(self, queue, offset, limit))]
     pub async fn get_execution_plans(
         &self,
         queue: &str,

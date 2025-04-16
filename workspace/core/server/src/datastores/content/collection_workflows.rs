@@ -23,6 +23,7 @@ impl CollectionWorkflowsDataStore {
         Self { pool, notifier }
     }
 
+    #[tracing::instrument(skip(self, ctx, id))]
     async fn on_collection_changed(&self, ctx: &BoscaContext, id: &Uuid) -> Result<(), Error> {
         ctx.content.collections.update_storage(ctx, id).await?;
         if let Err(e) = self.notifier.collection_changed(id).await {
@@ -31,6 +32,7 @@ impl CollectionWorkflowsDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn get_plans(&self, id: &Uuid) -> Result<Vec<(Uuid, String)>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -47,6 +49,7 @@ impl CollectionWorkflowsDataStore {
             .collect())
     }
 
+    #[tracing::instrument(skip(self, ctx, principal, collection, to_state_id, valid, status, success, complete))]
     #[allow(clippy::too_many_arguments)]
     pub async fn set_state(
         &self,
@@ -96,6 +99,7 @@ impl CollectionWorkflowsDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, id))]
     pub async fn set_ready(&self, ctx: &BoscaContext, id: &Uuid) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -106,6 +110,7 @@ impl CollectionWorkflowsDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, principal, collection, configurations))]
     pub async fn set_ready_and_enqueue(
         &self,
         ctx: &BoscaContext,

@@ -37,6 +37,7 @@ impl MetadataDataStore {
         }
     }
 
+    #[tracing::instrument(skip(self, ctx, id))]
     async fn on_metadata_changed(&self, ctx: &BoscaContext, id: &Uuid) -> Result<(), Error> {
         self.update_storage(ctx, id).await?;
         if let Err(e) = self.notifier.metadata_changed(id).await {
@@ -45,6 +46,7 @@ impl MetadataDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, id))]
     async fn on_collection_changed(&self, ctx: &BoscaContext, id: &Uuid) -> Result<(), Error> {
         ctx.content.collections.update_storage(ctx, id).await?;
         if let Err(e) = self.notifier.collection_changed(id).await {

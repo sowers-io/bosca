@@ -65,6 +65,7 @@ impl JobQueues {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn get_metadata_count(&self, id: &Uuid) -> Result<i64, Error> {
         let redis = self.redis.get().await?;
         let mut conn = redis.get_connection().await?;
@@ -76,6 +77,7 @@ impl JobQueues {
         }
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn get_collection_count(&self, id: &Uuid) -> Result<i64, Error> {
         let redis = self.redis.get().await?;
         let mut conn = redis.get_connection().await?;
@@ -87,6 +89,7 @@ impl JobQueues {
         }
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn get_plan(
         &self,
         id: &WorkflowExecutionId,
@@ -104,6 +107,7 @@ impl JobQueues {
         Ok(Some(from_value::<WorkflowExecutionPlan>(configuration)?))
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn get_plan_by_job(
         &self,
         id: &WorkflowJobId,
@@ -115,6 +119,7 @@ impl JobQueues {
         self.get_plan(&id).await
     }
 
+    #[tracing::instrument(skip(self, transaction, id))]
     pub async fn get_plan_and_lock(
         &self,
         transaction: &Transaction<'_>,
@@ -132,6 +137,7 @@ impl JobQueues {
         Ok(Some(from_value::<WorkflowExecutionPlan>(configuration)?))
     }
 
+    #[tracing::instrument(skip(self, transaction, id))]
     pub async fn get_plan_and_lock_by_job(
         &self,
         transaction: &Transaction<'_>,
@@ -144,6 +150,7 @@ impl JobQueues {
         self.get_plan_and_lock(transaction, &id).await
     }
 
+    #[tracing::instrument(skip(self, workflow_id, metadata_id, metadata_version, collection_id))]
     pub async fn cancel_workflows(
         &self,
         workflow_id: &str,
@@ -208,6 +215,7 @@ impl JobQueues {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, transaction, plan, register))]
     pub async fn set_plan(
         &self,
         transaction: &Transaction<'_>,
@@ -272,6 +280,7 @@ impl JobQueues {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, queue, offset, limit))]
     pub async fn get_all_plans(
         &self,
         queue: &str,
@@ -289,6 +298,7 @@ impl JobQueues {
         Ok(plans)
     }
 
+    #[tracing::instrument(skip(self))]
     pub async fn get_failed_ids(&self) -> Result<Vec<WorkflowJobId>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection.prepare("select id, queue, configuration->'failed' as failed from workflow_plans where finished is null and (jsonb_array_length(configuration->'failed') > 0)").await?;
@@ -309,6 +319,7 @@ impl JobQueues {
         Ok(ids)
     }
 
+    #[tracing::instrument(skip(self, ids))]
     pub async fn retry_jobs(&self, ids: Vec<WorkflowJobId>) -> Result<(), Error> {
         let mut redis_txn = RedisTransaction::new();
         let mut conn = self.pool.get().await?;
@@ -324,6 +335,7 @@ impl JobQueues {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, time))]
     pub async fn check_for_expiration(&self, time: i64) -> Result<(), Error> {
         let pooled_connection = self.redis.get().await?;
         let mut connection = pooled_connection.get_connection().await?;
@@ -363,6 +375,7 @@ impl JobQueues {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, plan))]
     pub async fn enqueue_plan(
         &self,
         plan: &mut WorkflowExecutionPlan,
@@ -398,6 +411,7 @@ impl JobQueues {
         Ok(Some(plan.id.clone()))
     }
 
+    #[tracing::instrument(skip(self, job_id, plans))]
     pub async fn enqueue_job_child_workflows(
         &self,
         job_id: &WorkflowJobId,
@@ -480,6 +494,7 @@ impl JobQueues {
         )
     }
 
+    #[tracing::instrument(skip(self, pending_key, running_key))]
     async fn dequeue_from_redis(
         &self,
         pending_key: &str,
@@ -502,6 +517,7 @@ impl JobQueues {
         }
     }
 
+    #[tracing::instrument(skip(self, queue))]
     async fn dequeue_job(&self, queue: &str) -> Result<Option<WorkflowJobId>, Error> {
         let pending_key = JobQueues::pending_job_queue_key(queue);
         let running_key = JobQueues::running_job_queue_key(queue);
@@ -522,6 +538,7 @@ impl JobQueues {
         }
     }
 
+    #[tracing::instrument(skip(self, queue))]
     pub async fn dequeue(&self, queue: &str) -> Result<Option<WorkflowJob>, Error> {
         let Some(job_id) = self.dequeue_job(queue).await? else {
             return Ok(None);
@@ -557,6 +574,7 @@ impl JobQueues {
         Ok(None)
     }
 
+    #[tracing::instrument(skip(self, plan_id, context))]
     pub async fn set_execution_plan_context(
         &self,
         plan_id: &WorkflowExecutionId,
@@ -578,6 +596,7 @@ impl JobQueues {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, job_id, context))]
     pub async fn set_execution_plan_job_context(
         &self,
         job_id: &WorkflowJobId,
@@ -607,6 +626,7 @@ impl JobQueues {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, job_id, delayed_until))]
     pub async fn set_execution_plan_job_delayed(
         &self,
         job_id: &WorkflowJobId,
@@ -626,6 +646,7 @@ impl JobQueues {
         Ok(plan)
     }
 
+    #[tracing::instrument(skip(self, job_id, error))]
     pub async fn set_execution_plan_job_failed(
         &self,
         job_id: &WorkflowJobId,
@@ -645,6 +666,7 @@ impl JobQueues {
         Ok(plan)
     }
 
+    #[tracing::instrument(skip(self, job_id))]
     pub async fn set_execution_plan_job_checkin(
         &self,
         job_id: &WorkflowJobId,
@@ -666,6 +688,7 @@ impl JobQueues {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, job_id))]
     pub async fn set_execution_plan_job_complete(
         &self,
         job_id: &WorkflowJobId,

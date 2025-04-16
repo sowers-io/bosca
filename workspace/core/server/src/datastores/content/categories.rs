@@ -17,6 +17,7 @@ impl CategoriesDataStore {
         Self { pool, notifier }
     }
 
+    #[tracing::instrument(skip(self, id))]
     async fn on_category_changed(&self, id: &Uuid) -> Result<(), Error> {
         if let Err(e) = self.notifier.category_changed(id).await {
             error!("Failed to notify category changes: {:?}", e);
@@ -24,6 +25,7 @@ impl CategoriesDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self))]
     pub async fn get_all(&self) -> Result<Vec<Category>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
@@ -33,6 +35,7 @@ impl CategoriesDataStore {
         Ok(result.iter().map(|c| c.into()).collect())
     }
 
+    #[tracing::instrument(skip(self, category))]
     pub async fn add(&self, category: &CategoryInput) -> Result<Uuid, Error> {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
@@ -46,6 +49,7 @@ impl CategoriesDataStore {
         Ok(category_id)
     }
 
+    #[tracing::instrument(skip(self, id, category))]
     pub async fn edit(&self, id: &Uuid, category: &CategoryInput) -> Result<(), Error> {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
@@ -58,6 +62,7 @@ impl CategoriesDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn delete(&self, id: &Uuid) -> Result<(), Error> {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;

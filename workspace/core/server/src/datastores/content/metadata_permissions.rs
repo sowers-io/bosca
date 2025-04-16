@@ -33,6 +33,7 @@ impl MetadataPermissionsDataStore {
         }
     }
 
+    #[tracing::instrument(skip(self, id))]
     async fn on_metadata_changed(&self, id: &Uuid) -> Result<(), Error> {
         if let Err(e) = self.notifier.metadata_changed(id).await {
             error!("Failed to notify metadata changes: {:?}", e);

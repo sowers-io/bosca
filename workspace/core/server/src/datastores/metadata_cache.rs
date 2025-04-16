@@ -20,10 +20,12 @@ impl MetadataCache {
         }
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn get_metadata(&self, id: &Uuid) -> Option<Metadata> {
         self.metadata_id.get(id).await
     }
 
+    #[tracing::instrument(skip(self, id, version))]
     pub async fn get_metadata_by_version(&self, id: &Uuid, version: i32) -> Option<Metadata> {
         let metadata = self.metadata_id.get(id).await;
         if let Some(metadata) = metadata {
@@ -34,12 +36,14 @@ impl MetadataCache {
         None
     }
 
+    #[tracing::instrument(skip(self, metadata))]
     pub async fn set_metadata(&self, metadata: &Metadata) {
         if metadata.version == metadata.active_version {
             self.metadata_id.set(&metadata.id, metadata).await;
         }
     }
 
+    #[tracing::instrument(skip(self, id))]
     pub async fn evict_metadata(&self, id: &Uuid) {
         self.metadata_id.remove(id).await;
     }

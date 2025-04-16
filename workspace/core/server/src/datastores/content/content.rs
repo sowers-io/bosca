@@ -82,6 +82,7 @@ impl ContentDataStore {
         }
     }
 
+    #[tracing::instrument(skip(self, slug))]
     pub async fn get_slug(&self, slug: &str) -> async_graphql::Result<Option<Slug>, Error> {
         let slug = slug.to_string();
         if let Some(s) = self.slug_cache.get(&slug).await {
