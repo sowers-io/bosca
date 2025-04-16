@@ -1,31 +1,31 @@
-use crate::datastores::content::collection_permissions::CollectionPermissionsDataStore;
-use crate::datastores::content::collection_workflows::CollectionWorkflowsDataStore;
-use crate::datastores::content::collections::CollectionsDataStore;
-use crate::datastores::content::documents::DocumentsDataStore;
-use crate::datastores::content::metadata::MetadataDataStore;
-use crate::datastores::content::metadata_permissions::MetadataPermissionsDataStore;
-use crate::datastores::content::metadata_workflows::MetadataWorkflowsDataStore;
-use crate::datastores::notifier::Notifier;
-use crate::models::content::slug::{Slug, SlugType};
-use async_graphql::Error;
-use deadpool_postgres::Pool;
-use std::sync::Arc;
-use uuid::Uuid;
 use crate::datastores::bible::bible::BiblesDataStore;
 use crate::datastores::cache::cache::{BoscaCache, BoscaCacheInterface};
 use crate::datastores::cache::manager::BoscaCacheManager;
 use crate::datastores::cache::tiered_cache::TieredCacheType;
 use crate::datastores::content::categories::CategoriesDataStore;
+use crate::datastores::content::collection_permissions::CollectionPermissionsDataStore;
 use crate::datastores::content::collection_supplementary::CollectionSupplementaryDataStore;
 use crate::datastores::content::collection_templates::CollectionTemplatesDataStore;
+use crate::datastores::content::collection_workflows::CollectionWorkflowsDataStore;
+use crate::datastores::content::collections::CollectionsDataStore;
+use crate::datastores::content::documents::DocumentsDataStore;
 use crate::datastores::content::guides::GuidesDataStore;
+use crate::datastores::content::metadata::MetadataDataStore;
+use crate::datastores::content::metadata_permissions::MetadataPermissionsDataStore;
 use crate::datastores::content::metadata_supplementary::MetadataSupplementaryDataStore;
+use crate::datastores::content::metadata_workflows::MetadataWorkflowsDataStore;
 use crate::datastores::content::sources::SourcesDataStore;
+use crate::datastores::notifier::Notifier;
+use crate::models::content::slug::{Slug, SlugType};
+use async_graphql::Error;
+use bosca_database::TracingPool;
+use std::sync::Arc;
+use uuid::Uuid;
 
 #[derive(Clone)]
 pub struct ContentDataStore {
     slug_cache: BoscaCache<String, Slug>,
-    pool: Arc<Pool>,
+    pool: TracingPool,
 
     pub categories: CategoriesDataStore,
     pub collections: CollectionsDataStore,
@@ -45,39 +45,39 @@ pub struct ContentDataStore {
 
 impl ContentDataStore {
 
-    pub async fn new(pool: Arc<Pool>, cache: &mut BoscaCacheManager, notifier: Arc<Notifier>) -> Self {
+    pub async fn new(pool: TracingPool, cache: &mut BoscaCacheManager, notifier: Arc<Notifier>) -> Self {
         Self {
             slug_cache: cache.new_string_tiered_cache("slugs", 5000, TieredCacheType::Slug).await,
-            categories: CategoriesDataStore::new(Arc::clone(&pool), Arc::clone(&notifier)),
-            collections: CollectionsDataStore::new(Arc::clone(&pool), Arc::clone(&notifier)),
-            collection_supplementary: CollectionSupplementaryDataStore::new(Arc::clone(&pool), Arc::clone(&notifier)),
+            categories: CategoriesDataStore::new(pool.clone(), Arc::clone(&notifier)),
+            collections: CollectionsDataStore::new(pool.clone(), Arc::clone(&notifier)),
+            collection_supplementary: CollectionSupplementaryDataStore::new(pool.clone(), Arc::clone(&notifier)),
             collection_permissions: CollectionPermissionsDataStore::new(
-                Arc::clone(&pool),
+                pool.clone(),
                 cache,
                 Arc::clone(&notifier),
             ).await,
             collection_workflows: CollectionWorkflowsDataStore::new(
-                Arc::clone(&pool),
+                pool.clone(),
                 Arc::clone(&notifier),
             ),
             collection_templates: CollectionTemplatesDataStore::new(
-                Arc::clone(&pool),
+                pool.clone(),
             ),
-            metadata: MetadataDataStore::new(Arc::clone(&pool), cache, Arc::clone(&notifier)).await,
-            metadata_supplementary: MetadataSupplementaryDataStore::new(Arc::clone(&pool), Arc::clone(&notifier)),
+            metadata: MetadataDataStore::new(pool.clone(), cache, Arc::clone(&notifier)).await,
+            metadata_supplementary: MetadataSupplementaryDataStore::new(pool.clone(), Arc::clone(&notifier)),
             metadata_permissions: MetadataPermissionsDataStore::new(
-                Arc::clone(&pool),
+                pool.clone(),
                 cache,
                 Arc::clone(&notifier),
             ).await,
             metadata_workflows: MetadataWorkflowsDataStore::new(
-                Arc::clone(&pool),
+                pool.clone(),
                 Arc::clone(&notifier),
             ),
-            documents: DocumentsDataStore::new(Arc::clone(&pool), Arc::clone(&notifier)),
-            guides: GuidesDataStore::new(Arc::clone(&pool), Arc::clone(&notifier)),
-            sources: SourcesDataStore::new(Arc::clone(&pool)),
-            bibles: BiblesDataStore::new(Arc::clone(&pool), Arc::clone(&notifier)),
+            documents: DocumentsDataStore::new(pool.clone(), Arc::clone(&notifier)),
+            guides: GuidesDataStore::new(pool.clone(), Arc::clone(&notifier)),
+            sources: SourcesDataStore::new(pool.clone()),
+            bibles: BiblesDataStore::new(pool.clone(), Arc::clone(&notifier)),
             pool,
         }
     }

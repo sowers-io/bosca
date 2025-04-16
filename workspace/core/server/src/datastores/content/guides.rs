@@ -11,21 +11,22 @@ use crate::models::content::metadata::MetadataInput;
 use crate::models::content::metadata_profile::MetadataProfileInput;
 use crate::models::security::permission::{Permission, PermissionAction};
 use async_graphql::*;
-use deadpool_postgres::{GenericClient, Pool, Transaction};
+use deadpool_postgres::{GenericClient, Transaction};
 use log::{error, info};
 use rrule::RRuleSet;
 use serde_json::json;
 use std::sync::Arc;
 use uuid::Uuid;
+use bosca_database::TracingPool;
 
 #[derive(Clone)]
 pub struct GuidesDataStore {
-    pool: Arc<Pool>,
+    pool: TracingPool,
     notifier: Arc<Notifier>,
 }
 
 impl GuidesDataStore {
-    pub fn new(pool: Arc<Pool>, notifier: Arc<Notifier>) -> Self {
+    pub fn new(pool: TracingPool, notifier: Arc<Notifier>) -> Self {
         Self { pool, notifier }
     }
 

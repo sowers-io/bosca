@@ -10,21 +10,22 @@ use crate::models::content::template_attribute::TemplateAttribute;
 use crate::models::content::template_workflow::TemplateWorkflow;
 use crate::models::security::permission::{Permission, PermissionAction};
 use async_graphql::*;
-use deadpool_postgres::{GenericClient, Pool, Transaction};
+use deadpool_postgres::{GenericClient, Transaction};
 use log::error;
 use serde_json::json;
 use std::sync::Arc;
 use uuid::Uuid;
+use bosca_database::TracingPool;
 use crate::models::content::document_template_container_type::DocumentTemplateContainerType;
 
 #[derive(Clone)]
 pub struct DocumentsDataStore {
-    pool: Arc<Pool>,
+    pool: TracingPool,
     notifier: Arc<Notifier>,
 }
 
 impl DocumentsDataStore {
-    pub fn new(pool: Arc<Pool>, notifier: Arc<Notifier>) -> Self {
+    pub fn new(pool: TracingPool, notifier: Arc<Notifier>) -> Self {
         Self { pool, notifier }
     }
 

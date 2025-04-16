@@ -5,21 +5,22 @@ use crate::models::security::principal::Principal;
 use crate::models::workflow::enqueue_request::EnqueueRequest;
 use async_graphql::*;
 use chrono::{DateTime, Utc};
-use deadpool_postgres::{GenericClient, Pool};
+use deadpool_postgres::GenericClient;
 use log::error;
 use std::sync::Arc;
 use uuid::Uuid;
+use bosca_database::TracingPool;
 use crate::context::BoscaContext;
 use crate::workflow::core_workflow_ids::COLLECTION_PROCESS;
 
 #[derive(Clone)]
 pub struct CollectionWorkflowsDataStore {
-    pool: Arc<Pool>,
+    pool: TracingPool,
     notifier: Arc<Notifier>,
 }
 
 impl CollectionWorkflowsDataStore {
-    pub fn new(pool: Arc<Pool>, notifier: Arc<Notifier>) -> Self {
+    pub fn new(pool: TracingPool, notifier: Arc<Notifier>) -> Self {
         Self { pool, notifier }
     }
 

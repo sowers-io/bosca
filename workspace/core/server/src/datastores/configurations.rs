@@ -2,7 +2,7 @@ use std::collections::HashMap;
 use std::str::FromStr;
 use crate::datastores::notifier::Notifier;
 use async_graphql::Error;
-use deadpool_postgres::{GenericClient, Pool};
+use deadpool_postgres::GenericClient;
 use std::sync::Arc;
 use aes_gcm::{Aes256Gcm, Key, Nonce};
 use aes_gcm::aead::{Aead, KeyInit};
@@ -11,19 +11,20 @@ use sha2::{Digest, Sha256};
 use serde_json::Value;
 use tokio::sync::RwLock;
 use uuid::Uuid;
+use bosca_database::TracingPool;
 use crate::models::configuration::configuration::{Configuration, ConfigurationInput};
 use crate::models::security::permission::Permission;
 
 #[derive(Clone)]
 pub struct ConfigurationDataStore {
-    pool: Arc<Pool>,
+    pool: TracingPool,
     notifier: Arc<Notifier>,
     security_key: String,
     cache: Arc<RwLock<HashMap<String, Value>>>,
 }
 
 impl ConfigurationDataStore {
-    pub fn new(pool: Arc<Pool>, security_key: String, notifier: Arc<Notifier>) -> Self {
+    pub fn new(pool: TracingPool, security_key: String, notifier: Arc<Notifier>) -> Self {
         Self {
             pool,
             notifier,

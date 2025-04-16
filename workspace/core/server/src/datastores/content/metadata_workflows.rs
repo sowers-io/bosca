@@ -9,19 +9,20 @@ use crate::models::workflow::enqueue_request::EnqueueRequest;
 use crate::workflow::core_workflow_ids::METADATA_PROCESS;
 use async_graphql::*;
 use chrono::DateTime;
-use deadpool_postgres::{GenericClient, Pool};
+use deadpool_postgres::GenericClient;
 use log::error;
 use std::sync::Arc;
 use uuid::Uuid;
+use bosca_database::TracingPool;
 
 #[derive(Clone)]
 pub struct MetadataWorkflowsDataStore {
-    pool: Arc<Pool>,
+    pool: TracingPool,
     notifier: Arc<Notifier>,
 }
 
 impl MetadataWorkflowsDataStore {
-    pub fn new(pool: Arc<Pool>, notifier: Arc<Notifier>) -> Self {
+    pub fn new(pool: TracingPool, notifier: Arc<Notifier>) -> Self {
         Self { pool, notifier }
     }
 

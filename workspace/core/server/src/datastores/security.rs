@@ -11,16 +11,16 @@ use crate::security::token::Token;
 use crate::util::signed_url::{sign_url, verify_signed_url};
 use async_graphql::*;
 use chrono::{DateTime, Utc};
-use deadpool_postgres::{GenericClient, Object, Pool};
+use deadpool_postgres::{GenericClient, Object};
 use log::warn;
 use serde_json::Value;
-use std::sync::Arc;
 use uuid::Uuid;
+use bosca_database::TracingPool;
 
 #[derive(Clone)]
 pub struct SecurityDataStore {
     cache: SecurityCache,
-    pool: Arc<Pool>,
+    pool: TracingPool,
     jwt: Jwt,
     url_secret_key: String,
 }
@@ -49,7 +49,7 @@ impl Debug for RefreshToken {
 impl SecurityDataStore {
     pub async fn new(
         cache: &mut BoscaCacheManager,
-        pool: Arc<Pool>,
+        pool: TracingPool,
         jwt: Jwt,
         url_secret_key: String,
     ) -> Self {

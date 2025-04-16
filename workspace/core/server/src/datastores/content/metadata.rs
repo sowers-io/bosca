@@ -15,21 +15,22 @@ use crate::models::content::metadata_relationship::{
 use crate::models::workflow::enqueue_request::EnqueueRequest;
 use crate::workflow::core_workflow_ids::{METADATA_DELETE_FINALIZE, METADATA_UPDATE_STORAGE};
 use async_graphql::*;
-use deadpool_postgres::{Pool, Transaction};
+use deadpool_postgres::Transaction;
 use log::error;
 use serde_json::{Map, Value};
 use std::sync::Arc;
 use uuid::Uuid;
+use bosca_database::TracingPool;
 
 #[derive(Clone)]
 pub struct MetadataDataStore {
     cache: MetadataCache,
-    pool: Arc<Pool>,
+    pool: TracingPool,
     notifier: Arc<Notifier>,
 }
 
 impl MetadataDataStore {
-    pub async fn new(pool: Arc<Pool>, cache: &mut BoscaCacheManager, notifier: Arc<Notifier>) -> Self {
+    pub async fn new(pool: TracingPool, cache: &mut BoscaCacheManager, notifier: Arc<Notifier>) -> Self {
         Self {
             cache: MetadataCache::new(cache).await,
             pool,

@@ -15,7 +15,7 @@ use crate::models::security::permission::{Permission, PermissionAction};
 use crate::models::workflow::enqueue_request::EnqueueRequest;
 use crate::workflow::core_workflow_ids::COLLECTION_UPDATE_STORAGE;
 use async_graphql::*;
-use deadpool_postgres::{GenericClient, Pool, Transaction};
+use deadpool_postgres::{GenericClient, Transaction};
 use log::error;
 use postgres_types::ToSql;
 use serde_json::Value;
@@ -23,15 +23,16 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use tokio_postgres::Statement;
 use uuid::Uuid;
+use bosca_database::TracingPool;
 
 #[derive(Clone)]
 pub struct CollectionsDataStore {
-    pool: Arc<Pool>,
+    pool: TracingPool,
     notifier: Arc<Notifier>,
 }
 
 impl CollectionsDataStore {
-    pub fn new(pool: Arc<Pool>, notifier: Arc<Notifier>) -> Self {
+    pub fn new(pool: TracingPool, notifier: Arc<Notifier>) -> Self {
         Self { pool, notifier }
     }
 

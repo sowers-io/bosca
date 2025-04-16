@@ -50,7 +50,7 @@ pub struct BoscaContext {
 impl BoscaContext {
     pub async fn new() -> Result<BoscaContext, Error> {
         info!("Connecting to Database");
-        let bosca_pool = build_pool("DATABASE_URL");
+        let bosca_pool = build_pool("DATABASE_URL")?;
         let url_secret_key = match env::var("URL_SECRET_KEY") {
             Ok(url_secret_key) => url_secret_key,
             _ => {
@@ -74,7 +74,7 @@ impl BoscaContext {
         let redis_notifier_client = new_redis_client("REDIS_NOTIFIER_PUBSUB").await?;
         let notifier = Arc::new(Notifier::new(redis_notifier_client.clone()));
         let jobs = JobQueues::new(
-            Arc::clone(&bosca_pool),
+            bosca_pool.clone(),
             redis_jobs_queue_client.clone(),
             Arc::clone(&notifier),
         );
@@ -85,29 +85,29 @@ impl BoscaContext {
         let ctx = BoscaContext {
             security: SecurityDataStore::new(
                 &mut cache,
-                Arc::clone(&bosca_pool),
+                bosca_pool.clone(),
                 new_jwt(),
                 url_secret_key,
             )
             .await,
             workflow: WorkflowDataStore::new(
-                Arc::clone(&bosca_pool),
+                bosca_pool.clone(),
                 &mut cache,
                 jobs.clone(),
                 Arc::clone(&notifier),
             )
             .await,
             workflow_schedule: WorkflowScheduleDataStore::new(
-                Arc::clone(&bosca_pool),
+                bosca_pool.clone(),
                 Arc::clone(&notifier),
             ),
             configuration: ConfigurationDataStore::new(
-                Arc::clone(&bosca_pool),
+                bosca_pool.clone(),
                 configuration_secret_key,
                 Arc::clone(&notifier),
             ),
-            profile: ProfileDataStore::new(Arc::clone(&bosca_pool)),
-            queries: PersistedQueriesDataStore::new(Arc::clone(&bosca_pool)).await,
+            profile: ProfileDataStore::new(bosca_pool.clone()),
+            queries: PersistedQueriesDataStore::new(bosca_pool.clone()).await,
             content: ContentDataStore::new(bosca_pool, &mut cache, Arc::clone(&notifier)).await,
             notifier,
             search,

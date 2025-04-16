@@ -1,12 +1,12 @@
 use async_graphql::*;
-use deadpool_postgres::{GenericClient, Pool};
-use std::sync::Arc;
+use deadpool_postgres::GenericClient;
 use async_graphql::parser::parse_query;
+use bosca_database::TracingPool;
 use crate::queries::PersistedQueriesCache;
 
 #[derive(Clone)]
 pub struct PersistedQueriesDataStore {
-    pool: Arc<Pool>,
+    pool: TracingPool,
     pub cache: PersistedQueriesCache,
 }
 
@@ -24,7 +24,7 @@ pub struct PersistedQueryInput {
 }
 
 impl PersistedQueriesDataStore {
-    pub async fn new(pool: Arc<Pool>) -> Self {
+    pub async fn new(pool: TracingPool) -> Self {
         let ds = Self { pool, cache: PersistedQueriesCache::new() };
         ds.update_cache().await.unwrap();
         ds

@@ -4,19 +4,19 @@ use crate::models::content::metadata_supplementary::{
     MetadataSupplementary, MetadataSupplementaryInput,
 };
 use async_graphql::*;
-use deadpool_postgres::Pool;
 use log::error;
 use std::sync::Arc;
 use uuid::Uuid;
+use bosca_database::TracingPool;
 
 #[derive(Clone)]
 pub struct MetadataSupplementaryDataStore {
-    pool: Arc<Pool>,
+    pool: TracingPool,
     notifier: Arc<Notifier>,
 }
 
 impl MetadataSupplementaryDataStore {
-    pub fn new(pool: Arc<Pool>, notifier: Arc<Notifier>) -> Self {
+    pub fn new(pool: TracingPool, notifier: Arc<Notifier>) -> Self {
         Self { pool, notifier }
     }
 

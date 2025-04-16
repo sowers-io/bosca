@@ -5,21 +5,22 @@ use crate::models::bible::book::Book;
 use crate::models::bible::chapter::Chapter;
 use crate::models::bible::components::component::Component;
 use async_graphql::Error;
-use deadpool_postgres::{GenericClient, Pool};
+use deadpool_postgres::GenericClient;
 use serde_json::json;
 use std::sync::Arc;
 use log::error;
 use uuid::Uuid;
+use bosca_database::TracingPool;
 use crate::models::bible::components::style::Style;
 
 #[derive(Clone)]
 pub struct BiblesDataStore {
-    pool: Arc<Pool>,
+    pool: TracingPool,
     notifier: Arc<Notifier>,
 }
 
 impl BiblesDataStore {
-    pub fn new(pool: Arc<Pool>, notifier: Arc<Notifier>) -> Self {
+    pub fn new(pool: TracingPool, notifier: Arc<Notifier>) -> Self {
         Self { pool, notifier }
     }
 

@@ -3,16 +3,35 @@ use std::path::PathBuf;
 use std::process::exit;
 use std::str::FromStr;
 use std::sync::Arc;
-use deadpool_postgres::{Config, ManagerConfig, Pool, PoolConfig, RecyclingMethod, Runtime, Timeouts};
+use deadpool_postgres::{Config, CreatePoolError, ManagerConfig, Object, Pool, PoolConfig, PoolError, RecyclingMethod, Runtime, Timeouts};
 use base64::Engine;
 use rustls::pki_types::CertificateDer;
 use rustls::pki_types::pem::PemObject;
 use rustls::RootCertStore;
 use tokio_postgres::NoTls;
 use tokio_postgres_rustls::MakeRustlsConnect;
-use log::info;
+use log::{debug, info};
 
-pub fn build_pool(key: &str) -> Arc<Pool> {
+#[derive(Clone)]
+pub struct TracingPool {
+    pool: Arc<Pool>,
+}
+
+impl TracingPool {
+
+    pub fn new(pool: Arc<Pool>) -> Self {
+        Self { pool }
+    }
+
+    #[tracing::instrument(skip(self))]
+    pub async fn get(&self) -> Result<Object, PoolError> {
+        let object = self.pool.get().await?;
+        debug!("got object from pool");
+        Ok(object)
+    }
+}
+
+pub fn build_pool(key: &str) -> Result<TracingPool, CreatePoolError> {
     let mut config = Config::new();
     match env::var(key) {
         Ok(db_url) => config.url = Some(db_url),
@@ -47,7 +66,7 @@ pub fn build_pool(key: &str) -> Arc<Pool> {
             .with_root_certificates(store)
             .with_no_client_auth();
         let tls = MakeRustlsConnect::new(tls_config);
-        return Arc::new(config.create_pool(Some(Runtime::Tokio1), tls).unwrap());
+        return Ok(TracingPool::new(Arc::new(config.create_pool(Some(Runtime::Tokio1), tls)?)));
     }
     let cert_b64_key = format!("{}_CERT_B64", key);
     if let Ok(cert) = env::var(cert_b64_key.as_str()) {
@@ -62,7 +81,7 @@ pub fn build_pool(key: &str) -> Arc<Pool> {
             .with_root_certificates(store)
             .with_no_client_auth();
         let tls = MakeRustlsConnect::new(tls_config);
-        return Arc::new(config.create_pool(Some(Runtime::Tokio1), tls).unwrap());
+        return Ok(TracingPool::new(Arc::new(config.create_pool(Some(Runtime::Tokio1), tls)?)));
     }
-    Arc::new(config.create_pool(Some(Runtime::Tokio1), NoTls).unwrap())
+    Ok(TracingPool::new(Arc::new(config.create_pool(Some(Runtime::Tokio1), NoTls)?)))
 }

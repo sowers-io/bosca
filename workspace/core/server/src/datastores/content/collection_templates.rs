@@ -1,18 +1,18 @@
 use async_graphql::*;
-use deadpool_postgres::{GenericClient, Pool, Transaction};
-use std::sync::Arc;
+use deadpool_postgres::{GenericClient, Transaction};
 use uuid::Uuid;
+use bosca_database::TracingPool;
 use crate::models::content::collection_template::{CollectionTemplate, CollectionTemplateInput};
 use crate::models::content::template_attribute::TemplateAttribute;
 use crate::models::content::template_workflow::TemplateWorkflow;
 
 #[derive(Clone)]
 pub struct CollectionTemplatesDataStore {
-    pool: Arc<Pool>,
+    pool: TracingPool,
 }
 
 impl CollectionTemplatesDataStore {
-    pub fn new(pool: Arc<Pool>) -> Self {
+    pub fn new(pool: TracingPool) -> Self {
         Self { pool }
     }
 

@@ -6,15 +6,15 @@ use crate::models::profiles::profile_attribute_type::{
     ProfileAttributeType, ProfileAttributeTypeInput,
 };
 use async_graphql::Error;
-use deadpool_postgres::{GenericClient, Pool, Transaction};
-use std::sync::Arc;
+use deadpool_postgres::{GenericClient, Transaction};
 use uuid::Uuid;
+use bosca_database::TracingPool;
 use crate::models::workflow::enqueue_request::EnqueueRequest;
 use crate::workflow::core_workflow_ids::PROFILE_UPDATE_STORAGE;
 
 #[derive(Clone)]
 pub struct ProfileDataStore {
-    pool: Arc<Pool>,
+    pool: TracingPool,
 }
 
 impl Debug for ProfileDataStore {
@@ -24,7 +24,7 @@ impl Debug for ProfileDataStore {
 }
 
 impl ProfileDataStore {
-    pub fn new(pool: Arc<Pool>) -> Self {
+    pub fn new(pool: TracingPool) -> Self {
         Self { pool }
     }
 

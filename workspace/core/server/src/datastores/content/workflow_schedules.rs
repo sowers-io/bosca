@@ -1,19 +1,20 @@
 use crate::datastores::notifier::Notifier;
 use async_graphql::*;
-use deadpool_postgres::{GenericClient, Pool};
+use deadpool_postgres::GenericClient;
 use std::sync::Arc;
 use log::error;
 use uuid::Uuid;
+use bosca_database::TracingPool;
 use crate::models::workflow::workflow_schedule::{WorkflowSchedule, WorkflowScheduleInput};
 
 #[derive(Clone)]
 pub struct WorkflowScheduleDataStore {
-    pool: Arc<Pool>,
+    pool: TracingPool,
     notifier: Arc<Notifier>,
 }
 
 impl WorkflowScheduleDataStore {
-    pub fn new(pool: Arc<Pool>, notifier: Arc<Notifier>) -> Self {
+    pub fn new(pool: TracingPool, notifier: Arc<Notifier>) -> Self {
         Self { pool, notifier }
     }
 

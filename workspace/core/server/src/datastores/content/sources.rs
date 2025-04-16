@@ -1,16 +1,15 @@
 use crate::models::content::source::{Source, SourceInput};
 use async_graphql::Error;
-use deadpool_postgres::Pool;
-use std::sync::Arc;
 use uuid::Uuid;
+use bosca_database::TracingPool;
 
 #[derive(Clone)]
 pub struct SourcesDataStore {
-    pool: Arc<Pool>,
+    pool: TracingPool,
 }
 
 impl SourcesDataStore {
-    pub fn new(pool: Arc<Pool>) -> Self {
+    pub fn new(pool: TracingPool) -> Self {
         Self { pool }
     }
 

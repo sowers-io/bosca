@@ -25,7 +25,7 @@ use crate::workflow::core_workflow_ids::STORAGE_INDEX_INITIALIZE;
 use crate::workflow::queue::JobQueues;
 use async_graphql::*;
 use chrono::{DateTime, Utc};
-use deadpool_postgres::{GenericClient, Pool, Transaction};
+use deadpool_postgres::{GenericClient, Transaction};
 use log::{error, info, warn};
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
@@ -34,10 +34,11 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::sleep;
 use uuid::Uuid;
+use bosca_database::TracingPool;
 
 #[derive(Clone)]
 pub struct WorkflowDataStore {
-    pool: Arc<Pool>,
+    pool: TracingPool,
     queues: JobQueues,
     cache: WorkflowCache,
     notifier: Arc<Notifier>,
@@ -45,7 +46,7 @@ pub struct WorkflowDataStore {
 
 impl WorkflowDataStore {
     pub async fn new(
-        pool: Arc<Pool>,
+        pool: TracingPool,
         cache: &mut BoscaCacheManager,
         queues: JobQueues,
         notifier: Arc<Notifier>,

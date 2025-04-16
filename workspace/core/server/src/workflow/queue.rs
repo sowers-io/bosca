@@ -10,7 +10,7 @@ use crate::workflow::transaction::RedisTransactionOp::{
 use crate::workflow::transaction::{RedisTransaction, RedisTransactionOp};
 use async_graphql::Error;
 use chrono::{DateTime, Utc};
-use deadpool_postgres::{GenericClient, Pool, Transaction};
+use deadpool_postgres::{GenericClient, Transaction};
 use log::{debug, error, info};
 use redis::{AsyncCommands, Script};
 use serde_json::{from_value, json, Value};
@@ -18,10 +18,11 @@ use std::collections::HashSet;
 use std::str::from_utf8;
 use std::sync::Arc;
 use uuid::Uuid;
+use bosca_database::TracingPool;
 
 #[derive(Clone)]
 pub struct JobQueues {
-    pool: Arc<Pool>,
+    pool: TracingPool,
     redis: RedisClient,
     notifier: Arc<Notifier>,
 }
@@ -30,7 +31,7 @@ const QUEUE_PLAN_PREFIX: &str = "queue::plan";
 const QUEUE_JOB_PREFIX: &str = "queue::job";
 
 impl JobQueues {
-    pub fn new(pool: Arc<Pool>, redis: RedisClient, notifier: Arc<Notifier>) -> Self {
+    pub fn new(pool: TracingPool, redis: RedisClient, notifier: Arc<Notifier>) -> Self {
         Self {
             pool,
             redis,

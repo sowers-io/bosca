@@ -8,20 +8,21 @@ use crate::models::security::permission::{Permission, PermissionAction};
 use crate::models::security::principal::Principal;
 use crate::security::evaluator::Evaluator;
 use async_graphql::*;
-use deadpool_postgres::{GenericClient, Pool, Transaction};
+use deadpool_postgres::{GenericClient, Transaction};
 use log::error;
 use std::sync::Arc;
 use uuid::Uuid;
+use bosca_database::TracingPool;
 
 #[derive(Clone)]
 pub struct MetadataPermissionsDataStore {
     permission_cache: BoscaCache<Uuid, Vec<Permission>>,
-    pool: Arc<Pool>,
+    pool: TracingPool,
     notifier: Arc<Notifier>,
 }
 
 impl MetadataPermissionsDataStore {
-    pub async fn new(pool: Arc<Pool>, cache: &mut BoscaCacheManager, notifier: Arc<Notifier>) -> Self {
+    pub async fn new(pool: TracingPool, cache: &mut BoscaCacheManager, notifier: Arc<Notifier>) -> Self {
         Self {
             pool,
             permission_cache: cache.new_id_tiered_cache(

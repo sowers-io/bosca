@@ -11,7 +11,7 @@ mod embedded {
 #[tokio::main(flavor = "multi_thread")]
 async fn main() {
     ring::default_provider().install_default().unwrap();
-    let bosca_pool = build_pool("DATABASE_URL");
+    let bosca_pool = build_pool("DATABASE_URL").unwrap();
     let mut conn = bosca_pool.get().await.unwrap();
     let client = conn.deref_mut().deref_mut();
     embedded::migrations::runner().run_async(client).await.unwrap();
