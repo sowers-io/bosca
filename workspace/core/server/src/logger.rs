@@ -18,6 +18,8 @@ struct LoggerExtension;
 
 #[async_trait::async_trait]
 impl Extension for LoggerExtension {
+
+    #[tracing::instrument(skip(self, ctx, query, variables, next))]
     async fn parse_query(
         &self,
         ctx: &ExtensionContext<'_>,
@@ -42,6 +44,7 @@ impl Extension for LoggerExtension {
         Ok(document)
     }
 
+    #[tracing::instrument(skip(self, ctx, operation_name, next))]
     async fn execute(
         &self,
         ctx: &ExtensionContext<'_>,

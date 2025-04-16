@@ -22,6 +22,7 @@ pub struct Params {
     redirect: Option<String>,
 }
 
+#[tracing::instrument(skip(ctx, params))]
 async fn get_supplementary(
     ctx: &BoscaContext,
     params: &Params,
@@ -37,6 +38,7 @@ async fn get_supplementary(
     Ok(None)
 }
 
+#[tracing::instrument(skip(ctx, params, headers, request))]
 pub async fn metadata_download(
     State(ctx): State<BoscaContext>,
     Query(params): Query<Params>,
@@ -148,6 +150,7 @@ pub async fn metadata_download(
     Ok((headers, body))
 }
 
+#[tracing::instrument(skip(ctx, headers, params, multipart))]
 pub async fn metadata_upload(
     State(ctx): State<BoscaContext>,
     headers: HeaderMap,

@@ -16,6 +16,7 @@ pub struct Params {
     redirect: Option<String>,
 }
 
+#[tracing::instrument(skip(ctx, params, headers, request))]
 pub async fn collection_download(
     State(ctx): State<BoscaContext>,
     Query(params): Query<Params>,
@@ -102,6 +103,7 @@ pub async fn collection_download(
     Ok((headers, body))
 }
 
+#[tracing::instrument(skip(ctx, headers, params, multipart))]
 pub async fn collection_upload(
     State(ctx): State<BoscaContext>,
     headers: HeaderMap,

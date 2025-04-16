@@ -22,6 +22,7 @@ pub struct Params {
     supplementary_id: Option<String>,
 }
 
+#[tracing::instrument(skip(ctx, params))]
 async fn get_supplementary(
     ctx: &BoscaContext,
     params: &Params,
@@ -37,6 +38,7 @@ async fn get_supplementary(
     })
 }
 
+#[tracing::instrument(skip(ctx, slug, params, headers))]
 pub async fn slug(
     State(ctx): State<BoscaContext>,
     Path(PathParams { slug }): Path<PathParams>,

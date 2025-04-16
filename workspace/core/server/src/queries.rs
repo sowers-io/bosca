@@ -19,6 +19,7 @@ impl PersistedQueriesCache {
 #[async_trait::async_trait]
 impl CacheStorage for PersistedQueriesCache {
 
+    #[tracing::instrument(skip(self, key))]
     async fn get(&self, key: String) -> Option<ExecutableDocument> {
         let queries = self.queries.read().await;
         let document = queries.get(&key);
