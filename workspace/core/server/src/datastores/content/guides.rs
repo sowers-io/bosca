@@ -13,9 +13,10 @@ use crate::models::security::permission::{Permission, PermissionAction};
 use async_graphql::*;
 use deadpool_postgres::{GenericClient, Transaction};
 use log::{error, info};
-use rrule::RRuleSet;
+use rrule::{RRuleSet, Tz};
 use serde_json::json;
 use std::sync::Arc;
+use chrono::Utc;
 use uuid::Uuid;
 use bosca_database::TracingPool;
 
@@ -624,7 +625,13 @@ impl GuidesDataStore {
             attributes: Some(attrs),
             guide: Some(GuideInput {
                 guide_type: template_guide.guide_type,
-                rrule: template_guide.rrule.map(|rrule| rrule.to_string()),
+                rrule: template_guide.rrule.map(|rrule| {
+                    RRuleSet::new(Utc::now().with_timezone(&Tz::UTC))
+                        .set_exdates(rrule.get_exdate().clone())
+                        .set_rdates(rrule.get_rdate().clone())
+                        .set_rrules(rrule.get_rrule().clone())
+                        .to_string()
+                }),
                 template_metadata_id: Some(template.id.to_string()),
                 template_metadata_version: Some(template.version),
                 steps: vec![],
