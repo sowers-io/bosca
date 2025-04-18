@@ -5,16 +5,13 @@ use serde::{Deserialize, Serialize};
 use std::error::Error;
 
 #[derive(Enum, Debug, Clone, PartialEq, Serialize, Deserialize, Eq, Hash, Copy, Ord, PartialOrd)]
+#[derive(Default)]
 pub enum AttributeLocation {
+    #[default]
     Item,
     Relationship,
 }
 
-impl Default for AttributeLocation {
-    fn default() -> Self {
-        AttributeLocation::Item
-    }
-}
 
 impl<'a> FromSql<'a> for AttributeLocation {
     fn from_sql(

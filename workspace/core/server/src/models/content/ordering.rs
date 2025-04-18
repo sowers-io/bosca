@@ -4,14 +4,13 @@ use crate::models::content::attribute_type::AttributeType;
 use crate::models::content::attribute_location::AttributeLocation;
 
 #[derive(Enum, Debug, Copy, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Default)]
 pub enum Order {
     Ascending,
+    #[default]
     Descending,
 }
 
-impl Default for Order {
-    fn default() -> Self { Order::Descending }
-}
 
 #[derive(SimpleObject, Clone, Serialize, Deserialize, Debug, Default)]
 pub struct Ordering {

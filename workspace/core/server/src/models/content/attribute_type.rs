@@ -5,7 +5,9 @@ use postgres_types::{to_sql_checked, FromSql, IsNull, ToSql, Type};
 use serde::{Deserialize, Serialize};
 
 #[derive(Enum, Debug, Copy, Clone, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Default)]
 pub enum AttributeType {
+    #[default]
     String,
     Int,
     Float,
@@ -16,9 +18,6 @@ pub enum AttributeType {
     Collection,
 }
 
-impl Default for AttributeType {
-    fn default() -> Self { AttributeType::String }
-}
 
 impl<'a> FromSql<'a> for AttributeType {
     fn from_sql(
