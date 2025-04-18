@@ -31,9 +31,9 @@ suspend fun CollectionDefinition.toInput(
             },
             offset = 0,
             limit = 1
-        ).firstOrNull() ?: error("Failed to get metadata: ${templates.query}")
-        templateId = metadata.id
-        templateVersion = metadata.version
+        ).firstOrNull()
+        templateId = metadata?.id
+        templateVersion = metadata?.version
     }
     return CollectionInput(
         slug = slug.toOptional(),
