@@ -51,7 +51,7 @@ class CollectionsInstaller(val client: Client) : Installer {
         val install = collection.toPendingInstall(currentCategories)
         val slug = client.get(collection.slug)
         val id = if (slug?.collection?.id == null) {
-            client.collections.add(collection.toInput(client, currentCategories))
+            client.collections.add(install.collection)
         } else {
             client.collections.edit(slug.collection!!.id, install.collection)
         } ?: error("Collection not found")

@@ -2,6 +2,7 @@ package io.bosca.workflow.ext
 
 import io.bosca.api.Client
 import io.bosca.graphql.fragment.Category
+import io.bosca.graphql.type.AttributeLocation
 import io.bosca.graphql.type.CollectionChildInput
 import io.bosca.graphql.type.CollectionInput
 import io.bosca.graphql.type.FindAttributeInput
@@ -54,7 +55,8 @@ suspend fun CollectionDefinition.toInput(
                 order = it.order,
                 field = it.field.toOptional(),
                 path = it.path.toOptional(),
-                type = it.type.toOptional()
+                type = it.type.toOptional(),
+                location = it.location?.let { AttributeLocation.valueOf(it.name) }.toOptional()
             )
         }.toOptional()
     )

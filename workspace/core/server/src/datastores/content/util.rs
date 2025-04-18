@@ -40,9 +40,9 @@ pub fn build_ordering<'a>(
         if let Some(path) = &attr.path {
             buf.push('(');
             if attr.attribute_location.unwrap_or(AttributeLocation::Relationship) == AttributeLocation::Relationship {
-                buf.push_str(item_attributes_column);
-            } else {
                 buf.push_str(relationship_attributes_column);
+            } else {
+                buf.push_str(item_attributes_column);
             }
             for _ in path.iter() {
                 let name = names.get(n).unwrap();

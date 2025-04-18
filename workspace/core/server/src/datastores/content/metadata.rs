@@ -391,7 +391,7 @@ impl MetadataDataStore {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
         let stmt = txn
-            .prepare_cached("update metadata set attributes = attributes || $1, modified = now() where id = $2")
+            .prepare_cached("update metadata set attributes = coalesce(attributes, '{}'::jsonb) || $1, modified = now() where id = $2")
             .await?;
         txn.execute(&stmt, &[&attributes, &metadata_id]).await?;
         update_metadata_etag(&txn, metadata_id).await?;

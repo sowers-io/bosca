@@ -1,5 +1,5 @@
 use crate::context::BoscaContext;
-use crate::datastores::content::tag::update_collection_etag;
+use crate::datastores::content::tag::{update_collection_etag, update_metadata_etag};
 use crate::datastores::content::util::{build_find_args, build_ordering, build_ordering_names};
 use crate::datastores::notifier::Notifier;
 use crate::models::content::category::Category;
@@ -819,12 +819,56 @@ impl CollectionsDataStore {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
         let stmt = txn
-            .prepare_cached("update collections set attributes = attributes || $1, modified = now() where id = $2")
+            .prepare_cached("update collections set attributes = coalesce(attributes, '{}'::jsonb) || $1, modified = now() where id = $2")
             .await?;
         txn.execute(&stmt, &[&attributes, &collection_id]).await?;
         update_collection_etag(&txn, collection_id).await?;
         txn.commit().await?;
         self.on_collection_changed(ctx, collection_id).await?;
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self, ctx, collection_id, attributes))]
+    pub async fn merge_collection_item_attributes(
+        &self,
+        ctx: &BoscaContext,
+        collection_id: &Uuid,
+        item_id: &Uuid,
+        attributes: Value,
+    ) -> Result<(), Error> {
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        let stmt = txn
+            .prepare_cached("update collection_items set attributes = coalesce(attributes, '{}'::jsonb) || $1 where collection_id = $2 and child_collection_id = $3")
+            .await?;
+        txn.execute(&stmt, &[&attributes, collection_id, item_id]).await?;
+        update_collection_etag(&txn, collection_id).await?;
+        update_collection_etag(&txn, item_id).await?;
+        txn.commit().await?;
+        self.on_collection_changed(ctx, collection_id).await?;
+        self.on_collection_changed(ctx, item_id).await?;
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self, ctx, collection_id, attributes))]
+    pub async fn merge_metadata_item_attributes(
+        &self,
+        ctx: &BoscaContext,
+        collection_id: &Uuid,
+        item_id: &Uuid,
+        attributes: Value,
+    ) -> Result<(), Error> {
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        let stmt = txn
+            .prepare_cached("update collection_items set attributes = coalesce(attributes, '{}'::jsonb) || $1 where collection_id = $2 and child_metadata_id = $3")
+            .await?;
+        txn.execute(&stmt, &[&attributes, collection_id, item_id]).await?;
+        update_collection_etag(&txn, collection_id).await?;
+        update_metadata_etag(&txn, item_id).await?;
+        txn.commit().await?;
+        self.on_collection_changed(ctx, collection_id).await?;
+        self.on_metadata_changed(ctx, item_id).await?;
         Ok(())
     }
 
