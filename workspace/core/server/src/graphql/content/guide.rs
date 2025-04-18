@@ -119,8 +119,11 @@ impl GuideObject {
             // TODO: cache this somewhere
             Ok(Some(if let Some(rrule) = self.guide.rrule.clone() {
                 let recurrences = rrule.all((step.sort + 1) as u16);
-                let date = recurrences.dates.into_iter().map(|d| d.to_utc()).next_back();
-                GuideStepObject::new(step, date)
+                let mut dates = recurrences.dates.iter().map(|d| d.to_utc());
+                for _ in 0..step.sort {
+                    dates.next();
+                }
+                GuideStepObject::new(step, dates.next())
             } else {
                 GuideStepObject::new(step, None)
             }))
@@ -147,21 +150,25 @@ impl GuideObject {
             .get_guide_steps(&self.guide.metadata_id, self.guide.version, offset, limit)
             .await?;
         if let Some(rrule) = self.guide.rrule.clone() {
-            // TODO: cache this somewhere
-            let recurrences = rrule.all((steps.last().unwrap().sort + 1) as u16);
-            let mut dates = recurrences.dates.into_iter().map(|d| d.to_utc());
-            if let Some(offset) = offset {
-                let mut x = 0;
-                while x < offset {
-                    dates.next();
-                    x += 1;
+            if let Some(last_step) = steps.last() {
+                // TODO: cache this somewhere
+                let recurrences = rrule.all((last_step.sort + 1) as u16);
+                let mut dates = recurrences.dates.into_iter().map(|d| d.to_utc());
+                if let Some(offset) = offset {
+                    let mut x = 0;
+                    while x < offset {
+                        dates.next();
+                        x += 1;
+                    }
                 }
+                let mut results = Vec::new();
+                for step in steps {
+                    results.push(GuideStepObject::new(step, dates.next()));
+                }
+                Ok(results)
+            } else {
+                Ok(Vec::new())
             }
-            let mut results = Vec::new();
-            for step in steps {
-                results.push(GuideStepObject::new(step, dates.next()));
-            }
-            Ok(results)
         } else {
             Ok(steps
                 .into_iter()

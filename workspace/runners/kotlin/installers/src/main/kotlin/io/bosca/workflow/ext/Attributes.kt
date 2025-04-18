@@ -1,5 +1,6 @@
 package io.bosca.workflow.ext
 
+import io.bosca.graphql.type.AttributeLocation
 import io.bosca.graphql.type.AttributeType
 import io.bosca.graphql.type.AttributeUiType
 import io.bosca.graphql.type.TemplateAttributeInput
@@ -21,5 +22,6 @@ fun AttributeDefinition.toInput() = TemplateAttributeInput(
     supplementaryKey = supplementaryKey.toOptional(),
     ui = AttributeUiType.valueOf(ui),
     list = list,
-    configuration = configuration.toOptional()
+    configuration = configuration.toOptional(),
+    location = location?.let { AttributeLocation.valueOf(it.name) }.toOptional()
 )

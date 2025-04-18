@@ -1,10 +1,10 @@
 use crate::context::BoscaContext;
 use crate::graphql::content::metadata::MetadataObject;
 use crate::graphql::content::template_attribute::TemplateAttributeObject;
-use crate::models::content::collection_template::CollectionTemplate;
-use crate::models::content::find_query::FindQueries;
+use crate::models::content::collection_template::{CollectionTemplate, CollectionTemplateFilters};
 use async_graphql::{Context, Error, Object};
 use serde_json::Value;
+use crate::models::content::ordering::Ordering;
 
 pub struct CollectionTemplateObject {
     pub template: CollectionTemplate,
@@ -18,6 +18,7 @@ impl CollectionTemplateObject {
 
 #[Object(name = "CollectionTemplate")]
 impl CollectionTemplateObject {
+
     pub async fn metadata(&self, ctx: &Context<'_>) -> Result<Option<MetadataObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let metadata = ctx
@@ -34,14 +35,6 @@ impl CollectionTemplateObject {
 
     pub async fn configuration(&self) -> &Option<Value> {
         &self.template.configuration
-    }
-
-    pub async fn collection_filter(&self) -> &Option<FindQueries> {
-        &self.template.collection_filter
-    }
-
-    pub async fn metadata_filter(&self) -> &Option<FindQueries> {
-        &self.template.metadata_filter
     }
 
     pub async fn attributes(
@@ -69,4 +62,13 @@ impl CollectionTemplateObject {
         }
         Ok(attributes)
     }
+
+    pub async fn ordering(&self) -> &Option<Vec<Ordering>> {
+        &self.template.ordering
+    }
+
+    pub async fn filters(&self) -> &Option<CollectionTemplateFilters> {
+        &self.template.filters
+    }
+
 }

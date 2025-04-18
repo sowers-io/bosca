@@ -76,6 +76,8 @@ impl CollectionsDataStore {
             "collection",
             "select c.* from collections as c ",
             "c",
+            "attributes",
+            "attributes",
             query,
             &category_ids,
             false,
@@ -95,6 +97,8 @@ impl CollectionsDataStore {
             "collection",
             "select count(*) as count from collections c ",
             "c",
+            "attributes",
+            "attributes",
             query,
             &category_ids,
             true,
@@ -306,6 +310,7 @@ impl CollectionsDataStore {
             build_ordering_names(ordering, &mut names);
             build_ordering(
                 "collections",
+                "collections.attributes",
                 "collection_items.attributes",
                 2,
                 ordering,
@@ -359,7 +364,7 @@ impl CollectionsDataStore {
         values.push(&collection.id as &(dyn ToSql + Sync));
         let ordering = if let Some(ordering) = &collection.ordering {
             build_ordering_names(ordering, &mut names);
-            build_ordering("c", "ci.attributes", 2, ordering, &mut values, &names).0
+            build_ordering("c", "c.attributes", "ci.attributes", 2, ordering, &mut values, &names).0
         } else {
             String::new()
         };
@@ -404,7 +409,7 @@ impl CollectionsDataStore {
         values.push(&collection.id as &(dyn ToSql + Sync));
         let ordering = if let Some(ordering) = &collection.ordering {
             build_ordering_names(ordering, &mut names);
-            build_ordering("m", "ci.attributes", 2, ordering, &mut values, &names).0
+            build_ordering("m", "m.attributes", "ci.attributes", 2, ordering, &mut values, &names).0
         } else {
             String::new()
         };
@@ -796,6 +801,25 @@ impl CollectionsDataStore {
             .prepare_cached(
                 "update collections set attributes = $1, modified = now() where id = $2",
             )
+            .await?;
+        txn.execute(&stmt, &[&attributes, &collection_id]).await?;
+        update_collection_etag(&txn, collection_id).await?;
+        txn.commit().await?;
+        self.on_collection_changed(ctx, collection_id).await?;
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self, ctx, collection_id, attributes))]
+    pub async fn merge_attributes(
+        &self,
+        ctx: &BoscaContext,
+        collection_id: &Uuid,
+        attributes: Value,
+    ) -> Result<(), Error> {
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        let stmt = txn
+            .prepare_cached("update collections set attributes = attributes || $1, modified = now() where id = $2")
             .await?;
         txn.execute(&stmt, &[&attributes, &collection_id]).await?;
         update_collection_etag(&txn, collection_id).await?;

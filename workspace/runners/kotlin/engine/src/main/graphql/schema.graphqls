@@ -17,8 +17,6 @@ union CollectionItem = Collection | Metadata
 
 union ContentItem = Collection | Metadata | Profile
 
-union FindResultContent = BibleBook | BibleChapter | FilteredComponent
-
 union WorkflowExecution = WorkflowExecutionPlan | WorkflowJob
 
 type Activities {
@@ -54,7 +52,7 @@ type Bible {
     books: [BibleBook!]!
     chapter(usfm: String!): BibleChapter
     description: String!
-    find(human: String!): [FindResult!]!
+    find(human: String!): [FindBibleResult!]!
     languages: [BibleLanguage!]!
     name: String!
     nameLocal: String!
@@ -65,6 +63,7 @@ type Bible {
 type BibleBook {
     abbreviation: String!
     chapters: [BibleChapter!]!
+    human: String!
     nameLong: String!
     nameShort: String!
     usfm: String!
@@ -72,7 +71,10 @@ type BibleBook {
 
 type BibleChapter {
     component: JSON!
+    human: String!
+    reference: BibleReference!
     usfm: String!
+    verses: [BibleReference!]!
 }
 
 type BibleLanguage {
@@ -82,6 +84,11 @@ type BibleLanguage {
     script: String!
     scriptCode: String!
     scriptDirection: String!
+}
+
+type BibleReference {
+    human: String!
+    usfm: String!
 }
 
 type Categories {
@@ -205,11 +212,20 @@ type CollectionSupplementarySource {
 
 type CollectionTemplate {
     attributes: [TemplateAttribute!]!
-    collectionFilter: FindQueries
     configuration: JSON
     defaultAttributes: JSON
+    filters: CollectionTemplateFilters
     metadata: Metadata
-    metadataFilter: FindQueries
+    ordering: Ordering
+}
+
+type CollectionTemplateFilter {
+    filter: String!
+    name: String!
+}
+
+type CollectionTemplateFilters {
+    filters: [CollectionTemplateFilter!]!
 }
 
 type CollectionTemplates {
@@ -306,36 +322,11 @@ type FilteredComponent {
     content: JSON!
 }
 
-type FindAttribute {
-    key: String!
-    value: String!
-}
-
-type FindAttributes {
-    attributes: [FindAttribute!]!
-}
-
-type FindQueries {
-    options: [FindQueryOption!]!
-}
-
-type FindQuery {
-    attributes: [FindAttributes!]!
-    categoryIds: [String!]
-    collectionType: CollectionType
-    contentTypes: [String!]
-    extensionFilter: ExtensionFilterType
-    limit: Int
-    offset: Int
-}
-
-type FindQueryOption {
-    name: String!
-    query: FindQuery!
-}
-
-type FindResult {
-    content: FindResultContent!
+type FindBibleResult {
+    book: BibleBook!
+    chapter: BibleChapter
+    component: FilteredComponent
+    human: String!
     usfm: String!
 }
 
@@ -598,6 +589,7 @@ type Mutation {
 
 type Ordering {
     field: String
+    location: AttributeLocation
     order: Order!
     path: [String!]
     type: AttributeType
@@ -860,6 +852,7 @@ type TemplateAttribute {
     description: String!
     key: String!
     list: Boolean!
+    location: AttributeLocation!
     name: String!
     supplementaryKey: String
     type: AttributeType!
@@ -1114,6 +1107,11 @@ enum ActivityParameterType {
     SUPPLEMENTARY_ARRAY
 }
 
+enum AttributeLocation {
+    ITEM
+    RELATIONSHIP
+}
+
 enum AttributeType {
     COLLECTION
     DATE
@@ -1355,12 +1353,21 @@ input CollectionSupplementaryInput {
     sourceIdentifier: String
 }
 
+input CollectionTemplateFilterInput {
+    filter: String!
+    name: String!
+}
+
+input CollectionTemplateFiltersInput {
+    filters: [CollectionTemplateFilterInput!]!
+}
+
 input CollectionTemplateInput {
     attributes: [TemplateAttributeInput!]!
-    collectionFilter: FindQueriesInput
     configuration: JSON
     defaultAttributes: JSON
-    metadataFilter: FindQueriesInput
+    filters: CollectionTemplateFiltersInput
+    ordering: [OrderingInput!]
 }
 
 input CollectionWorkflowCompleteState {
@@ -1436,10 +1443,6 @@ input FindAttributesInput {
     attributes: [FindAttributeInput!]!
 }
 
-input FindQueriesInput {
-    options: [FindQueryOptionInput!]!
-}
-
 input FindQueryInput {
     attributes: [FindAttributesInput!]!
     categoryIds: [String!]
@@ -1449,11 +1452,6 @@ input FindQueryInput {
     limit: Int
     offset: Int
     ordering: [OrderingInput!]
-}
-
-input FindQueryOptionInput {
-    name: String!
-    query: FindQueryInput!
 }
 
 input GuideInput {
@@ -1579,6 +1577,7 @@ input ModelInput {
 
 input OrderingInput {
     field: String
+    location: AttributeLocation
     order: Order!
     path: [String!]
     type: AttributeType
@@ -1679,6 +1678,7 @@ input TemplateAttributeInput {
     description: String!
     key: String!
     list: Boolean!
+    location: AttributeLocation
     name: String!
     supplementaryKey: String
     type: AttributeType!

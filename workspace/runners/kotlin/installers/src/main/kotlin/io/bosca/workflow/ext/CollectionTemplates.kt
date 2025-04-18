@@ -7,7 +7,19 @@ import io.bosca.workflow.models.CollectionTemplateDefinition
 fun CollectionTemplateDefinition.toInput() = CollectionTemplateInput(
     configuration = collection.configuration.toOptional(),
     defaultAttributes = collection.defaultAttributes.toOptional(),
-    collectionFilter = collection.collectionsFilter?.toInput().toOptional(),
-    metadataFilter = collection.metadataFilter?.toInput().toOptional(),
-    attributes = collection.attributes.map { it.toInput() }
+    filters = collection.filters?.let {
+        CollectionTemplateFiltersInput(
+            filters = it.filters.map { CollectionTemplateFilterInput(name = it.name, filter = it.filter) }
+        )
+    }.toOptional(),
+    attributes = collection.attributes.map { it.toInput() },
+    ordering = collection.ordering?.map {
+        OrderingInput(
+            order = it.order,
+            field = it.field.toOptional(),
+            location = it.location?.let { AttributeLocation.valueOf(it.name) }.toOptional(),
+            path = it.path.toOptional(),
+            type = it.type.toOptional()
+        )
+    }.toOptional()
 )

@@ -21,6 +21,8 @@ use crate::models::workflow::execution_plan::WorkflowExecutionPlan;
 use crate::util::upload::upload_file;
 use async_graphql::*;
 use bytes::Bytes;
+use chrono::{DateTime, Timelike, Utc};
+use rrule::RRuleSet;
 use uuid::Uuid;
 
 #[derive(InputObject, Clone, Debug, Default)]
@@ -127,6 +129,59 @@ impl MetadataMutationObject {
             .await?;
         let metadata = ctx.content.metadata.get(&id).await?;
         Ok(metadata.map(MetadataObject::new))
+    }
+
+    async fn set_guide_start_date(
+        &self,
+        ctx: &Context<'_>,
+        metadata_id: String,
+        metadata_version: i32,
+        date: DateTime<Utc>,
+    ) -> Result<Option<MetadataObject>, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let metadata_id = Uuid::parse_str(&metadata_id)?;
+        let metadata = ctx
+            .check_metadata_version_action(&metadata_id, metadata_version, PermissionAction::Edit)
+            .await?;
+        if let Some(guide) = ctx
+            .content
+            .guides
+            .get_guide(&metadata_id, metadata_version)
+            .await?
+        {
+            if let Some(rrule) = guide.rrule {
+                let date = date
+                    .with_hour(0)
+                    .unwrap()
+                    .with_minute(0)
+                    .unwrap()
+                    .with_second(0)
+                    .unwrap()
+                    .with_nanosecond(0)
+                    .unwrap();
+                let new_rrule = RRuleSet::new(date.with_timezone(&rrule::Tz::UTC))
+                    .set_exdates(rrule.get_exdate().clone())
+                    .set_rrules(rrule.get_rrule().clone())
+                    .set_rdates(rrule.get_rdate().clone());
+                ctx.content
+                    .guides
+                    .set_guide_rrule(ctx, &metadata_id, metadata_version, new_rrule)
+                    .await?;
+            }
+        } else {
+            return Err(Error::new("guide not found"));
+        }
+        if metadata.version == metadata_version {
+            let metadata = ctx.content.metadata.get(&metadata_id).await?;
+            Ok(metadata.map(MetadataObject::new))
+        } else {
+            let metadata = ctx
+                .content
+                .metadata
+                .get_by_version(&metadata_id, metadata_version)
+                .await?;
+            Ok(metadata.map(MetadataObject::new))
+        }
     }
 
     async fn delete_guide_step(
@@ -708,11 +763,28 @@ impl MetadataMutationObject {
     ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let metadata_id = Uuid::parse_str(id.as_str())?;
-        ctx.check_metadata_action(&metadata_id, PermissionAction::Manage)
+        ctx.check_metadata_action(&metadata_id, PermissionAction::Edit)
             .await?;
         ctx.content
             .metadata
             .set_attributes(ctx, &metadata_id, attributes)
+            .await?;
+        Ok(true)
+    }
+
+    async fn merge_metadata_attributes(
+        &self,
+        ctx: &Context<'_>,
+        id: String,
+        attributes: serde_json::Value,
+    ) -> Result<bool, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let metadata_id = Uuid::parse_str(id.as_str())?;
+        ctx.check_metadata_action(&metadata_id, PermissionAction::Edit)
+            .await?;
+        ctx.content
+            .metadata
+            .merge_attributes(ctx, &metadata_id, attributes)
             .await?;
         Ok(true)
     }

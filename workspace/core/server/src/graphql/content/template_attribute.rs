@@ -5,6 +5,7 @@ use crate::models::content::template_workflow::TemplateWorkflow;
 use async_graphql::Object;
 use serde_json::Value;
 use crate::graphql::content::template_workflow::TemplateWorkflowObject;
+use crate::models::content::attribute_location::AttributeLocation;
 
 pub struct TemplateAttributeObject {
     pub attribute: TemplateAttribute,
@@ -47,6 +48,10 @@ impl TemplateAttributeObject {
 
     pub async fn list(&self) -> bool {
         self.attribute.list
+    }
+    
+    pub async fn location(&self) -> &AttributeLocation {
+        &self.attribute.location
     }
 
     pub async fn supplementary_key(&self) -> &Option<String> {

@@ -79,9 +79,9 @@ impl CollectionTemplatesDataStore {
         version: i32,
         template: &CollectionTemplateInput,
     ) -> Result<(), Error> {
-        let stmt = txn.prepare_cached("insert into collection_templates (metadata_id, version, default_attributes, configuration, collection_filter, metadata_filter) values ($1, $2, $3, $4, $5, $6)").await?;
-        let collection_filter = template.collection_filter.as_ref().map(|f| serde_json::to_value(f).unwrap());
-        let metadata_filter = template.metadata_filter.as_ref().map(|f| serde_json::to_value(f).unwrap());
+        let stmt = txn.prepare_cached("insert into collection_templates (metadata_id, version, default_attributes, configuration, filters, ordering) values ($1, $2, $3, $4, $5, $6)").await?;
+        let filters = template.filters.as_ref().map(|f| serde_json::to_value(f).unwrap());
+        let ordering = template.ordering.as_ref().map(|f| serde_json::to_value(f).unwrap());
         txn.execute(
             &stmt,
             &[
@@ -89,8 +89,8 @@ impl CollectionTemplatesDataStore {
                 &version,
                 &template.default_attributes,
                 &template.configuration,
-                &collection_filter,
-                &metadata_filter,
+                &filters,
+                &ordering,           
             ],
         )
         .await?;
@@ -107,16 +107,16 @@ impl CollectionTemplatesDataStore {
         version: i32,
         template: &CollectionTemplateInput,
     ) -> Result<(), Error> {
-        let stmt = txn.prepare_cached("update collection_templates set default_attributes = $1, configuration = $2, collection_filter = $3, metadata_filter = $4 where metadata_id = $5 and version = $6").await?;
-        let collection_filter = template.collection_filter.as_ref().map(|f| serde_json::to_value(f).unwrap());
-        let metadata_filter = template.metadata_filter.as_ref().map(|f| serde_json::to_value(f).unwrap());
+        let stmt = txn.prepare_cached("update collection_templates set default_attributes = $1, configuration = $2, filters = $3, ordering = $4 where metadata_id = $5 and version = $6").await?;
+        let filters = template.filters.as_ref().map(|f| serde_json::to_value(f).unwrap());
+        let ordering = template.ordering.as_ref().map(|f| serde_json::to_value(f).unwrap());
         txn.execute(
             &stmt,
             &[
                 &template.default_attributes,
                 &template.configuration,
-                &collection_filter,
-                &metadata_filter,
+                &filters,
+                &ordering,
                 &metadata_id,
                 &version,
             ],
@@ -145,7 +145,7 @@ impl CollectionTemplatesDataStore {
         version: i32,
         template: &CollectionTemplateInput,
     ) -> Result<(), Error> {
-        let stmt = txn.prepare_cached("insert into collection_template_attributes (metadata_id, version, key, name, description, configuration, type, ui, list, sort, supplementary_key) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)").await?;
+        let stmt = txn.prepare_cached("insert into collection_template_attributes (metadata_id, version, key, name, description, configuration, type, ui, list, sort, supplementary_key, location) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)").await?;
         let stmt_wid = txn.prepare_cached("insert into collection_template_attribute_workflows (metadata_id, version, key, workflow_id, auto_run) values ($1, $2, $3, $4, $5)").await?;
         for (index, attr) in template.attributes.iter().enumerate() {
             let sort = index as i32;
@@ -163,6 +163,7 @@ impl CollectionTemplatesDataStore {
                     &attr.list,
                     &sort,
                     &attr.supplementary_key,
+                    &attr.location,           
                 ],
             )
             .await?;

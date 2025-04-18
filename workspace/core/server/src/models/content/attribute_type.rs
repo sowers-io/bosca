@@ -16,6 +16,10 @@ pub enum AttributeType {
     Collection,
 }
 
+impl Default for AttributeType {
+    fn default() -> Self { AttributeType::String }
+}
+
 impl<'a> FromSql<'a> for AttributeType {
     fn from_sql(
         _: &Type,

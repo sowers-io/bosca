@@ -1,6 +1,7 @@
 use async_graphql::{Enum, InputObject, SimpleObject};
 use serde::{Deserialize, Serialize};
 use crate::models::content::attribute_type::AttributeType;
+use crate::models::content::attribute_location::AttributeLocation;
 
 #[derive(Enum, Debug, Copy, Clone, Eq, PartialEq, Serialize, Deserialize)]
 pub enum Order {
@@ -8,7 +9,11 @@ pub enum Order {
     Descending,
 }
 
-#[derive(SimpleObject, Clone, Serialize, Deserialize, Debug)]
+impl Default for Order {
+    fn default() -> Self { Order::Descending }
+}
+
+#[derive(SimpleObject, Clone, Serialize, Deserialize, Debug, Default)]
 pub struct Ordering {
     pub field: Option<String>,
     pub path: Option<Vec<String>>,
@@ -16,6 +21,9 @@ pub struct Ordering {
     #[graphql(name = "type")]
     #[serde(rename = "type")]
     pub attribute_type: Option<AttributeType>,
+    #[graphql(name = "location")]
+    #[serde(rename = "location")]
+    pub attribute_location: Option<AttributeLocation>,
 }
 
 impl Ordering {
@@ -38,4 +46,7 @@ pub struct OrderingInput {
     #[graphql(name = "type")]
     #[serde(rename = "type")]
     pub attribute_type: Option<AttributeType>,
+    #[graphql(name = "location")]
+    #[serde(rename = "location")]
+    pub attribute_location: Option<AttributeLocation>,
 }

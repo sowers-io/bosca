@@ -115,15 +115,16 @@ impl SecurityDataStore {
     }
 
     #[tracing::instrument(skip(self, name))]
-    pub async fn get_group_by_name(&self, name: &String) -> Result<Group, Error> {
+    pub async fn get_group_by_name(&self, name: &str) -> Result<Group, Error> {
         if let Some(group) = self.cache.get_group_by_name(name).await {
             return Ok(group);
         }
+        let name = name.to_string();
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached("select * from groups where name = $1")
             .await?;
-        let results = connection.query(&stmt, &[name]).await?;
+        let results = connection.query(&stmt, &[&name]).await?;
         let group: Group = results.first().unwrap().into();
         self.cache.cache_group(&group).await;
         Ok(group)
@@ -156,8 +157,7 @@ impl SecurityDataStore {
 
     #[tracing::instrument(skip(self))]
     pub async fn get_service_account_group(&self) -> Result<Group, Error> {
-        let group = SERVICE_ACCOUNT_GROUP.to_string();
-        self.get_group_by_name(&group).await
+        self.get_group_by_name(SERVICE_ACCOUNT_GROUP).await
     }
 
     #[tracing::instrument(skip(self, principal))]

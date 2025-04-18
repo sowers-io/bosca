@@ -9,6 +9,7 @@ import kotlinx.serialization.Serializable
 data class Ordering(
     val order: Order = Order.ASCENDING,
     val type: AttributeType? = null,
+    val location: AttributeLocation? = null,
     val field: String? = null,
     val path: List<String>? = null
 )
@@ -36,6 +37,7 @@ data class CollectionDefinition(
 @Serializable
 data class CollectionTemplates(
     val collection: CollectionTemplateDefinition? = null,
+    val query: FindQueryDefinition? = null,
     val document: DocumentTemplateDefinition? = null,
     val guide: GuideTemplateDefinition? = null
 )

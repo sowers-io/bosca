@@ -26,6 +26,7 @@ pub mod guide_template;
 pub mod guide_template_step;
 pub mod guide_template_step_module;
 pub mod template_attribute;
+pub mod attribute_location;
 pub mod template_workflow;
 pub mod guide;
 pub mod guide_step;

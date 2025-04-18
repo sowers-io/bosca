@@ -100,12 +100,12 @@ impl JobQueues {
             .prepare("select configuration from workflow_plans where id = $1")
             .await?;
         let result = connection.query(&stmt, &[&id.id]).await?;
-        let result = result.first();
-        if result.is_none() {
-            return Err(Error::new("plan not found"));
+        if let Some(result) = result.first() {
+            let configuration: Value = result.get("configuration");
+            Ok(Some(from_value::<WorkflowExecutionPlan>(configuration)?))
+        } else {
+            Err(Error::new("plan not found"))
         }
-        let configuration: Value = result.unwrap().get("configuration");
-        Ok(Some(from_value::<WorkflowExecutionPlan>(configuration)?))
     }
 
     #[tracing::instrument(skip(self, id))]
@@ -544,35 +544,53 @@ impl JobQueues {
         let Some(job_id) = self.dequeue_job(queue).await? else {
             return Ok(None);
         };
-        if let Some(mut plan) = self.get_plan_by_job(&job_id).await? {
-            if plan.finished.is_some() {
-                error!("invalid plan state");
-                let mut txn = RedisTransaction::new();
-                for job in plan.jobs.iter() {
+        match self.get_plan_by_job(&job_id).await {
+            Ok(Some(mut plan)) => {
+                if plan.finished.is_some() {
+                    error!("invalid plan state");
+                    let mut txn = RedisTransaction::new();
+                    for job in plan.jobs.iter() {
+                        txn.add_op(RemoveJobRunning(job.id.clone()));
+                    }
+                    txn.add_op(RemovePlanRunning(plan.id.clone()));
+                    if let Some(metadata_id) = plan.metadata_id {
+                        txn.add_op(RedisTransactionOp::RemoveMetadataRunning(metadata_id));
+                    }
+                    if let Some(collection_id) = plan.collection_id {
+                        txn.add_op(RedisTransactionOp::RemoveCollectionRunning(collection_id));
+                    }
+                    txn.execute(&self.redis).await?;
+                    return Ok(None);
+                }
+                let mut job = plan.jobs.get_mut(job_id.index as usize).unwrap().clone();
+                if job.complete {
+                    error!("invalid job state");
+                    let mut txn = RedisTransaction::new();
                     txn.add_op(RemoveJobRunning(job.id.clone()));
+                    txn.execute(&self.redis).await?;
+                    return Ok(None);
                 }
-                txn.add_op(RemovePlanRunning(plan.id.clone()));
-                if let Some(metadata_id) = plan.metadata_id {
-                    txn.add_op(RedisTransactionOp::RemoveMetadataRunning(metadata_id));
-                }
-                if let Some(collection_id) = plan.collection_id {
-                    txn.add_op(RedisTransactionOp::RemoveCollectionRunning(collection_id));
-                }
-                txn.execute(&self.redis).await?;
-                return Ok(None);
+                job.parent = plan.parent;
+                Ok(Some(job))
             }
-            let mut job = plan.jobs.get_mut(job_id.index as usize).unwrap().clone();
-            if job.complete {
-                error!("invalid job state");
-                let mut txn = RedisTransaction::new();
-                txn.add_op(RemoveJobRunning(job.id.clone()));
-                txn.execute(&self.redis).await?;
-                return Ok(None);
+            Ok(None) => Ok(None),
+            Err(e) => {
+                if e.message == "plan not found" {
+                    error!("plan not found: {}", job_id);
+                    let plan = WorkflowExecutionId {
+                        id: job_id.id,
+                        queue: job_id.queue.clone(),
+                    };
+                    let mut txn = RedisTransaction::new();
+                    txn.add_op(RemoveJobRunning(job_id));
+                    txn.add_op(RemovePlanRunning(plan.clone()));
+                    txn.execute(&self.redis).await?;
+                    Ok(None)
+                } else {
+                    Err(e)
+                }
             }
-            job.parent = plan.parent;
-            return Ok(Some(job));
         }
-        Ok(None)
     }
 
     #[tracing::instrument(skip(self, plan_id, context))]

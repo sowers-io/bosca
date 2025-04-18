@@ -77,6 +77,8 @@ impl MetadataDataStore {
             "metadata",
             "select m.* from metadata m ",
             "m",
+            "attributes",
+            "attributes",
             query,
             &category_ids,
             false,
@@ -96,6 +98,8 @@ impl MetadataDataStore {
             "metadata",
             "select count(*) as count from metadata m ",
             "m",
+            "attributes",
+            "attributes",
             query,
             &category_ids,
             true,
@@ -368,6 +372,26 @@ impl MetadataDataStore {
         let txn = connection.transaction().await?;
         let stmt = txn
             .prepare_cached("update metadata set attributes = $1, modified = now() where id = $2")
+            .await?;
+        txn.execute(&stmt, &[&attributes, &metadata_id]).await?;
+        update_metadata_etag(&txn, metadata_id).await?;
+        txn.commit().await?;
+        self.cache.evict_metadata(metadata_id).await;
+        self.on_metadata_changed(ctx, metadata_id).await?;
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self, ctx, metadata_id, attributes))]
+    pub async fn merge_attributes(
+        &self,
+        ctx: &BoscaContext,
+        metadata_id: &Uuid,
+        attributes: Value,
+    ) -> Result<(), Error> {
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        let stmt = txn
+            .prepare_cached("update metadata set attributes = attributes || $1, modified = now() where id = $2")
             .await?;
         txn.execute(&stmt, &[&attributes, &metadata_id]).await?;
         update_metadata_etag(&txn, metadata_id).await?;

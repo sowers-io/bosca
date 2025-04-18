@@ -484,6 +484,23 @@ impl CollectionMutationObject {
         Ok(true)
     }
 
+    async fn merge_collection_attributes(
+        &self,
+        ctx: &Context<'_>,
+        id: String,
+        attributes: serde_json::Value,
+    ) -> Result<bool, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let collection_id = Uuid::parse_str(id.as_str())?;
+        ctx.check_collection_action(&collection_id, PermissionAction::Edit)
+            .await?;
+        ctx.content
+            .collections
+            .merge_attributes(ctx, &collection_id, attributes)
+            .await?;
+        Ok(true)
+    }
+    
     async fn set_collection_ordering(
         &self,
         ctx: &Context<'_>,

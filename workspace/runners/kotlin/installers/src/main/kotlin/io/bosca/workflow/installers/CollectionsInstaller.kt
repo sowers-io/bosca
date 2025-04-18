@@ -34,9 +34,9 @@ class CollectionsInstaller(val client: Client) : Installer {
         val documentTemplate: DocumentTemplateInput?
     )
 
-    private fun CollectionDefinition.toPendingInstall(categories: Map<String, Category>): PendingInstall {
+    private suspend fun CollectionDefinition.toPendingInstall(categories: Map<String, Category>): PendingInstall {
         return PendingInstall(
-            toInput(categories),
+            toInput(client, categories),
             templates?.collection?.toInput(),
             templates?.document?.toInput(),
         )
@@ -51,7 +51,7 @@ class CollectionsInstaller(val client: Client) : Installer {
         val install = collection.toPendingInstall(currentCategories)
         val slug = client.get(collection.slug)
         val id = if (slug?.collection?.id == null) {
-            client.collections.add(collection.toInput(currentCategories))
+            client.collections.add(collection.toInput(client, currentCategories))
         } else {
             client.collections.edit(slug.collection!!.id, install.collection)
         } ?: error("Collection not found")

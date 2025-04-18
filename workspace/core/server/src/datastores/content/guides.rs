@@ -16,7 +16,7 @@ use log::{error, info};
 use rrule::{RRuleSet, Tz};
 use serde_json::json;
 use std::sync::Arc;
-use chrono::Utc;
+use chrono::{Timelike, Utc};
 use uuid::Uuid;
 use bosca_database::TracingPool;
 
@@ -240,6 +240,24 @@ impl GuidesDataStore {
         Ok(rows.first().map(|r| r.into()))
     }
 
+    #[tracing::instrument(skip(self, ctx, metadata_id, version, rrule))]
+    pub async fn set_guide_rrule(
+        &self,
+        ctx: &BoscaContext,
+        metadata_id: &Uuid,
+        version: i32,
+        rrule: RRuleSet
+    ) -> Result<(), Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("update guides set rrule = $1 where metadata_id = $2 and version = $3")
+            .await?;
+        let rrule = rrule.to_string();
+        connection.execute(&stmt, &[&rrule, metadata_id, &version]).await?;
+        self.on_metadata_changed(ctx, metadata_id).await?;
+        Ok(())
+    }
+
     #[tracing::instrument(skip(self, metadata_id, version, id))]
     pub async fn get_guide_step(
         &self,
@@ -281,6 +299,13 @@ impl GuidesDataStore {
                     .await?;
                 return Ok(rows.iter().map(|r| r.into()).collect());
             }
+            let stmt = connection
+                .prepare_cached("select * from guide_steps where metadata_id = $1 and version = $2 order by sort asc offset $3")
+                .await?;
+            let rows = connection
+                .query(&stmt, &[metadata_id, &version, &offset])
+                .await?;
+            return Ok(rows.iter().map(|r| r.into()).collect());
         }
         let stmt = connection
             .prepare_cached("select * from guide_steps where metadata_id = $1 and version = $2 order by sort asc")
@@ -626,7 +651,16 @@ impl GuidesDataStore {
             guide: Some(GuideInput {
                 guide_type: template_guide.guide_type,
                 rrule: template_guide.rrule.map(|rrule| {
-                    RRuleSet::new(Utc::now().with_timezone(&Tz::UTC))
+                    let n = Utc::now().with_timezone(&Tz::UTC)
+                        .with_hour(0)
+                        .unwrap()
+                        .with_minute(0)
+                        .unwrap()
+                        .with_second(0)
+                        .unwrap()
+                        .with_nanosecond(0)
+                        .unwrap();
+                    RRuleSet::new(n)
                         .set_exdates(rrule.get_exdate().clone())
                         .set_rdates(rrule.get_rdate().clone())
                         .set_rrules(rrule.get_rrule().clone())

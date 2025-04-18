@@ -5,6 +5,7 @@ use crate::models::content::ordering::Ordering;
 use postgres_types::ToSql;
 use serde_json::json;
 use uuid::Uuid;
+use crate::models::content::attribute_location::AttributeLocation;
 
 pub fn build_ordering_names(ordering: &[Ordering], names: &mut Vec<String>) {
     for attr in ordering {
@@ -17,8 +18,9 @@ pub fn build_ordering_names(ordering: &[Ordering], names: &mut Vec<String>) {
 }
 
 pub fn build_ordering<'a>(
-    alias: &str,
-    attributes_column: &str,
+    table_alias: &str,
+    item_attributes_column: &str,
+    relationship_attributes_column: &str,
     start_index: i32,
     ordering: &[Ordering],
     values: &mut Vec<&'a (dyn ToSql + Sync)>,
@@ -37,7 +39,11 @@ pub fn build_ordering<'a>(
         }
         if let Some(path) = &attr.path {
             buf.push('(');
-            buf.push_str(attributes_column);
+            if attr.attribute_location.unwrap_or(AttributeLocation::Relationship) == AttributeLocation::Relationship {
+                buf.push_str(item_attributes_column);
+            } else {
+                buf.push_str(relationship_attributes_column);
+            }
             for _ in path.iter() {
                 let name = names.get(n).unwrap();
                 n += 1;
@@ -57,7 +63,7 @@ pub fn build_ordering<'a>(
                 AttributeType::Collection => buf.push_str("uuid"),
             }
         } else if let Some(field) = field {
-            buf.push_str(alias);
+            buf.push_str(table_alias);
             buf.push('.');
             buf.push_str(field);
         }
@@ -78,7 +84,9 @@ pub fn build_ordering<'a>(
 pub fn build_find_args<'a>(
     base_type: &str,
     query: &str,
-    alias: &str,
+    table_alias: &str,
+    item_attributes_column: &str,
+    relationship_attributes_column: &str,
     find_query: &'a FindQueryInput,
     category_ids: &'a Option<Vec<Uuid>>,
     count: bool,
@@ -91,7 +99,7 @@ pub fn build_find_args<'a>(
     if let Some(category_ids) = category_ids {
         if !category_ids.is_empty() {
             for category_id in category_ids {
-                q.push_str(format!(" inner join {}_categories as cid on (cid.{}_id = {}.id and cid.category_id = ${}) ", base_type, base_type, alias, pos).as_str());
+                q.push_str(format!(" inner join {}_categories as cid on (cid.{}_id = {}.id and cid.category_id = ${}) ", base_type, base_type, table_alias, pos).as_str());
                 pos += 1;
                 values.push(category_id as &(dyn ToSql + Sync));
             }
@@ -100,34 +108,34 @@ pub fn build_find_args<'a>(
 
     match find_query.extension_filter {
         Some(ExtensionFilterType::Document) => {
-            q.push_str(format!(" inner join documents d on ({}.id = d.metadata_id and {}.version = d.version) ", alias, alias).as_str());
+            q.push_str(format!(" inner join documents d on ({}.id = d.metadata_id and {}.version = d.version) ", table_alias, table_alias).as_str());
         }
         Some(ExtensionFilterType::DocumentTemplate) => {
-            q.push_str(format!(" inner join document_templates dt on ({}.id = dt.metadata_id and {}.version = dt.version) ", alias, alias).as_str());
+            q.push_str(format!(" inner join document_templates dt on ({}.id = dt.metadata_id and {}.version = dt.version) ", table_alias, table_alias).as_str());
         }
         Some(ExtensionFilterType::Guide) => {
             q.push_str(
                 format!(
                     " inner join guides g on ({}.id = g.metadata_id and {}.version = g.version) ",
-                    alias, alias
+                    table_alias, table_alias
                 )
                 .as_str(),
             );
         }
         Some(ExtensionFilterType::GuideTemplate) => {
-            q.push_str(format!(" inner join guide_templates gt on ({}.id = gt.metadata_id and {}.version = gt.version) ", alias, alias).as_str());
+            q.push_str(format!(" inner join guide_templates gt on ({}.id = gt.metadata_id and {}.version = gt.version) ", table_alias, table_alias).as_str());
         }
         Some(ExtensionFilterType::CollectionTemplate) => {
-            q.push_str(format!(" inner join collection_templates ct on ({}.id = ct.metadata_id and {}.version = ct.version) ", alias, alias).as_str());
+            q.push_str(format!(" inner join collection_templates ct on ({}.id = ct.metadata_id and {}.version = ct.version) ", table_alias, table_alias).as_str());
         }
         _ => {}
     }
 
-    q.push_str(format!(" where {}.deleted = false ", alias).as_str());
+    q.push_str(format!(" where {}.deleted = false ", table_alias).as_str());
 
     if base_type == "collection" {
         if let Some(collection_type) = &find_query.collection_type {
-            q.push_str(format!(" and {}.type = ${} ", alias, pos).as_str());
+            q.push_str(format!(" and {}.type = ${} ", table_alias, pos).as_str());
             pos += 1;
             values.push(collection_type as &(dyn ToSql + Sync));
         }
@@ -157,7 +165,7 @@ pub fn build_find_args<'a>(
                 q.push_str(
                     format!(
                         " {}.attributes->>(${}::varchar) = ${}::varchar ",
-                        alias,
+                        table_alias,
                         pos,
                         pos + 1
                     )
@@ -173,7 +181,7 @@ pub fn build_find_args<'a>(
 
     if let Some(content_types) = &find_query.content_types {
         if !content_types.is_empty() {
-            q.push_str(format!(" and {}.content_type in (", alias).as_str());
+            q.push_str(format!(" and {}.content_type in (", table_alias).as_str());
             for (ix, content_type) in content_types.iter().enumerate() {
                 if ix > 0 {
                     q.push_str(", ");
@@ -191,13 +199,13 @@ pub fn build_find_args<'a>(
             let js = json!(ordering);
             let ordering: Vec<Ordering> = serde_json::from_value(js).unwrap();
             build_ordering_names(&ordering, names);
-            let (ordering_sql, index) = build_ordering(alias, alias, pos, &ordering, &mut values, names);
+            let (ordering_sql, index) = build_ordering(table_alias, item_attributes_column, relationship_attributes_column, pos, &ordering, &mut values, names);
             pos = index;
             if !ordering_sql.is_empty() {
                 q.push_str(ordering_sql.as_str());
             }
         } else {
-            q.push_str(format!(" order by lower({}.name) asc ", alias).as_str()); // TODO: when adding MetadataIndex & CollectionIndex, make this configurable so it is based on an index
+            q.push_str(format!(" order by lower({}.name) asc ", table_alias).as_str()); // TODO: when adding MetadataIndex & CollectionIndex, make this configurable so it is based on an index
         }
         if find_query.offset.is_some() {
             q.push_str(format!(" offset ${}", pos).as_str());
