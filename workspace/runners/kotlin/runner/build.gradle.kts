@@ -10,9 +10,7 @@ group = "io.bosca"
 version = "1.0-SNAPSHOT"
 
 java {
-    toolchain {
-        languageVersion = JavaLanguageVersion.of(24)
-    }
+    disableAutoTargetJvm()
 }
 
 repositories {
@@ -32,10 +30,6 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
-}
-
-kotlin {
-    jvmToolchain(23)
 }
 
 application {
