@@ -63,7 +63,7 @@ class JobRunner(
                     pending.clear()
                     if (!found) {
                         delay(delay)
-                        delay = minOf(delay * 2, 3_000)
+                        delay = minOf(delay * 2, 1_000)
                         current = 1
                     } else {
                         delay = 1L
