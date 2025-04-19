@@ -1,6 +1,6 @@
 plugins {
-    kotlin("jvm") version "2.1.0"
-    kotlin("plugin.serialization") version "2.1.0"
+    kotlin("jvm") version "2.1.20"
+    kotlin("plugin.serialization") version "2.1.20"
 }
 
 group = "io.bosca"
@@ -30,7 +30,7 @@ tasks.test {
 }
 
 kotlin {
-    jvmToolchain(23)
+    jvmToolchain(24)
 
     if (file("../../enterprise/kotlin/enterprise").exists()) {
         sourceSets.main {
