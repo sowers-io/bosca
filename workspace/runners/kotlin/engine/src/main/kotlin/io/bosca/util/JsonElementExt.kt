@@ -16,8 +16,6 @@ fun JsonElement.toAny(): Any? {
             doubleOrNull != null -> double
             else -> null
         }
-
-        else -> error("Unsupported JSON element type: $this")
     }
 }
 
