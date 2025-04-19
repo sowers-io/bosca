@@ -2,16 +2,12 @@ plugins {
     kotlin("jvm") version "2.1.20"
     kotlin("plugin.serialization") version "2.1.20"
     id("org.graalvm.buildtools.native") version "0.10.4"
-    id("java")
     application
 }
 
 group = "io.bosca"
 version = "1.0-SNAPSHOT"
 
-java {
-    disableAutoTargetJvm()
-}
 
 repositories {
     mavenCentral()
@@ -30,6 +26,10 @@ dependencies {
 
 tasks.test {
     useJUnitPlatform()
+}
+
+kotlin {
+    jvmToolchain(24)
 }
 
 application {
