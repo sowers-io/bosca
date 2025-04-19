@@ -161,6 +161,9 @@ type CollectionMutation {
     deleteSupplementary(id: String!): Boolean!
     edit(collection: CollectionInput!, id: String!): Collection!
     editMetadataRelationship(relationship: CollectionMetadataRelationshipInput!): Boolean!
+    mergeCollectionAttributes(attributes: JSON!, id: String!): Boolean!
+    mergeCollectionItemAttributes(attributes: JSON!, id: String!, itemId: String!): Boolean!
+    mergeMetadataItemAttributes(attributes: JSON!, id: String!, itemId: String!): Boolean!
     permanentlyDelete(collectionId: String!, recursive: Boolean): Boolean!
     removeChildCollection(collectionId: String!, id: String!): Collection!
     removeChildMetadata(id: String!, metadataId: String!): Collection!
@@ -216,7 +219,7 @@ type CollectionTemplate {
     defaultAttributes: JSON
     filters: CollectionTemplateFilters
     metadata: Metadata
-    ordering: Ordering
+    ordering: [Ordering!]
 }
 
 type CollectionTemplateFilter {
@@ -246,6 +249,7 @@ type Configuration {
     id: String!
     key: String!
     permissions: [ConfigurationPermission!]!
+    public: Boolean!
     value: JSON
 }
 
@@ -479,7 +483,9 @@ type MetadataMutation {
     detachSupplementary(id: String!): Boolean!
     edit(id: String!, metadata: MetadataInput!): Metadata!
     editRelationship(relationship: MetadataRelationshipInput!): Boolean!
+    mergeMetadataAttributes(attributes: JSON!, id: String!): Boolean!
     permanentlyDelete(metadataId: String!): Boolean!
+    setGuideStartDate(date: DateTime!, metadataId: String!, metadataVersion: Int!): Metadata
     setMetadataAttributes(attributes: JSON!, id: String!): Boolean!
     setMetadataBible(bible: BibleInput!, id: String!, version: Int!): Boolean!
     setMetadataContents(contentType: String, file: Upload!, id: String!): Boolean!

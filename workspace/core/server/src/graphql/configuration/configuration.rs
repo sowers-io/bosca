@@ -31,6 +31,10 @@ impl ConfigurationObject {
         &self.configuration.description
     }
 
+    async fn public(&self) -> bool {
+        self.configuration.public
+    }
+    
     async fn permissions(
         &self,
         ctx: &Context<'_>,

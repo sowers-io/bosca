@@ -1,5 +1,6 @@
 fragment Configuration on Configuration {
     key
+    public
     description
     value
     permissions {
