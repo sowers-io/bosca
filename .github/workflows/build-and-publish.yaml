@@ -88,7 +88,7 @@ jobs:
 
       - uses: graalvm/setup-graalvm@v1
         with:
-          java-version: '24.0.1'
+          java-version: '24'
           distribution: 'graalvm-community'
 
       - run: cd workspace/runners/kotlin && ./gradlew nativeBuild
@@ -125,7 +125,7 @@ jobs:
           submodules: false
       - uses: graalvm/setup-graalvm@v1
         with:
-          java-version: '24.0.1'
+          java-version: '24'
           distribution: 'graalvm-community'
       - run: cd workspace/runners/kotlin && ./gradlew nativeBuild
       - name: Set up Docker Buildx
@@ -161,7 +161,7 @@ jobs:
           token: ${{ secrets.PRIVATE_PAT }}
       - uses: graalvm/setup-graalvm@v1
         with:
-          java-version: '24.0.1'
+          java-version: '24'
           distribution: 'graalvm-community'
       - run: cd workspace/runners/enterprise/bible && ./gradlew publishToMavenLocal
       - run: cd workspace/runners/kotlin && ./gradlew nativeBuild
@@ -199,7 +199,7 @@ jobs:
           token: ${{ secrets.PRIVATE_PAT }}
       - uses: graalvm/setup-graalvm@v1
         with:
-          java-version: '24.0.1'
+          java-version: '24'
           distribution: 'graalvm-community'
       - run: cd workspace/runners/enterprise/bible && ./gradlew publishToMavenLocal
       - run: cd workspace/runners/kotlin && ./gradlew nativeBuild
