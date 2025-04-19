@@ -30,7 +30,7 @@ tasks.test {
 }
 
 kotlin {
-    jvmToolchain(23)
+    jvmToolchain(24)
 
     if (file("../../enterprise/kotlin/enterprise").exists()) {
         sourceSets.main {
