@@ -42,9 +42,9 @@ pub fn build_pool(key: &str) -> Result<TracingPool, CreatePoolError> {
     }
     let max_connections_key = format!("{}_MAX_CONNECTIONS", key);
     let max_connections = if let Ok(max_connections) = env::var(max_connections_key.as_str()) {
-        max_connections.parse::<u32>().unwrap_or(25)
+        max_connections.parse::<u32>().unwrap_or(50)
     } else {
-        25
+        50
     };
     info!("Database Max Connections: {}", max_connections);
     let mut pool_config = PoolConfig::new(max_connections as usize);

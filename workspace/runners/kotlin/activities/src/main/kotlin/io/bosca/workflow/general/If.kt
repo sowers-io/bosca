@@ -7,6 +7,8 @@ import io.bosca.graphql.fragment.WorkflowJob
 import io.bosca.graphql.type.ActivityInput
 import io.bosca.workflow.Activity
 import io.bosca.workflow.ActivityContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import org.graalvm.polyglot.*;
 
@@ -36,16 +38,18 @@ class If(client: Client) : Activity(client) {
         val ctx = getContext<IfContext>(job)
         if (ctx.executed) return
         val cfg = getConfiguration<IfConfiguration>(job)
-        val jsContext = Context.newBuilder("js")
-            .allowHostAccess(HostAccess.ALL) //allows access to all Java classes
-            .allowHostClassLookup { className -> true }
-            .out(System.out)
-            .err(System.err)
-            .build()
-        val ow = ObjectMapper().registerModules(JavaTimeModule()).writer().withDefaultPrettyPrinter()
-        val json = ow.writeValueAsString(job)
-        jsContext.getBindings("js").putMember("job", json)
-        val response = jsContext.eval("js", cfg.expression)
+        val response = withContext(Dispatchers.IO) {
+            val jsContext = Context.newBuilder("js")
+                .allowHostAccess(HostAccess.ALL) //allows access to all Java classes
+                .allowHostClassLookup { className -> true }
+                .out(System.out)
+                .err(System.err)
+                .build()
+            val ow = ObjectMapper().registerModules(JavaTimeModule()).writer().withDefaultPrettyPrinter()
+            val json = ow.writeValueAsString(job)
+            jsContext.getBindings("js").putMember("job", json)
+            jsContext.eval("js", cfg.expression)
+        }
         if (response.asBoolean()) {
             client.workflows.enqueueChildWorkflows(
                 cfg.workflows,

@@ -4,9 +4,10 @@ import com.apollographql.apollo.exception.ApolloNetworkException
 import io.bosca.api.Client
 import io.bosca.graphql.fragment.WorkflowJob
 import kotlinx.coroutines.*
-import java.util.concurrent.atomic.AtomicBoolean
+import kotlinx.coroutines.channels.ReceiveChannel
+import kotlinx.coroutines.channels.produce
+import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicLong
-import kotlin.math.min
 
 class JobRunner(
     private val client: Client,
@@ -15,115 +16,153 @@ class JobRunner(
     private val registry: ActivityRegistry,
 ) {
 
-    private val shutdown = AtomicBoolean(false)
+    private val scope = CoroutineScope(SupervisorJob() + dispatcher)
     private val active = AtomicLong(0)
     private val jobs = AtomicLong(0)
-    private var noJobs = AtomicBoolean(false)
-    private var delay = 1L
 
-    fun isShutdown() = shutdown.get() && active.get() == 0L
+    fun isShutdown(): Boolean = !scope.isActive
 
     fun shutdown() {
-        shutdown.set(true)
+        scope.cancel()
     }
 
-    suspend fun run() {
-        coroutineScope {
-            while (!shutdown.get()) {
-                if (active.get() >= max) {
-                    delay(10)
-                    continue
-                }
-                active.incrementAndGet()
-
-                val job: WorkflowJob?
+    @OptIn(ExperimentalCoroutinesApi::class)
+    private fun CoroutineScope.getNextJob() = produce(capacity = max) {
+        var delay = 1L
+        val pending = mutableListOf<Deferred<WorkflowJob?>>()
+        val max = Runtime.getRuntime().availableProcessors() * 2
+        var current = 1
+        try {
+            while (isActive) {
                 try {
-                    job = client.workflows.getNextJob(queue)
-                    if (job == null) {
-                        if (!noJobs.get()) {
-                            noJobs.set(true)
-                            println("no jobs available: $queue")
+                    while (pending.size < current) {
+                        pending += scope.async {
+                            try {
+                                client.workflows.getNextJob(queue)
+                            } catch (e: ApolloNetworkException) {
+                                println("error fetching next job: $queue: $e :: ${e.platformCause}")
+                                null
+                            }
                         }
-                        active.decrementAndGet()
-                        delay = min(delay * 2, 1_000)
-                        delay(delay)
-                        continue
-                    } else if (noJobs.get()) {
-                        noJobs.set(false)
                     }
-                    delay = 1L
-                } catch (e: ApolloNetworkException) {
-                    println("error fetching next job: $queue: $e :: ${e.platformCause}")
-                    delay(1_000)
-                    active.decrementAndGet()
-                    continue
+                    var found = false
+                    for (job in pending) {
+                        try {
+                            val result = job.await()
+                            if (result != null) {
+                                found = true
+                                send(result)
+                            }
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: Exception) {
+                            println("error fetching next job: $queue: $e")
+                            continue
+                        }
+                    }
+                    pending.clear()
+                    if (!found) {
+                        delay(delay)
+                        delay = minOf(delay * 2, 3_000)
+                        current = 1
+                    } else {
+                        delay = 1L
+                        current = minOf(current + 1, max)
+                    }
+                } catch (e: CancellationException) {
+                    break
                 } catch (e: Exception) {
                     println("error fetching next job: $queue: $e")
                     delay(1_000)
-                    active.decrementAndGet()
                     continue
                 }
+            }
+        } catch (ignore: CancellationException) {
+        }
+    }
 
-                launch {
-                    try {
-                        run(job)
-                    } catch (e: Exception) {
-                        println("failed to run job: $queue: ${job.id}: $e")
-                    } finally {
-                        active.decrementAndGet()
-                    }
-                }
+    fun run() {
+        val producer = scope.getNextJob()
+        repeat(max) {
+            scope.launch {
+                producer.process()
             }
         }
     }
 
-    private suspend fun run(job: WorkflowJob) = coroutineScope {
-        val running = AtomicBoolean(true)
-        val checkin = launch {
-            while (running.get()) {
-                try {
-                    client.workflows.setWorkflowJobCheckin(job.id)
-                } catch (e: CancellationException) {
-                    println("cancelled checkin: ${job.id}")
-                } catch (e: Exception) {
-                    if (e.message?.contains("can't update plan, it's already finished") != true) {
-                        println("failed to checkin: ${job.id}: $e")
-                    }
+    private suspend fun CoroutineScope.checkin(id: WorkflowJob.Id) {
+        while (isActive) {
+            try {
+                client.workflows.setWorkflowJobCheckin(id)
+            } catch (e: CancellationException) {
+                println("cancelled checkin: $id")
+                break
+            } catch (e: Exception) {
+                if (e.message?.contains("can't update plan, it's already finished") != true) {
+                    println("failed to checkin: ${id}: $e")
                 }
-                if (isActive) {
-                    delay(60_000)
-                }
+            }
+            try {
+                delay(60_000)
+            } catch (e: CancellationException) {
+                break
+            } catch (e: Exception) {
+                println("failed to checkin delay: ${id}: $e")
             }
         }
-        try {
-            val activity = registry.getActivity(job.workflowActivity.workflowActivity.activityId)
-            if (activity == null) {
-                println("missing activity: ${job.workflowActivity.workflowActivity.activityId}")
-                client.workflows.setWorkflowJobFailed(
-                    job.id,
-                    "missing activity: ${job.workflowActivity.workflowActivity.activityId}"
-                )
-                return@coroutineScope
+    }
+
+    @OptIn(DelicateCoroutinesApi::class)
+    private suspend fun ReceiveChannel<WorkflowJob>.process() {
+        for (job in this) {
+            if (isClosedForReceive) {
+                break
             }
-            println("processing job: ${job.id} : ${job.workflowActivity.workflowActivity.activityId} : ${jobs.incrementAndGet()} : ${active.get()}")
+            val checkin = scope.launch { checkin(job.id) }
+            try {
+                job.execute()
+            } finally {
+                checkin.cancel()
+            }
+        }
+    }
+
+    private suspend fun WorkflowJob.execute() {
+        try {
+            active.incrementAndGet()
+            val activity = registry.getActivity(workflowActivity.workflowActivity.activityId)
+            if (activity == null) {
+                println("missing activity: ${workflowActivity.workflowActivity.activityId}")
+                client.workflows.setWorkflowJobFailed(
+                    id,
+                    "missing activity: ${workflowActivity.workflowActivity.activityId}"
+                )
+                return
+            }
+            println("processing job: $id : ${workflowActivity.workflowActivity.activityId} : ${jobs.incrementAndGet()} : ${active.get()}")
             val context = ActivityContext()
             try {
-                activity.execute(context, job)
+                activity.execute(context, this)
             } finally {
                 context.cleanup()
             }
-            client.workflows.setWorkflowJobComplete(job.id)
-            println("processing complete: ${job.id} : ${job.workflowActivity.workflowActivity.activityId} : ${active.get()}")
+            client.workflows.setWorkflowJobComplete(id)
+            println("processing complete: ${id} : ${workflowActivity.workflowActivity.activityId} : ${active.get()}")
+        } catch (e: CancellationException) {
+            println("cancelled job")
         } catch (e: DelayedUntilException) {
-            client.workflows.setWorkflowJobDelayedUntil(job.id, e.delayedUntil)
-            println("delayed executing: ${job.id}: $e")
+            client.workflows.setWorkflowJobDelayedUntil(id, e.delayedUntil)
+            println("delayed executing: ${id}: $e")
         } catch (e: Exception) {
-            client.workflows.setWorkflowJobFailed(job.id, e.toString())
-            println("failed to execute: ${job.id}: $e")
+            client.workflows.setWorkflowJobFailed(id, e.toString())
+            println("failed to execute: ${id}: $e")
             e.printStackTrace()
         } finally {
-            running.set(false)
-            checkin.cancel()
+            active.decrementAndGet()
         }
+    }
+
+    companion object {
+        val dispatcher = Executors.newCachedThreadPool().asCoroutineDispatcher()
     }
 }

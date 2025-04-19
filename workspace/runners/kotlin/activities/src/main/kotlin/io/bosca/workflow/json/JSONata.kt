@@ -74,10 +74,12 @@ class JSONata(client: Client) : Activity(client) {
         } else {
             null
         }
-        val data = withContext(Dispatchers.IO) { file?.readText()?.parseToJsonElement()?.toAny() ?: "{}".parseToJsonElement().toAny() }
-        val expression = Jsonata.jsonata(configuration.expression)
-        expression.registerFunction("parseDate", ::parseDate)
-        val result = expression.evaluate(data).toJsonElement()
+        val result = withContext(Dispatchers.IO) {
+            val data = file?.readText()?.parseToJsonElement()?.toAny() ?: "{}".parseToJsonElement().toAny()
+            val expression = Jsonata.jsonata(configuration.expression)
+            expression.registerFunction("parseDate", ::parseDate)
+            expression.evaluate(data).toJsonElement()
+        }
         setSupplementaryContents(
             job,
             OUTPUT_NAME,
