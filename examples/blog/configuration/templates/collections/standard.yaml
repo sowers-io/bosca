@@ -27,20 +27,12 @@ templates:
     collection:
       defaultAttributes:
         type: Standard
-      collectionsFilter:
-        options:
-          - name: Standard
-            query:
-              attributes:
-                - attributes:
-                    type: Standard
-      metadataFilter:
-        options:
+      filters:
+        filters:
           - name: Blog Posts
-            query:
-              attributes:
-                - attributes:
-                    type: Blog Post
+            filter: "type = \"Blog Post\""
+          - name: Standard
+            filter: "type = \"Standard\""
       attributes:
         - $ref: ./attributes/simple-description.yaml
         - $ref: ./attributes/featured-image.yaml
