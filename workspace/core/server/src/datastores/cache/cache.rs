@@ -31,7 +31,14 @@ where
 {
     async fn clear(&self) -> Result<(), Error> {
         self.cache.invalidate_all();
-        self.store.purge("*").await?;
+        let mut keys = self.store.keys().await?;
+        while let Some(key) = keys.next().await {
+            if let Ok(key) = key {
+                self.store.delete(key).await?;
+            } else {
+                break;
+            }
+        }
         Ok(())
     }
 
