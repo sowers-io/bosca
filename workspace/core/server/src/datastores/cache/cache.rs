@@ -99,7 +99,7 @@ where
 
     pub async fn get<K>(&self, key: &K) -> Option<V>
     where
-        K: Hash + Eq + ?Sized + Send + Sync + Display + Debug + Clone,
+        K: Hash + Eq + Send + Sync + Display + Debug + Clone,
     {
         let key = key.to_string();
         let value = self.cache.get(&key).await;
@@ -124,7 +124,7 @@ where
 
     pub async fn set<K>(&self, key: &K, value: &V)
     where
-        K: Hash + Eq + ?Sized + Send + Sync + Display + Debug + Clone,
+        K: Hash + Eq + Send + Sync + Display + Debug + Clone,
     {
         let key = key.to_string();
         self.cache.insert(key.clone(), value.clone()).await;
@@ -136,7 +136,7 @@ where
 
     pub async fn remove<K>(&self, key: &K)
     where
-        K: Hash + Eq + ?Sized + Send + Sync + Display + Debug + Clone,
+        K: Hash + Eq + Send + Sync + Display + Debug + Clone,
     {
         let key = key.to_string();
         self.cache.remove(&key).await;
