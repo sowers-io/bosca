@@ -116,7 +116,7 @@ impl MetadataPermissionsDataStore {
             return Ok(true);
         }
         let eval = Evaluator::new(metadata.id, self.get_metadata_permissions(&metadata.id).await?);
-        Ok(eval.evaluate(principal, &groups, &action))
+        Ok(eval.evaluate(principal, groups, &action))
     }
 
     #[tracing::instrument(skip(self, metadata, principal, action))]

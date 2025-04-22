@@ -41,7 +41,7 @@ impl Evaluator {
         Self { id, permissions: p }
     }
 
-    pub fn evaluate(&self, p: &Principal, pg: &Vec<Uuid>, action: &PermissionAction) -> bool {
+    pub fn evaluate(&self, p: &Principal, pg: &[Uuid], action: &PermissionAction) -> bool {
         match self.permissions.get(action) {
             Some(groups) => {
                 for group in groups {
