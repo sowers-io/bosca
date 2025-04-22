@@ -1,7 +1,6 @@
 use std::fmt::Debug;
-use crate::datastores::cache::cache::{BoscaCache, BoscaCacheInterface};
+use crate::datastores::cache::cache::BoscaCache;
 use crate::datastores::cache::manager::BoscaCacheManager;
-use crate::datastores::cache::tiered_cache::TieredCacheType;
 use crate::datastores::notifier::Notifier;
 use crate::models::content::collection::Collection;
 use crate::models::security::permission::{Permission, PermissionAction};
@@ -17,7 +16,7 @@ use bosca_database::TracingPool;
 #[derive(Clone)]
 pub struct CollectionPermissionsDataStore {
     pool: TracingPool,
-    cache: BoscaCache<Uuid, Vec<Permission>>,
+    cache: BoscaCache<Vec<Permission>>,
     notifier: Arc<Notifier>,
 }
 
@@ -28,16 +27,15 @@ impl Debug for CollectionPermissionsDataStore {
 }
 
 impl CollectionPermissionsDataStore {
-    pub async fn new(pool: TracingPool, cache: &mut BoscaCacheManager, notifier: Arc<Notifier>) -> Self {
-        Self {
+    pub async fn new(pool: TracingPool, cache: &mut BoscaCacheManager, notifier: Arc<Notifier>) -> Result<Self, Error> {
+        Ok(Self {
             pool,
             cache: cache.new_id_tiered_cache(
                 "collection_permissions",
                 5000,
-                TieredCacheType::Collection,
-            ).await,
+            ).await?,
             notifier,
-        }
+        })
     }
 
     async fn on_collection_changed(&self, id: &Uuid) -> Result<(), Error> {

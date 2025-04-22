@@ -1,23 +1,22 @@
-use crate::datastores::cache::cache::{BoscaCache, BoscaCacheInterface};
+use async_graphql::Error;
 use crate::datastores::cache::manager::BoscaCacheManager;
-use crate::datastores::cache::tiered_cache::TieredCacheType;
 use crate::models::content::metadata::Metadata;
 use uuid::Uuid;
+use crate::datastores::cache::cache::BoscaCache;
 
 #[derive(Clone)]
 pub struct MetadataCache {
-    metadata_id: BoscaCache<Uuid, Metadata>,
+    metadata_id: BoscaCache<Metadata>,
 }
 
 impl MetadataCache {
-    pub async fn new(cache: &mut BoscaCacheManager) -> Self {
-        Self {
+    pub async fn new(cache: &mut BoscaCacheManager) -> Result<Self, Error> {
+        Ok(Self {
             metadata_id: cache.new_id_tiered_cache(
-                "metadata::id",
+                "metadata_id",
                 5000,
-                TieredCacheType::Metadata,
-            ).await,
-        }
+            ).await?,
+        })
     }
 
     #[tracing::instrument(skip(self, id))]

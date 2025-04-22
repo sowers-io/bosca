@@ -10,15 +10,16 @@
       <env name="AWS_ENDPOINT" value="http://127.0.0.1:9010" />
       <env name="AWS_SECRET_ACCESS_KEY" value="eV4rlwomvXsM19CXorOTb5uYaFLeNXsPLKx5Uxdm" />
       <env name="BOSCA_URL_PREFIX" value="http://127.0.0.1:8000" />
+      <env name="CONFIGURATION_SECRET_KEY" value="changeme" />
       <env name="DATABASE_JOBS_URL" value="postgres://boscajobs:boscajobs@127.0.0.1:5434/boscajobs" />
       <env name="DATABASE_URL" value="postgres://bosca:bosca@127.0.0.1:5433/bosca" />
       <env name="JWT_AUDIENCE" value="bosca.io" />
       <env name="JWT_ISSUER" value="bosca-graphql" />
       <env name="JWT_SECRET" value="bosca1234*" />
+      <env name="NATS_URL" value="0.0.0.0:4222" />
       <env name="SEARCH_KEY" value="p8JcB_HuMHRxN7uVXfrG2wU06b5k7oTvaAAYo6nsi9M" />
       <env name="SEARCH_URL" value="http://127.0.0.1:7701" />
       <env name="STORAGE" value="/tmp/bosca/fs" />
-      <env name="CONFIGURATION_SECRET_KEY" value="changeme" />
     </envs>
     <option name="emulateTerminal" value="true" />
     <option name="channel" value="DEFAULT" />

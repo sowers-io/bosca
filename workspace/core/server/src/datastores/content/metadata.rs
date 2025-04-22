@@ -30,12 +30,12 @@ pub struct MetadataDataStore {
 }
 
 impl MetadataDataStore {
-    pub async fn new(pool: TracingPool, cache: &mut BoscaCacheManager, notifier: Arc<Notifier>) -> Self {
-        Self {
-            cache: MetadataCache::new(cache).await,
+    pub async fn new(pool: TracingPool, cache: &mut BoscaCacheManager, notifier: Arc<Notifier>) -> Result<Self, Error> {
+        Ok(Self {
+            cache: MetadataCache::new(cache).await?,
             pool,
             notifier,
-        }
+        })
     }
 
     #[tracing::instrument(skip(self, ctx, id))]

@@ -1,6 +1,5 @@
-use crate::datastores::cache::cache::{BoscaCache, BoscaCacheInterface};
+use async_graphql::Error;
 use crate::datastores::cache::manager::BoscaCacheManager;
-use crate::datastores::cache::tiered_cache::TieredCacheType;
 use crate::models::workflow::activities::{
     Activity, ActivityParameter, WorkflowActivity, WorkflowActivityModel,
     WorkflowActivityParameter, WorkflowActivityPrompt, WorkflowActivityStorageSystem,
@@ -14,116 +13,102 @@ use crate::models::workflow::traits::Trait;
 use crate::models::workflow::transitions::Transition;
 use crate::models::workflow::workflows::Workflow;
 use uuid::Uuid;
+use crate::datastores::cache::cache::BoscaCache;
 
 #[derive(Clone)]
 pub struct WorkflowCache {
-    trait_cache: BoscaCache<String, Trait>,
+    trait_cache: BoscaCache<Trait>,
 
-    trait_workflow_ids_cache: BoscaCache<String, Vec<String>>,
-    prompt_cache: BoscaCache<Uuid, Prompt>,
-    model_cache: BoscaCache<Uuid, Model>,
-    storage_system_cache: BoscaCache<Uuid, StorageSystem>,
-    storage_system_models_cache: BoscaCache<Uuid, Vec<StorageSystemModel>>,
-    state_cache: BoscaCache<String, WorkflowState>,
-    transition_cache: BoscaCache<String, Transition>,
+    trait_workflow_ids_cache: BoscaCache<Vec<String>>,
+    prompt_cache: BoscaCache<Prompt>,
+    model_cache: BoscaCache<Model>,
+    storage_system_cache: BoscaCache<StorageSystem>,
+    storage_system_models_cache: BoscaCache<Vec<StorageSystemModel>>,
+    state_cache: BoscaCache<WorkflowState>,
+    transition_cache: BoscaCache<Transition>,
 
-    activity_cache: BoscaCache<String, Activity>,
-    activity_inputs_cache: BoscaCache<String, Vec<ActivityParameter>>,
-    activity_outputs_cache: BoscaCache<String, Vec<ActivityParameter>>,
+    activity_cache: BoscaCache<Activity>,
+    activity_inputs_cache: BoscaCache<Vec<ActivityParameter>>,
+    activity_outputs_cache: BoscaCache<Vec<ActivityParameter>>,
 
-    workflow_cache: BoscaCache<String, Workflow>,
-    workflow_activity_ids_cache: BoscaCache<String, Vec<i64>>,
-    workflow_activity_cache: BoscaCache<i64, WorkflowActivity>,
-    workflow_activity_inputs_cache: BoscaCache<i64, Vec<WorkflowActivityParameter>>,
-    workflow_activity_outputs_cache: BoscaCache<i64, Vec<WorkflowActivityParameter>>,
-    workflow_activity_models_cache: BoscaCache<i64, Vec<WorkflowActivityModel>>,
-    workflow_activity_prompts_cache: BoscaCache<i64, Vec<WorkflowActivityPrompt>>,
-    workflow_activity_storage_systems_cache: BoscaCache<i64, Vec<WorkflowActivityStorageSystem>>,
+    workflow_cache: BoscaCache<Workflow>,
+    workflow_activity_ids_cache: BoscaCache<Vec<i64>>,
+    workflow_activity_cache: BoscaCache<WorkflowActivity>,
+    workflow_activity_inputs_cache: BoscaCache<Vec<WorkflowActivityParameter>>,
+    workflow_activity_outputs_cache: BoscaCache<Vec<WorkflowActivityParameter>>,
+    workflow_activity_models_cache: BoscaCache<Vec<WorkflowActivityModel>>,
+    workflow_activity_prompts_cache: BoscaCache<Vec<WorkflowActivityPrompt>>,
+    workflow_activity_storage_systems_cache: BoscaCache<Vec<WorkflowActivityStorageSystem>>,
 }
 
 impl WorkflowCache {
-    pub async fn new(cache: &mut BoscaCacheManager) -> Self {
-        Self {
-            trait_cache: cache.new_string_tiered_cache("traits", 5000, TieredCacheType::Trait).await,
+    pub async fn new(cache: &mut BoscaCacheManager) -> Result<Self, Error> {
+        Ok(Self {
+            trait_cache: cache.new_string_tiered_cache("traits", 5000).await?,
             trait_workflow_ids_cache: cache.new_string_tiered_cache(
                 "trait_workflow_ids",
                 5000,
-                TieredCacheType::Trait,
-            ).await,
+            ).await?,
             workflow_cache: cache.new_string_tiered_cache(
                 "workflows",
                 5000,
-                TieredCacheType::Workflow,
-            ).await,
+            ).await?,
             storage_system_cache: cache.new_id_tiered_cache(
                 "storage_systems",
                 5000,
-                TieredCacheType::StorageSystem,
-            ).await,
+            ).await?,
             storage_system_models_cache: cache.new_id_tiered_cache(
                 "storage_system_models",
                 5000,
-                TieredCacheType::StorageSystem,
-            ).await,
-            prompt_cache: cache.new_id_tiered_cache("prompts", 5000, TieredCacheType::Prompt).await,
-            model_cache: cache.new_id_tiered_cache("models", 5000, TieredCacheType::Model).await,
-            state_cache: cache.new_string_tiered_cache("states", 100, TieredCacheType::State).await,
+            ).await?,
+            prompt_cache: cache.new_id_tiered_cache("prompts", 5000).await?,
+            model_cache: cache.new_id_tiered_cache("models", 5000).await?,
+            state_cache: cache.new_string_tiered_cache("states", 100).await?,
             transition_cache: cache.new_string_tiered_cache(
                 "transitions",
                 100,
-                TieredCacheType::Transition,
-            ).await,
+            ).await?,
             activity_cache: cache.new_string_tiered_cache(
                 "activities",
                 5000,
-                TieredCacheType::Activity,
-            ).await,
+            ).await?,
             activity_inputs_cache: cache.new_string_tiered_cache(
                 "activity_inputs",
                 5000,
-                TieredCacheType::Activity,
-            ).await,
+            ).await?,
             activity_outputs_cache: cache.new_string_tiered_cache(
                 "activity_outputs",
                 5000,
-                TieredCacheType::Activity,
-            ).await,
+            ).await?,
             workflow_activity_ids_cache: cache.new_string_tiered_cache(
                 "workflow_activity_ids",
                 5000,
-                TieredCacheType::Workflow,
-            ).await,
+            ).await?,
             workflow_activity_cache: cache.new_int_tiered_cache(
                 "workflow_activities",
                 5000,
-                TieredCacheType::WorkflowActivity,
-            ).await,
+            ).await?,
             workflow_activity_inputs_cache: cache.new_int_tiered_cache(
                 "workflow_activity_inputs",
                 5000,
-                TieredCacheType::WorkflowActivity,
-            ).await,
+            ).await?,
             workflow_activity_outputs_cache: cache.new_int_tiered_cache(
                 "workflow_activity_outputs",
                 5000,
-                TieredCacheType::WorkflowActivity,
-            ).await,
+            ).await?,
             workflow_activity_models_cache: cache.new_int_tiered_cache(
                 "workflow_activity_models",
                 5000,
-                TieredCacheType::WorkflowActivity,
-            ).await,
+            ).await?,
             workflow_activity_prompts_cache: cache.new_int_tiered_cache(
                 "workflow_activity_prompts",
                 5000,
-                TieredCacheType::WorkflowActivity,
-            ).await,
+            ).await?,
             workflow_activity_storage_systems_cache: cache.new_int_tiered_cache(
                 "workflow_activity_storage_systems",
                 5000,
-                TieredCacheType::WorkflowActivity,
-            ).await,
-        }
+            ).await?,
+        })
     }
 
     #[tracing::instrument(skip(self, from_state_id, to_state_id))]

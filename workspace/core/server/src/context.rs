@@ -30,6 +30,7 @@ use meilisearch_sdk::client::Client;
 use std::env;
 use std::sync::Arc;
 use uuid::Uuid;
+use crate::initialization::nats::new_nats_client;
 
 #[derive(Clone)]
 pub struct BoscaContext {
@@ -79,8 +80,10 @@ impl BoscaContext {
         );
         info!("Connecting to Search");
         let search = new_search_client()?;
+        info!("Connecting to Nats");
+        let (_nats, jetstream) = new_nats_client().await?;
         info!("Building Context");
-        let mut cache = BoscaCacheManager::new();
+        let mut cache = BoscaCacheManager::new(jetstream);
         let ctx = BoscaContext {
             security: SecurityDataStore::new(
                 &mut cache,
@@ -88,14 +91,14 @@ impl BoscaContext {
                 new_jwt(),
                 url_secret_key,
             )
-            .await,
+            .await?,
             workflow: WorkflowDataStore::new(
                 bosca_pool.clone(),
                 &mut cache,
                 jobs.clone(),
                 Arc::clone(&notifier),
             )
-            .await,
+            .await?,
             workflow_schedule: WorkflowScheduleDataStore::new(
                 bosca_pool.clone(),
                 Arc::clone(&notifier),
@@ -107,7 +110,7 @@ impl BoscaContext {
             ),
             profile: ProfileDataStore::new(bosca_pool.clone()),
             queries: PersistedQueriesDataStore::new(bosca_pool.clone()).await,
-            content: ContentDataStore::new(bosca_pool, &mut cache, Arc::clone(&notifier)).await,
+            content: ContentDataStore::new(bosca_pool, &mut cache, Arc::clone(&notifier)).await?,
             notifier,
             search,
             storage: new_object_storage(),

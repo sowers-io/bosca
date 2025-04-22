@@ -50,13 +50,13 @@ impl WorkflowDataStore {
         cache: &mut BoscaCacheManager,
         queues: JobQueues,
         notifier: Arc<Notifier>,
-    ) -> Self {
-        Self {
+    ) -> Result<Self, Error> {
+        Ok(Self {
             pool,
             queues,
-            cache: WorkflowCache::new(cache).await,
+            cache: WorkflowCache::new(cache).await?,
             notifier,
-        }
+        })
     }
 
     pub fn start_monitoring_expirations(&self) {

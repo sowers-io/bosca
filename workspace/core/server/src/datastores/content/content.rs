@@ -1,7 +1,6 @@
 use crate::datastores::bible::bible::BiblesDataStore;
-use crate::datastores::cache::cache::{BoscaCache, BoscaCacheInterface};
+use crate::datastores::cache::cache::BoscaCache;
 use crate::datastores::cache::manager::BoscaCacheManager;
-use crate::datastores::cache::tiered_cache::TieredCacheType;
 use crate::datastores::content::categories::CategoriesDataStore;
 use crate::datastores::content::collection_permissions::CollectionPermissionsDataStore;
 use crate::datastores::content::collection_supplementary::CollectionSupplementaryDataStore;
@@ -24,7 +23,7 @@ use uuid::Uuid;
 
 #[derive(Clone)]
 pub struct ContentDataStore {
-    slug_cache: BoscaCache<String, Slug>,
+    slug_cache: BoscaCache<Slug>,
     pool: TracingPool,
 
     pub categories: CategoriesDataStore,
@@ -45,9 +44,9 @@ pub struct ContentDataStore {
 
 impl ContentDataStore {
 
-    pub async fn new(pool: TracingPool, cache: &mut BoscaCacheManager, notifier: Arc<Notifier>) -> Self {
-        Self {
-            slug_cache: cache.new_string_tiered_cache("slugs", 5000, TieredCacheType::Slug).await,
+    pub async fn new(pool: TracingPool, cache: &mut BoscaCacheManager, notifier: Arc<Notifier>) -> Result<Self, Error> {
+        Ok(Self {
+            slug_cache: cache.new_string_tiered_cache("slugs", 5000).await?,
             categories: CategoriesDataStore::new(pool.clone(), Arc::clone(&notifier)),
             collections: CollectionsDataStore::new(pool.clone(), Arc::clone(&notifier)),
             collection_supplementary: CollectionSupplementaryDataStore::new(pool.clone(), Arc::clone(&notifier)),
@@ -55,7 +54,7 @@ impl ContentDataStore {
                 pool.clone(),
                 cache,
                 Arc::clone(&notifier),
-            ).await,
+            ).await?,
             collection_workflows: CollectionWorkflowsDataStore::new(
                 pool.clone(),
                 Arc::clone(&notifier),
@@ -63,13 +62,13 @@ impl ContentDataStore {
             collection_templates: CollectionTemplatesDataStore::new(
                 pool.clone(),
             ),
-            metadata: MetadataDataStore::new(pool.clone(), cache, Arc::clone(&notifier)).await,
+            metadata: MetadataDataStore::new(pool.clone(), cache, Arc::clone(&notifier)).await?,
             metadata_supplementary: MetadataSupplementaryDataStore::new(pool.clone(), Arc::clone(&notifier)),
             metadata_permissions: MetadataPermissionsDataStore::new(
                 pool.clone(),
                 cache,
                 Arc::clone(&notifier),
-            ).await,
+            ).await?,
             metadata_workflows: MetadataWorkflowsDataStore::new(
                 pool.clone(),
                 Arc::clone(&notifier),
@@ -79,7 +78,7 @@ impl ContentDataStore {
             sources: SourcesDataStore::new(pool.clone()),
             bibles: BiblesDataStore::new(pool.clone(), Arc::clone(&notifier)),
             pool,
-        }
+        })
     }
 
     #[tracing::instrument(skip(self, slug))]

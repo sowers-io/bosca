@@ -52,13 +52,13 @@ impl SecurityDataStore {
         pool: TracingPool,
         jwt: Jwt,
         url_secret_key: String,
-    ) -> Self {
-        Self {
-            cache: SecurityCache::new(cache).await,
+    ) -> Result<Self, Error> {
+        Ok(Self {
+            cache: SecurityCache::new(cache).await?,
             pool,
             jwt,
             url_secret_key,
-        }
+        })
     }
 
     pub fn sign_url(&self, url: &str) -> String {

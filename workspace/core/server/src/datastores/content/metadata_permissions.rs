@@ -1,7 +1,6 @@
 use crate::context::BoscaContext;
-use crate::datastores::cache::cache::{BoscaCache, BoscaCacheInterface};
+use crate::datastores::cache::cache::BoscaCache;
 use crate::datastores::cache::manager::BoscaCacheManager;
-use crate::datastores::cache::tiered_cache::TieredCacheType;
 use crate::datastores::notifier::Notifier;
 use crate::models::content::metadata::Metadata;
 use crate::models::security::permission::{Permission, PermissionAction};
@@ -16,22 +15,21 @@ use bosca_database::TracingPool;
 
 #[derive(Clone)]
 pub struct MetadataPermissionsDataStore {
-    permission_cache: BoscaCache<Uuid, Vec<Permission>>,
+    permission_cache: BoscaCache<Vec<Permission>>,
     pool: TracingPool,
     notifier: Arc<Notifier>,
 }
 
 impl MetadataPermissionsDataStore {
-    pub async fn new(pool: TracingPool, cache: &mut BoscaCacheManager, notifier: Arc<Notifier>) -> Self {
-        Self {
+    pub async fn new(pool: TracingPool, cache: &mut BoscaCacheManager, notifier: Arc<Notifier>) -> Result<Self, Error> {
+        Ok(Self {
             pool,
             permission_cache: cache.new_id_tiered_cache(
                 "metadata_permissions",
                 5000,
-                TieredCacheType::Metadata,
-            ).await,
+            ).await?,
             notifier,
-        }
+        })
     }
 
     #[tracing::instrument(skip(self, id))]

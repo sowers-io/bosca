@@ -72,6 +72,7 @@ async fn main() {
     initialize_content(&ctx).await.unwrap();
 
     ctx.workflow.start_monitoring_expirations();
+    ctx.cache.watch();
 
     let persisted_queries = ApolloPersistedQueries::new(ctx.queries.cache.clone());
     let schema = new_schema(ctx.clone(), persisted_queries);
