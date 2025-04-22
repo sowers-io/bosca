@@ -10,6 +10,7 @@ where
     K: Clone + Send + Sync + serde::ser::Serialize,
     V: Clone + Send + Sync + serde::ser::Serialize + serde::de::DeserializeOwned,
 {
+    name: String,
     cache: Cache<K, V>,
 }
 
@@ -35,8 +36,9 @@ where
     //     }
     // }
 
-    pub fn new_ttl(size: u64, ttl: Duration) -> Self {
+    pub fn new_ttl(name: String, size: u64, ttl: Duration) -> Self {
         Self {
+            name,
             cache: Cache::builder()
                 .max_capacity(size)
                 .time_to_idle(ttl)
@@ -66,6 +68,4 @@ where
     async fn clear(&self) {
         self.cache.invalidate_all();
     }
-
-    fn watch(&self) {}
 }

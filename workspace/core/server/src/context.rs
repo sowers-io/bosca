@@ -70,7 +70,6 @@ impl BoscaContext {
         };
         info!("Connecting to Redis");
         let redis_jobs_queue_client = new_redis_client("REDIS_JOBS_QUEUE").await?;
-        let redis_cache_client = new_redis_client("REDIS_CACHE").await?;
         let redis_notifier_client = new_redis_client("REDIS_NOTIFIER_PUBSUB").await?;
         let notifier = Arc::new(Notifier::new(redis_notifier_client.clone()));
         let jobs = JobQueues::new(
@@ -81,7 +80,7 @@ impl BoscaContext {
         info!("Connecting to Search");
         let search = new_search_client()?;
         info!("Building Context");
-        let mut cache = BoscaCacheManager::new(redis_cache_client, Arc::clone(&notifier));
+        let mut cache = BoscaCacheManager::new();
         let ctx = BoscaContext {
             security: SecurityDataStore::new(
                 &mut cache,
