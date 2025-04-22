@@ -1037,6 +1037,7 @@ impl MetadataDataStore {
 
     #[tracing::instrument(skip(self, ctx, id))]
     pub async fn update_storage(&self, ctx: &BoscaContext, id: &Uuid) -> Result<(), Error> {
+        self.cache.evict_metadata(id).await;
         let mut request = EnqueueRequest {
             workflow_id: Some(METADATA_UPDATE_STORAGE.to_string()),
             metadata_id: Some(*id),
