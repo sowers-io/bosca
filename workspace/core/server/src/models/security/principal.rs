@@ -13,8 +13,6 @@ pub struct Principal {
     pub anonymous: bool,
     pub attributes: Value,
     pub verification_token: Option<String>,
-    groups: Option<Vec<Group>>,
-    group_ids: HashSet<Uuid>,
 }
 
 impl Debug for Principal {
@@ -44,31 +42,7 @@ impl Principal {
             verified,
             anonymous,
             attributes,
-            groups: Some(groups),
             verification_token: None,
-            group_ids,
-        }
-    }
-
-    pub fn get_groups(&self) -> &Option<Vec<Group>> {
-        &self.groups
-    }
-
-    pub fn has_group(&self, group_id: &Uuid) -> bool {
-        self.group_ids.contains(group_id)
-    }
-
-    pub fn set_groups(&mut self, groups: &Option<Vec<Group>>) {
-        let g = &mut self.group_ids;
-        if groups.is_none() {
-            self.groups = None;
-            g.clear();
-        } else {
-            let gr = groups.as_ref().unwrap();
-            self.groups = Some(gr.clone());
-            for group in gr.iter() {
-                g.insert(group.id);
-            }
         }
     }
 }
@@ -81,8 +55,6 @@ impl From<&Row> for Principal {
             anonymous: row.get("anonymous"),
             attributes: row.get("attributes"),
             verification_token: row.get("verification_token"),
-            groups: None,
-            group_ids: HashSet::new(),
         }
     }
 }

@@ -48,6 +48,8 @@ pub async fn slug(
     let principal = get_principal_from_headers(&ctx, &headers)
         .await
         .map_err(|_| (StatusCode::UNAUTHORIZED, "Unauthorized".to_owned()))?;
+    let principal_groups = ctx.security.get_principal_groups(&principal.id).await
+        .map_err(|_| (StatusCode::UNAUTHORIZED, "Unauthorized".to_owned()))?;
     let slug = slug.split('.').next().unwrap();
     let mut slug_content = ctx
         .content
@@ -69,7 +71,7 @@ pub async fn slug(
         return Err((StatusCode::NOT_FOUND, "Not Found".to_owned()))?;
     }
     let metadata = ctx
-        .check_metadata_content_action_principal(&principal, &slug.id, PermissionAction::View)
+        .check_metadata_content_action_principal(&principal, &principal_groups, &slug.id, PermissionAction::View)
         .await
         .map_err(|_| (StatusCode::FORBIDDEN, "Forbidden".to_owned()))?;
     if metadata.deleted

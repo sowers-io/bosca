@@ -98,6 +98,9 @@ impl Extension for AuthorizationExtension {
                         new_ctx.principal = get_principal(data, &bctx.security)
                             .await
                             .unwrap_or(get_anonymous_principal());
+                        if !new_ctx.principal.anonymous {
+                            new_ctx.principal_groups = bctx.security.get_principal_groups(&new_ctx.principal.id).await.unwrap_or(vec![]);
+                        }
                         next.run(ctx, request.data(new_ctx)).await
                     }
                     None => next.run(ctx, request).await,

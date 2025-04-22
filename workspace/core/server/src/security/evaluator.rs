@@ -41,11 +41,11 @@ impl Evaluator {
         Self { id, permissions: p }
     }
 
-    pub fn evaluate(&self, p: &Principal, action: &PermissionAction) -> bool {
+    pub fn evaluate(&self, p: &Principal, pg: &Vec<Uuid>, action: &PermissionAction) -> bool {
         match self.permissions.get(action) {
             Some(groups) => {
                 for group in groups {
-                    if p.has_group(group) {
+                    if pg.contains(group) {
                         return true;
                     }
                 }

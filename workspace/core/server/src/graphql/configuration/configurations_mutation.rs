@@ -18,7 +18,7 @@ impl ConfigurationsMutationObject {
         let id = if let Some(cfg) = ctx.configuration.get_configuration_by_key(&configuration.key).await? {
             let permissions = ctx.configuration.get_permissions(&cfg.id).await?;
             let evaluator = Evaluator::new(cfg.id, permissions);
-            if !evaluator.evaluate(&ctx.principal, &PermissionAction::Edit) {
+            if !evaluator.evaluate(&ctx.principal, &ctx.principal_groups, &PermissionAction::Edit) {
                 ctx.check_has_admin_account().await?;
             }
             ctx.configuration.set_configuration(&configuration).await?
@@ -46,7 +46,7 @@ impl ConfigurationsMutationObject {
         let id = cfg.unwrap().id;
         let permissions = ctx.configuration.get_permissions(&id).await?;
         let evaluator = Evaluator::new(id, permissions);
-        if !evaluator.evaluate(&ctx.principal, &PermissionAction::Delete) {
+        if !evaluator.evaluate(&ctx.principal, &ctx.principal_groups, &PermissionAction::Delete) {
             ctx.check_has_admin_account().await?;
         }
         ctx.configuration.delete_configuration(&id).await?;

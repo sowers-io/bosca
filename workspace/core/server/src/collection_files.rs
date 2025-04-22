@@ -23,8 +23,9 @@ pub async fn collection_download(
     headers: HeaderMap,
     request: Request<Body>,
 ) -> Result<(HeaderMap, Body), (StatusCode, String)> {
-    let principal = get_principal_from_headers(&ctx, &headers)
-        .await
+    let principal = get_principal_from_headers(&ctx, &headers).await
+        .map_err(|_| (StatusCode::UNAUTHORIZED, "Unauthorized".to_owned()))?;
+    let principal_groups = ctx.security.get_principal_groups(&principal.id).await
         .map_err(|_| (StatusCode::UNAUTHORIZED, "Unauthorized".to_owned()))?;
     let url = format!(
         "/files/collection{}",
@@ -61,6 +62,7 @@ pub async fn collection_download(
     } else {
         ctx.check_collection_supplementary_action_principal(
             &principal,
+            &principal_groups,
             &supplementary_id,
             PermissionAction::View,
         )
@@ -113,11 +115,14 @@ pub async fn collection_upload(
     let principal = get_principal_from_headers(&ctx, &headers)
         .await
         .map_err(|_| (StatusCode::UNAUTHORIZED, "Unauthorized".to_owned()))?;
+    let principal_groups = ctx.security.get_principal_groups(&principal.id).await
+        .map_err(|_| (StatusCode::UNAUTHORIZED, "Unauthorized".to_owned()))?;
     let supplementary_id = Uuid::parse_str(&params.supplementary_id)
         .map_err(|_| (StatusCode::BAD_REQUEST, "Bad Request".to_owned()))?;
     let (collection, supplementary) = ctx
         .check_collection_supplementary_action_principal(
             &principal,
+            &principal_groups,
             &supplementary_id,
             PermissionAction::Edit,
         )

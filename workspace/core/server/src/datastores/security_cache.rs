@@ -6,12 +6,14 @@ use uuid::Uuid;
 use crate::datastores::cache::cache::BoscaCache;
 
 const CACHE_SECURITY_PRINCIPAL_ID: &str = "security_principal_id";
+const CACHE_SECURITY_PRINCIPAL_GROUP_ID: &str = "security_principal_group_id";
 const CACHE_SECURITY_GROUP_ID: &str = "security_group_id";
 const CACHE_SECURITY_GROUP_NAME: &str = "security_group_name";
 
 #[derive(Clone, Debug)]
 pub struct SecurityCache {
     principal_id: BoscaCache<Principal>,
+    principal_group_ids: BoscaCache<Vec<Uuid>>,
     group_id: BoscaCache<Group>,
     group_name: BoscaCache<Group>,
 }
@@ -22,6 +24,12 @@ impl SecurityCache {
             principal_id: cache
                 .new_id_tiered_cache(
                     CACHE_SECURITY_PRINCIPAL_ID,
+                    5000,
+                )
+                .await?,
+            principal_group_ids: cache
+                .new_id_tiered_cache(
+                    CACHE_SECURITY_PRINCIPAL_GROUP_ID,
                     5000,
                 )
                 .await?,
@@ -43,6 +51,16 @@ impl SecurityCache {
     #[tracing::instrument(skip(self, principal_id))]
     pub async fn evict_principal(&self, principal_id: &Uuid) {
         self.principal_id.remove(principal_id).await;
+    }
+
+    #[tracing::instrument(skip(self, id))]
+    pub async fn get_principal_group_ids(&self, id: &Uuid) -> Option<Vec<Uuid>> {
+        self.principal_group_ids.get(id).await
+    }
+
+    #[tracing::instrument(skip(self, group_ids))]
+    pub async fn cache_principal_group_ids(&self, id: &Uuid, group_ids: Vec<Uuid>) {
+        self.principal_group_ids.set(id, &group_ids).await;
     }
 
     #[tracing::instrument(skip(self, name))]

@@ -45,6 +45,7 @@ pub struct BoscaContext {
     pub notifier: Arc<Notifier>,
     pub search: Arc<Client>,
     pub principal: Principal,
+    pub principal_groups: Vec<Uuid>,
     pub cache: BoscaCacheManager,
 }
 
@@ -115,6 +116,7 @@ impl BoscaContext {
             search,
             storage: new_object_storage(),
             principal: get_anonymous_principal(),
+            principal_groups: vec![],
             cache,
         };
         info!("Context built");
@@ -125,6 +127,7 @@ impl BoscaContext {
     pub async fn check_metadata_action_principal(
         &self,
         principal: &Principal,
+        groups: &Vec<Uuid>,
         id: &Uuid,
         action: PermissionAction,
     ) -> Result<Metadata, Error> {
@@ -133,11 +136,11 @@ impl BoscaContext {
                 if !self
                     .content
                     .metadata_permissions
-                    .has(&metadata, principal, action)
+                    .has(&metadata, principal, groups, action)
                     .await?
                 {
                     let admin = self.security.get_administrators_group().await?;
-                    if !self.principal.has_group(&admin.id) {
+                    if !self.principal_groups.contains(&admin.id) {
                         return Err(Error::new("invalid permissions"));
                     }
                 }
@@ -151,6 +154,7 @@ impl BoscaContext {
     pub async fn check_metadata_content_action_principal(
         &self,
         principal: &Principal,
+        groups: &Vec<Uuid>,
         id: &Uuid,
         action: PermissionAction,
     ) -> Result<Metadata, Error> {
@@ -159,11 +163,11 @@ impl BoscaContext {
                 if !self
                     .content
                     .metadata_permissions
-                    .has_metadata_content_permission(&metadata, principal, action)
+                    .has_metadata_content_permission(&metadata, principal, groups, action)
                     .await?
                 {
                     let admin = self.security.get_administrators_group().await?;
-                    if !self.principal.has_group(&admin.id) {
+                    if !self.principal_groups.contains(&admin.id) {
                         return Err(Error::new("invalid permissions"));
                     }
                 }
@@ -182,11 +186,11 @@ impl BoscaContext {
         if !self
             .content
             .metadata_permissions
-            .has_supplementary_permission(metadata, &self.principal, action)
+            .has_supplementary_permission(metadata, &self.principal, &self.principal_groups, action)
             .await?
         {
             let admin = self.security.get_administrators_group().await?;
-            if !self.principal.has_group(&admin.id) {
+            if !self.principal_groups.contains(&admin.id) {
                 return Err(Error::new("invalid permissions"));
             }
         }
@@ -197,6 +201,7 @@ impl BoscaContext {
     pub async fn check_metadata_supplementary_action_principal(
         &self,
         principal: &Principal,
+        groups: &Vec<Uuid>,
         supplementary_id: &Uuid,
         action: PermissionAction,
     ) -> Result<(Metadata, MetadataSupplementary), Error> {
@@ -213,11 +218,11 @@ impl BoscaContext {
                 if !self
                     .content
                     .metadata_permissions
-                    .has_supplementary_permission(&metadata, principal, action)
+                    .has_supplementary_permission(&metadata, principal, groups, action)
                     .await?
                 {
                     let admin = self.security.get_administrators_group().await?;
-                    if !self.principal.has_group(&admin.id) {
+                    if !groups.contains(&admin.id) {
                         return Err(Error::new("invalid permissions"));
                     }
                 }
@@ -234,6 +239,7 @@ impl BoscaContext {
     pub async fn check_collection_supplementary_action_principal(
         &self,
         principal: &Principal,
+        groups: &Vec<Uuid>,
         supplementary_id: &Uuid,
         action: PermissionAction,
     ) -> Result<(Collection, CollectionSupplementary), Error> {
@@ -262,11 +268,11 @@ impl BoscaContext {
         if !self
             .content
             .collection_permissions
-            .has_supplementary_permission(&collection, principal, action)
+            .has_supplementary_permission(&collection, principal, groups, action)
             .await?
         {
             let admin = self.security.get_administrators_group().await?;
-            if !self.principal.has_group(&admin.id) {
+            if !groups.contains(&admin.id) {
                 return Err(Error::new("invalid permissions"));
             }
         }
@@ -282,11 +288,11 @@ impl BoscaContext {
         if !self
             .content
             .collection_permissions
-            .has_supplementary_permission(collection, &self.principal, action)
+            .has_supplementary_permission(collection, &self.principal, &self.principal_groups, action)
             .await?
         {
             let admin = self.security.get_administrators_group().await?;
-            if !self.principal.has_group(&admin.id) {
+            if !self.principal_groups.contains(&admin.id) {
                 return Err(Error::new("invalid permissions"));
             }
         }
@@ -304,11 +310,11 @@ impl BoscaContext {
                 if !self
                     .content
                     .metadata_permissions
-                    .has(&metadata, &self.principal, action)
+                    .has(&metadata, &self.principal, &self.principal_groups, action)
                     .await?
                 {
                     let admin = self.security.get_administrators_group().await?;
-                    if !self.principal.has_group(&admin.id) {
+                    if !self.principal_groups.contains(&admin.id) {
                         return Err(Error::new("invalid permissions"));
                     }
                 }
@@ -334,11 +340,11 @@ impl BoscaContext {
                 if !self
                     .content
                     .metadata_permissions
-                    .has_metadata_version_permission(&metadata, &self.principal, action)
+                    .has_metadata_version_permission(&metadata, &self.principal, &self.principal_groups, action)
                     .await?
                 {
                     let admin = self.security.get_administrators_group().await?;
-                    if !self.principal.has_group(&admin.id) {
+                    if !self.principal_groups.contains(&admin.id) {
                         return Err(Error::new("invalid permissions"));
                     }
                 }
@@ -363,11 +369,11 @@ impl BoscaContext {
                 if !self
                     .content
                     .collection_permissions
-                    .has_txn(txn, &collection, &self.principal, action)
+                    .has_txn(txn, &collection, &self.principal, &self.principal_groups, action)
                     .await?
                 {
                     let admin = self.security.get_administrators_group().await?;
-                    if !self.principal.has_group(&admin.id) {
+                    if !self.principal_groups.contains(&admin.id) {
                         return Err(Error::new("invalid permissions"));
                     }
                 }
@@ -388,11 +394,11 @@ impl BoscaContext {
                 if !self
                     .content
                     .collection_permissions
-                    .has(&collection, &self.principal, action)
+                    .has(&collection, &self.principal, &self.principal_groups, action)
                     .await?
                 {
                     let admin = self.security.get_administrators_group().await?;
-                    if !self.principal.has_group(&admin.id) {
+                    if !self.principal_groups.contains(&admin.id) {
                         return Err(Error::new("invalid permissions"));
                     }
                 }
@@ -417,7 +423,7 @@ impl BoscaContext {
                     && profile.visibility != ProfileVisibility::Public
                 {
                     let admin = self.security.get_administrators_group().await?;
-                    if !self.principal.has_group(&admin.id) {
+                    if !self.principal_groups.contains(&admin.id) {
                         return Err(Error::new("invalid permissions"));
                     }
                 }
@@ -438,15 +444,15 @@ impl BoscaContext {
     #[tracing::instrument(skip(self))]
     pub async fn has_admin_account(&self) -> Result<bool, Error> {
         let admin = self.security.get_administrators_group().await?;
-        Ok(self.principal.has_group(&admin.id))
+        Ok(self.principal_groups.contains(&admin.id))
     }
 
     #[tracing::instrument(skip(self))]
     pub async fn check_has_service_account(&self) -> Result<(), Error> {
         let sa = self.security.get_service_account_group().await?;
-        if !self.principal.has_group(&sa.id) {
+        if !self.principal_groups.contains(&sa.id) {
             let admin = self.security.get_administrators_group().await?;
-            if !self.principal.has_group(&admin.id) {
+            if !self.principal_groups.contains(&admin.id) {
                 return Err(Error::new("invalid permissions"));
             }
         }

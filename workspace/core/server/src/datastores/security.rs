@@ -352,18 +352,22 @@ impl SecurityDataStore {
         Ok(())
     }
 
-    #[tracing::instrument(skip(self, connection, principal))]
+    #[tracing::instrument(skip(self, principal))]
     pub async fn get_principal_groups(
         &self,
-        connection: &Object,
         principal: &Uuid,
-    ) -> Result<Vec<Group>, Error> {
-        let mut groups = Vec::<Group>::new();
-        let stmt = connection.prepare_cached("select g.* from principal_groups as pg inner join groups as g on (pg.group_id = g.id) where principal = $1").await?;
+    ) -> Result<Vec<Uuid>, Error> {
+        if let Some(principal) = self.cache.get_principal_group_ids(principal).await {
+            return Ok(principal);
+        }
+        let connection = self.pool.get().await?;
+        let mut groups = Vec::<Uuid>::new();
+        let stmt = connection.prepare_cached("select group_id from principal_groups where principal = $1").await?;
         let results = connection.query(&stmt, &[principal]).await?;
         for result in results.iter() {
-            groups.push(result.into())
+            groups.push(result.get("group_id"));
         }
+        self.cache.cache_principal_group_ids(principal, groups.clone()).await;
         Ok(groups)
     }
 
@@ -390,10 +394,7 @@ impl SecurityDataStore {
         if results.is_empty() {
             return Err(Error::new("invalid principal"));
         }
-        let mut principal: Principal = results.first().unwrap().into();
-        drop(stmt);
-        let groups = self.get_principal_groups(connection, id).await?;
-        principal.set_groups(&Some(groups));
+        let principal: Principal = results.first().unwrap().into();
         self.cache.cache_principal(&principal).await;
         Ok(principal)
     }

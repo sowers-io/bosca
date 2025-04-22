@@ -27,7 +27,7 @@ impl ConfigurationsObject {
                 continue;
             }
             let evaluator = Evaluator::new(c.id, permissions);
-            if evaluator.evaluate(&ctx.principal, &PermissionAction::List) {
+            if evaluator.evaluate(&ctx.principal, &ctx.principal_groups, &PermissionAction::List) {
                 cfg.push(c);
             }
         }
@@ -54,7 +54,7 @@ impl ConfigurationsObject {
             Ok(Some(ConfigurationObject::new(configuration)))
         } else {
             let evaluator = Evaluator::new(configuration.id, permissions);
-            if evaluator.evaluate(&ctx.principal, &PermissionAction::View) {
+            if evaluator.evaluate(&ctx.principal, &ctx.principal_groups, &PermissionAction::View) {
                 Ok(Some(ConfigurationObject::new(configuration)))
             } else {
                 Ok(None)

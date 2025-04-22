@@ -50,6 +50,7 @@ impl CollectionPermissionsDataStore {
         &self,
         collection: &Collection,
         principal: &Principal,
+        groups: &Vec<Uuid>,
         action: PermissionAction,
     ) -> Result<bool, Error> {
         if collection.deleted {
@@ -68,7 +69,7 @@ impl CollectionPermissionsDataStore {
             return Ok(true);
         }
         let eval = Evaluator::new(collection.id, self.get(&collection.id).await?);
-        Ok(eval.evaluate(principal, &action))
+        Ok(eval.evaluate(principal, groups, &action))
     }
 
     #[tracing::instrument(skip(self, txn, collection, principal, action))]
@@ -77,6 +78,7 @@ impl CollectionPermissionsDataStore {
         txn: &Transaction<'_>,
         collection: &Collection,
         principal: &Principal,
+        groups: &Vec<Uuid>,
         action: PermissionAction,
     ) -> Result<bool, Error> {
         if collection.deleted {
@@ -95,7 +97,7 @@ impl CollectionPermissionsDataStore {
             return Ok(true);
         }
         let eval = Evaluator::new(collection.id, self.get_txn(txn, &collection.id).await?);
-        Ok(eval.evaluate(principal, &action))
+        Ok(eval.evaluate(principal, groups, &action))
     }
 
     #[tracing::instrument]
@@ -187,6 +189,7 @@ impl CollectionPermissionsDataStore {
         &self,
         collection: &Collection,
         principal: &Principal,
+        groups: &Vec<Uuid>,
         action: PermissionAction,
     ) -> Result<bool, Error> {
         if collection.deleted {
@@ -200,6 +203,6 @@ impl CollectionPermissionsDataStore {
             return Ok(true);
         }
         let eval = Evaluator::new(collection.id, self.get(&collection.id).await?);
-        Ok(eval.evaluate(principal, &action))
+        Ok(eval.evaluate(principal, groups, &action))
     }
 }

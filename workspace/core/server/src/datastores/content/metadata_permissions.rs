@@ -58,6 +58,7 @@ impl MetadataPermissionsDataStore {
         &self,
         metadata: &Metadata,
         principal: &Principal,
+        groups: &Vec<Uuid>,
         action: PermissionAction,
     ) -> Result<bool, Error> {
         if metadata.deleted {
@@ -71,7 +72,7 @@ impl MetadataPermissionsDataStore {
             return Ok(true);
         }
         let eval = Evaluator::new(metadata.id, self.get_metadata_permissions(&metadata.id).await?);
-        Ok(eval.evaluate(principal, &action))
+        Ok(eval.evaluate(principal, groups, &action))
     }
 
     #[tracing::instrument(skip(self, metadata, principal, action))]
@@ -79,6 +80,7 @@ impl MetadataPermissionsDataStore {
         &self,
         metadata: &Metadata,
         principal: &Principal,
+        groups: &Vec<Uuid>,
         action: PermissionAction,
     ) -> Result<bool, Error> {
         if metadata.deleted {
@@ -92,7 +94,7 @@ impl MetadataPermissionsDataStore {
             return Ok(true);
         }
         let eval = Evaluator::new(metadata.id, self.get_metadata_permissions(&metadata.id).await?);
-        Ok(eval.evaluate(principal, &action))
+        Ok(eval.evaluate(principal, groups, &action))
     }
 
     #[tracing::instrument(skip(self, metadata, principal, action))]
@@ -100,6 +102,7 @@ impl MetadataPermissionsDataStore {
         &self,
         metadata: &Metadata,
         principal: &Principal,
+        groups: &Vec<Uuid>,
         action: PermissionAction,
     ) -> Result<bool, Error> {
         if metadata.deleted {
@@ -113,7 +116,7 @@ impl MetadataPermissionsDataStore {
             return Ok(true);
         }
         let eval = Evaluator::new(metadata.id, self.get_metadata_permissions(&metadata.id).await?);
-        Ok(eval.evaluate(principal, &action))
+        Ok(eval.evaluate(principal, &groups, &action))
     }
 
     #[tracing::instrument(skip(self, metadata, principal, action))]
@@ -121,13 +124,14 @@ impl MetadataPermissionsDataStore {
         &self,
         metadata: &Metadata,
         principal: &Principal,
+        groups: &Vec<Uuid>,
         action: PermissionAction,
     ) -> Result<bool, Error> {
         if metadata.deleted {
             return Ok(false);
         }
         let eval = Evaluator::new(metadata.id, self.get_metadata_permissions(&metadata.id).await?);
-        Ok(eval.evaluate(principal, &action))
+        Ok(eval.evaluate(principal, groups, &action))
     }
 
     #[tracing::instrument(skip(self, permission))]

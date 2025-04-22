@@ -1,7 +1,7 @@
 use crate::context::BoscaContext;
 use crate::graphql::security::group::GroupObject;
 use crate::models::security::principal::Principal;
-use async_graphql::{Context, Object};
+use async_graphql::{Context, Error, Object};
 use crate::graphql::security::principal_credential::PrincipalCredentialObject;
 
 pub struct PrincipalObject {
@@ -24,11 +24,14 @@ impl PrincipalObject {
         self.principal.verified
     }
 
-    async fn groups(&self) -> Vec<GroupObject> {
-        match &self.principal.get_groups() {
-            Some(groups) => groups.iter().map(|g| GroupObject::new(g.clone())).collect(),
-            None => Vec::new(),
+    async fn groups(&self, ctx: &Context<'_>) -> Result<Vec<GroupObject>, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let group_ids = ctx.security.get_principal_groups(&self.principal.id).await?;
+        let mut groups = Vec::new();
+        for group_id in group_ids {
+            groups.push(ctx.security.get_group(&group_id).await?);
         }
+        Ok(groups.iter().map(|g| GroupObject::new(g.clone())).collect())
     }
 
     async fn credentials(

@@ -48,6 +48,8 @@ pub async fn metadata_download(
     let principal = get_principal_from_headers(&ctx, &headers)
         .await
         .map_err(|_| (StatusCode::UNAUTHORIZED, "Unauthorized".to_owned()))?;
+    let principal_groups = ctx.security.get_principal_groups(&principal.id).await
+        .map_err(|_| (StatusCode::UNAUTHORIZED, "Unauthorized".to_owned()))?;
     let id = params
         .id
         .as_ref()
@@ -82,6 +84,7 @@ pub async fn metadata_download(
         let (metadata, supplementary) = ctx
             .check_metadata_supplementary_action_principal(
                 &principal,
+                &principal_groups,
                 &id,
                 PermissionAction::View,
             )
@@ -92,6 +95,7 @@ pub async fn metadata_download(
         (
             ctx.check_metadata_content_action_principal(
                 &principal,
+                &principal_groups,
                 &id,
                 PermissionAction::View,
             )
@@ -160,10 +164,12 @@ pub async fn metadata_upload(
     let principal = get_principal_from_headers(&ctx, &headers)
         .await
         .map_err(|_| (StatusCode::UNAUTHORIZED, "Unauthorized".to_owned()))?;
+    let principal_groups = ctx.security.get_principal_groups(&principal.id).await
+        .map_err(|_| (StatusCode::UNAUTHORIZED, "Unauthorized".to_owned()))?;
     let id = Uuid::parse_str(params.id.as_ref().unwrap().as_str())
         .map_err(|_| (StatusCode::BAD_REQUEST, "Bad Request".to_owned()))?;
     let metadata = ctx
-        .check_metadata_action_principal(&principal, &id, PermissionAction::Edit)
+        .check_metadata_action_principal(&principal, &principal_groups, &id, PermissionAction::Edit)
         .await
         .map_err(|_| (StatusCode::FORBIDDEN, "Forbidden".to_owned()))?;
     let supplementary = get_supplementary(&ctx, &params)

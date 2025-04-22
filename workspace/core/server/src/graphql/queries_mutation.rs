@@ -14,9 +14,9 @@ impl PersistedQueriesMutationObject {
     ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let sa_group = ctx.security.get_service_account_group().await?;
-        if !ctx.principal.has_group(&sa_group.id) {
+        if !ctx.principal_groups.contains(&sa_group.id) {
             let admin_group = ctx.security.get_administrators_group().await?;
-            if !ctx.principal.has_group(&admin_group.id) {
+            if !ctx.principal_groups.contains(&admin_group.id) {
                 return Err(Error::new("invalid permissions"));
             }
         }
@@ -27,7 +27,7 @@ impl PersistedQueriesMutationObject {
     async fn delete_all(&self, ctx: &Context<'_>) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let admin_group = ctx.security.get_administrators_group().await?;
-        if !ctx.principal.has_group(&admin_group.id) {
+        if !ctx.principal_groups.contains(&admin_group.id) {
             return Err(Error::new("invalid permissions"));
         }
         ctx.queries.delete_queries().await?;
@@ -37,7 +37,7 @@ impl PersistedQueriesMutationObject {
     async fn add(&self, ctx: &Context<'_>, application: String, sha256: String, query: String) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let admin_group = ctx.security.get_administrators_group().await?;
-        if !ctx.principal.has_group(&admin_group.id) {
+        if !ctx.principal_groups.contains(&admin_group.id) {
             return Err(Error::new("invalid permissions"));
         }
         ctx.queries.add_query(&application, &sha256, &query).await?;
@@ -47,7 +47,7 @@ impl PersistedQueriesMutationObject {
     async fn delete(&self, ctx: &Context<'_>, application: String, sha256: String) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let admin_group = ctx.security.get_administrators_group().await?;
-        if !ctx.principal.has_group(&admin_group.id) {
+        if !ctx.principal_groups.contains(&admin_group.id) {
             return Err(Error::new("invalid permissions"));
         }
         ctx.queries.delete_query(&application, &sha256).await?;

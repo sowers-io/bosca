@@ -27,7 +27,7 @@ impl ContentMutationObject {
     async fn rebuild_storage_system_content(&self, ctx: &Context<'_>) -> async_graphql::Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let admin_group = ctx.security.get_administrators_group().await?;
-        if !ctx.principal.has_group(&admin_group.id) {
+        if !ctx.principal_groups.contains(&admin_group.id) {
             return Err(Error::new("invalid permissions"));
         }
         let mut request = EnqueueRequest {

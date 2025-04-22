@@ -6,6 +6,7 @@ use log::{error, info};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
+use async_nats::jetstream::kv::Store;
 use tokio::sync::Mutex;
 
 #[derive(Clone)]
@@ -51,6 +52,19 @@ impl BoscaCacheManager {
         Ok(cache)
     }
 
+    async fn new_store(&self, name: &str) -> Result<Store, Error> {
+        let prefix = option_env!("NAMESPACE").unwrap_or("").to_string();
+        let kv = self
+            .jetstream
+            .create_key_value(jetstream::kv::Config {
+                bucket: if prefix.is_empty() { name.to_string() } else { format!("{}_{}", prefix, name) },
+                ..Default::default()
+            })
+            .await?;
+
+        Ok(kv)
+    }
+
     pub async fn new_id_tiered_cache<V>(
         &mut self,
         name: &str,
@@ -60,19 +74,12 @@ impl BoscaCacheManager {
         V: Clone + Send + Sync + serde::ser::Serialize + serde::de::DeserializeOwned + 'static,
     {
         info!("adding new memory cache: {} with size: {}", name, size);
-        let kv = self
-            .jetstream
-            .create_key_value(jetstream::kv::Config {
-                bucket: name.to_string(),
-                ..Default::default()
-            })
-            .await?;
         let mut caches = self.caches.lock().await;
         let cache = BoscaCache::<V>::new_ttl(
             name.to_string(),
             size,
             Duration::from_secs(1800),
-            kv,
+            self.new_store(name).await?,
         );
         caches.insert(name.to_string(), Box::new(cache.clone()));
         Ok(cache)
@@ -87,19 +94,12 @@ impl BoscaCacheManager {
         V: Clone + Send + Sync + serde::ser::Serialize + serde::de::DeserializeOwned + 'static,
     {
         info!("adding new memory cache: {} with size: {}", name, size);
-        let kv = self
-            .jetstream
-            .create_key_value(jetstream::kv::Config {
-                bucket: name.to_string(),
-                ..Default::default()
-            })
-            .await?;
         let mut caches = self.caches.lock().await;
         let cache = BoscaCache::<V>::new_ttl(
             name.to_string(),
             size,
             Duration::from_secs(1800),
-            kv,
+            self.new_store(name).await?,
         );
         caches.insert(name.to_string(), Box::new(cache.clone()));
         Ok(cache)
@@ -114,19 +114,12 @@ impl BoscaCacheManager {
         V: Clone + Send + Sync + serde::ser::Serialize + serde::de::DeserializeOwned + 'static,
     {
         info!("adding new memory cache: {} with size: {}", name, size);
-        let kv = self
-            .jetstream
-            .create_key_value(jetstream::kv::Config {
-                bucket: name.to_string(),
-                ..Default::default()
-            })
-            .await?;
         let mut caches = self.caches.lock().await;
         let cache = BoscaCache::<V>::new_ttl(
             name.to_string(),
             size,
             Duration::from_secs(1800),
-            kv,
+            self.new_store(name).await?,
         );
         caches.insert(name.to_string(), Box::new(cache.clone()));
         Ok(cache)

@@ -60,7 +60,7 @@ impl ConfigurationObject {
                 ctx.check_has_admin_account().await?;
             } else {
                 let evaluator = Evaluator::new(self.configuration.id, permission);
-                if !evaluator.evaluate(&ctx.principal, &PermissionAction::View) {
+                if !evaluator.evaluate(&ctx.principal, &ctx.principal_groups, &PermissionAction::View) {
                     return Ok(None);
                 }
             }
