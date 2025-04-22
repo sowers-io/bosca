@@ -27,5 +27,7 @@ val DocumentSerializers = SerializersModule {
         subclass(Italic::class, Italic.serializer())
         subclass(Link::class, Link.serializer())
         subclass(Hidden::class, Hidden.serializer())
+        subclass(Superscript::class, Superscript.serializer())
+        subclass(Subscript::class, Subscript.serializer())
     }
 }
