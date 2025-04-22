@@ -1,7 +1,7 @@
 use async_graphql::Error;
 use async_nats::jetstream::kv::{Operation, Store};
 use futures_util::StreamExt;
-use log::{error, warn};
+use log::{error, info, warn};
 use moka::future::Cache;
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::Hash;
@@ -13,6 +13,7 @@ pub struct BoscaCache<V>
 where
     V: Clone + Send + Sync + serde::ser::Serialize + serde::de::DeserializeOwned,
 {
+    name: String,
     cache: Arc<Cache<String, V>>,
     store: Store,
 }
@@ -37,6 +38,7 @@ where
     fn watch(&self) {
         let store = self.store.clone();
         let cache = Arc::clone(&self.cache);
+        let name = self.name.clone();
         tokio::spawn(async move {
             loop {
                 match store.watch("*").await {
@@ -44,6 +46,7 @@ where
                         while let Some(value) = stream.next().await {
                             if let Ok(value) = value {
                                 let k = value.key;
+                                info!("syncing cache: {} - {}", name, k);
                                 match value.operation {
                                     Operation::Put => {
                                         let b = value.value;
@@ -85,8 +88,9 @@ impl<V> BoscaCache<V>
 where
     V: Clone + Send + Sync + serde::ser::Serialize + serde::de::DeserializeOwned + 'static,
 {
-    pub fn new_ttl(_: String, size: u64, ttl: Duration, store: Store) -> Self {
+    pub fn new_ttl(name: String, size: u64, ttl: Duration, store: Store) -> Self {
         Self {
+            name,
             cache: Arc::new(
                 Cache::builder()
                     .max_capacity(size)
