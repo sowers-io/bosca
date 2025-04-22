@@ -25,6 +25,7 @@ val DocumentSerializers = SerializersModule {
     polymorphic(Mark::class) {
         subclass(Bold::class, Bold.serializer())
         subclass(Italic::class, Italic.serializer())
+        subclass(Underline::class, Underline.serializer())
         subclass(Link::class, Link.serializer())
         subclass(Hidden::class, Hidden.serializer())
         subclass(Superscript::class, Superscript.serializer())
