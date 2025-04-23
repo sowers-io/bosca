@@ -33,8 +33,8 @@ impl SecurityCache {
                     5000,
                 )
                 .await?,
-            group_id: cache.new_cache(CACHE_SECURITY_GROUP_ID, 5000).await?,
-            group_name: cache.new_cache(CACHE_SECURITY_GROUP_NAME, 5000).await?,
+            group_id: cache.new_id_tiered_cache(CACHE_SECURITY_GROUP_ID, 5000).await?,
+            group_name: cache.new_string_tiered_cache(CACHE_SECURITY_GROUP_NAME, 5000).await?,
         })
     }
 

@@ -23,41 +23,16 @@ impl BoscaCacheManager {
         }
     }
 
-    pub async fn new_cache<V>(
-        &mut self,
-        name: &str,
-        size: u64,
-    ) -> Result<BoscaCache<V>, Error>
-    where
-        V: Clone + Send + Sync + serde::ser::Serialize + serde::de::DeserializeOwned + 'static,
-    {
-        info!("adding new memory cache: {} with size: {}", name, size);
-        let kv = self
-            .jetstream
-            .create_key_value(jetstream::kv::Config {
-                bucket: name.to_string(),
-                history: 1,
-                max_age: Duration::from_secs(1800),
-                ..Default::default()
-            })
-            .await?;
-        let mut caches = self.caches.lock().await;
-        let cache = BoscaCache::<V>::new_ttl(
-            name.to_string(),
-            size,
-            Duration::from_secs(1800),
-            kv,
-        );
-        caches.insert(name.to_string(), Box::new(cache.clone()) as Box<dyn ClearableCache + Send + Sync>);
-        Ok(cache)
-    }
-
     async fn new_store(&self, name: &str) -> Result<Store, Error> {
         let prefix = option_env!("NAMESPACE").unwrap_or("").to_string();
+        let bucket_name = if prefix.is_empty() { format!("{}_v2", name) } else { format!("{}_{}_v2", prefix, name) };
+        info!("using jetstream bucket: {}", bucket_name);
         let kv = self
             .jetstream
             .create_key_value(jetstream::kv::Config {
-                bucket: if prefix.is_empty() { name.to_string() } else { format!("{}_{}", prefix, name) },
+                bucket: bucket_name,
+                history: 1,
+                max_age: Duration::from_secs(1800),
                 ..Default::default()
             })
             .await?;
