@@ -1,141 +1,154 @@
-import { fastify } from 'fastify'
+import {fastify} from 'fastify'
 import sharp from 'sharp'
-import { encode } from 'blurhash'
+import {encode} from 'blurhash'
 
 interface QueryOpts {
-  u: string | undefined
-  w: string | undefined
-  h: string | undefined
-  pw: string | undefined
-  ph: string | undefined
-  f: string | undefined
-  ch: string | undefined
-  cw: string | undefined
-  q: string | undefined
+    u: string | undefined
+    w: string | undefined
+    h: string | undefined
+    pw: string | undefined
+    ph: string | undefined
+    f: string | undefined
+    ch: string | undefined
+    cw: string | undefined
+    q: string | undefined
+    t: string | undefined
+    l: string | undefined
 }
 
 type Resize = {
-  width: number | undefined
-  height: number | undefined
+    width: number | undefined
+    height: number | undefined
 }
 
 async function main() {
-  const supportedUrls = process.env.SUPPORTED_URLS?.split(',') || []
-  const server = fastify()
-  server.setErrorHandler((error, request, reply) => {
-    console.error({ error, request }, 'uncaught error')
-    reply.status(500).send({ ok: false })
-  })
-  server.get('/healthcheck', {}, async function(_, reply) {
-    reply.code(200).send({ ok: true })
-  })
-  server.get('/imageproxy', {}, async function (request, reply) {
-    const opts = request.query as QueryOpts
-    if (!opts.u) {
-      reply.code(400).send()
-      return
-    }
-    const imageUrl = new URL(opts.u)
-    let isSupported = false
-    for (const supported of supportedUrls) {
-      if (opts.u.startsWith(supported)) {
-        isSupported = true
-        break
-      }
-    }
-    if (!isSupported) {
-      reply.code(401).send()
-      return
-    }
-    const response = await fetch(imageUrl)
-    if (!response.ok || !response.body) {
-      reply.code(500).send()
-      return
-    }
-    // @ts-ignore
-    const image = await response.arrayBuffer()
-    let contentType = response.headers.get('Content-Type')
-    let transformer = sharp(image)
-    // @ts-ignore
-    if (opts.w || opts.h) {
-      let resize: Resize = { width: undefined, height: undefined }
-      if (opts.w) {
-        resize.width = parseInt(opts.w)
-        if (isNaN(resize.width)) {
-          return reply.code(400).send()
+    const supportedUrls = process.env.SUPPORTED_URLS?.split(',') || []
+    const server = fastify()
+    server.setErrorHandler((error, request, reply) => {
+        console.error({error, request}, 'uncaught error')
+        reply.status(500).send({ok: false})
+    })
+    server.get('/health', {}, async function (_, reply) {
+        reply.code(200).send({ok: true})
+    })
+    server.get('/image', {}, async function (request, reply) {
+        const opts = request.query as QueryOpts
+        if (!opts.u) {
+            reply.code(400).send()
+            return
         }
-      }
-      if (opts.h) {
-        resize.height = parseInt(opts.h)
-        if (isNaN(resize.height)) {
-          return reply.code(400).send()
+        const imageUrl = new URL(opts.u)
+        let isSupported = false
+        for (const supported of supportedUrls) {
+            if (opts.u.startsWith(supported)) {
+                isSupported = true
+                break
+            }
         }
-      }
-      transformer = transformer.resize(resize)
-    }
-    if (opts.pw || opts.ph) {
-      let resize: Resize = { width: undefined, height: undefined }
-      if (opts.pw) {
-        resize.width = parseFloat(opts.pw)
-        if (isNaN(resize.width)) {
-          return reply.code(400).send()
+        if (!isSupported) {
+            reply.code(401).send()
+            return
         }
-      }
-      if (opts.ph) {
-        resize.height = parseFloat(opts.ph)
-        if (isNaN(resize.height)) {
-          return reply.code(400).send()
+        const response = await fetch(imageUrl)
+        if (!response.ok || !response.body) {
+            reply.code(500).send()
+            return
         }
-      }
-      const { width, height } = await transformer.metadata()
-      if (resize.width && width) {
-        resize.width = Math.floor(resize.width * width)
-      }
-      if (resize.height && height) {
-        resize.height = Math.floor(resize.height * height)
-      }
-      transformer = transformer.resize(resize)
-    }
-    switch (opts.f) {
-      case 'blurhash': {
-        const result = await transformer.raw().ensureAlpha().toBuffer({ resolveWithObject: true })
-        const img = Uint8ClampedArray.from(result.data)
-        const cWidth = opts.cw ? parseInt(opts.cw) : 4
-        const cHeight = opts.ch ? parseInt(opts.ch) : 4
-        const blurhash = encode(img, result.info.width, result.info.height, cWidth, cHeight)
-        return reply
-          .header('Content-Type', 'text/plain')
-          .send(blurhash)
-      }
-      case 'jpeg': {
-        contentType = 'image/jpeg'
-        const quality = opts.q ? parseInt(opts.q) : 80
-        if (isNaN(quality)) {
-          return reply.code(400).send()
+        // @ts-ignore
+        const image = await response.arrayBuffer()
+        let contentType = response.headers.get('Content-Type')
+        let transformer = sharp(image)
+        // @ts-ignore
+        if (opts.w || opts.h) {
+            let resize: Resize = {width: undefined, height: undefined}
+            if (opts.w) {
+                resize.width = parseInt(opts.w)
+                if (isNaN(resize.width)) {
+                    return reply.code(400).send()
+                }
+            }
+            if (opts.h) {
+                resize.height = parseInt(opts.h)
+                if (isNaN(resize.height)) {
+                    return reply.code(400).send()
+                }
+            }
+            if (opts.t || opts.l) {
+                const top = opts.t ? parseInt(opts.t) : undefined
+                const left = opts.l ? parseInt(opts.l) : undefined
+                transformer = transformer.extract({
+                    top: top || 0,
+                    left: left || 0,
+                    width: resize.width || 0,
+                    height: resize.height || 0
+                })
+            } else {
+                transformer = transformer.resize(resize)
+            }
         }
-        transformer = transformer.toFormat(sharp.format.jpeg, {
-          quality: quality,
-          mozjpeg: true,
-        })
-        break
-      }
-      case 'webp': {
-        contentType = 'image/webp'
-        const quality = opts.q ? parseInt(opts.q) : 80
-        if (isNaN(quality)) {
-          return reply.code(400).send()
+        if (opts.pw || opts.ph) {
+            let resize: Resize = {width: undefined, height: undefined}
+            if (opts.pw) {
+                resize.width = parseFloat(opts.pw)
+                if (isNaN(resize.width)) {
+                    return reply.code(400).send()
+                }
+            }
+            if (opts.ph) {
+                resize.height = parseFloat(opts.ph)
+                if (isNaN(resize.height)) {
+                    return reply.code(400).send()
+                }
+            }
+            const {width, height} = await transformer.metadata()
+            if (resize.width && width) {
+                resize.width = Math.floor(resize.width * width)
+            }
+            if (resize.height && height) {
+                resize.height = Math.floor(resize.height * height)
+            }
+            transformer = transformer.resize(resize)
         }
-        transformer = transformer.toFormat(sharp.format.webp, {
-          quality: quality,
-        })
-        break
-      }
-    }
-    const newBuffer = await transformer.toBuffer()
-    await reply.header('Content-Type', contentType).send(newBuffer)
-  })
-  await server.listen({ host: '0.0.0.0', port: 8003 })
-  console.log('server listening on 0.0.0.0:8003')
+        switch (opts.f) {
+            case 'blurhash': {
+                const result = await transformer.raw().ensureAlpha().toBuffer({resolveWithObject: true})
+                const img = Uint8ClampedArray.from(result.data)
+                const cWidth = opts.cw ? parseInt(opts.cw) : 4
+                const cHeight = opts.ch ? parseInt(opts.ch) : 4
+                const blurhash = encode(img, result.info.width, result.info.height, cWidth, cHeight)
+                return reply
+                    .header('Content-Type', 'text/plain')
+                    .send(blurhash)
+            }
+            case 'jpeg': {
+                contentType = 'image/jpeg'
+                const quality = opts.q ? parseInt(opts.q) : 80
+                if (isNaN(quality)) {
+                    return reply.code(400).send()
+                }
+                transformer = transformer.toFormat(sharp.format.jpeg, {
+                    quality: quality,
+                    mozjpeg: true,
+                })
+                break
+            }
+            case 'webp': {
+                contentType = 'image/webp'
+                const quality = opts.q ? parseInt(opts.q) : 80
+                if (isNaN(quality)) {
+                    return reply.code(400).send()
+                }
+                transformer = transformer.toFormat(sharp.format.webp, {
+                    quality: quality,
+                })
+                break
+            }
+        }
+        const newBuffer = await transformer.toBuffer()
+        await reply.header('Content-Type', contentType).send(newBuffer)
+    })
+    await server.listen({host: '0.0.0.0', port: 8003})
+    console.log('server listening on 0.0.0.0:8003')
 }
 
 void main()
