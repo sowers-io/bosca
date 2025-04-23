@@ -1,5 +1,6 @@
 package io.bosca.workflow.models
 
+import io.bosca.workflow.yaml.YamlAnyDeserializer
 import kotlinx.serialization.Serializable
 
 enum class AttributeLocation {
@@ -17,6 +18,6 @@ data class AttributeDefinition(
     val supplementaryKey: String? = null,
     val ui: String = "",
     val list: Boolean = false,
-    val configuration: Map<String, String>? = null,
+    val configuration: @Serializable(YamlAnyDeserializer::class) Any? = null,
     val location: AttributeLocation? = null
 )

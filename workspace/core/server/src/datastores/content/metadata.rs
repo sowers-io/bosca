@@ -280,7 +280,6 @@ impl MetadataDataStore {
         txn.execute(&stmt, &[&public, id]).await?;
         update_metadata_etag(&txn, id).await?;
         txn.commit().await?;
-        self.cache.evict_metadata(id).await;
         self.on_metadata_changed(ctx, id).await?;
         Ok(())
     }
@@ -376,7 +375,6 @@ impl MetadataDataStore {
         txn.execute(&stmt, &[&attributes, &metadata_id]).await?;
         update_metadata_etag(&txn, metadata_id).await?;
         txn.commit().await?;
-        self.cache.evict_metadata(metadata_id).await;
         self.on_metadata_changed(ctx, metadata_id).await?;
         Ok(())
     }
@@ -396,7 +394,6 @@ impl MetadataDataStore {
         txn.execute(&stmt, &[&attributes, &metadata_id]).await?;
         update_metadata_etag(&txn, metadata_id).await?;
         txn.commit().await?;
-        self.cache.evict_metadata(metadata_id).await;
         self.on_metadata_changed(ctx, metadata_id).await?;
         Ok(())
     }
@@ -418,7 +415,6 @@ impl MetadataDataStore {
         txn.execute(&stmt, &[&attributes, &metadata_id]).await?;
         update_metadata_etag(&txn, metadata_id).await?;
         txn.commit().await?;
-        self.cache.evict_metadata(metadata_id).await;
         self.on_metadata_changed(ctx, metadata_id).await?;
         Ok(())
     }
@@ -452,7 +448,6 @@ impl MetadataDataStore {
         }
         update_metadata_etag(&txn, metadata_id).await?;
         txn.commit().await?;
-        self.cache.evict_metadata(metadata_id).await;
         self.on_metadata_changed(ctx, metadata_id).await?;
         Ok(())
     }
@@ -968,6 +963,7 @@ impl MetadataDataStore {
             .await?;
 
         update_metadata_etag(txn, &id).await?;
+        self.cache.evict_metadata(&id).await;
 
         if let Some(parent_collection_id) = &metadata.parent_collection_id {
             let parent_collection_id = Uuid::parse_str(parent_collection_id.as_str())?;

@@ -338,7 +338,6 @@ impl DocumentsDataStore {
             .await?;
         txn.execute(&stmt, &[metadata_id]).await?;
         update_metadata_etag(&txn, metadata_id).await?;
-        txn.execute(&stmt, &[metadata_id]).await?;
         txn.commit().await?;
         self.on_metadata_changed(metadata_id).await?;
         Ok(())
