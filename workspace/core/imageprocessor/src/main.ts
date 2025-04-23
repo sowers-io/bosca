@@ -3,17 +3,17 @@ import sharp from 'sharp'
 import {encode} from 'blurhash'
 
 interface QueryOpts {
-    u: string | undefined
-    w: string | undefined
-    h: string | undefined
-    pw: string | undefined
-    ph: string | undefined
-    f: string | undefined
-    ch: string | undefined
-    cw: string | undefined
-    q: string | undefined
-    t: string | undefined
-    l: string | undefined
+    u: string | undefined // url
+    w: string | undefined // width
+    h: string | undefined // height
+    pw: string | undefined // percentage width
+    ph: string | undefined // percentage height
+    f: string | undefined // format
+    ch: string | undefined // component X / width
+    cw: string | undefined // component Y / height
+    q: string | undefined // quality
+    t: string | undefined // crop top
+    l: string | undefined // crop left
 }
 
 type Resize = {
