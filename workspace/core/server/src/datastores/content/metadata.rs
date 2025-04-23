@@ -1,5 +1,4 @@
 use crate::context::BoscaContext;
-use crate::datastores::cache::manager::BoscaCacheManager;
 use crate::datastores::content::tag::update_metadata_etag;
 use crate::datastores::content::util::build_find_args;
 use crate::datastores::metadata_cache::MetadataCache;
@@ -15,12 +14,12 @@ use crate::models::content::metadata_relationship::{
 use crate::models::workflow::enqueue_request::EnqueueRequest;
 use crate::workflow::core_workflow_ids::{METADATA_DELETE_FINALIZE, METADATA_UPDATE_STORAGE};
 use async_graphql::*;
+use bosca_database::TracingPool;
 use deadpool_postgres::Transaction;
 use log::error;
 use serde_json::{Map, Value};
 use std::sync::Arc;
 use uuid::Uuid;
-use bosca_database::TracingPool;
 
 #[derive(Clone)]
 pub struct MetadataDataStore {
@@ -30,16 +29,20 @@ pub struct MetadataDataStore {
 }
 
 impl MetadataDataStore {
-    pub async fn new(pool: TracingPool, cache: &mut BoscaCacheManager, notifier: Arc<Notifier>) -> Result<Self, Error> {
+    pub async fn new(
+        pool: TracingPool,
+        cache: MetadataCache,
+        notifier: Arc<Notifier>,
+    ) -> Result<Self, Error> {
         Ok(Self {
-            cache: MetadataCache::new(cache).await?,
+            cache,
             pool,
             notifier,
         })
     }
 
     #[tracing::instrument(skip(self, ctx, id))]
-    async fn on_metadata_changed(&self, ctx: &BoscaContext, id: &Uuid) -> Result<(), Error> {
+    pub async fn on_metadata_changed(&self, ctx: &BoscaContext, id: &Uuid) -> Result<(), Error> {
         self.update_storage(ctx, id).await?;
         if let Err(e) = self.notifier.metadata_changed(id).await {
             error!("Failed to notify metadata changes: {:?}", e);
@@ -49,10 +52,10 @@ impl MetadataDataStore {
 
     #[tracing::instrument(skip(self, ctx, id))]
     async fn on_collection_changed(&self, ctx: &BoscaContext, id: &Uuid) -> Result<(), Error> {
-        ctx.content.collections.update_storage(ctx, id).await?;
-        if let Err(e) = self.notifier.collection_changed(id).await {
-            error!("Failed to notify collection changes: {:?}", e);
-        }
+        ctx.content
+            .collections
+            .on_collection_changed(ctx, id)
+            .await?;
         Ok(())
     }
 
@@ -491,7 +494,16 @@ impl MetadataDataStore {
         Ok(())
     }
 
-    #[tracing::instrument(skip(self, ctx, txn, id, metadata, source_id, source_identifier, source_url))]
+    #[tracing::instrument(skip(
+        self,
+        ctx,
+        txn,
+        id,
+        metadata,
+        source_id,
+        source_identifier,
+        source_url
+    ))]
     #[allow(clippy::too_many_arguments)]
     async fn edit_txn<'a>(
         &'a self,
@@ -866,7 +878,14 @@ impl MetadataDataStore {
         Ok((id, version, active_version))
     }
 
-    #[tracing::instrument(skip(self, ctx, txn, metadata, inherit_permissions, collection_item_attributes))]
+    #[tracing::instrument(skip(
+        self,
+        ctx,
+        txn,
+        metadata,
+        inherit_permissions,
+        collection_item_attributes
+    ))]
     pub async fn add_txn<'a>(
         &'a self,
         ctx: &BoscaContext,

@@ -21,7 +21,7 @@ pub enum CollectionType {
     Queue,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct Collection {
     pub id: Uuid,
     pub collection_type: CollectionType,

@@ -42,7 +42,7 @@ async fn initialize_collection(
         group_id: group.id,
         action: PermissionAction::Manage,
     };
-    ctx.content.collection_permissions.add(&permission).await?;
+    ctx.content.collection_permissions.add(ctx, &permission).await?;
     let principal = ctx.security.get_principal_by_identifier("admin").await?;
     let collection = ctx.content.collections.get(&collection_id).await?.unwrap();
     ctx.content

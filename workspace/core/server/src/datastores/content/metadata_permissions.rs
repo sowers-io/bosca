@@ -1,55 +1,47 @@
 use crate::context::BoscaContext;
-use crate::datastores::cache::cache::BoscaCache;
-use crate::datastores::cache::manager::BoscaCacheManager;
-use crate::datastores::notifier::Notifier;
+use crate::datastores::metadata_cache::MetadataCache;
 use crate::models::content::metadata::Metadata;
 use crate::models::security::permission::{Permission, PermissionAction};
 use crate::models::security::principal::Principal;
 use crate::security::evaluator::Evaluator;
 use async_graphql::*;
-use deadpool_postgres::{GenericClient, Transaction};
-use log::error;
-use std::sync::Arc;
-use uuid::Uuid;
 use bosca_database::TracingPool;
+use deadpool_postgres::{GenericClient, Transaction};
+use uuid::Uuid;
 
 #[derive(Clone)]
 pub struct MetadataPermissionsDataStore {
-    permission_cache: BoscaCache<Vec<Permission>>,
     pool: TracingPool,
-    notifier: Arc<Notifier>,
+    cache: MetadataCache,
 }
 
 impl MetadataPermissionsDataStore {
-    pub async fn new(pool: TracingPool, cache: &mut BoscaCacheManager, notifier: Arc<Notifier>) -> Result<Self, Error> {
+    pub async fn new(
+        pool: TracingPool,
+        cache: MetadataCache,
+    ) -> Result<Self, Error> {
         Ok(Self {
             pool,
-            permission_cache: cache.new_id_tiered_cache(
-                "metadata_permissions",
-                5000,
-            ).await?,
-            notifier,
+            cache,
         })
     }
 
-    #[tracing::instrument(skip(self, id))]
-    async fn on_metadata_changed(&self, id: &Uuid) -> Result<(), Error> {
-        if let Err(e) = self.notifier.metadata_changed(id).await {
-            error!("Failed to notify metadata changes: {:?}", e);
-        }
+    #[tracing::instrument(skip(self, ctx, id))]
+    async fn on_metadata_changed(&self, ctx: &BoscaContext, id: &Uuid) -> Result<(), Error> {
+        ctx.content.metadata.on_metadata_changed(ctx, id).await?;
         Ok(())
     }
 
     #[tracing::instrument(skip(self, id))]
     pub async fn get_metadata_permissions(&self, id: &Uuid) -> Result<Vec<Permission>, Error> {
-        if let Some(permissions) = self.permission_cache.get(id).await {
+        if let Some(permissions) = self.cache.get_permissions(id).await {
             return Ok(permissions);
         }
         let connection = self.pool.get().await?;
         let stmt = connection.prepare_cached("select metadata_id as entity_id, group_id, action from metadata_permissions where metadata_id = $1").await?;
         let rows = connection.query(&stmt, &[id]).await?;
         let permissions = rows.iter().map(|r| r.into()).collect();
-        self.permission_cache.set(id, &permissions).await;
+        self.cache.set_permissions(id, &permissions).await;
         Ok(permissions)
     }
 
@@ -71,7 +63,10 @@ impl MetadataPermissionsDataStore {
         {
             return Ok(true);
         }
-        let eval = Evaluator::new(metadata.id, self.get_metadata_permissions(&metadata.id).await?);
+        let eval = Evaluator::new(
+            metadata.id,
+            self.get_metadata_permissions(&metadata.id).await?,
+        );
         Ok(eval.evaluate(principal, groups, &action))
     }
 
@@ -93,7 +88,10 @@ impl MetadataPermissionsDataStore {
         {
             return Ok(true);
         }
-        let eval = Evaluator::new(metadata.id, self.get_metadata_permissions(&metadata.id).await?);
+        let eval = Evaluator::new(
+            metadata.id,
+            self.get_metadata_permissions(&metadata.id).await?,
+        );
         Ok(eval.evaluate(principal, groups, &action))
     }
 
@@ -115,7 +113,10 @@ impl MetadataPermissionsDataStore {
         {
             return Ok(true);
         }
-        let eval = Evaluator::new(metadata.id, self.get_metadata_permissions(&metadata.id).await?);
+        let eval = Evaluator::new(
+            metadata.id,
+            self.get_metadata_permissions(&metadata.id).await?,
+        );
         Ok(eval.evaluate(principal, groups, &action))
     }
 
@@ -130,12 +131,15 @@ impl MetadataPermissionsDataStore {
         if metadata.deleted {
             return Ok(false);
         }
-        let eval = Evaluator::new(metadata.id, self.get_metadata_permissions(&metadata.id).await?);
+        let eval = Evaluator::new(
+            metadata.id,
+            self.get_metadata_permissions(&metadata.id).await?,
+        );
         Ok(eval.evaluate(principal, groups, &action))
     }
 
-    #[tracing::instrument(skip(self, permission))]
-    pub async fn add_metadata_permission(&self, permission: &Permission) -> Result<(), Error> {
+    #[tracing::instrument(skip(self, ctx, permission))]
+    pub async fn add_metadata_permission(&self, ctx: &BoscaContext, permission: &Permission) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection.prepare_cached("insert into metadata_permissions (metadata_id, group_id, action) values ($1, $2, $3) on conflict do nothing").await?;
         connection
@@ -148,8 +152,7 @@ impl MetadataPermissionsDataStore {
                 ],
             )
             .await?;
-        self.permission_cache.remove(&permission.entity_id).await;
-        self.on_metadata_changed(&permission.entity_id).await?;
+        self.on_metadata_changed(ctx, &permission.entity_id).await?;
         Ok(())
     }
 
@@ -209,8 +212,8 @@ impl MetadataPermissionsDataStore {
         Ok(())
     }
 
-    #[tracing::instrument(skip(self, permission))]
-    pub async fn delete_metadata_permission(&self, permission: &Permission) -> Result<(), Error> {
+    #[tracing::instrument(skip(self, ctx, permission))]
+    pub async fn delete_metadata_permission(&self, ctx: &BoscaContext, permission: &Permission) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection.prepare_cached("delete from metadata_permissions where metadata_id = $1 and group_id = $2 and action = $3").await?;
         connection
@@ -223,8 +226,7 @@ impl MetadataPermissionsDataStore {
                 ],
             )
             .await?;
-        self.permission_cache.remove(&permission.entity_id).await;
-        self.on_metadata_changed(&permission.entity_id).await?;
+        self.on_metadata_changed(ctx, &permission.entity_id).await?;
         Ok(())
     }
 }

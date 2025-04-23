@@ -287,7 +287,7 @@ impl CollectionMutationObject {
         let permission: Permission = permission.into();
         ctx.check_collection_action(&permission.entity_id, PermissionAction::Manage)
             .await?;
-        ctx.content.collection_permissions.add(&permission).await?;
+        ctx.content.collection_permissions.add(ctx, &permission).await?;
         Ok(permission.into())
     }
 
@@ -302,7 +302,7 @@ impl CollectionMutationObject {
             .await?;
         ctx.content
             .collection_permissions
-            .delete(&permission)
+            .delete(ctx, &permission)
             .await?;
         Ok(permission.into())
     }

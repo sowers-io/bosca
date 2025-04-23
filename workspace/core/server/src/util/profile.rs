@@ -55,7 +55,7 @@ pub async fn add_password_principal(
             group_id: group.id,
             action,
         };
-        ctx.content.collection_permissions.add(&permission).await?;
+        ctx.content.collection_permissions.add(ctx, &permission).await?;
     }
 
     let principal = ctx.security.get_principal_by_id(&principal_id).await?;

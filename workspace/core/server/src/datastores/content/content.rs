@@ -20,6 +20,8 @@ use async_graphql::Error;
 use bosca_database::TracingPool;
 use std::sync::Arc;
 use uuid::Uuid;
+use crate::datastores::collection_cache::CollectionCache;
+use crate::datastores::metadata_cache::MetadataCache;
 
 #[derive(Clone)]
 pub struct ContentDataStore {
@@ -45,15 +47,16 @@ pub struct ContentDataStore {
 impl ContentDataStore {
 
     pub async fn new(pool: TracingPool, cache: &mut BoscaCacheManager, notifier: Arc<Notifier>) -> Result<Self, Error> {
+        let collections_cache = CollectionCache::new(cache).await?;
+        let metadata_cache = MetadataCache::new(cache).await?;
         Ok(Self {
             slug_cache: cache.new_string_tiered_cache("slugs", 5000).await?,
             categories: CategoriesDataStore::new(pool.clone(), Arc::clone(&notifier)),
-            collections: CollectionsDataStore::new(pool.clone(), Arc::clone(&notifier)),
+            collections: CollectionsDataStore::new(pool.clone(), collections_cache.clone(), Arc::clone(&notifier)).await?,
             collection_supplementary: CollectionSupplementaryDataStore::new(pool.clone(), Arc::clone(&notifier)),
             collection_permissions: CollectionPermissionsDataStore::new(
                 pool.clone(),
-                cache,
-                Arc::clone(&notifier),
+                collections_cache,
             ).await?,
             collection_workflows: CollectionWorkflowsDataStore::new(
                 pool.clone(),
@@ -62,12 +65,11 @@ impl ContentDataStore {
             collection_templates: CollectionTemplatesDataStore::new(
                 pool.clone(),
             ),
-            metadata: MetadataDataStore::new(pool.clone(), cache, Arc::clone(&notifier)).await?,
+            metadata: MetadataDataStore::new(pool.clone(), metadata_cache.clone(), Arc::clone(&notifier)).await?,
             metadata_supplementary: MetadataSupplementaryDataStore::new(pool.clone(), Arc::clone(&notifier)),
             metadata_permissions: MetadataPermissionsDataStore::new(
                 pool.clone(),
-                cache,
-                Arc::clone(&notifier),
+                metadata_cache,
             ).await?,
             metadata_workflows: MetadataWorkflowsDataStore::new(
                 pool.clone(),
