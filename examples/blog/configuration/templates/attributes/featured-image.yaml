@@ -7,3 +7,21 @@ ui: IMAGE
 list: false
 configuration:
   relationship: image.featured
+  targetSize:
+    - 740
+    - 416
+  aspectRatios:
+    - name: 16/9
+      value: 1.77777777778
+      icon: i-lucide-rectangle-horizontal
+      default: true
+  actions:
+    - name: Maximize
+      icon: i-lucide-maximize
+      action: maximize
+    - name: Zoom In
+      icon: i-lucide-zoom-in
+      action: zoomin
+    - name: Zoom Out
+      icon: i-lucide-zoom-out
+      action: zoomout

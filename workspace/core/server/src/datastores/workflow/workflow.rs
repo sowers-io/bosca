@@ -1790,6 +1790,12 @@ impl WorkflowDataStore {
         if plan.finished.is_some() {
             self.notifier.workflow_plan_finished(&plan.id).await?;
         }
+        if let Some(id) = plan.metadata_id {
+            self.notifier.metadata_changed(&id).await?;
+        }
+        if let Some(id) = plan.collection_id {
+            self.notifier.collection_changed(&id).await?;
+        }
         Ok(())
     }
 

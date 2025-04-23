@@ -1,0 +1,18 @@
+id: image.resize
+name: Image Resizing
+description: Resize images and create variants based on configuration
+queue: media
+configuration:
+  sizes:
+    - name: thumbnail
+      size: 200
+    - name: small
+      size: 400
+    - name: medium
+      size: 800
+    - name: large
+      size: 1200
+activities:
+  - queue: media
+    activity: image.resizer
+    description: Resize images and create variants

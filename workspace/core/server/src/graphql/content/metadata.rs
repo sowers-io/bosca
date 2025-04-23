@@ -1,5 +1,6 @@
 use crate::caching_headers::CachingHeaderManager;
 use crate::context::BoscaContext;
+use crate::graphql::content::bible::BibleObject;
 use crate::graphql::content::category::CategoryObject;
 use crate::graphql::content::collection::CollectionObject;
 use crate::graphql::content::collection_template::CollectionTemplateObject;
@@ -21,7 +22,6 @@ use async_graphql::{Context, Error, Object};
 use chrono::{DateTime, Utc};
 use serde_json::Value;
 use uuid::Uuid;
-use crate::graphql::content::bible::BibleObject;
 
 pub struct MetadataObject {
     metadata: Metadata,
@@ -268,13 +268,21 @@ impl MetadataObject {
         &self,
         ctx: &Context<'_>,
         filter: Option<Vec<String>>,
+        inverse: Option<bool>,
     ) -> Result<Vec<MetadataRelationshipObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        Ok(ctx
-            .content
-            .metadata
-            .get_relationships(&self.metadata.id)
-            .await?
+        let relationships = if inverse.unwrap_or(false) {
+            ctx.content
+                .metadata
+                .get_relationships_inverse(&self.metadata.id)
+                .await?
+        } else {
+            ctx.content
+                .metadata
+                .get_relationships(&self.metadata.id)
+                .await?
+        };
+        Ok(relationships
             .into_iter()
             .filter(|r| {
                 if let Some(filter) = &filter {

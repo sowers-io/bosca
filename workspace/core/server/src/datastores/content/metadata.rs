@@ -800,6 +800,16 @@ impl MetadataDataStore {
         Ok(rows.iter().map(MetadataRelationship::from).collect())
     }
 
+    #[tracing::instrument(skip(self, id))]
+    pub async fn get_relationships_inverse(&self, id: &Uuid) -> Result<Vec<MetadataRelationship>, Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare("select r.* from metadata_relationships r inner join metadata m on (r.metadata2_id = m.id and m.deleted = false) where metadata2_id = $1")
+            .await?;
+        let rows = connection.query(&stmt, &[&id]).await?;
+        Ok(rows.iter().map(MetadataRelationship::from).collect())
+    }
+
     #[tracing::instrument(skip(self, id1, id2))]
     pub async fn get_relationship(
         &self,

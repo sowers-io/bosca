@@ -28,3 +28,14 @@ traits:
       - bible.usx
     contentTypes:
       - bosca/v-bible
+
+  - id: media.image
+    name: Image Resizing
+    description: Resize images and create variants based on configuration
+    workflowIds:
+      - image.resize
+    contentTypes:
+      - image/jpeg
+      - image/png
+      - image/gif
+      - image/webp
