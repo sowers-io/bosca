@@ -1,5 +1,6 @@
 <component name="ProjectRunConfigurationManager">
   <configuration default="false" name="Install Runner" type="JetRunConfigurationType">
+    <option name="ALTERNATIVE_JRE_PATH" value="graalvm-jdk-23" />
     <option name="MAIN_CLASS_NAME" value="io.bosca.MainKt" />
     <module name="bosca-runner.runner.main" />
     <option name="PROGRAM_PARAMETERS" value="install --directory examples/blog/configuration" />

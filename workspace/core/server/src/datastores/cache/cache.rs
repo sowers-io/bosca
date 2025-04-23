@@ -108,6 +108,7 @@ where
         }
     }
 
+    #[tracing::instrument(skip(self, key))]
     pub async fn get<K>(&self, key: &K) -> Option<V>
     where
         K: Hash + Eq + Send + Sync + Display + Debug + Clone,
@@ -133,6 +134,7 @@ where
         }
     }
 
+    #[tracing::instrument(skip(self, key, value))]
     pub async fn set<K>(&self, key: &K, value: &V)
     where
         K: Hash + Eq + Send + Sync + Display + Debug + Clone,
@@ -145,6 +147,7 @@ where
         }
     }
 
+    #[tracing::instrument(skip(self, key))]
     pub async fn remove<K>(&self, key: &K)
     where
         K: Hash + Eq + Send + Sync + Display + Debug + Clone,
