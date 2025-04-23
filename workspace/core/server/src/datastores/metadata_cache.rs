@@ -1,21 +1,21 @@
-use async_graphql::Error;
+use crate::datastores::cache::cache::BoscaCache;
 use crate::datastores::cache::manager::BoscaCacheManager;
 use crate::models::content::metadata::Metadata;
+use crate::models::security::permission::Permission;
+use async_graphql::Error;
 use uuid::Uuid;
-use crate::datastores::cache::cache::BoscaCache;
 
 #[derive(Clone)]
 pub struct MetadataCache {
     metadata_id: BoscaCache<Metadata>,
+    permissions: BoscaCache<Vec<Permission>>,
 }
 
 impl MetadataCache {
     pub async fn new(cache: &mut BoscaCacheManager) -> Result<Self, Error> {
         Ok(Self {
-            metadata_id: cache.new_id_tiered_cache(
-                "metadata_id",
-                5000,
-            ).await?,
+            metadata_id: cache.new_id_tiered_cache("metadata_id", 5000).await?,
+            permissions: cache.new_id_tiered_cache("permission_cache", 5000).await?,
         })
     }
 
@@ -45,5 +45,20 @@ impl MetadataCache {
     #[tracing::instrument(skip(self, id))]
     pub async fn evict_metadata(&self, id: &Uuid) {
         self.metadata_id.remove(id).await;
+    }
+
+    #[tracing::instrument(skip(self, id))]
+    pub async fn get_permissions(&self, id: &Uuid) -> Option<Vec<Permission>> {
+        self.permissions.get(id).await
+    }
+
+    #[tracing::instrument(skip(self, id, permissions))]
+    pub async fn set_permissions(&self, id: &Uuid, permissions: &Vec<Permission>) {
+        self.permissions.set(id, permissions).await;
+    }
+
+    #[tracing::instrument(skip(self, id))]
+    pub async fn evict_permissions(&self, id: &Uuid) {
+        self.permissions.remove(id).await;
     }
 }

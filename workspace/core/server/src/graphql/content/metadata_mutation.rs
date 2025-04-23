@@ -606,7 +606,7 @@ impl MetadataMutationObject {
             .await?;
         ctx.content
             .metadata_permissions
-            .add_metadata_permission(&permission)
+            .add_metadata_permission(ctx, &permission)
             .await?;
         Ok(permission.into())
     }
@@ -622,7 +622,7 @@ impl MetadataMutationObject {
             .await?;
         ctx.content
             .metadata_permissions
-            .delete_metadata_permission(&permission)
+            .delete_metadata_permission(ctx, &permission)
             .await?;
         Ok(permission.into())
     }

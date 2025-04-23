@@ -24,20 +24,26 @@ use std::sync::Arc;
 use tokio_postgres::Statement;
 use uuid::Uuid;
 use bosca_database::TracingPool;
+use crate::datastores::collection_cache::CollectionCache;
 
 #[derive(Clone)]
 pub struct CollectionsDataStore {
     pool: TracingPool,
     notifier: Arc<Notifier>,
+    cache: CollectionCache
 }
 
 impl CollectionsDataStore {
-    pub fn new(pool: TracingPool, notifier: Arc<Notifier>) -> Self {
-        Self { pool, notifier }
-    }
 
+    pub async fn new(pool: TracingPool, cache: CollectionCache, notifier: Arc<Notifier>) -> Result<Self, Error> {
+        Ok(Self {
+            cache,
+            pool,
+            notifier,
+        })
+    }
     #[tracing::instrument(skip(self, ctx, id))]
-    async fn on_collection_changed(&self, ctx: &BoscaContext, id: &Uuid) -> Result<(), Error> {
+    pub async fn on_collection_changed(&self, ctx: &BoscaContext, id: &Uuid) -> Result<(), Error> {
         self.update_storage(ctx, id).await?;
         if let Err(e) = self.notifier.collection_changed(id).await {
             error!("Failed to notify collection changes: {:?}", e);
@@ -141,6 +147,9 @@ impl CollectionsDataStore {
 
     #[tracing::instrument(skip(self, id))]
     pub async fn get(&self, id: &Uuid) -> Result<Option<Collection>, Error> {
+        if let Some(collection) = self.cache.get_collection(id).await {
+            return Ok(Some(collection));
+        }
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached("select * from collections where id = $1")
@@ -149,24 +158,9 @@ impl CollectionsDataStore {
         if rows.is_empty() {
             return Ok(None);
         }
-        Ok(Some(rows.first().unwrap().into()))
-    }
-
-    #[tracing::instrument(skip(self, txn, id))]
-    #[allow(dead_code)]
-    pub async fn get_txn(
-        &self,
-        txn: &Transaction<'_>,
-        id: &Uuid,
-    ) -> Result<Option<Collection>, Error> {
-        let stmt = txn
-            .prepare_cached("select * from collections where id = $1")
-            .await?;
-        let rows = txn.query(&stmt, &[id]).await?;
-        if rows.is_empty() {
-            return Ok(None);
-        }
-        Ok(Some(rows.first().unwrap().into()))
+        let collection = rows.first().unwrap().into();
+        self.cache.set_collection(&collection).await;
+        Ok(Some(collection))
     }
 
     #[tracing::instrument(skip(self, id, offset, limit))]
@@ -176,12 +170,31 @@ impl CollectionsDataStore {
         offset: i64,
         limit: i64,
     ) -> Result<Vec<Collection>, Error> {
+        if let Some(parent_ids) = self.cache.get_parent_ids(id).await {
+            let mut parents = Vec::new();
+            for parent_id in parent_ids {
+                let parent = self.get(&parent_id).await?;
+                if let Some(parent) = parent {
+                    parents.push(parent);
+                }
+            }
+            return Ok(parents);
+        }
         let connection = self.pool.get().await?;
         let stmt = connection
-            .prepare_cached("select c.* from collections c inner join collection_items ci on (c.id = ci.collection_id and c.deleted = false) where ci.child_collection_id = $1 offset $2 limit $3")
+            .prepare_cached("select c.id from collections c inner join collection_items ci on (c.id = ci.collection_id and c.deleted = false) where ci.child_collection_id = $1 offset $2 limit $3")
             .await?;
         let rows = connection.query(&stmt, &[id, &offset, &limit]).await?;
-        Ok(rows.iter().map(|r| r.into()).collect())
+        let parent_ids: Vec<Uuid> = rows.iter().map(|r| r.get(0)).collect();
+        self.cache.set_parent_ids(id, &parent_ids).await;
+        let mut parents = Vec::new();
+        for parent_id in parent_ids {
+            let parent = self.get(&parent_id).await?;
+            if let Some(parent) = parent {
+                parents.push(parent);
+            }
+        }
+        Ok(parents)
     }
 
     #[tracing::instrument(skip(self, ctx, collection_id, child_collection_id, child_metadata_id, attributes))]
@@ -1112,6 +1125,7 @@ impl CollectionsDataStore {
 
     #[tracing::instrument(skip(self, ctx, id))]
     pub async fn update_storage(&self, ctx: &BoscaContext, id: &Uuid) -> Result<(), Error> {
+        self.cache.evict_collection(id).await;
         let mut request = EnqueueRequest {
             workflow_id: Some(COLLECTION_UPDATE_STORAGE.to_string()),
             collection_id: Some(*id),

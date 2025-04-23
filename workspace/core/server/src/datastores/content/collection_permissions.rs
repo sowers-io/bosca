@@ -1,23 +1,19 @@
 use std::fmt::Debug;
-use crate::datastores::cache::cache::BoscaCache;
-use crate::datastores::cache::manager::BoscaCacheManager;
-use crate::datastores::notifier::Notifier;
 use crate::models::content::collection::Collection;
 use crate::models::security::permission::{Permission, PermissionAction};
 use crate::models::security::principal::Principal;
 use crate::security::evaluator::Evaluator;
 use async_graphql::*;
 use deadpool_postgres::{GenericClient, Transaction};
-use log::error;
-use std::sync::Arc;
 use uuid::Uuid;
 use bosca_database::TracingPool;
+use crate::context::BoscaContext;
+use crate::datastores::collection_cache::CollectionCache;
 
 #[derive(Clone)]
 pub struct CollectionPermissionsDataStore {
     pool: TracingPool,
-    cache: BoscaCache<Vec<Permission>>,
-    notifier: Arc<Notifier>,
+    cache: CollectionCache,
 }
 
 impl Debug for CollectionPermissionsDataStore {
@@ -27,21 +23,15 @@ impl Debug for CollectionPermissionsDataStore {
 }
 
 impl CollectionPermissionsDataStore {
-    pub async fn new(pool: TracingPool, cache: &mut BoscaCacheManager, notifier: Arc<Notifier>) -> Result<Self, Error> {
+    pub async fn new(pool: TracingPool, cache: CollectionCache) -> Result<Self, Error> {
         Ok(Self {
             pool,
-            cache: cache.new_id_tiered_cache(
-                "collection_permissions",
-                5000,
-            ).await?,
-            notifier,
+            cache,
         })
     }
 
-    async fn on_collection_changed(&self, id: &Uuid) -> Result<(), Error> {
-        if let Err(e) = self.notifier.collection_changed(id).await {
-            error!("Failed to notify collection changes: {:?}", e);
-        }
+    async fn on_collection_changed(&self, ctx: &BoscaContext, id: &Uuid) -> Result<(), Error> {
+        ctx.content.collections.on_collection_changed(ctx, id).await?;
         Ok(())
     }
 
@@ -102,14 +92,14 @@ impl CollectionPermissionsDataStore {
 
     #[tracing::instrument]
     pub async fn get(&self, id: &Uuid) -> Result<Vec<Permission>, Error> {
-        if let Some(permissions) = self.cache.get(id).await {
+        if let Some(permissions) = self.cache.get_permissions(id).await {
             return Ok(permissions);
         }
         let connection = self.pool.get().await?;
         let stmt = connection.prepare_cached("select collection_id as entity_id, group_id, action from collection_permissions where collection_id = $1").await?;
         let rows = connection.query(&stmt, &[id]).await?;
         let permissions = rows.iter().map(|r| r.into()).collect();
-        self.cache.set(id, &permissions).await;
+        self.cache.set_permissions(id, &permissions).await;
         Ok(permissions)
     }
 
@@ -119,18 +109,20 @@ impl CollectionPermissionsDataStore {
         txn: &Transaction<'_>,
         id: &Uuid,
     ) -> Result<Vec<Permission>, Error> {
-        if let Some(permissions) = self.cache.get(id).await {
-            return Ok(permissions);
-        }
+        // if let Some(permissions) = self.cache.get_permissions(id).await {
+            // KJB: TODO: There could be an inconsistency if the cache and the transaction are out of sync.  This is something that can be solved later.
+            // return Ok(permissions);
+        // }
         let stmt = txn.prepare_cached("select collection_id as entity_id, group_id, action from collection_permissions where collection_id = $1").await?;
         let rows = txn.query(&stmt, &[id]).await?;
         let permissions = rows.iter().map(|r| r.into()).collect();
-        self.cache.set(id, &permissions).await;
+        // KJB: TODO: not storing here in case txn fails
+        // self.cache.set_permissions(id, &permissions).await;
         Ok(permissions)
     }
 
-    #[tracing::instrument(skip(self, permission))]
-    pub async fn add(&self, permission: &Permission) -> Result<(), Error> {
+    #[tracing::instrument(skip(self, ctx, permission))]
+    pub async fn add(&self, ctx: &BoscaContext, permission: &Permission) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection.prepare_cached("insert into collection_permissions (collection_id, group_id, action) values ($1, $2, $3) on conflict do nothing").await?;
         connection
@@ -143,7 +135,7 @@ impl CollectionPermissionsDataStore {
                 ],
             )
             .await?;
-        self.on_collection_changed(&permission.entity_id).await?;
+        self.on_collection_changed(ctx, &permission.entity_id).await?;
         Ok(())
     }
 
@@ -166,8 +158,8 @@ impl CollectionPermissionsDataStore {
         Ok(())
     }
 
-    #[tracing::instrument(skip(self, permission))]
-    pub async fn delete(&self, permission: &Permission) -> Result<(), Error> {
+    #[tracing::instrument(skip(self, ctx, permission))]
+    pub async fn delete(&self, ctx: &BoscaContext, permission: &Permission) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection.prepare_cached("delete from collection_permissions where collection_id = $1 and group_id = $2 and action = $3").await?;
         connection
@@ -180,7 +172,7 @@ impl CollectionPermissionsDataStore {
                 ],
             )
             .await?;
-        self.on_collection_changed(&permission.entity_id).await?;
+        self.on_collection_changed(ctx, &permission.entity_id).await?;
         Ok(())
     }
 
