@@ -1,7 +1,7 @@
 use async_graphql::Error;
 use async_nats::jetstream::kv::{Operation, Store};
 use futures_util::StreamExt;
-use log::{error, info, warn};
+use log::{debug, error, warn};
 use moka::future::Cache;
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::Hash;
@@ -53,7 +53,7 @@ where
                         while let Some(value) = stream.next().await {
                             if let Ok(value) = value {
                                 let k = value.key;
-                                info!("syncing cache: {} - {}", name, k);
+                                debug!("syncing cache: {} - {}", name, k);
                                 match value.operation {
                                     Operation::Put => {
                                         let b = value.value;

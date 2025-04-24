@@ -84,7 +84,7 @@ impl BoscaContext {
         info!("Connecting to Nats");
         let (_nats, jetstream) = new_nats_client().await?;
         info!("Building Context");
-        let mut cache = BoscaCacheManager::new(jetstream);
+        let mut cache = BoscaCacheManager::new(jetstream.clone());
         let ctx = BoscaContext {
             security: SecurityDataStore::new(
                 &mut cache,
@@ -111,7 +111,7 @@ impl BoscaContext {
             ),
             profile: ProfileDataStore::new(bosca_pool.clone()),
             queries: PersistedQueriesDataStore::new(bosca_pool.clone()).await,
-            content: ContentDataStore::new(bosca_pool, &mut cache, Arc::clone(&notifier)).await?,
+            content: ContentDataStore::new(bosca_pool, &mut cache, jetstream, Arc::clone(&notifier)).await?,
             notifier,
             search,
             storage: new_object_storage(),

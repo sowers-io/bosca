@@ -126,11 +126,12 @@ class Workflows(network: NetworkClient) : Api(network) {
         response.validate()
     }
 
-    suspend fun setWorkflowJobFailed(id: WorkflowJob.Id, error: String) {
+    suspend fun setWorkflowJobFailed(id: WorkflowJob.Id, error: String, tryAgain: Boolean) {
         val response = network.graphql.mutation(
             SetWorkflowJobFailedMutation(
                 WorkflowJobIdInput(id.id, id.index, id.queue),
-                error
+                error,
+                tryAgain
             )
         ).execute()
         response.validate()

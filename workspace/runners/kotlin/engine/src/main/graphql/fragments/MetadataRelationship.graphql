@@ -9,6 +9,10 @@ fragment MetadataRelationshipMetadata on Metadata {
         state
         pending
     }
+    content {
+        type
+        length
+    }
 }
 
 fragment MetadataRelationship on MetadataRelationship {

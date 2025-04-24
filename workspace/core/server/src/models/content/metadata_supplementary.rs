@@ -1,10 +1,11 @@
 use async_graphql::InputObject;
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio_postgres::Row;
 use uuid::Uuid;
 
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct MetadataSupplementary {
     pub id: Uuid,
     pub metadata_id: Uuid,

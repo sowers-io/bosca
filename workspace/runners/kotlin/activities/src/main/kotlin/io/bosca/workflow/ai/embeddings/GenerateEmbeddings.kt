@@ -13,6 +13,7 @@ import io.bosca.util.decode
 import io.bosca.util.encodeToOptional
 import io.bosca.workflow.Activity
 import io.bosca.workflow.ActivityContext
+import io.bosca.workflow.FullFailureException
 import io.bosca.workflow.ext.*
 import kotlinx.serialization.Serializable
 import java.util.*
@@ -41,7 +42,7 @@ class GenerateEmbeddings(client: Client) : Activity(client) {
     }
 
     override suspend fun execute(context: ActivityContext, job: WorkflowJob) {
-        val metadata = job.metadata?.metadata ?: error("metadata missing")
+        val metadata = job.metadata?.metadata ?: throw FullFailureException("metadata missing")
         val configuration =
             job.workflowActivity.workflowActivity.configuration.decode<GenerateEmbeddingsConfiguration>()
                 ?: GenerateEmbeddingsConfiguration()

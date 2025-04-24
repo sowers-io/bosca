@@ -665,11 +665,12 @@ impl JobQueues {
         Ok(plan)
     }
 
-    #[tracing::instrument(skip(self, job_id, error))]
+    #[tracing::instrument(skip(self, job_id, error, try_again))]
     pub async fn set_execution_plan_job_failed(
         &self,
         job_id: &WorkflowJobId,
         error: &str,
+        try_again: bool,
     ) -> Result<WorkflowExecutionPlan, Error> {
         let mut connection = self.pool.get().await?;
         let db_txn = connection.transaction().await?;
@@ -677,7 +678,7 @@ impl JobQueues {
             return Err(Error::new("can't set job context, missing plan"));
         };
         let mut redis_txn = RedisTransaction::new();
-        plan.set_job_failed(job_id, &db_txn, &mut redis_txn, self, error)
+        plan.set_job_failed(job_id, &db_txn, &mut redis_txn, self, error, try_again)
             .await?;
         db_txn.commit().await?;
         redis_txn.execute(&self.redis).await?;

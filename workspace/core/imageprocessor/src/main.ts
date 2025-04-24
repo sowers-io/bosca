@@ -37,6 +37,7 @@ async function main() {
             reply.code(400).send()
             return
         }
+        console.log('resizing: ', opts.u)
         const imageUrl = new URL(opts.u)
         let isSupported = false
         for (const supported of supportedUrls) {
@@ -74,14 +75,18 @@ async function main() {
                 }
             }
             if (opts.t || opts.l) {
-                const top = opts.t ? parseInt(opts.t) : undefined
-                const left = opts.l ? parseInt(opts.l) : undefined
-                transformer = transformer.extract({
-                    top: top || 0,
-                    left: left || 0,
-                    width: resize.width || 0,
-                    height: resize.height || 0
-                })
+                const top = opts.t ? parseInt(opts.t) : 0
+                const left = opts.l ? parseInt(opts.l) : 0
+                if (top != 0 || left != 0) {
+                    transformer = transformer.extract({
+                        top: top || 0,
+                        left: left || 0,
+                        width: resize.width || 0,
+                        height: resize.height || 0
+                    })
+                } else {
+                    transformer = transformer.resize(resize)
+                }
             } else {
                 transformer = transformer.resize(resize)
             }

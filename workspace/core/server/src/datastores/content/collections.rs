@@ -53,10 +53,7 @@ impl CollectionsDataStore {
 
     #[tracing::instrument(skip(self, ctx, id))]
     async fn on_metadata_changed(&self, ctx: &BoscaContext, id: &Uuid) -> Result<(), Error> {
-        ctx.content.metadata.update_storage(ctx, id).await?;
-        if let Err(e) = self.notifier.metadata_changed(id).await {
-            error!("Failed to notify metadata changes: {:?}", e);
-        }
+        ctx.content.metadata.on_metadata_changed(ctx, id).await?;
         Ok(())
     }
 
@@ -813,6 +810,27 @@ impl CollectionsDataStore {
         let stmt = txn
             .prepare_cached(
                 "update collections set attributes = $1, modified = now() where id = $2",
+            )
+            .await?;
+        txn.execute(&stmt, &[&attributes, &collection_id]).await?;
+        update_collection_etag(&txn, collection_id).await?;
+        txn.commit().await?;
+        self.on_collection_changed(ctx, collection_id).await?;
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self, ctx, collection_id, attributes))]
+    pub async fn set_system_attributes(
+        &self,
+        ctx: &BoscaContext,
+        collection_id: &Uuid,
+        attributes: Value,
+    ) -> Result<(), Error> {
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        let stmt = txn
+            .prepare_cached(
+                "update collections set system_attributes = $1, modified = now() where id = $2",
             )
             .await?;
         txn.execute(&stmt, &[&attributes, &collection_id]).await?;

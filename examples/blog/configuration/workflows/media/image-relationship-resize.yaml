@@ -1,10 +1,10 @@
-id: image.resize
+id: image.relationship.resize
 name: Image Resizing
 description: Resize images and create variants based on configuration
 queue: media
 activities:
   - queue: media
-    activity: image.resizer
+    activity: image.relationship.resizer
     description: Resize images and create variants
     configuration:
       sizes:

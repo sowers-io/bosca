@@ -1,31 +1,34 @@
 use crate::context::BoscaContext;
+use crate::datastores::metadata_cache::MetadataCache;
 use crate::datastores::notifier::Notifier;
 use crate::models::content::metadata_supplementary::{
     MetadataSupplementary, MetadataSupplementaryInput,
 };
 use async_graphql::*;
+use bosca_database::TracingPool;
 use log::error;
 use std::sync::Arc;
 use uuid::Uuid;
-use bosca_database::TracingPool;
 
 #[derive(Clone)]
 pub struct MetadataSupplementaryDataStore {
     pool: TracingPool,
+    cache: MetadataCache,
     notifier: Arc<Notifier>,
 }
 
 impl MetadataSupplementaryDataStore {
-    pub fn new(pool: TracingPool, notifier: Arc<Notifier>) -> Self {
-        Self { pool, notifier }
+    pub fn new(pool: TracingPool, cache: MetadataCache, notifier: Arc<Notifier>) -> Self {
+        Self {
+            pool,
+            cache,
+            notifier,
+        }
     }
 
     #[tracing::instrument(skip(self, ctx, id))]
     async fn on_metadata_changed(&self, ctx: &BoscaContext, id: &Uuid) -> Result<(), Error> {
-        ctx.content.metadata.update_storage(ctx, id).await?;
-        if let Err(e) = self.notifier.metadata_changed(id).await {
-            error!("Failed to notify metadata changes: {:?}", e);
-        }
+        ctx.content.metadata.on_metadata_changed(ctx, id).await?;
         Ok(())
     }
 
@@ -38,6 +41,8 @@ impl MetadataSupplementaryDataStore {
         key: &str,
         plan_id: Option<Uuid>,
     ) -> Result<(), Error> {
+        self.cache.evict_supplementary(supplementary_id).await;
+        self.cache.evict_metadata(metadata_id).await;
         if let Err(e) = self
             .notifier
             .metadata_supplementary_changed(
@@ -58,6 +63,9 @@ impl MetadataSupplementaryDataStore {
         &self,
         id: &Uuid,
     ) -> Result<Option<MetadataSupplementary>, Error> {
+        if let Some(supplementary) = self.cache.get_supplementary(id).await {
+            return Ok(Some(supplementary));
+        }
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached("select * from metadata_supplementary where id = $1")
@@ -66,7 +74,11 @@ impl MetadataSupplementaryDataStore {
         if rows.is_empty() {
             return Ok(None);
         }
-        Ok(Some(rows.first().unwrap().into()))
+        let supplementary: MetadataSupplementary = rows.first().unwrap().into();
+        self.cache
+            .set_supplementary(&supplementary.id, &supplementary)
+            .await;
+        Ok(Some(supplementary))
     }
 
     #[tracing::instrument(skip(self, metadata_id, key))]
@@ -99,7 +111,9 @@ impl MetadataSupplementaryDataStore {
             .prepare_cached("select * from metadata_supplementary where metadata_id = $1 and key = $2 and plan_id = $3")
             .await?;
         let key = key.to_owned();
-        let rows = connection.query(&stmt, &[metadata_id, &key, &plan_id]).await?;
+        let rows = connection
+            .query(&stmt, &[metadata_id, &key, &plan_id])
+            .await?;
         if rows.is_empty() {
             return Ok(None);
         }
@@ -111,12 +125,29 @@ impl MetadataSupplementaryDataStore {
         &self,
         id: &Uuid,
     ) -> Result<Vec<MetadataSupplementary>, Error> {
+        if let Some(supplementaries) = self.cache.get_supplementaries(id).await {
+            let mut s = Vec::new();
+            for supplementary in supplementaries {
+                if let Some(supplementary) = self.get_supplementary(&supplementary).await? {
+                    s.push(supplementary);
+                }
+            }
+            return Ok(s);
+        }
         let connection = self.pool.get().await?;
         let stmt = connection
-            .prepare_cached("select * from metadata_supplementary where metadata_id = $1")
+            .prepare_cached("select id from metadata_supplementary where metadata_id = $1")
             .await?;
         let rows = connection.query(&stmt, &[id]).await?;
-        Ok(rows.iter().map(|r| r.into()).collect())
+        let ids: Vec<Uuid> = rows.iter().map(|r| r.get("id")).collect();
+        self.cache.set_supplementaries(id, &ids).await;
+        let mut s = Vec::new();
+        for supplementary in ids {
+            if let Some(supplementary) = self.get_supplementary(&supplementary).await? {
+                s.push(supplementary);
+            }
+        }
+        Ok(s)
     }
 
     #[tracing::instrument(skip(self, ctx, supplementary))]
@@ -188,20 +219,14 @@ impl MetadataSupplementaryDataStore {
     }
 
     #[tracing::instrument(skip(self, ctx, id))]
-    pub async fn delete_supplementary(
-        &self,
-        ctx: &BoscaContext,
-        id: &Uuid,
-    ) -> Result<(), Error> {
+    pub async fn delete_supplementary(&self, ctx: &BoscaContext, id: &Uuid) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached(
                 "delete from metadata_supplementary where id = $1 returning metadata_id, key, plan_id",
             )
             .await?;
-        let result = connection
-            .query_one(&stmt, &[id])
-            .await?;
+        let result = connection.query_one(&stmt, &[id]).await?;
         let metadata_id: Uuid = result.get("metadata_id");
         let key: String = result.get("key");
         let plan_id: Option<Uuid> = result.get("plan_id");
@@ -211,20 +236,14 @@ impl MetadataSupplementaryDataStore {
     }
 
     #[tracing::instrument(skip(self, ctx, id))]
-    pub async fn detach_supplementary(
-        &self,
-        ctx: &BoscaContext,
-        id: &Uuid,
-    ) -> Result<(), Error> {
+    pub async fn detach_supplementary(&self, ctx: &BoscaContext, id: &Uuid) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached(
                 "update metadata_supplementary set plan_id = null where id = $1 returning metadata_id, key, plan_id",
             )
             .await?;
-        let result = connection
-            .query_one(&stmt, &[id])
-            .await?;
+        let result = connection.query_one(&stmt, &[id]).await?;
         let metadata_id: Uuid = result.get("metadata_id");
         let key: String = result.get("key");
         let plan_id: Option<Uuid> = result.get("plan_id");

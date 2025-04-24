@@ -3,20 +3,18 @@ name: Update Metadata Storage
 description: Update Metadata Storage
 queue: metadata
 activities:
-  - queue: metadata
-    activity: workflow.general.delay
-    description: Wait for all supplementary data and relationships to be updated
-    configuration:
-      delayFor: 5 # 5 Seconds
-
+  # convert metadata to a json format
   - queue: metadata
     activity: metadata.to.json
+    executionGroup: 1
     outputs:
       - name: supplementary
         supplementary: search.json
 
+  # convert the json format to a json format that can be inserted into meilisearch
   - queue: metadata
     activity: data.jsonata
+    executionGroup: 2
     inputs:
       - name: supplementary
         supplementary: search.json
@@ -40,8 +38,10 @@ activities:
           "collections": [$map($filter(_parents, function($v, $i, $a) { $v.attributes.type != "Author" and $v.attributes.type != "Topic" }), function($v, $i, $a) { { "id": $v.id, "name": $v.name } })]
         }
 
+  # if this is a Blog Post and it is published, index the content into the public search index
   - queue: metadata
     activity: workflow.general.if
+    executionGroup: 3
     inputs:
       - name: supplementary
         supplementary: search.json
@@ -58,8 +58,10 @@ activities:
         }
         result
 
+  # if the content isn't published, delete it from the search index
   - queue: metadata
     activity: workflow.general.if
+    executionGroup: 3
     inputs:
       - name: supplementary
         supplementary: search.json
@@ -71,8 +73,10 @@ activities:
         let workflowState = data.metadata?.metadata?.workflow?.metadataWorkflow?.state
         workflowState !== 'published'
 
+  # add the content to the admin search index
   - queue: metadata
     activity: workflow.execute.child
+    executionGroup: 3
     inputs:
       - name: supplementary
         supplementary: search.json
@@ -80,8 +84,18 @@ activities:
       workflows:
         - metadata.index.default
 
+  # resize the image to the appropriate sizes based on the admin
+  - queue: metadata
+    activity: workflow.execute.child
+    executionGroup: 3
+    configuration:
+      workflows:
+        - image.relationship.resize
+
+  # clean up the supplementary data
   - queue: metadata
     activity: metadata.supplementary.delete
+    executionGroup: 4
     inputs:
       - name: supplementary
         supplementary: search.json

@@ -21,6 +21,7 @@ use crate::security::util::check_has_group;
 use crate::util::transition::begin_transition;
 use async_graphql::{Context, Error, Object};
 use chrono::{DateTime, Utc};
+use log::warn;
 use serde_json::Value;
 use uuid::Uuid;
 use crate::workflow::core_workflow_ids::{COLLECTION_DELAYED_TRANSITION, METADATA_DELAYED_TRANSITION};
@@ -400,11 +401,13 @@ impl WorkflowsMutationObject {
         ctx: &Context<'_>,
         job_id: WorkflowJobIdInput,
         error: String,
+        try_again: bool
     ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         ctx.check_has_service_account().await?;
+        warn!("job failure reported: {} :: {} :: {} -> {}", job_id.queue, job_id.id, job_id.index, error);
         ctx.workflow
-            .set_execution_plan_job_failed(&job_id.into(), &error)
+            .set_execution_plan_job_failed(&job_id.into(), &error, try_again)
             .await?;
         Ok(true)
     }

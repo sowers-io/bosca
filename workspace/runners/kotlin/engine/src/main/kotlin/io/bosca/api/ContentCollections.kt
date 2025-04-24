@@ -103,6 +103,11 @@ class ContentCollections(network: NetworkClient) : Api(network) {
         response.validate()
     }
 
+    suspend fun setSystemAttributes(id: String, attributes: Any?) {
+        val response = network.graphql.mutation(SetCollectionSystemAttributesMutation(id, attributes ?: emptyMap<Any, Any>())).execute()
+        response.validate()
+    }
+
     suspend fun addPermission(input: PermissionInput) {
         val response = network.graphql.mutation(AddCollectionPermissionMutation(input)).execute()
         response.validate()

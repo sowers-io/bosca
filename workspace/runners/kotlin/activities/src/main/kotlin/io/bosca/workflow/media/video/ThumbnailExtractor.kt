@@ -5,6 +5,7 @@ import io.bosca.graphql.type.ActivityInput
 import io.bosca.graphql.type.MetadataSupplementaryInput
 import io.bosca.workflow.Activity
 import io.bosca.workflow.ActivityContext
+import io.bosca.workflow.FullFailureException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -28,7 +29,7 @@ class ThumbnailExtractor(client: Client) : Activity(client) {
 
     @OptIn(ExperimentalUuidApi::class)
     override suspend fun execute(context: ActivityContext, job: WorkflowJob) {
-        val metadata = job.metadata?.metadata ?: error("metadata missing")
+        val metadata = job.metadata?.metadata ?: throw FullFailureException("metadata missing")
         val file = getContentFile(context, job)
         withContext(Dispatchers.IO) {
             val outputDirectory = Files.createTempDirectory("thumbnails-${Uuid.random().toHexString()}").toFile()

@@ -251,6 +251,12 @@ class ContentMetadata(network: NetworkClient) : Api(network) {
         response.validate()
     }
 
+    suspend fun setSystemAttributes(id: String, attributes: Any?) {
+        val response =
+            network.graphql.mutation(SetMetadataSystemAttributesMutation(id, attributes ?: emptyMap<Any, Any>())).execute()
+        response.validate()
+    }
+
     suspend fun getSupplementary(id: String): List<MetadataSupplementary> {
         val response = network.graphql.query(GetMetadataSupplementaryQuery(id)).execute()
         response.validate()
@@ -259,6 +265,12 @@ class ContentMetadata(network: NetworkClient) : Api(network) {
 
     suspend fun getRelationships(id: String): List<MetadataRelationship> {
         val response = network.graphql.query(GetMetadataRelationshipsQuery(id)).execute()
+        response.validate()
+        return response.data?.content?.metadata?.relationships?.map { it.metadataRelationship } ?: emptyList()
+    }
+
+    suspend fun getRelationshipsInverse(id: String): List<MetadataRelationship> {
+        val response = network.graphql.query(GetMetadataRelationshipsInverseQuery(id)).execute()
         response.validate()
         return response.data?.content?.metadata?.relationships?.map { it.metadataRelationship } ?: emptyList()
     }

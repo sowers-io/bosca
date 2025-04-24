@@ -96,6 +96,8 @@ pub struct WorkflowExecutionPlan {
     pub complete: HashSet<i32>,
     pub failed: HashSet<i32>,
     pub error: Option<String>,
+    #[serde(default)]
+    pub failure: bool,
     pub max_failures: i32,
 }
 
@@ -164,29 +166,31 @@ impl WorkflowExecutionPlan {
                 queues.set_plan(db_txn, self, false).await?;
                 return Ok(WorkflowExecutePlanState::Complete);
             }
-            current_execution_group
+            Some(current_execution_group)
         } else if !self.failed.is_empty() {
             let failed = self.failed.iter().cloned().collect();
             self.failed.clear();
-            failed
+            Some(failed)
         } else {
-            return Ok(WorkflowExecutePlanState::Running);
+            None
         };
-        for job_index in current_execution_group {
-            debug!(target: "workflow", "removing job from current list and queueing as next: {}", self.id);
-            if !self.complete.contains(&job_index) {
-                let job = self.jobs.get(job_index as usize).unwrap();
-                self.active.insert(job_index);
-                if let Some(delay_until) = &self.delay_until {
-                    let now = Utc::now();
-                    if now < *delay_until {
-                        let diff = delay_until.timestamp() - now.timestamp();
-                        redis_txn.add_op(RedisTransactionOp::QueueJobLater(job.id.clone(), diff));
+        if let Some(current_execution_group) = current_execution_group {
+            for job_index in current_execution_group {
+                debug!(target: "workflow", "removing job from current list and queueing as next: {}", self.id);
+                if !self.complete.contains(&job_index) {
+                    let job = self.jobs.get(job_index as usize).unwrap();
+                    self.active.insert(job_index);
+                    if let Some(delay_until) = &self.delay_until {
+                        let now = Utc::now();
+                        if now < *delay_until {
+                            let diff = delay_until.timestamp() - now.timestamp();
+                            redis_txn.add_op(RedisTransactionOp::QueueJobLater(job.id.clone(), diff));
+                        } else {
+                            redis_txn.add_op(RedisTransactionOp::QueueJob(job.id.clone()));
+                        }
                     } else {
                         redis_txn.add_op(RedisTransactionOp::QueueJob(job.id.clone()));
                     }
-                } else {
-                    redis_txn.add_op(RedisTransactionOp::QueueJob(job.id.clone()));
                 }
             }
         }
@@ -300,6 +304,7 @@ impl WorkflowExecutionPlan {
         redis_txn: &mut RedisTransaction,
         queues: &JobQueues,
         error: &str,
+        try_again: bool
     ) -> Result<(), Error> {
         self.failed.insert(job_id.index);
         self.active.remove(&job_id.index);
@@ -312,13 +317,13 @@ impl WorkflowExecutionPlan {
         let timeout: i64 = (job.failures * 30) as i64;
         let max_failures = self.max_failures;
         let job_failures = job.failures;
-        queues.set_plan(db_txn, self, false).await?;
 
         redis_txn.add_op(RedisTransactionOp::RemoveJobRunning(job_id.clone()));
-        if self.finished.is_none() && job_failures < max_failures {
+        if try_again && self.finished.is_none() && job_failures < max_failures {
             redis_txn.add_op(RedisTransactionOp::PlanCheckin(self.id.clone()));
             redis_txn.add_op(RedisTransactionOp::QueueJobLater(job_id.clone(), timeout));
         } else {
+            self.failure = true;
             if job_failures >= max_failures {
                 error!(target: "workflow", "job failed too many times, marking as failed: {}", self.id);
             }
@@ -330,6 +335,7 @@ impl WorkflowExecutionPlan {
                 redis_txn.add_op(RedisTransactionOp::RemoveCollectionRunning(collection_id));
             }
         }
+        queues.set_plan(db_txn, self, false).await?;
         Ok(())
     }
 }

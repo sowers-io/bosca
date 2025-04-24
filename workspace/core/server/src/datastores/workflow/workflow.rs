@@ -1646,6 +1646,7 @@ impl WorkflowDataStore {
             collection_id: request.collection_id,
             profile_id: request.profile_id,
             finished: None,
+            failure: false,
             max_failures: 10,
         })
     }
@@ -1799,15 +1800,16 @@ impl WorkflowDataStore {
         Ok(())
     }
 
-    #[tracing::instrument(skip(self, job_id, error))]
+    #[tracing::instrument(skip(self, job_id, error, try_again))]
     pub async fn set_execution_plan_job_failed(
         &self,
         job_id: &WorkflowJobId,
         error: &str,
+        try_again: bool
     ) -> Result<(), Error> {
         let plan = self
             .queues
-            .set_execution_plan_job_failed(job_id, error)
+            .set_execution_plan_job_failed(job_id, error, try_again)
             .await?;
         if plan.finished.is_some() {
             self.notifier.workflow_plan_failed(&plan.id).await?;

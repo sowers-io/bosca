@@ -7,6 +7,7 @@ import io.bosca.graphql.type.StorageSystemType
 import io.bosca.util.decode
 import io.bosca.workflow.Activity
 import io.bosca.workflow.ActivityContext
+import io.bosca.workflow.FullFailureException
 
 class DeleteFromIndexes(client: io.bosca.api.Client) : Activity(client) {
 
@@ -23,7 +24,7 @@ class DeleteFromIndexes(client: io.bosca.api.Client) : Activity(client) {
     }
 
     override suspend fun execute(context: ActivityContext, job: WorkflowJob) {
-        val metadata = job.metadata?.metadata ?: error("metadata missing")
+        val metadata = job.metadata?.metadata ?: throw FullFailureException("metadata missing")
         val meilisearchConfig = newMeilisearchConfig()
         val client = Client(meilisearchConfig)
         val taskIds = mutableListOf<Pair<Index, Int>>()

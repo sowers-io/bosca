@@ -4,19 +4,15 @@ description: Update Collection Storage
 queue: metadata
 activities:
   - queue: metadata
-    activity: workflow.general.delay
-    description: Wait for all supplementary data and relationships to be updated
-    configuration:
-      delayFor: 5 # 5 Seconds
-
-  - queue: metadata
     activity: collection.to.json
+    executionGroup: 1
     outputs:
       - name: supplementary
         supplementary: search.json
 
   - queue: metadata
     activity: data.jsonata
+    executionGroup: 2
     inputs:
       - name: supplementary
         supplementary: search.json
@@ -42,6 +38,7 @@ activities:
 
   - queue: metadata
     activity: workflow.general.if
+    executionGroup: 3
     inputs:
       - name: supplementary
         supplementary: search.json
@@ -60,6 +57,7 @@ activities:
 
   - queue: metadata
     activity: workflow.general.if
+    executionGroup: 3
     inputs:
       - name: supplementary
         supplementary: search.json
@@ -73,6 +71,7 @@ activities:
 
   - queue: metadata
     activity: workflow.execute.child
+    executionGroup: 3
     inputs:
       - name: supplementary
         supplementary: search.json
@@ -82,6 +81,7 @@ activities:
 
   - queue: metadata
     activity: collection.supplementary.delete
+    executionGroup: 4
     inputs:
       - name: supplementary
         supplementary: search.json

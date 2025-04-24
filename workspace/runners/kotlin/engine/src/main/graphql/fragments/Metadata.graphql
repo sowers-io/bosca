@@ -25,6 +25,7 @@ fragment Metadata on Metadata {
     uploaded
     ready
     attributes
+    systemAttributes
     traitIds
     source {
         id

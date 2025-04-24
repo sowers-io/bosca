@@ -132,7 +132,8 @@ class JobRunner(
                 println("missing activity: ${workflowActivity.workflowActivity.activityId}")
                 client.workflows.setWorkflowJobFailed(
                     id,
-                    "missing activity: ${workflowActivity.workflowActivity.activityId}"
+                    "missing activity: ${workflowActivity.workflowActivity.activityId}",
+                    true
                 )
                 return
             }
@@ -147,12 +148,16 @@ class JobRunner(
             println("processing complete: $id : ${workflowActivity.workflowActivity.activityId} : ${active.get()}")
         } catch (_: CancellationException) {
             println("cancelled job: $id")
+            client.workflows.setWorkflowJobFailed(id, "job cancellation", true)
         } catch (e: DelayedUntilException) {
-            client.workflows.setWorkflowJobDelayedUntil(id, e.delayedUntil)
             println("delayed executing: ${id}: $e")
+            client.workflows.setWorkflowJobDelayedUntil(id, e.delayedUntil)
+        } catch (e: FullFailureException) {
+            println("full failure executing: ${id}: $e")
+            client.workflows.setWorkflowJobFailed(id, e.toString(), false)
         } catch (e: Exception) {
-            client.workflows.setWorkflowJobFailed(id, e.toString())
             println("failed to execute: ${id}: $e")
+            client.workflows.setWorkflowJobFailed(id, e.toString(), true)
             e.printStackTrace()
         } finally {
             active.decrementAndGet()

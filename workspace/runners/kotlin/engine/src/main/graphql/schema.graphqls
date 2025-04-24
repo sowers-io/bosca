@@ -170,6 +170,7 @@ type CollectionMutation {
     setChildItemAttributes(attributes: JSON, childCollectionId: String, childMetadataId: String, id: String!): Collection!
     setCollectionAttributes(attributes: JSON!, id: String!): Boolean!
     setCollectionOrdering(id: String!, ordering: JSON!): Boolean!
+    setCollectionSystemAttributes(attributes: JSON!, id: String!): Boolean!
     setPublic(id: String!, public: Boolean!): Collection!
     setPublicList(id: String!, public: Boolean!): Collection!
     setPublicSupplementary(id: String!, public: Boolean!): Collection!
@@ -434,7 +435,7 @@ type Metadata {
     publicContent: Boolean!
     publicSupplementary: Boolean!
     ready: DateTime
-    relationships(filter: [String!]): [MetadataRelationship!]!
+    relationships(filter: [String!], inverse: Boolean): [MetadataRelationship!]!
     slug: String
     source: MetadataSource!
     supplementary(key: String, planId: String): [MetadataSupplementary!]!
@@ -1100,7 +1101,7 @@ type WorkflowsMutation {
     setExecutionPlanJobComplete(jobId: WorkflowJobIdInput!): Boolean!
     setExecutionPlanJobContext(context: JSON!, jobId: WorkflowJobIdInput!): Boolean!
     setExecutionPlanJobDelayed(delayedUntil: DateTime!, jobId: WorkflowJobIdInput!): Boolean!
-    setExecutionPlanJobFailed(error: String!, jobId: WorkflowJobIdInput!): Boolean!
+    setExecutionPlanJobFailed(error: String!, jobId: WorkflowJobIdInput!, tryAgain: Boolean!): Boolean!
     states: WorkflowStatesMutation!
     storageSystems: StorageSystemsMutation!
     traits: TraitsMutation!
