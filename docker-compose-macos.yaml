@@ -33,6 +33,17 @@ services:
     networks:
       - boscanet
 
+  imageprocessor:
+    image: ghcr.io/sowers-io/bosca/imageprocessor:latest
+    platform: linux/amd64
+    environment:
+      SUPPORTED_URLS: http://localhost:3001,http://server:8000
+    ports:
+      - '8003:8003'
+    restart: always
+    networks:
+      - boscanet
+
   server:
     image: ghcr.io/sowers-io/bosca/server:latest
     platform: linux/amd64
@@ -112,6 +123,20 @@ services:
       GRAPHQL_URL: http://server:8000/graphql
       GRAPHQL_USERNAME: admin
       GRAPHQL_PASSWORD: password
+    restart: on-failure:1000
+    networks:
+      - boscanet
+    depends_on:
+      server:
+        condition: service_started
+
+  blog-installer:
+    image: ghcr.io/sowers-io/bosca/blog-installer-compatibility:latest
+    platform: linux/amd64
+    environment:
+      BOSCA_GRAPHQL_URL: http://server:8000/graphql
+      BOSCA_USERNAME: admin
+      BOSCA_PASSWORD: password
     restart: on-failure:1000
     networks:
       - boscanet

@@ -22,7 +22,8 @@ object InstallerExecutorFactory {
             TraitsInstaller(),
             CollectionsInstaller(client),
             ProfileAttributeTypesInstaller(),
-            AssetsInstaller()
+            AssetsInstaller(),
+            StorageSystemsInstaller() // ensure storage systems get initialized now that everything is in place
         )
     ): InstallerExecutor {
         EnterpriseActivityRegistryFactory.createInstaller(client)?.let {

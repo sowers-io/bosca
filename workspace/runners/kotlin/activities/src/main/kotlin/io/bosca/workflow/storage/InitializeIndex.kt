@@ -32,7 +32,7 @@ class InitializeIndex(client: Client) : Activity(client) {
             val cfg = system.system.storageSystem.configuration.decode<IndexConfiguration>() ?: error("index configuration missing")
             val index = try {
                 client.getIndex(cfg.name)
-            } catch (e: MeilisearchApiException) {
+            } catch (_: MeilisearchApiException) {
                 val task = client.createIndex(cfg.name, cfg.primaryKey)
                 client.suspendWaitForTask(task.taskUid)
                 client.getIndex(cfg.name)
