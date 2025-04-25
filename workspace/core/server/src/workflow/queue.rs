@@ -11,7 +11,7 @@ use crate::workflow::transaction::{RedisTransaction, RedisTransactionOp};
 use async_graphql::Error;
 use chrono::{DateTime, Utc};
 use deadpool_postgres::{GenericClient, Transaction};
-use log::{debug, error, info};
+use log::{debug, error, info, warn};
 use redis::{AsyncCommands, Script};
 use serde_json::{from_value, json, Value};
 use std::collections::HashSet;
@@ -392,13 +392,18 @@ impl JobQueues {
         let db_txn = connection.transaction().await?;
         let mut redis_txn = RedisTransaction::new();
         let state = plan.enqueue(&db_txn, &mut redis_txn, self, 1).await?;
+        let mut checkin = true;
         if state == WorkflowExecutePlanState::Complete {
-            return Err(Error::new("can't enqueue plan, it's already complete"));
+            // return Err(Error::new("can't enqueue plan, it's already complete"));
+            warn!("plan is already complete");
+            checkin = false;
         }
         if state == WorkflowExecutePlanState::Error {
             return Err(Error::new("can't enqueue plan, it has a state error"));
         }
-        redis_txn.add_op(RedisTransactionOp::PlanCheckin(plan.id.clone()));
+        if checkin {
+            redis_txn.add_op(RedisTransactionOp::PlanCheckin(plan.id.clone()));
+        }
         db_txn.commit().await?;
         redis_txn.execute(&self.redis).await?;
         self.incr("queue::enqueued::count").await?;
@@ -443,8 +448,9 @@ impl JobQueues {
             plan.parent = Some(parent_job.id.clone());
             let state = plan.enqueue(&db_txn, &mut redis_txn, self, 1).await?;
             if state == WorkflowExecutePlanState::Complete {
-                db_txn.rollback().await?;
-                return Err(Error::new("can't enqueue plan, it's already complete"));
+                // db_txn.rollback().await?;
+                // return Err(Error::new("can't enqueue plan, it's already complete"));
+                warn!("plan is already complete");
             }
             if state == WorkflowExecutePlanState::Error {
                 db_txn.rollback().await?;
