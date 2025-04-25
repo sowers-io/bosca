@@ -1,0 +1,6 @@
+FROM gcr.io/distroless/cc-debian12
+
+COPY examples/blog /blog
+COPY workspace/runners/kotlin/runner/build/native/nativeCompile/* /
+
+CMD ["./bosca-runner", "install", "--directory", "/blog"]

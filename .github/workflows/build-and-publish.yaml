@@ -112,6 +112,16 @@ jobs:
             ghcr.io/sowers-io/bosca/kotlin-runner-community:latest
             ghcr.io/sowers-io/bosca/kotlin-runner-community:${{ github.sha }}
 
+      - name: Build and Publish Runner Image
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: Dockerfile-blog-installer
+          push: true
+          tags: |
+            ghcr.io/sowers-io/bosca/blog-installer:latest
+            ghcr.io/sowers-io/bosca/blog-installer:${{ github.sha }}
+
   build-and-publish-runner-community-compatibility:
     runs-on: ubuntu-22.04
     env:
@@ -148,6 +158,15 @@ jobs:
           tags: |
             ghcr.io/sowers-io/bosca/kotlin-runner-community-compatibility:latest
             ghcr.io/sowers-io/bosca/kotlin-runner-community-compatibility:${{ github.sha }}
+      - name: Build and Publish Runner Image
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: Dockerfile-blog-installer
+          push: true
+          tags: |
+            ghcr.io/sowers-io/bosca/blog-installer-compatibility:latest
+            ghcr.io/sowers-io/bosca/blog-installer-compatibility:${{ github.sha }}
 
   build-and-publish-runner-enterprise:
     runs-on: ubuntu-22.04
