@@ -13,6 +13,8 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.encodeToJsonElement
 import java.io.File
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 import io.bosca.graphql.type.ActivityInput as ActivityDefintion
 
 class ActivityContext {
@@ -112,10 +114,11 @@ abstract class Activity(protected val client: Client) {
         return file
     }
 
+    @OptIn(ExperimentalUuidApi::class)
     protected suspend fun downloadToFile(context: ActivityContext, jobId: WorkflowJob.Id, contentType: String, url: String): File {
         val file = withContext(Dispatchers.IO) {
             val extension = (contentType.split("/").last())
-            File.createTempFile(jobId.id, ".$extension")
+            File.createTempFile(jobId.id, "${Uuid.random()}.$extension")
         }
         context.addFile(file)
         client.files.download(url, file)

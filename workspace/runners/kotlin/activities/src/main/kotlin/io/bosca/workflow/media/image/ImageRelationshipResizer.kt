@@ -1,6 +1,8 @@
 package io.bosca.workflow.media.image
 
 import io.bosca.api.Client
+import io.bosca.graphql.fragment.Metadata
+import io.bosca.graphql.fragment.MetadataRelationship
 import io.bosca.graphql.fragment.WorkflowJob
 import io.bosca.graphql.type.ActivityInput
 import io.bosca.util.decode
@@ -32,14 +34,13 @@ class ImageRelationshipResizer(client: Client) : AbstractImageResizer(client) {
         val configuration = getConfiguration<ImageResizerConfiguration>(job)
         for (relationship in relationships) {
             if (relationship.metadata.metadataRelationshipMetadata.content.type.startsWith("image/")) {
-                val attributes = relationship.attributes
-                if (attributes != null) {
+                relationship.attributes?.let { attributes ->
                     val attr = attributes.decode<ImageAttributes>()
                     attr?.crop?.let {
                         val download =
                             client.metadata.getMetadataContentDownload(relationship.metadata.metadataRelationshipMetadata.id)
                                 ?: error("failed to crop: missing supplementary content")
-                        var url = URLEncoder.encode(download.urls.download.url, Charsets.UTF_8)
+                        val url = URLEncoder.encode(download.urls.download.url, Charsets.UTF_8)
                         val supplementaryId = process(
                             context,
                             job,
@@ -52,39 +53,55 @@ class ImageRelationshipResizer(client: Client) : AbstractImageResizer(client) {
                                 it
                             )
                         )
-                        val content = client.metadata.getSupplementaryContentDownload(supplementaryId)
-                            ?: error("missing content")
-                        url = URLEncoder.encode(content.urls.download.url, Charsets.UTF_8)
-                        val formats = mutableMapOf<String, Map<String, String>>()
-                        ImageResizer.formats.forEach { format ->
-                            if ((relationship.attributes as Map<*, *>).containsKey(format)) return@forEach
-                            val sizes = mutableMapOf<String, String>()
-                            for (size in configuration.sizes) {
-                                val newSize =
-                                    size.copy(name = "${size.name}-${it.width}x${it.height}-${it.top}-${it.left}-$format")
-                                process(
-                                    context,
-                                    job,
-                                    relationship.metadata.metadataRelationshipMetadata.id,
-                                    url,
-                                    format,
-                                    newSize
-                                )
-                                sizes[size.name] = newSize.name
-                            }
-                            formats[format] = sizes
-                        }
-                        if (formats.isEmpty()) return@let
-                        client.metadata.mergeRelationshipAttributes(
-                            metadata.id,
-                            relationship.metadata.metadataRelationshipMetadata.id,
-                            relationship.relationship,
-                            formats
-                        )
+                        process(context, job, configuration, metadata, relationship, supplementaryId, it)
                     }
                 }
             }
         }
+    }
+
+    private suspend fun process(
+        context: ActivityContext,
+        job: WorkflowJob,
+        configuration: ImageResizerConfiguration,
+        metadata: Metadata,
+        relationship: MetadataRelationship,
+        supplementaryId: String,
+        crop: Coordinates,
+    ) {
+        val content = client.metadata.getSupplementaryContentDownload(supplementaryId)
+            ?: error("missing content")
+        val url = URLEncoder.encode(content.urls.download.url, Charsets.UTF_8)
+        val formats = mutableMapOf<String, Any>()
+        ImageResizer.formats.forEach { format ->
+            val key = "${crop.width}x${crop.height}-${crop.top}-${crop.left}-$format"
+            if ((relationship.attributes as Map<*, *>).containsKey(key)) return@forEach
+            val sizes = mutableMapOf<String, String>()
+            for (size in configuration.sizes) {
+                val newSize = size.copy(
+                    name = "${size.name}-${crop.width}x${crop.height}-${crop.top}-${crop.left}-${size.ratio}-$format",
+                    size = null
+                )
+                process(
+                    context,
+                    job,
+                    relationship.metadata.metadataRelationshipMetadata.id,
+                    url,
+                    format,
+                    newSize
+                )
+                sizes[size.name] = newSize.name
+            }
+            formats[format] = sizes
+            formats[key] = true
+        }
+        if (formats.isEmpty()) return
+        client.metadata.mergeRelationshipAttributes(
+            metadata.id,
+            relationship.metadata.metadataRelationshipMetadata.id,
+            relationship.relationship,
+            formats
+        )
     }
 
     companion object {

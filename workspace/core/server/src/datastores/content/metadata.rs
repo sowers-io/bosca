@@ -494,8 +494,10 @@ impl MetadataDataStore {
         )
         .await?;
         update_metadata_etag(&txn, metadata1_id).await?;
+        update_metadata_etag(&txn, metadata2_id).await?;
         txn.commit().await?;
         self.on_metadata_changed(ctx, metadata1_id).await?;
+        self.on_metadata_changed(ctx, metadata2_id).await?;
         Ok(())
     }
 
