@@ -27,17 +27,20 @@ impl BoscaCacheManager {
         let prefix = option_env!("NAMESPACE").unwrap_or("").to_string();
         let bucket_name = if prefix.is_empty() { format!("{}_v2", name) } else { format!("{}_{}_v2", prefix, name) };
         info!("using jetstream bucket: {}", bucket_name);
-        let kv = self
-            .jetstream
-            .create_key_value(jetstream::kv::Config {
-                bucket: bucket_name,
-                history: 1,
-                max_age: Duration::from_secs(1800),
-                ..Default::default()
-            })
-            .await?;
-
-        Ok(kv)
+        let store = self.jetstream.get_key_value(&bucket_name).await;
+        let store = if store.is_err() {
+            self.jetstream
+                .create_key_value(jetstream::kv::Config {
+                    bucket: bucket_name,
+                    history: 1,
+                    max_age: Duration::from_secs(1800),
+                    ..Default::default()
+                })
+                .await?
+        } else {
+            store?
+        };
+        Ok(store)
     }
 
     pub async fn new_id_tiered_cache<V>(
