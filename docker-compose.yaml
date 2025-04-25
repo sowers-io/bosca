@@ -50,8 +50,11 @@ services:
     environment:
       BOSCA_URL_PREFIX: http://server:8000
       DATABASE_URL: postgres://bosca:bosca@postgres:5432/bosca
-      REDIS_JOBS_QUEUE_URL: redis://dragonfly:6379
-      REDIS_NOTIFIER_PUBSUB_URL: redis://dragonfly:6379
+      NATS_URL: nats1:4222
+      REDIS_JOBS_QUEUE_HOST: dragonfly
+      REDIS_JOBS_QUEUE_PORT: 6379
+      REDIS_NOTIFIER_PUBSUB_HOST: dragonfly
+      REDIS_NOTIFIER_PUBSUB_PORT: 6379
       JWT_AUDIENCE: bosca.local
       JWT_ISSUER: bosca.local
       JWT_SECRET: QuujwfwQKbdn2GkV64Ri
