@@ -21,14 +21,6 @@ traits:
       - media.send.to.mux
     contentTypes: []
 
-  - id: bible.usx
-    name: Bible USX
-    description: Bible USX Files
-    workflowIds:
-      - bible.usx
-    contentTypes:
-      - bosca/v-bible
-
   - id: media.image
     name: Image Resizing
     description: Resize images and create variants based on configuration
