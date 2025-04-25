@@ -95,6 +95,7 @@ services:
       BOSCA_WS_URL: ws://server:8000/ws
       SEARCH_KEY: p8JcB_HuMHRxN7uVXfrG2wU06b5k7oTvaAAYo6nsi9M
       SEARCH_URL: http://meilisearch:7700
+      IMAGE_PROCESSOR_URL: http://imageprocessor:8003
     restart: always
     networks:
       - boscanet
