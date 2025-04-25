@@ -57,6 +57,7 @@ class ImageRelationshipResizer(client: Client) : AbstractImageResizer(client) {
                         url = URLEncoder.encode(content.urls.download.url, Charsets.UTF_8)
                         val formats = mutableMapOf<String, Map<String, String>>()
                         ImageResizer.formats.forEach { format ->
+                            if ((relationship.attributes as Map<*, *>).containsKey(format)) return@forEach
                             val sizes = mutableMapOf<String, String>()
                             for (size in configuration.sizes) {
                                 val newSize =
@@ -73,6 +74,7 @@ class ImageRelationshipResizer(client: Client) : AbstractImageResizer(client) {
                             }
                             formats[format] = sizes
                         }
+                        if (formats.isEmpty()) return@let
                         client.metadata.mergeRelationshipAttributes(
                             metadata.id,
                             relationship.metadata.metadataRelationshipMetadata.id,

@@ -1,5 +1,3 @@
-use std::ops::Add;
-use std::convert::TryInto;
 use crate::context::BoscaContext;
 use crate::datastores::content::tag::update_metadata_etag;
 use crate::datastores::content::util::build_find_args;
@@ -22,13 +20,15 @@ use async_nats::jetstream::stream::StorageType;
 use async_nats::jetstream::Context;
 use bosca_database::TracingPool;
 use bytes::Bytes;
+use chrono::{TimeDelta, TimeZone, Utc};
 use deadpool_postgres::Transaction;
+use futures_util::TryStreamExt;
 use log::{error, info};
 use serde_json::{Map, Value};
+use std::convert::TryInto;
+use std::ops::Add;
 use std::sync::Arc;
 use std::time::Duration;
-use chrono::{TimeDelta, TimeZone, Utc};
-use futures_util::TryStreamExt;
 use uuid::Uuid;
 
 #[derive(Clone)]
@@ -47,18 +47,25 @@ impl MetadataDataStore {
         notifier: Arc<Notifier>,
     ) -> Result<Self, Error> {
         let prefix = option_env!("NAMESPACE").unwrap_or("").to_string();
-        let updates = jetstream
-            .create_key_value(jetstream::kv::Config {
-                bucket: format!("{}_metadata_updates_queue", prefix),
-                history: 1,
-                storage: StorageType::Memory,
-                ..Default::default()
-            })
-            .await?;
+        let bucket = format!("{}_metadata_update_storage_queue2", prefix);
+        let updates = jetstream.get_key_value(&bucket).await;
+        let store = if updates.is_err() {
+            jetstream
+                .create_key_value(jetstream::kv::Config {
+                    bucket,
+                    history: 1,
+                    max_age: Duration::from_secs(30),
+                    storage: StorageType::Memory,
+                    ..Default::default()
+                })
+                .await?
+        } else {
+            updates?
+        };
         Ok(Self {
             cache,
             pool,
-            updates,
+            updates: store,
             notifier,
         })
     }
@@ -68,21 +75,27 @@ impl MetadataDataStore {
         let watcher_ctx = ctx.clone();
         tokio::spawn(async move {
             loop {
-                if let Err(e) = Self::enqueue_items(&watcher_updates, &watcher_ctx).await {
+                if let Err(e) = Self::enqueue_items(watcher_updates.clone(), &watcher_ctx).await {
                     error!("Failed to enqueue metadata updates: {:?}", e);
                 }
-                tokio::time::sleep(Duration::from_secs(1)).await;
+                tokio::time::sleep(Duration::from_secs(2)).await;
             }
         });
     }
 
-    async fn enqueue_items(store: &Store, ctx: &BoscaContext) -> Result<(), Error> {
+    async fn enqueue_items(store: Store, ctx: &BoscaContext) -> Result<(), Error> {
         // KJB: TODO: Once NATS supports notification on TTLs, this will be updated to be event based.
         //      See https://github.com/nats-io/nats-server/issues/3268
-        let keys = store.keys().await?.try_collect::<Vec<String>>().await?;
+        let result = store.keys().await?;
+        let keys = result.try_collect::<Vec<_>>().await?;
         let now = Utc::now();
         for key in keys {
-            let time = store.get(&key).await?.unwrap();
+            let Some(time) = store.get(&key).await? else {
+                continue;
+            };
+            if time.is_empty() {
+                continue;
+            }
             let time: i64 = i64::from_be_bytes(time.as_ref().try_into()?);
             let time = Utc.timestamp_millis_opt(time).unwrap();
             if now > time {
@@ -94,7 +107,7 @@ impl MetadataDataStore {
                     ..Default::default()
                 };
                 ctx.workflow.enqueue_workflow(ctx, &mut request).await?;
-                store.delete(&key).await?;
+                store.purge(&key).await?;
             }
         }
         Ok(())
@@ -475,7 +488,11 @@ impl MetadataDataStore {
             .prepare_cached("update metadata_relationships set attributes = coalesce(attributes, '{}'::jsonb) || $1 where metadata1_id = $2 and metadata2_id = $3 and relationship = $4")
             .await?;
         let relationship = relationship.to_owned();
-        txn.execute(&stmt, &[&attributes, &metadata1_id, &metadata2_id, &relationship]).await?;
+        txn.execute(
+            &stmt,
+            &[&attributes, &metadata1_id, &metadata2_id, &relationship],
+        )
+        .await?;
         update_metadata_etag(&txn, metadata1_id).await?;
         txn.commit().await?;
         self.on_metadata_changed(ctx, metadata1_id).await?;
@@ -1149,7 +1166,9 @@ impl MetadataDataStore {
         self.cache.evict_metadata(id).await;
 
         let id_str = id.to_string();
-        let next = Utc::now().add(TimeDelta::new(5, 0).unwrap()).timestamp_millis();
+        let next = Utc::now()
+            .add(TimeDelta::new(5, 0).unwrap())
+            .timestamp_millis();
         let next = next.to_be_bytes();
         let bytes = Bytes::from_owner(next.to_vec());
         if let Err(e) = self.updates.put(id_str.clone(), bytes).await {
