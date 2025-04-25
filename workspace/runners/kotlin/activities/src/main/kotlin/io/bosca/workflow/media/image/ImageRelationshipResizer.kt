@@ -6,6 +6,7 @@ import io.bosca.graphql.type.ActivityInput
 import io.bosca.util.decode
 import io.bosca.workflow.ActivityContext
 import io.bosca.workflow.FullFailureException
+import okhttp3.internal.format
 import java.net.URLEncoder
 import kotlin.uuid.ExperimentalUuidApi
 
@@ -35,8 +36,9 @@ class ImageRelationshipResizer(client: Client) : AbstractImageResizer(client) {
                 if (attributes != null) {
                     val attr = attributes.decode<ImageAttributes>()
                     attr?.crop?.let {
-                        val download = client.metadata.getMetadataContentDownload(relationship.metadata.metadataRelationshipMetadata.id)
-                            ?: error("failed to crop: missing supplementary content")
+                        val download =
+                            client.metadata.getMetadataContentDownload(relationship.metadata.metadataRelationshipMetadata.id)
+                                ?: error("failed to crop: missing supplementary content")
                         var url = URLEncoder.encode(download.urls.download.url, Charsets.UTF_8)
                         val supplementaryId = process(
                             context,
@@ -53,18 +55,30 @@ class ImageRelationshipResizer(client: Client) : AbstractImageResizer(client) {
                         val content = client.metadata.getSupplementaryContentDownload(supplementaryId)
                             ?: error("missing content")
                         url = URLEncoder.encode(content.urls.download.url, Charsets.UTF_8)
+                        val formats = mutableMapOf<String, Map<String, String>>()
                         ImageResizer.formats.forEach { format ->
+                            val sizes = mutableMapOf<String, String>()
                             for (size in configuration.sizes) {
+                                val newSize =
+                                    size.copy(name = "${size.name}-${it.width}x${it.height}-${it.top}-${it.left}-$format")
                                 process(
                                     context,
                                     job,
                                     relationship.metadata.metadataRelationshipMetadata.id,
                                     url,
                                     format,
-                                    size.copy(name = "${size.name}-${it.width}x${it.height}-${it.top}-${it.left}-$format")
+                                    newSize
                                 )
+                                sizes[size.name] = newSize.name
                             }
+                            formats[format] = sizes
                         }
+                        client.metadata.mergeRelationshipAttributes(
+                            metadata.id,
+                            relationship.metadata.metadataRelationshipMetadata.id,
+                            relationship.relationship,
+                            formats
+                        )
                     }
                 }
             }

@@ -789,6 +789,34 @@ impl MetadataMutationObject {
         Ok(true)
     }
 
+    async fn merge_metadata_relationship_attributes(
+        &self,
+        ctx: &Context<'_>,
+        metadata1_id: String,
+        metadata2_id: String,
+        relationship: String,
+        attributes: serde_json::Value,
+    ) -> Result<bool, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let metadata1_id = Uuid::parse_str(metadata1_id.as_str())?;
+        let metadata2_id = Uuid::parse_str(metadata2_id.as_str())?;
+        ctx.check_metadata_action(&metadata1_id, PermissionAction::Edit)
+            .await?;
+        ctx.check_metadata_action(&metadata2_id, PermissionAction::Edit)
+            .await?;
+        ctx.content
+            .metadata
+            .merge_relationship_attributes(
+                ctx,
+                &metadata1_id,
+                &metadata2_id,
+                &relationship,
+                attributes,
+            )
+            .await?;
+        Ok(true)
+    }
+
     async fn set_metadata_system_attributes(
         &self,
         ctx: &Context<'_>,

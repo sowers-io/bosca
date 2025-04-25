@@ -1,0 +1,7 @@
+mutation MergeMetadataRelationshipAttributes($metadata1Id: String!, $metadata2Id: String!, $relationship: String!, $attributes: JSON!) {
+    content {
+        metadata {
+            mergeMetadataRelationshipAttributes(metadata1Id: $metadata1Id, metadata2Id: $metadata2Id, relationship: $relationship, attributes: $attributes)
+        }
+    }
+}

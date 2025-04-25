@@ -485,6 +485,7 @@ type MetadataMutation {
     edit(id: String!, metadata: MetadataInput!): Metadata!
     editRelationship(relationship: MetadataRelationshipInput!): Boolean!
     mergeMetadataAttributes(attributes: JSON!, id: String!): Boolean!
+    mergeMetadataRelationshipAttributes(attributes: JSON!, metadata1Id: String!, metadata2Id: String!, relationship: String!): Boolean!
     permanentlyDelete(metadataId: String!): Boolean!
     setGuideStartDate(date: DateTime!, metadataId: String!, metadataVersion: Int!): Metadata
     setMetadataAttributes(attributes: JSON!, id: String!): Boolean!
