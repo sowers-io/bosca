@@ -98,6 +98,8 @@ class ActivitiesInstaller(client: Client) : Installer, ActivityRegistry {
         ImageRelationshipResizer(client),
 
         MuxUploader(client),
+        
+        DocumentToText(client),
 
         ThumbnailExtractor(client),
 
