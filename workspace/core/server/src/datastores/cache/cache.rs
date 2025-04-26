@@ -1,7 +1,7 @@
 use async_graphql::Error;
 use async_nats::jetstream::kv::{Operation, Store};
-use futures_util::StreamExt;
-use log::{debug, error, warn};
+use futures_util::{StreamExt, TryStreamExt};
+use log::{debug, error, info, warn};
 use moka::future::Cache;
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::Hash;
@@ -31,14 +31,15 @@ where
 {
     async fn clear(&self) -> Result<(), Error> {
         self.cache.invalidate_all();
-        let mut keys = self.store.keys().await?;
-        while let Some(key) = keys.next().await {
-            if let Ok(key) = key {
-                self.store.delete(key).await?;
-            } else {
-                break;
+        info!("clearing cache: {}", self.name);
+        let keys = self.store.keys().await?;
+        let keys = keys.try_collect::<Vec<_>>().await?;
+        for key in keys {
+            if let Err(e) = self.store.purge(&key).await {
+                error!("error clearing cache ({}): {}", key, e);
             }
         }
+        info!("cache cleared: {}", self.name);
         Ok(())
     }
 
