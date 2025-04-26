@@ -164,6 +164,7 @@ impl WorkflowDataStore {
                 .await?;
         }
         txn.commit().await?;
+        self.cache.evict_activity(&activity.id).await;
         self.notifier.activity_changed(&activity.id).await?;
         Ok(())
     }
@@ -504,6 +505,7 @@ impl WorkflowDataStore {
                     .await?;
             }
         }
+        self.cache.evict_workflow(&workflow_id).await;
         self.notifier.workflow_activity_changed(id).await?;
         Ok(id)
     }
