@@ -20,6 +20,8 @@ where
 
 #[async_trait::async_trait]
 pub trait ClearableCache {
+    fn keys(&self) -> Vec<String>;
+    async fn remote_keys(&self) -> Vec<String>;
     async fn clear(&self) -> Result<(), Error>;
     fn watch(&self);
 }
@@ -29,6 +31,24 @@ impl<V> ClearableCache for BoscaCache<V>
 where
     V: Clone + Send + Sync + serde::ser::Serialize + serde::de::DeserializeOwned + 'static,
 {
+    fn keys(&self) -> Vec<String> {
+        let mut keys = Vec::new();
+        for e in self.cache.iter() {
+            keys.push(e.0.as_str().to_string());
+        }
+        keys
+    }
+
+    async fn remote_keys(&self) -> Vec<String> {
+        let keys = self.store.keys().await;
+        if let Ok(keys) = keys {
+            if let Ok(keys) = keys.try_collect::<Vec<_>>().await {
+                return keys;
+            }
+        }
+        Vec::new()
+    }
+
     async fn clear(&self) -> Result<(), Error> {
         self.cache.invalidate_all();
         info!("clearing cache: {}", self.name);

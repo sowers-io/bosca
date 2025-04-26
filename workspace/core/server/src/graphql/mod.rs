@@ -11,3 +11,4 @@ pub mod configuration;
 pub mod handlers;
 pub mod schema;
 pub mod server;
+pub mod cache;

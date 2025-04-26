@@ -23,6 +23,23 @@ impl BoscaCacheManager {
         }
     }
 
+    pub async fn get_cache_names(&self) -> Result<Vec<String>, Error> {
+        let caches = self.caches.lock().await;
+        Ok(caches.keys().map(|k| k.to_string()).collect())
+    }
+
+    pub async fn get_cache_keys(&self, name: &str) -> Result<Vec<String>, Error> {
+        let caches = self.caches.lock().await;
+        let cache = caches.get(name).ok_or(Error::from("cache not found"))?;
+        Ok(cache.keys())
+    }
+
+    pub async fn get_cache_remote_keys(&self, name: &str) -> Result<Vec<String>, Error> {
+        let caches = self.caches.lock().await;
+        let cache = caches.get(name).ok_or(Error::from("cache not found"))?;
+        Ok(cache.remote_keys().await)
+    }
+
     async fn new_store(&self, name: &str) -> Result<Store, Error> {
         let prefix = option_env!("NAMESPACE").unwrap_or("").to_string();
         let bucket_name = if prefix.is_empty() { format!("{}_v2", name) } else { format!("{}_{}_v2", prefix, name) };

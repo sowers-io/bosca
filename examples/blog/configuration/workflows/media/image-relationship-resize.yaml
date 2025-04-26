@@ -1,5 +1,5 @@
 id: image.relationship.resize
-name: Image Resizing
+name: Image Relationship Resizing
 description: Resize images and create variants based on configuration
 queue: media
 activities:
