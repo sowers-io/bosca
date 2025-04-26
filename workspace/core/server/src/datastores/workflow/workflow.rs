@@ -1624,6 +1624,9 @@ impl WorkflowDataStore {
             pending.insert(id.index);
             jobs.push(job);
         }
+        if jobs.is_empty() {
+            return Err(Error::new(format!("no jobs found for workflow: {}", workflow.id)));
+        }
         Ok(WorkflowExecutionPlan {
             id: WorkflowExecutionId {
                 queue: workflow.queue.to_owned(),

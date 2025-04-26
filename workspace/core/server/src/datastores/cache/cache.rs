@@ -118,8 +118,7 @@ where
         if value.is_some() {
             value
         } else {
-            let out = self.store.get(key.clone()).await;
-            match out {
+            match self.store.get(key.clone()).await {
                 Ok(Some(v)) => {
                     let v: V = serde_json::from_slice(&v).unwrap();
                     self.cache.insert(key, v.clone()).await;
