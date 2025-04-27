@@ -88,7 +88,7 @@ where
                                         }
                                     }
                                     Operation::Delete | Operation::Purge => {
-                                        cache.remove(&k).await;
+                                        cache.invalidate(&k).await;
                                     }
                                 }
                             }
@@ -141,9 +141,13 @@ where
         } else {
             match self.store.get(key.clone()).await {
                 Ok(Some(v)) => {
-                    let v: V = serde_json::from_slice(&v).unwrap();
-                    self.cache.insert(key, v.clone()).await;
-                    Some(v)
+                    if let Some(v) = serde_json::from_slice::<V>(&v) {
+                        self.cache.insert(key, v.clone()).await;
+                        Some(v)
+                    } else {
+                        warn!("error getting cache, failed to deserialize");
+                        None
+                    }
                 }
                 Ok(None) => None,
                 Err(e) => {

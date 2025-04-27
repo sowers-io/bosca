@@ -16,7 +16,7 @@ class Security(network: NetworkClient) : Api(network) {
     var keepTokenUpdated = true
     var token: LoginResponse? = null
 
-    private suspend fun refresh() {
+    suspend fun refreshToken() {
         mutex.withLock {
             val response = network.graphql.mutation(RefreshTokenMutation(token?.refreshToken ?: return)).execute()
             response.validate()
@@ -42,7 +42,7 @@ class Security(network: NetworkClient) : Api(network) {
                 delay(delay)
                 if (!keepTokenUpdated) return@launch
                 try {
-                    refresh()
+                    refreshToken()
                 } catch (e: Exception) {
                     println("failed to update token: $e")
                     if (!keepTokenUpdated) return@launch

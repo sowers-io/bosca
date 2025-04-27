@@ -1,5 +1,6 @@
 package io.bosca.api
 
+import io.bosca.graphql.ClearCacheMutation
 import io.bosca.graphql.GetSlugQuery
 import io.bosca.graphql.fragment.Metadata
 import io.bosca.graphql.fragment.Collection
@@ -35,6 +36,10 @@ class Client(val network: NetworkClient) {
                 it.onProfile?.profileIdName
             )
         }
+    }
+
+    suspend fun clearCache() {
+        network.graphql.mutation(ClearCacheMutation()).execute()
     }
 }
 
