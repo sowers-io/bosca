@@ -141,7 +141,7 @@ where
         } else {
             match self.store.get(key.clone()).await {
                 Ok(Some(v)) => {
-                    if let Some(v) = serde_json::from_slice::<V>(&v) {
+                    if let Ok(v) = serde_json::from_slice::<V>(&v) {
                         self.cache.insert(key, v.clone()).await;
                         Some(v)
                     } else {
