@@ -1014,6 +1014,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "bosca-dc"
+version = "0.1.0"
+dependencies = [
+ "async-stream",
+ "async-trait",
+ "axum 0.8.3",
+ "base64 0.22.1",
+ "futures-util",
+ "hyper",
+ "hyper-util",
+ "log",
+ "moka",
+ "serde",
+ "serde_json",
+ "tokio",
+ "tokio-stream",
+ "tower 0.5.2",
+ "tower-http",
+ "tracing",
+ "tracing-subscriber",
+ "uuid 1.16.0",
+]
+
+[[package]]
 name = "bosca-migrations"
 version = "0.1.0"
 dependencies = [

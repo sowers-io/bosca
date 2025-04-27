@@ -1,0 +1,124 @@
+syntax = "proto3";
+
+package bosca.dc;
+
+// The distributed cache service definition
+service DistributedCache {
+  // Create a new cache
+  rpc CreateCache (CreateCacheRequest) returns (CreateCacheResponse);
+  
+  // Get a value from the cache
+  rpc GetValue (GetValueRequest) returns (GetValueResponse);
+  
+  // Put a value in the cache
+  rpc PutValue (PutValueRequest) returns (PutValueResponse);
+  
+  // Delete a value from the cache
+  rpc DeleteValue (DeleteValueRequest) returns (DeleteValueResponse);
+  
+  // Clear a cache
+  rpc ClearCache (ClearCacheRequest) returns (ClearCacheResponse);
+  
+  // Subscribe to notifications for a cache
+  rpc SubscribeNotifications (SubscribeNotificationsRequest) returns (stream Notification);
+}
+
+// Request to create a new cache
+message CreateCacheRequest {
+  // Name of the cache
+  string name = 1;
+  // Maximum capacity of the cache
+  uint64 max_capacity = 2;
+}
+
+// Response for a successful cache creation
+message CreateCacheResponse {
+  // ID of the created cache
+  string cache_id = 1;
+}
+
+// Request to get a value from the cache
+message GetValueRequest {
+  // ID of the cache
+  string cache_id = 1;
+  // Key to get
+  string key = 2;
+}
+
+// Response for a successful get operation
+message GetValueResponse {
+  // Value retrieved from the cache
+  bytes value = 1;
+  // Whether the value was found
+  bool found = 2;
+}
+
+// Request to put a value in the cache
+message PutValueRequest {
+  // ID of the cache
+  string cache_id = 1;
+  // Key to put
+  string key = 2;
+  // Value to store
+  bytes value = 3;
+}
+
+// Response for a successful put operation
+message PutValueResponse {
+  // Whether the operation was successful
+  bool success = 1;
+}
+
+// Request to delete a value from the cache
+message DeleteValueRequest {
+  // ID of the cache
+  string cache_id = 1;
+  // Key to delete
+  string key = 2;
+}
+
+// Response for a successful delete operation
+message DeleteValueResponse {
+  // Whether the operation was successful
+  bool success = 1;
+}
+
+// Request to clear a cache
+message ClearCacheRequest {
+  // ID of the cache
+  string cache_id = 1;
+}
+
+// Response for a successful clear operation
+message ClearCacheResponse {
+  // Whether the operation was successful
+  bool success = 1;
+}
+
+// Request to subscribe to notifications for a cache
+message SubscribeNotificationsRequest {
+  // ID of the cache
+  string cache_id = 1;
+}
+
+// Types of notifications that can be sent
+enum NotificationType {
+  // A new cache was created
+  CACHE_CREATED = 0;
+  // A value was updated in the cache
+  VALUE_UPDATED = 1;
+  // A value was deleted from the cache
+  VALUE_DELETED = 2;
+  // The cache was cleared
+  CACHE_CLEARED = 3;
+}
+
+// Notification message sent when a cache is updated
+message Notification {
+  // ID of the cache that was updated
+  string cache_id = 1;
+  // Type of notification
+  NotificationType notification_type = 2;
+  // Key that was updated (if applicable)
+  string key = 3;
+}
