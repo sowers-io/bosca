@@ -8,8 +8,7 @@ use std::collections::HashMap;
 use tokio::sync::{RwLock, broadcast};
 use moka::future::Cache;
 use uuid::Uuid;
-
-use crate::cluster::Cluster;
+use crate::cluster::cluster::Cluster;
 use crate::notification::{Notification, NotificationType};
 
 /// Represents a single cache instance
@@ -55,14 +54,14 @@ impl CacheInstance {
 
 /// Service that manages multiple cache instances
 pub struct CacheService {
-    cluster: Arc<Cluster>,
+    cluster: Cluster,
     caches: RwLock<HashMap<String, CacheInstance>>,
     pub notification_tx: Arc<broadcast::Sender<Notification>>,
 }
 
 impl CacheService {
     /// Creates a new cache service
-    pub fn new(cluster: Arc<Cluster>, notification_tx: Arc<broadcast::Sender<Notification>>) -> Arc<Self> {
+    pub fn new(cluster: Cluster, notification_tx: Arc<broadcast::Sender<Notification>>) -> Arc<Self> {
         Arc::new(Self {
             cluster,
             caches: RwLock::new(HashMap::new()),
@@ -77,7 +76,7 @@ impl CacheService {
 
         // Propose the cache creation to the cluster
         let data = format!("create_cache:{}:{}", name, max_capacity).into_bytes();
-        self.cluster.propose(data).await?;
+        // self.cluster.propose(data).await?;
 
         // Add the cache to our local state
         let mut caches = self.caches.write().await;
@@ -109,7 +108,7 @@ impl CacheService {
     pub async fn put(&self, cache_id: &str, key: String, value: Vec<u8>) -> Result<(), String> {
         // Propose the put operation to the cluster
         let data = format!("put:{}:{}:{}", cache_id, key, base64::encode(&value)).into_bytes();
-        self.cluster.propose(data).await?;
+        // self.cluster.propose(data).await?;
 
         // Update local cache
         let caches = self.caches.read().await;
@@ -135,7 +134,7 @@ impl CacheService {
     pub async fn delete(&self, cache_id: &str, key: &str) -> Result<(), String> {
         // Propose the delete operation to the cluster
         let data = format!("delete:{}:{}", cache_id, key).into_bytes();
-        self.cluster.propose(data).await?;
+        // self.cluster.propose(data).await?;
 
         // Update local cache
         let caches = self.caches.read().await;
@@ -161,7 +160,7 @@ impl CacheService {
     pub async fn clear(&self, cache_id: &str) -> Result<(), String> {
         // Propose the clear operation to the cluster
         let data = format!("clear:{}", cache_id).into_bytes();
-        self.cluster.propose(data).await?;
+        // self.cluster.propose(data).await?;
 
         // Update local cache
         let caches = self.caches.read().await;

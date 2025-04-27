@@ -3,21 +3,19 @@
 //! This module provides the HTTP API for interacting with the cache service.
 //! It uses axum for routing and handling requests.
 
-use std::sync::Arc;
 use axum::{
-    routing::{get, post, delete},
-    Router,
-    extract::{Path, State, Json},
-    response::{IntoResponse, Response, sse::{Event, Sse}},
+    extract::{Json, Path, State},
     http::StatusCode,
+    response::{sse::{Event, Sse}, IntoResponse, Response},
+    routing::{delete, get, post},
+    Router,
 };
+use serde::{Deserialize, Serialize};
 use std::convert::Infallible;
-use serde::{Serialize, Deserialize};
-use tokio::sync::broadcast;
-use futures_util::StreamExt;
+use std::sync::Arc;
 
 use crate::cache::CacheService;
-use crate::notification::{Notification, NotificationService};
+use crate::notification::NotificationService;
 
 /// Request to create a new cache
 #[derive(Debug, Deserialize)]
@@ -57,11 +55,11 @@ pub fn router(cache_service: Arc<CacheService>) -> Router {
     // Create router with routes
     Router::new()
         .route("/caches", post(create_cache))
-        .route("/caches/:cache_id/values/:key", get(get_value))
-        .route("/caches/:cache_id/values/:key", post(put_value))
-        .route("/caches/:cache_id/values/:key", delete(delete_value))
-        .route("/caches/:cache_id", delete(clear_cache))
-        .route("/caches/:cache_id/notifications", get(subscribe_notifications))
+        .route("/caches/{cache_id}/values/{key}", get(get_value))
+        .route("/caches/{cache_id}/values/{key}", post(put_value))
+        .route("/caches/{cache_id}/values/{key}", delete(delete_value))
+        .route("/caches/{cache_id}", delete(clear_cache))
+        .route("/caches/{cache_id}/notifications", get(subscribe_notifications))
         .with_state((cache_service, notification_service))
 }
 
