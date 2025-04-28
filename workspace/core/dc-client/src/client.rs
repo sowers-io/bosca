@@ -48,9 +48,26 @@ impl Client {
         }
     }
 
+    async fn new_client(
+        &self,
+        host: String,
+        port: u16,
+    ) -> Result<DistributedCacheClient<Channel>, Error> {
+        let url = format!("http://{}:{}", host, port);
+        match DistributedCacheClient::connect(url).await {
+            Ok(client) => Ok(client),
+            Err(e) => {
+                error!("new client: failed to connect to {}:{}: {:?}", host, port, e);
+                Err(Error::new(format!(
+                    "new client: failed to connect to {}:{}: {:?}",
+                    host, port, e
+                )))
+            }
+        }
+    }
+
     async fn initialize_client(&self, node: Node) -> Result<(), Error> {
-        let url = format!("http://{}:{}", node.ip, node.port);
-        let client = DistributedCacheClient::connect(url).await?;
+        let client = self.new_client(node.ip.clone(), node.port as u16).await?;
         let mut clients = self.clients.write().await;
         let mut hash = self.hash.write().await;
         clients.insert(node.id.clone(), client.clone());
@@ -68,8 +85,7 @@ impl Client {
     async fn initialize_first_client(&self, host: String, port: u16) -> Result<(), Error> {
         let id = {
             let mut id = String::new();
-            let url = format!("http://{}:{}", host, port);
-            let mut client = DistributedCacheClient::connect(url).await?;
+            let mut client = self.new_client(host.clone(), port).await?;
             let nodes = client.get_nodes(Empty {}).await?;
             for node in &nodes.get_ref().nodes {
                 self.initialize_client(node.clone()).await?;
@@ -89,7 +105,7 @@ impl Client {
                 .subscribe_notifications(SubscribeNotificationsRequest {})
                 .await
             else {
-                error!("Failed to connect to {}:{}", host, port);
+                error!("subscribe notifications: failed to connect to {}:{}", host, port);
                 return;
             };
             let stream = response.get_mut();
@@ -97,29 +113,29 @@ impl Client {
                 let t = NotificationType::try_from(notification.notification_type).unwrap();
                 match t {
                     NotificationType::CacheCreated => {
-                        if let Err(e) = listen_client.tx.send(notification) {
-                            error!("failed to send notification: {:?}", e);
+                        if listen_client.tx.send(notification).is_err() {
+                            error!("failed to send notification");
                         }
                     }
                     NotificationType::ValueUpdated => {
-                        if let Err(e) = listen_client.tx.send(notification) {
-                            error!("failed to send notification: {:?}", e);
+                        if listen_client.tx.send(notification).is_err() {
+                            error!("failed to send notification");
                         }
                     }
                     NotificationType::ValueDeleted => {
-                        if let Err(e) = listen_client.tx.send(notification) {
-                            error!("failed to send notification: {:?}", e);
+                        if listen_client.tx.send(notification).is_err() {
+                            error!("failed to send notification");
                         }
                     }
                     NotificationType::CacheCleared => {
-                        if let Err(e) = listen_client.tx.send(notification) {
-                            error!("failed to send notification: {:?}", e);
+                        if listen_client.tx.send(notification).is_err() {
+                            error!("failed to send notification");
                         }
                     }
                     NotificationType::NodeFound => {
                         if let Some(node) = notification.node {
                             if let Err(e) = listen_client.initialize_client(node.clone()).await {
-                                error!("Failed to connect to {}:{}: {:?}", node.ip, node.port, e);
+                                error!("node found: failed to connect to {}:{}: {:?}", node.ip, node.port, e);
                             }
                         }
                     }

@@ -16,7 +16,6 @@
       <env name="JWT_AUDIENCE" value="bosca.io" />
       <env name="JWT_ISSUER" value="bosca-graphql" />
       <env name="JWT_SECRET" value="bosca1234*" />
-      <env name="NATS_URL" value="127.0.0.1:4222" />
       <env name="SEARCH_KEY" value="p8JcB_HuMHRxN7uVXfrG2wU06b5k7oTvaAAYo6nsi9M" />
       <env name="SEARCH_URL" value="http://127.0.0.1:7701" />
       <env name="STORAGE" value="/tmp/bosca/fs" />
