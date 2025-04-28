@@ -12,6 +12,6 @@ impl CachesObject {
         ctx.cache
             .get_cache_names()
             .await
-            .map(|c| c.into_iter().map(|n| CacheObject::new(n)).collect())
+            .map(|c| c.into_iter().map(CacheObject::new).collect())
     }
 }

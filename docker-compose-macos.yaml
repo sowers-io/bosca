@@ -144,3 +144,13 @@ services:
     depends_on:
       server:
         condition: service_started
+
+  dc:
+    image: ghcr.io/sowers-io/bosca/cache:latest
+    platform: linux/amd64
+    environment: {}
+    ports:
+      - '5000:5000'
+    restart: always
+    networks:
+      - boscanet
