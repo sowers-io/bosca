@@ -1,0 +1,23 @@
+[package]
+name = "bosca-dc"
+version = "0.0.1-alpha"
+edition = "2021"
+description = "Distributed Cache service for Bosca"
+
+[build-dependencies]
+tonic-build = "0.13.0"
+
+[dependencies]
+moka = { version = "0.12.10", features = ["future"] }  # Same version as in server
+tokio = { version = "1.38.1", features = ["full", "tracing"] }
+tokio-stream = "0.1.16"
+async-trait = "0.1.88"
+tracing = { version = "0.1.41", features = ["default"] }
+tracing-subscriber = "0.3.19"
+uuid = { version = "1.15.1", features = ["v4", "serde"] }
+log = "0.4.22"
+tonic = "0.13.0"
+tonic-health = "0.13.0"
+tonic-reflection = "0.13.0"
+prost = "0.13.5"
+hashring = "0.3.6"

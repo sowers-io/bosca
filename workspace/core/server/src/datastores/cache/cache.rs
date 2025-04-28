@@ -1,12 +1,11 @@
 use async_graphql::Error;
-use async_nats::jetstream::kv::{Operation, Store};
-use futures_util::{StreamExt, TryStreamExt};
-use log::{debug, error, info, warn};
+use bosca_dc_client::client::Client;
 use moka::future::Cache;
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::Hash;
 use std::sync::Arc;
 use std::time::Duration;
+use log::error;
 
 #[derive(Clone)]
 pub struct BoscaCache<V>
@@ -15,15 +14,13 @@ where
 {
     name: String,
     cache: Arc<Cache<String, V>>,
-    store: Store,
+    client: Client,
 }
 
 #[async_trait::async_trait]
 pub trait ClearableCache {
     fn keys(&self) -> Vec<String>;
-    async fn remote_keys(&self) -> Vec<String>;
     async fn clear(&self) -> Result<(), Error>;
-    fn watch(&self);
 }
 
 #[async_trait::async_trait]
@@ -39,67 +36,10 @@ where
         keys
     }
 
-    async fn remote_keys(&self) -> Vec<String> {
-        let keys = self.store.keys().await;
-        if let Ok(keys) = keys {
-            if let Ok(keys) = keys.try_collect::<Vec<_>>().await {
-                return keys;
-            }
-        }
-        Vec::new()
-    }
-
     async fn clear(&self) -> Result<(), Error> {
         self.cache.invalidate_all();
-        info!("clearing cache: {}", self.name);
-        let keys = self.store.keys().await?;
-        let keys = keys.try_collect::<Vec<_>>().await?;
-        for key in keys {
-            if let Err(e) = self.store.purge(&key).await {
-                error!("error clearing cache ({}): {}", key, e);
-            }
-        }
-        info!("cache cleared: {}", self.name);
+        self.client.clear(&self.name).await?;
         Ok(())
-    }
-
-    fn watch(&self) {
-        let store = self.store.clone();
-        let cache = Arc::clone(&self.cache);
-        let name = self.name.clone();
-        tokio::spawn(async move {
-            loop {
-                match store.watch("*").await {
-                    Ok(mut stream) => {
-                        while let Some(value) = stream.next().await {
-                            if let Ok(value) = value {
-                                let k = value.key;
-                                debug!("syncing cache: {} - {}", name, k);
-                                match value.operation {
-                                    Operation::Put => {
-                                        let b = value.value;
-                                        match serde_json::from_slice(&b) {
-                                            Ok(v) => {
-                                                cache.insert(k, v).await;
-                                            }
-                                            Err(e) => {
-                                                error!("error parsing cache: {}", e);
-                                            }
-                                        }
-                                    }
-                                    Operation::Delete | Operation::Purge => {
-                                        cache.invalidate(&k).await;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        error!("error watching cache: {}", e);
-                    }
-                }
-            }
-        });
     }
 }
 
@@ -116,7 +56,7 @@ impl<V> BoscaCache<V>
 where
     V: Clone + Send + Sync + serde::ser::Serialize + serde::de::DeserializeOwned + 'static,
 {
-    pub fn new_ttl(name: String, size: u64, ttl: Duration, store: Store) -> Self {
+    pub fn new_ttl(name: String, size: u64, ttl: Duration, client: Client) -> Self {
         Self {
             name,
             cache: Arc::new(
@@ -125,7 +65,7 @@ where
                     .time_to_idle(ttl)
                     .build(),
             ),
-            store,
+            client,
         }
     }
 
@@ -138,23 +78,12 @@ where
         let value = self.cache.get(&key).await;
         if value.is_some() {
             value
+        } else if let Ok(Some(data)) = self.client.get(&self.name, &key).await {
+            let v: V = serde_json::from_slice(&data).unwrap();
+            self.cache.insert(key, v.clone()).await;
+            Some(v)
         } else {
-            match self.store.get(key.clone()).await {
-                Ok(Some(v)) => {
-                    if let Ok(v) = serde_json::from_slice::<V>(&v) {
-                        self.cache.insert(key, v.clone()).await;
-                        Some(v)
-                    } else {
-                        warn!("error getting cache, failed to deserialize");
-                        None
-                    }
-                }
-                Ok(None) => None,
-                Err(e) => {
-                    warn!("error getting cache: {}", e);
-                    None
-                }
-            }
+            None
         }
     }
 
@@ -166,8 +95,8 @@ where
         let key = key.to_string();
         self.cache.insert(key.clone(), value.clone()).await;
         let out = serde_json::to_vec(value).unwrap();
-        if let Err(e) = self.store.put(key, out.into()).await {
-            error!("error setting cache: {}", e);
+        if let Err(e) = self.client.put(&self.name, &key, out).await {
+            error!("error setting cache: {:?}", e);
         }
     }
 
@@ -178,8 +107,8 @@ where
     {
         let key = key.to_string();
         self.cache.remove(&key).await;
-        if let Err(e) = self.store.delete(key).await {
-            error!("error removing from cache: {}", e);
+        if let Err(e) = self.client.delete(&self.name, &key).await {
+            error!("error removing from cache: {:?}", e);
         }
     }
 }

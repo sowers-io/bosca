@@ -144,3 +144,20 @@ services:
     depends_on:
       server:
         condition: service_started
+
+  dc:
+    build:
+      context: .
+      dockerfile: Dockerfile-dc
+    image: ghcr.io/sowers-io/bosca/dc:latest
+    platform: linux/amd64
+    environment:
+      DC_HOST: 0.0.0.0
+      DC_PORT: 3000
+      DC_SERVICE_NAME: dc
+      # DC_NODE_ID and DC_PEERS are now optional and will be auto-generated/discovered
+    ports:
+      - '3000:3000'
+    restart: always
+    networks:
+      - boscanet

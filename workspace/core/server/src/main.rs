@@ -54,6 +54,7 @@ static GLOBAL: MiMalloc = MiMalloc;
 async fn health() -> Result<(StatusCode, String), (StatusCode, String)> {
     Ok((StatusCode::OK, "OK".to_owned()))
 }
+
 #[tokio::main(flavor = "multi_thread")]
 async fn main() {
     let tracing_cfg = new_tracing().unwrap();
@@ -63,7 +64,7 @@ async fn main() {
     let ctx = match BoscaContext::new().await {
         Ok(ctx) => ctx,
         Err(e) => {
-            println!("{}", e.message);
+            println!("error creating context: {}", e.message);
             exit(1);
         }
     };
@@ -72,10 +73,7 @@ async fn main() {
     initialize_content(&ctx).await.unwrap();
 
     ctx.workflow.start_monitoring_expirations();
-    ctx.cache.watch();    
-    if option_env!("WATCH_METADATA_UPDATES").unwrap_or("true").eq("true") {
-        ctx.content.metadata.watch(&ctx);
-    }
+    ctx.content.metadata.watch(&ctx);
 
     let persisted_queries = ApolloPersistedQueries::new(ctx.queries.cache.clone());
     let schema = new_schema(ctx.clone(), persisted_queries);

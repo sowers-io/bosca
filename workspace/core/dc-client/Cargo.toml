@@ -1,0 +1,19 @@
+[package]
+name = "bosca-dc-client"
+version = "0.0.1-alpha"
+edition = "2021"
+description = "Distributed Cache Client for Bosca"
+
+[build-dependencies]
+tonic-build = "0.13.0"
+
+[dependencies]
+tokio = { version = "1.38.1", features = ["full", "tracing"] }
+tokio-stream = "0.1.16"
+async-trait = "0.1.88"
+tonic = "0.13.0"
+prost = "0.13.5"
+hashring = "0.3.6"
+async-graphql = { version = "7.0.15", features = ["chrono", "chrono-tz", "graphiql", "tokio", "unblock", "apollo_persisted_queries", "log", "tracing"] }
+log = "0.4.27"
+uuid = { version = "1.16.0", features = ["v4"] }

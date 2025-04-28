@@ -9,6 +9,7 @@ use crate::datastores::security::SecurityDataStore;
 use crate::datastores::workflow::workflow::WorkflowDataStore;
 use crate::graphql::content::storage::ObjectStorage;
 use crate::initialization::jwt::new_jwt;
+use crate::initialization::cache::new_cache_client;
 use crate::initialization::object_storage::new_object_storage;
 use crate::initialization::redis::new_redis_client;
 use crate::initialization::search::new_search_client;
@@ -30,7 +31,6 @@ use meilisearch_sdk::client::Client;
 use std::env;
 use std::sync::Arc;
 use uuid::Uuid;
-use crate::initialization::nats::new_nats_client;
 
 #[derive(Clone)]
 pub struct BoscaContext {
@@ -81,10 +81,10 @@ impl BoscaContext {
         );
         info!("Connecting to Search");
         let search = new_search_client()?;
-        info!("Connecting to Nats");
-        let (_nats, jetstream) = new_nats_client().await?;
+        info!("Connecting to Cache");
+        let cache_client = new_cache_client().await?;
         info!("Building Context");
-        let mut cache = BoscaCacheManager::new(jetstream.clone());
+        let mut cache = BoscaCacheManager::new(cache_client.clone());
         let ctx = BoscaContext {
             security: SecurityDataStore::new(
                 &mut cache,
@@ -111,7 +111,13 @@ impl BoscaContext {
             ),
             profile: ProfileDataStore::new(bosca_pool.clone()),
             queries: PersistedQueriesDataStore::new(bosca_pool.clone()).await,
-            content: ContentDataStore::new(bosca_pool, &mut cache, jetstream, Arc::clone(&notifier)).await?,
+            content: ContentDataStore::new(
+                bosca_pool,
+                &mut cache,
+                Arc::clone(&notifier),
+                cache_client,
+            )
+            .await?,
             notifier,
             search,
             storage: new_object_storage(),
@@ -288,7 +294,12 @@ impl BoscaContext {
         if !self
             .content
             .collection_permissions
-            .has_supplementary_permission(collection, &self.principal, &self.principal_groups, action)
+            .has_supplementary_permission(
+                collection,
+                &self.principal,
+                &self.principal_groups,
+                action,
+            )
             .await?
         {
             let admin = self.security.get_administrators_group().await?;
@@ -340,7 +351,12 @@ impl BoscaContext {
                 if !self
                     .content
                     .metadata_permissions
-                    .has_metadata_version_permission(&metadata, &self.principal, &self.principal_groups, action)
+                    .has_metadata_version_permission(
+                        &metadata,
+                        &self.principal,
+                        &self.principal_groups,
+                        action,
+                    )
                     .await?
                 {
                     let admin = self.security.get_administrators_group().await?;
@@ -369,7 +385,13 @@ impl BoscaContext {
                 if !self
                     .content
                     .collection_permissions
-                    .has_txn(txn, &collection, &self.principal, &self.principal_groups, action)
+                    .has_txn(
+                        txn,
+                        &collection,
+                        &self.principal,
+                        &self.principal_groups,
+                        action,
+                    )
                     .await?
                 {
                     let admin = self.security.get_administrators_group().await?;

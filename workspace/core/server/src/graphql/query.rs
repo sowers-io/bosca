@@ -14,7 +14,7 @@ use async_graphql::*;
 use log::error;
 use meilisearch_sdk::search::Selectors;
 use uuid::Uuid;
-use crate::graphql::cache::CacheObject;
+use crate::graphql::caches::CachesObject;
 
 pub struct QueryObject;
 
@@ -48,7 +48,7 @@ impl QueryObject {
         PersistedQueriesObject {}
     }
 
-    async fn cache(&self) -> CacheObject { CacheObject {} }
+    async fn caches(&self) -> CachesObject { CachesObject {} }
 
     async fn search(
         &self,

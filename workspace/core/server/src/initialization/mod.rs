@@ -5,4 +5,4 @@ pub mod redis;
 pub mod security;
 pub mod content;
 pub mod telemetry;
-pub mod nats;
+pub mod cache;
