@@ -37,7 +37,11 @@ jobs:
       - name: Run sccache-cache
         uses: mozilla-actions/sccache-action@v0.0.9
       - uses: actions/checkout@v3
-      - run: sudo apt update && sudo apt install -y protobuf-compiler
+      - run: |
+          PB_REL="https://github.com/protocolbuffers/protobuf/releases"
+          curl -LO $PB_REL/download/v30.2/protoc-30.2-linux-x86_64.zip
+          unzip protoc-30.2-linux-x86_64.zip -d $HOME/.local
+          export PATH="$PATH:$HOME/.local/bin"
       - run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
       - run: export PATH="$HOME/.cargo/bin:$PATH" && cargo build --release
       - name: Set up Docker Buildx
