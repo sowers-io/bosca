@@ -55,6 +55,8 @@ services:
       REDIS_JOBS_QUEUE_PORT: 6379
       REDIS_NOTIFIER_PUBSUB_HOST: dragonfly
       REDIS_NOTIFIER_PUBSUB_PORT: 6379
+      CACHE_HOST: dc
+      CACHE_PORT: 5000
       JWT_AUDIENCE: bosca.local
       JWT_ISSUER: bosca.local
       JWT_SECRET: QuujwfwQKbdn2GkV64Ri
@@ -146,18 +148,11 @@ services:
         condition: service_started
 
   dc:
-    build:
-      context: .
-      dockerfile: Dockerfile-dc
-    image: ghcr.io/sowers-io/bosca/dc:latest
+    image: ghcr.io/sowers-io/bosca/cache:latest
     platform: linux/amd64
-    environment:
-      DC_HOST: 0.0.0.0
-      DC_PORT: 3000
-      DC_SERVICE_NAME: dc
-      # DC_NODE_ID and DC_PEERS are now optional and will be auto-generated/discovered
+    environment: {}
     ports:
-      - '3000:3000'
+      - '5000:5000'
     restart: always
     networks:
       - boscanet
