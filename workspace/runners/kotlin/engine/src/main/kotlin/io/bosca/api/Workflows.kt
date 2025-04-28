@@ -340,6 +340,11 @@ class Workflows(network: NetworkClient) : Api(network) {
         response.validate()
     }
 
+    suspend fun cancelTransition(id: String, version: Int) {
+        val response = network.graphql.mutation(CancelMetadataTransitionMutation(id, version)).execute()
+        response.validate()
+    }
+
     suspend fun beginCollectionTransition(id: String, state: String, status: String, restart: Boolean = false, waitForCompletion: Boolean = false) {
         val response = network.graphql.mutation(BeginCollectionTransitionMutation(id, state, status, restart, waitForCompletion)).execute()
         response.validate()

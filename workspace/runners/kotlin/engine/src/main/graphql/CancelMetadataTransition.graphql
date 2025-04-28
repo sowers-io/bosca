@@ -1,0 +1,5 @@
+mutation CancelMetadataTransition($metadataId: String!, $version: Int!) {
+    workflows {
+        cancelTransition(metadataId: $metadataId, metadataVersion: $version)
+    }
+}

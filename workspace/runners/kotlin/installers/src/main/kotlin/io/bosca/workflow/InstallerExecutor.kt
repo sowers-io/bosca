@@ -11,7 +11,6 @@ object InstallerExecutorFactory {
         client: Client, installers: List<Installer> = listOf(
             ConfigurationsInstaller(),
             CategoriesInstaller(client),
-            GroupsInstaller(),
             PromptsInstaller(),
             ModelsInstaller(),
             StorageSystemsInstaller(),
@@ -20,6 +19,7 @@ object InstallerExecutorFactory {
             StatesInstaller(),
             TransitionsInstaller(),
             TraitsInstaller(),
+            GroupsInstaller(),
             CollectionsInstaller(client),
             ProfileAttributeTypesInstaller(),
             AssetsInstaller(),
