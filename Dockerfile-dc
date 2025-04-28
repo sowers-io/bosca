@@ -1,32 +1,6 @@
-# Dockerfile for Bosca Distributed Cache (DC) service
+FROM gcr.io/distroless/cc-debian12
 
-# Build stage
-FROM rust:1.76-slim-bullseye as builder
+COPY target/release/bosca-dc /
 
-WORKDIR /app
-
-# Copy the entire workspace
-COPY . .
-
-# Build the DC service
-RUN cargo build --release --bin bosca-dc
-
-# Runtime stage
-FROM debian:bullseye-slim
-
-WORKDIR /app
-
-# Copy the binary from the build stage
-COPY --from=builder /app/target/release/bosca-dc /app/bosca-dc
-
-# Expose the port
-EXPOSE 3000
-
-# Set environment variables
-ENV DC_HOST=0.0.0.0
-ENV DC_PORT=3000
-# DC_NODE_ID and DC_PEERS are now optional and will be auto-generated/discovered if not specified
-ENV DC_SERVICE_NAME=dc
-
-# Run the service
-CMD ["/app/bosca-dc"]
+EXPOSE 5000
+CMD ["./bosca-dc"]

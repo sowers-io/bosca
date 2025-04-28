@@ -65,6 +65,15 @@ jobs:
           tags: |
             ghcr.io/sowers-io/bosca/server:latest
             ghcr.io/sowers-io/bosca/server:${{ github.sha }}
+      - name: Build and push cache server
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: Dockerfile-dc
+          push: true
+          tags: |
+            ghcr.io/sowers-io/bosca/cache:latest
+            ghcr.io/sowers-io/bosca/cache:${{ github.sha }}
       - name: Build and push analytics
         uses: docker/build-push-action@v3
         with:
