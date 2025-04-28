@@ -1627,7 +1627,8 @@ impl WorkflowDataStore {
             jobs.push(job);
         }
         if jobs.is_empty() {
-            return Err(Error::new(format!("no jobs found for workflow: {}", workflow.id)));
+            // return Err(Error::new(format!("no jobs found for workflow: {}", workflow.id)));
+            error!("no jobs found for workflow: {}", workflow.id);
         }
         Ok(WorkflowExecutionPlan {
             id: WorkflowExecutionId {
