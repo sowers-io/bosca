@@ -27,5 +27,7 @@ class WorkflowsInstaller : Installer {
                 client.workflows.add(workflow)
             }
         }
+        client.clearCache()
+        client.security.refreshToken()
     }
 }

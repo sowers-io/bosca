@@ -1,0 +1,27 @@
+key: image.featured
+name: Featured Image - Square
+description: Featured Image
+workflows: [ ]
+type: METADATA
+ui: IMAGE
+list: false
+configuration:
+  relationship: image.featured
+  targetSize:
+    - 740
+    - 740
+  aspectRatios:
+    - name: 1/1
+      value: 1
+      icon: i-lucide-square
+      default: true
+  actions:
+    - name: Maximize
+      icon: i-lucide-maximize
+      action: maximize
+    - name: Zoom In
+      icon: i-lucide-zoom-in
+      action: zoomin
+    - name: Zoom Out
+      icon: i-lucide-zoom-out
+      action: zoomout

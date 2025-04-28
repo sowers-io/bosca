@@ -213,7 +213,11 @@ class CollectionsInstaller(val client: Client) : Installer {
         val collections = collection.collections
         if (collections != null) {
             for (child in collections) {
-                install(client, child, currentCategories, templatesId)
+                try {
+                    install(client, child, currentCategories, templatesId)
+                } catch (e: Exception) {
+                    println("Error while installing collection ${collection.name}: ${e.message}")
+                }
             }
         }
     }

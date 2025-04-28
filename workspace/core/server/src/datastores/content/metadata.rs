@@ -469,8 +469,10 @@ impl MetadataDataStore {
         )
         .await?;
         update_metadata_etag(&txn, metadata1_id).await?;
+        update_metadata_etag(&txn, metadata2_id).await?;
         txn.commit().await?;
         self.on_metadata_changed(ctx, metadata1_id).await?;
+        self.on_metadata_changed(ctx, metadata2_id).await?;
         Ok(())
     }
 
@@ -865,12 +867,17 @@ impl MetadataDataStore {
 
     #[tracing::instrument(skip(self, id))]
     pub async fn get_relationships(&self, id: &Uuid) -> Result<Vec<MetadataRelationship>, Error> {
+        if let Some(relationships) = self.cache.get_relationships(id).await {
+            return Ok(relationships);
+        }
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare("select r.* from metadata_relationships r inner join metadata m on (r.metadata2_id = m.id and m.deleted = false) where metadata1_id = $1")
             .await?;
         let rows = connection.query(&stmt, &[&id]).await?;
-        Ok(rows.iter().map(MetadataRelationship::from).collect())
+        let relationships = rows.iter().map(MetadataRelationship::from).collect();
+        self.cache.set_relationships(id, &relationships).await;
+        Ok(relationships)
     }
 
     #[tracing::instrument(skip(self, id))]

@@ -1,5 +1,6 @@
 use crate::context::BoscaContext;
 use crate::datastores::security::WORKFLOW_MANAGERS_GROUP;
+use crate::graphql::content::metadata_mutation::WorkflowConfigurationInput;
 use crate::graphql::workflows::activities::ActivitiesObject;
 use crate::graphql::workflows::models::ModelsObject;
 use crate::graphql::workflows::prompts::PromptsObject;
@@ -11,11 +12,13 @@ use crate::graphql::workflows::workflow::WorkflowObject;
 use crate::graphql::workflows::workflow_activity::WorkflowActivityObject;
 use crate::graphql::workflows::workflow_execution_plan::WorkflowExecutionPlanObject;
 use crate::graphql::workflows::workflow_job::WorkflowJobObject;
+use crate::graphql::workflows::workflow_schedules::WorkflowSchedulesObject;
+use crate::models::workflow::enqueue_request::EnqueueRequest;
 use crate::models::workflow::execution_plan::WorkflowExecutionId;
 use crate::security::util::check_has_group;
 use async_graphql::{Context, Error, Object, Union};
+use chrono::{DateTime, Utc};
 use uuid::Uuid;
-use crate::graphql::workflows::workflow_schedules::WorkflowSchedulesObject;
 
 pub(crate) struct WorkflowsObject {}
 
@@ -35,14 +38,22 @@ impl WorkflowsObject {
         Ok(states.into_iter().map(WorkflowObject::new).collect())
     }
 
-    async fn workflow(&self, ctx: &Context<'_>, id: String) -> Result<Option<WorkflowObject>, Error> {
+    async fn workflow(
+        &self,
+        ctx: &Context<'_>,
+        id: String,
+    ) -> Result<Option<WorkflowObject>, Error> {
         check_has_group(ctx, WORKFLOW_MANAGERS_GROUP).await?;
         let ctx = ctx.data::<BoscaContext>()?;
         let workflow = ctx.workflow.get_workflow(&id).await?;
         Ok(workflow.map(WorkflowObject::new))
     }
 
-    async fn workflow_activity(&self, ctx: &Context<'_>, id: i64) -> Result<Option<WorkflowActivityObject>, Error> {
+    async fn workflow_activity(
+        &self,
+        ctx: &Context<'_>,
+        id: i64,
+    ) -> Result<Option<WorkflowActivityObject>, Error> {
         check_has_group(ctx, WORKFLOW_MANAGERS_GROUP).await?;
         let ctx = ctx.data::<BoscaContext>()?;
         let workflow = ctx.workflow.get_workflow_activity(&id).await?;
@@ -88,7 +99,49 @@ impl WorkflowsObject {
     ) -> Result<Option<WorkflowJobObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         ctx.check_has_service_account().await?;
-        Ok(ctx.workflow.dequeue_next_execution(&queue).await?.map(WorkflowJobObject::new))
+        Ok(ctx
+            .workflow
+            .dequeue_next_execution(&queue)
+            .await?
+            .map(WorkflowJobObject::new))
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    async fn test_plan(
+        &self,
+        ctx: &Context<'_>,
+        trait_id: Option<String>,
+        profile_id: Option<String>,
+        workflow_id: Option<String>,
+        metadata_id: Option<String>,
+        metadata_version: Option<i32>,
+        collection_id: Option<String>,
+        storage_system_ids: Option<Vec<String>>,
+        configurations: Option<Vec<WorkflowConfigurationInput>>,
+        delay_until: Option<DateTime<Utc>>,
+    ) -> Result<Option<WorkflowExecutionPlanObject>, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        ctx.check_has_admin_account().await?;
+        let mut request = EnqueueRequest {
+            trait_id,
+            profile_id: profile_id.map(|p| Uuid::parse_str(&p).unwrap()),
+            workflow_id,
+            workflow: None,
+            metadata_id: metadata_id.map(|m| Uuid::parse_str(&m).unwrap()),
+            metadata_version,
+            collection_id: collection_id.map(|c| Uuid::parse_str(&c).unwrap()),
+            storage_system_ids: storage_system_ids.map(|s| {
+                s.into_iter()
+                    .map(|s| Uuid::parse_str(&s).unwrap())
+                    .collect()
+            }),
+            configurations,
+            delay_until,
+            wait_for_completion: false,
+        };
+        Ok(Some(WorkflowExecutionPlanObject::new(
+            ctx.workflow.get_new_execution_plan(&mut request).await?,
+        )))
     }
 
     async fn execution_plan(

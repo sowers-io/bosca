@@ -35,4 +35,4 @@ templates:
             filter: "type = \"Standard\""
       attributes:
         - $ref: ./attributes/bio.yaml
-        - $ref: ./attributes/featured-image-square.yaml
+        - $ref: ./attributes/featured-image-square-only.yaml

@@ -1,10 +1,11 @@
 use async_graphql::*;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio_postgres::Row;
 use uuid::Uuid;
 
+#[derive(Clone, Serialize, Deserialize)]
 pub struct MetadataRelationship {
-    #[allow(dead_code)]
     pub id1: Uuid,
     pub id2: Uuid,
     pub relationship: String,

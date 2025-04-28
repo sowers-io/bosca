@@ -90,12 +90,17 @@ suspend fun AssetDefinition.install(client: Client, parentCollectionId: String, 
             } else if (status.state == "failed") {
                 break
             } else if (status.state == "draft") {
-                client.workflows.beginMetadataTransition(
-                    m.id,
-                    m.version,
-                    "published",
-                    "publishing asset from installer"
-                )
+                try {
+                    client.workflows.beginMetadataTransition(
+                        m.id,
+                        m.version,
+                        "published",
+                        "publishing asset from installer"
+                    )
+                } catch (e: Exception) {
+                    println("Failed to publish asset $name: ${e.message}")
+                    break
+                }
             } else if (status.state == "published") {
                 break
             }

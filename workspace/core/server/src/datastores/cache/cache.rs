@@ -1,11 +1,11 @@
 use async_graphql::Error;
 use bosca_dc_client::client::Client;
-use log::error;
 use moka::future::Cache;
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::Hash;
 use std::sync::Arc;
 use std::time::Duration;
+use log::error;
 
 #[derive(Clone)]
 pub struct BoscaCache<V>
@@ -19,6 +19,7 @@ where
 
 #[async_trait::async_trait]
 pub trait ClearableCache {
+    fn keys(&self) -> Vec<String>;
     async fn clear(&self) -> Result<(), Error>;
 }
 
@@ -27,6 +28,14 @@ impl<V> ClearableCache for BoscaCache<V>
 where
     V: Clone + Send + Sync + serde::ser::Serialize + serde::de::DeserializeOwned + 'static,
 {
+    fn keys(&self) -> Vec<String> {
+        let mut keys = Vec::new();
+        for e in self.cache.iter() {
+            keys.push(e.0.as_str().to_string());
+        }
+        keys
+    }
+
     async fn clear(&self) -> Result<(), Error> {
         self.cache.invalidate_all();
         self.client.clear(&self.name).await?;

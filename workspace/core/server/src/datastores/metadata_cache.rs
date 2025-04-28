@@ -5,11 +5,13 @@ use crate::models::content::metadata_supplementary::MetadataSupplementary;
 use crate::models::security::permission::Permission;
 use async_graphql::Error;
 use uuid::Uuid;
+use crate::models::content::metadata_relationship::MetadataRelationship;
 
 #[derive(Clone)]
 pub struct MetadataCache {
     metadata_id: BoscaCache<Metadata>,
     metadata_supplementary_id: BoscaCache<MetadataSupplementary>,
+    metadata_relationship_id: BoscaCache<Vec<MetadataRelationship>>,
     metadata_supplementaries: BoscaCache<Vec<Uuid>>,
     permissions: BoscaCache<Vec<Permission>>,
 }
@@ -20,6 +22,9 @@ impl MetadataCache {
             metadata_id: cache.new_id_tiered_cache("metadata_id", 5000).await?,
             metadata_supplementary_id: cache
                 .new_id_tiered_cache("metadata_supplementary_id", 5000)
+                .await?,
+            metadata_relationship_id: cache
+                .new_id_tiered_cache("metadata_relationship_id", 5000)
                 .await?,
             metadata_supplementaries: cache
                 .new_id_tiered_cache("metadata_supplementaries", 5000)
@@ -55,6 +60,7 @@ impl MetadataCache {
     pub async fn evict_metadata(&self, id: &Uuid) {
         self.metadata_id.remove(id).await;
         self.metadata_supplementaries.remove(id).await;
+        self.metadata_relationship_id.remove(id).await;
         self.permissions.remove(id).await;
     }
 
@@ -101,5 +107,20 @@ impl MetadataCache {
     #[tracing::instrument(skip(self, id))]
     pub async fn evict_supplementaries(&self, id: &Uuid) {
         self.metadata_supplementaries.remove(id).await;
+    }
+
+    #[tracing::instrument(skip(self, id))]
+    pub async fn get_relationships(&self, id: &Uuid) -> Option<Vec<MetadataRelationship>> {
+        self.metadata_relationship_id.get(id).await
+    }
+
+    #[tracing::instrument(skip(self, id, relationships))]
+    pub async fn set_relationships(&self, id: &Uuid, relationships: &Vec<MetadataRelationship>) {
+        self.metadata_relationship_id.set(id, relationships).await;
+    }
+
+    #[tracing::instrument(skip(self, id))]
+    pub async fn evict_relationships(&self, id: &Uuid) {
+        self.metadata_relationship_id.remove(id).await;
     }
 }

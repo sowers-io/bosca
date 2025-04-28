@@ -20,6 +20,17 @@ impl BoscaCacheManager {
         }
     }
 
+    pub async fn get_cache_names(&self) -> Result<Vec<String>, Error> {
+        let caches = self.caches.lock().await;
+        Ok(caches.keys().map(|k| k.to_string()).collect())
+    }
+
+    pub async fn get_cache_keys(&self, name: &str) -> Result<Vec<String>, Error> {
+        let caches = self.caches.lock().await;
+        let cache = caches.get(name).ok_or(Error::from("cache not found"))?;
+        Ok(cache.keys())
+    }
+
     pub async fn new_id_tiered_cache<V>(
         &mut self,
         name: &str,

@@ -91,6 +91,12 @@ type BibleReference {
     usfm: String!
 }
 
+type CacheObject {
+    caches: [String!]!
+    keys(cache: String!): [String!]!
+    remoteKeys(cache: String!): [String!]!
+}
+
 type Categories {
     all: [Category!]!
 }
@@ -721,6 +727,7 @@ type PromptsMutation {
 }
 
 type Query {
+    cache: CacheObject!
     configurations: Configurations!
     content: Content!
     persistedQueries: PersistedQueriesObject!
@@ -1074,6 +1081,7 @@ type Workflows {
     schedules: WorkflowSchedules!
     states: WorkflowStates!
     storageSystems: StorageSystems!
+    testPlan(collectionId: String, configurations: [WorkflowConfigurationInput!], delayUntil: DateTime, metadataId: String, metadataVersion: Int, profileId: String, storageSystemIds: [String!], traitId: String, workflowId: String): WorkflowExecutionPlan
     traits: Traits!
     transitions: Transitions!
     workflow(id: String!): Workflow
