@@ -1,8 +1,9 @@
 use crate::api::service::api::distributed_cache_server::DistributedCache;
 use crate::api::service::api::{
     ClearCacheRequest, ClearCacheResponse, CreateCacheResponse, DeleteValueRequest,
-    DeleteValueResponse, Empty, GetValueRequest, GetValueResponse, Node, Notification,
-    NotificationType, PutValueRequest, PutValueResponse, SubscribeNotificationsRequest,
+    DeleteValueResponse, Empty, GetNodesResponse, GetValueRequest, GetValueResponse, Node,
+    Notification, NotificationType, PutValueRequest, PutValueResponse,
+    SubscribeNotificationsRequest,
 };
 use crate::cache::cache_service::CacheService;
 use crate::cluster::Cluster;
@@ -52,6 +53,12 @@ impl DistributedCache for DistributedCacheImpl {
         }
         Ok(Response::new(CreateCacheResponse {
             cache: req.name.clone(),
+        }))
+    }
+
+    async fn get_nodes(&self, _: Request<Empty>) -> Result<Response<GetNodesResponse>, Status> {
+        Ok(Response::new(GetNodesResponse {
+            nodes: self.cluster.get_nodes().await,
         }))
     }
 
@@ -111,10 +118,18 @@ impl DistributedCache for DistributedCacheImpl {
             NotificationType::try_from(req.notification_type).unwrap();
         match notification_type {
             NotificationType::CacheCreated => {
-                self.cache
-                    .create_cache(&req.cache.clone(), req.max_capacity, req.ttl, req.tti, false)
-                    .await
-                    .map_err(|e| Status::internal(e.to_string()))?;
+                if let Some(create) = &req.create {
+                    self.cache
+                        .create_cache(
+                            &req.cache.clone(),
+                            create.max_capacity,
+                            create.ttl,
+                            create.tti,
+                            false,
+                        )
+                        .await
+                        .map_err(|e| Status::internal(e.to_string()))?;
+                }
             }
             NotificationType::ValueUpdated => {
                 if let Some(k) = &req.key {

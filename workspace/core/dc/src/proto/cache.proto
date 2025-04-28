@@ -13,6 +13,8 @@ service DistributedCache {
 
   rpc ClearCache (ClearCacheRequest) returns (ClearCacheResponse);
 
+  rpc GetNodes (Empty) returns (GetNodesResponse);
+
   rpc Replicate (Notification) returns (Empty);
 
   rpc Join (Node) returns (Empty);
@@ -36,6 +38,10 @@ message CreateCacheRequest {
   uint64 max_capacity = 2;
   uint64 ttl = 3;
   uint64 tti = 4;
+}
+
+message GetNodesResponse {
+  repeated Node nodes = 1;
 }
 
 message CreateCacheResponse {
@@ -93,8 +99,8 @@ enum NotificationType {
 
 message Notification {
   string cache = 1;
-  uint64 max_capacity = 2;
-  NotificationType notification_type = 3;
+  NotificationType notification_type = 2;
+  optional CreateCacheRequest create = 3;
   optional string key = 4;
   optional bytes value = 5;
   optional Node node = 6;

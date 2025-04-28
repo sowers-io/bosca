@@ -2,6 +2,7 @@ use crate::api::service::api::{Node, Notification, NotificationType};
 use crate::notification::NotificationService;
 use moka::future::{Cache, CacheBuilder};
 use moka::policy::EvictionPolicy;
+use std::sync::Arc;
 
 pub struct CacheInstance {
     pub(crate) id: String,
@@ -22,10 +23,10 @@ impl CacheInstance {
     ) -> Self {
         let cache_id = id.to_string();
         let mut builder = CacheBuilder::new(max_capacity)
-            .eviction_listener(move |k, v, cause| {
+            .eviction_listener(move |k: Arc<String>, v, _| {
                 let notification = Notification {
-                    cache: cache_id,
-                    max_capacity,
+                    cache: cache_id.clone(),
+                    create: None,
                     notification_type: NotificationType::ValueDeleted as i32,
                     key: Some(k.to_string()),
                     value: Some(v),

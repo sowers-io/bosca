@@ -1,6 +1,7 @@
 use crate::client::api::distributed_cache_client::DistributedCacheClient;
 use crate::client::api::{
-    CreateCacheRequest, Node, Notification, NotificationType, SubscribeNotificationsRequest,
+    ClearCacheRequest, CreateCacheRequest, DeleteValueRequest, Empty, GetValueRequest, Node,
+    Notification, NotificationType, PutValueRequest, SubscribeNotificationsRequest,
 };
 use async_graphql::Error;
 use hashring::HashRing;
@@ -10,6 +11,7 @@ use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 use tokio::sync::{broadcast, RwLock};
 use tonic::transport::Channel;
+use uuid::Uuid;
 
 mod api {
     tonic::include_proto!("bosca.dc");
@@ -30,6 +32,12 @@ impl Hash for Node {
 
 impl Eq for Node {}
 
+impl Default for Client {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Client {
     pub fn new() -> Self {
         let (tx, _) = broadcast::channel::<Notification>(500);
@@ -40,21 +48,44 @@ impl Client {
         }
     }
 
-    async fn initialize_client(
-        &self,
-        host: String,
-        port: u16,
-    ) -> Result<DistributedCacheClient<Channel>, Error> {
-        let client = DistributedCacheClient::connect(format!("http://{}:{}", host, port)).await?;
-        self.clients
-            .write()
-            .await
-            .insert(host.clone(), client.clone());
-        let mut subscribe_client = client.clone();
-        let clients = Arc::clone(&self.clients);
-        let hash = Arc::clone(&self.hash);
+    async fn initialize_client(&self, node: Node) -> Result<(), Error> {
+        let url = format!("http://{}:{}", node.ip, node.port);
+        let client = DistributedCacheClient::connect(url).await?;
+        let mut clients = self.clients.write().await;
+        let mut hash = self.hash.write().await;
+        clients.insert(node.id.clone(), client.clone());
+        hash.add(node.clone());
+        Ok(())
+    }
+
+    async fn destroy_client(&self, node: Node) {
+        let mut clients = self.clients.write().await;
+        let mut hash = self.hash.write().await;
+        clients.remove(&node.id);
+        hash.remove(&node);
+    }
+
+    async fn initialize_first_client(&self, host: String, port: u16) -> Result<(), Error> {
+        let id = {
+            let mut id = String::new();
+            let url = format!("http://{}:{}", host, port);
+            let mut client = DistributedCacheClient::connect(url).await?;
+            let nodes = client.get_nodes(Empty {}).await?;
+            for node in &nodes.get_ref().nodes {
+                self.initialize_client(node.clone()).await?;
+                if id.is_empty() {
+                    id = node.id.clone();
+                }
+            }
+            id
+        };
+        if id.is_empty() {
+            return Err(Error::new("no nodes available"));
+        }
+        let mut client = { self.clients.read().await.get(&id).unwrap().clone() };
+        let listen_client = self.clone();
         tokio::spawn(async move {
-            let Ok(mut response) = subscribe_client
+            let Ok(mut response) = client
                 .subscribe_notifications(SubscribeNotificationsRequest {})
                 .await
             else {
@@ -69,23 +100,26 @@ impl Client {
                     NotificationType::ValueUpdated => {}
                     NotificationType::ValueDeleted => {}
                     NotificationType::CacheCleared => {}
-                    NotificationType::NodeFound => {}
-                    NotificationType::NodeLost => {
-                        let mut clients = clients.write().await;
-                        let mut hash = hash.write().await;
+                    NotificationType::NodeFound => {
                         if let Some(node) = notification.node {
-                            clients.remove(&node.id);
-                            hash.remove(&node);
+                            if let Err(e) = listen_client.initialize_client(node.clone()).await {
+                                error!("Failed to connect to {}:{}: {:?}", node.ip, node.port, e);
+                            }
+                        }
+                    }
+                    NotificationType::NodeLost => {
+                        if let Some(node) = notification.node {
+                            listen_client.destroy_client(node).await;
                         }
                     }
                 }
             }
         });
-        Ok(client)
+        Ok(())
     }
 
     pub async fn connect(&self, host: String, port: u16) -> Result<(), Error> {
-        self.initialize_client(host, port).await?;
+        self.initialize_first_client(host, port).await?;
         Ok(())
     }
 
@@ -118,23 +152,73 @@ impl Client {
             let mut client = client.clone();
             client.create_cache(request).await?;
         }
-
         Ok(())
     }
 
-    pub async fn get(&self, cache: &str, key: &str) -> Result<Vec<u8>, Error> {
-        todo!()
+    pub async fn get(&self, cache: &str, key: &str) -> Result<Option<Vec<u8>>, Error> {
+        let hash = self.hash.read().await;
+        if let Some(node) = hash.get(&key) {
+            let clients = self.clients.read().await;
+            if let Some(client) = clients.get(&node.id) {
+                let mut client = client.clone();
+                let request = GetValueRequest {
+                    cache: cache.to_string(),
+                    key: key.to_string(),
+                };
+                let value = client.get_value(request).await?;
+                let r = value.get_ref();
+                Ok(r.value.clone())
+            } else {
+                Ok(None)
+            }
+        } else {
+            Ok(None)
+        }
     }
 
     pub async fn put(&self, cache: &str, key: &str, value: Vec<u8>) -> Result<(), Error> {
-        todo!()
+        let hash = self.hash.read().await;
+        if let Some(node) = hash.get(&key) {
+            let clients = self.clients.read().await;
+            if let Some(client) = clients.get(&node.id) {
+                let mut client = client.clone();
+                let request = PutValueRequest {
+                    request_id: Uuid::new_v4().to_string(),
+                    cache: cache.to_string(),
+                    key: key.to_string(),
+                    value,
+                };
+                client.put_value(request).await?;
+            }
+        }
+        Ok(())
     }
 
     pub async fn delete(&self, cache: &str, key: &str) -> Result<(), Error> {
-        todo!()
+        let hash = self.hash.read().await;
+        if let Some(node) = hash.get(&key) {
+            let clients = self.clients.read().await;
+            if let Some(client) = clients.get(&node.id) {
+                let mut client = client.clone();
+                let request = DeleteValueRequest {
+                    cache: cache.to_string(),
+                    key: key.to_string(),
+                };
+                client.delete_value(request).await?;
+            }
+        }
+        Ok(())
     }
 
     pub async fn clear(&self, cache: &str) -> Result<(), Error> {
-        todo!()
+        let clients = self.clients.read().await;
+        if let Some(client) = clients.values().next() {
+            let mut client = client.clone();
+            let request = ClearCacheRequest {
+                cache: cache.to_string(),
+            };
+            client.clear_cache(request).await?;
+        }
+        Ok(())
     }
 }

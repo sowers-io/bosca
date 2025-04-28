@@ -16,12 +16,10 @@ use crate::workflow::core_workflow_ids::{METADATA_DELETE_FINALIZE, METADATA_UPDA
 use async_graphql::*;
 use bosca_database::TracingPool;
 use bosca_dc_client::client::Client;
-use bytes::Bytes;
-use chrono::{TimeDelta, TimeZone, Utc};
+use chrono::{TimeDelta, Utc};
 use deadpool_postgres::Transaction;
 use log::error;
 use serde_json::{Map, Value};
-use std::convert::TryInto;
 use std::ops::Add;
 use std::sync::Arc;
 use std::time::Duration;

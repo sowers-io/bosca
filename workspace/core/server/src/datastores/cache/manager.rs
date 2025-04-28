@@ -30,6 +30,7 @@ impl BoscaCacheManager {
     {
         info!("adding new memory cache: {} with size: {}", name, size);
         let mut caches = self.caches.lock().await;
+        self.client.create(name, size, 1800, 0).await?;
         let cache = BoscaCache::<V>::new_ttl(
             name.to_string(),
             size,
@@ -50,6 +51,7 @@ impl BoscaCacheManager {
     {
         info!("adding new memory cache: {} with size: {}", name, size);
         let mut caches = self.caches.lock().await;
+        self.client.create(name, size, 1800, 0).await?;
         let cache = BoscaCache::<V>::new_ttl(
             name.to_string(),
             size,
@@ -70,6 +72,7 @@ impl BoscaCacheManager {
     {
         info!("adding new memory cache: {} with size: {}", name, size);
         let mut caches = self.caches.lock().await;
+        self.client.create(name, size, 1800, 0).await?;
         let cache = BoscaCache::<V>::new_ttl(
             name.to_string(),
             size,
@@ -87,15 +90,5 @@ impl BoscaCacheManager {
                 error!("error clearing cache: {:?}", e);
             }
         }
-    }
-
-    pub fn watch(&self) {
-        let c = Arc::clone(&self.caches);
-        tokio::spawn(async move {
-            let caches = c.lock().await;
-            for cache in caches.values() {
-                cache.watch();
-            }
-        });
     }
 }

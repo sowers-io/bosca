@@ -1,4 +1,4 @@
-use crate::api::service::api::{Notification, NotificationType};
+use crate::api::service::api::{CreateCacheRequest, Notification, NotificationType};
 use crate::cache::cache_instance::CacheInstance;
 use crate::cluster::Cluster;
 use crate::notification::NotificationService;
@@ -62,7 +62,12 @@ impl CacheService {
         if notify {
             let notification = Notification {
                 cache: id.to_string(),
-                max_capacity,
+                create: Some(CreateCacheRequest {
+                    name: id.to_string(),
+                    ttl,
+                    tti,
+                    max_capacity,
+                }),
                 notification_type: NotificationType::CacheCreated.into(),
                 key: None,
                 value: None,
@@ -78,7 +83,12 @@ impl CacheService {
         for (id, cache) in caches.iter() {
             let notification = Notification {
                 cache: id.clone(),
-                max_capacity: cache.max_capacity,
+                create: Some(CreateCacheRequest {
+                    name: id.to_string(),
+                    ttl: cache.ttl,
+                    tti: cache.tti,
+                    max_capacity: cache.max_capacity,
+                }),
                 notification_type: NotificationType::CacheCreated.into(),
                 key: None,
                 value: None,
@@ -115,7 +125,7 @@ impl CacheService {
             if notify {
                 let notification = Notification {
                     cache: id.to_string(),
-                    max_capacity: 0,
+                    create: None,
                     notification_type: NotificationType::ValueUpdated.into(),
                     key: Some(key),
                     value: Some(value),
@@ -137,7 +147,7 @@ impl CacheService {
             if notify {
                 let notification = Notification {
                     cache: id.to_string(),
-                    max_capacity: 0,
+                    create: None,
                     notification_type: NotificationType::ValueDeleted.into(),
                     key: Some(key.to_string()),
                     value: None,
@@ -159,7 +169,7 @@ impl CacheService {
             if notify {
                 let notification = Notification {
                     cache: id.to_string(),
-                    max_capacity: 0,
+                    create: None,
                     notification_type: NotificationType::CacheCleared.into(),
                     key: None,
                     value: None,

@@ -5,19 +5,11 @@ use std::env;
 pub async fn new_cache_client() -> Result<Client, Error> {
     let host = match env::var("CACHE_HOST") {
         Ok(host) => host,
-        _ => {
-            return Err(Error::new(
-                "Environment variable CACHE_HOST could not be read".to_string(),
-            ))
-        }
+        _ => "localhost".to_string(),
     };
     let port = match env::var("CACHE_PORT") {
-        Ok(port) => u16::from_str_radix(&port, 10),
-        _ => {
-            return Err(Error::new(
-                "Environment variable CACHE_HOST could not be read".to_string(),
-            ))
-        }
+        Ok(port) => port.parse::<u16>(),
+        _ => Ok(2001),
     };
     let port = match port {
         Ok(port) => port,

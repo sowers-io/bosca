@@ -109,7 +109,7 @@ impl Cluster {
                 ))
                 .await
                 {
-                    if let Err(_) = client.ping(self.node.clone()).await {
+                    if client.ping(self.node.clone()).await.is_err() {
                         failed = true;
                     }
                 } else {
@@ -124,7 +124,7 @@ impl Cluster {
                 }
             }
         }
-        if failures.len() > 0 {
+        if !failures.is_empty() {
             for failure in failures {
                 self.deregister(failure, true).await;
             }
@@ -153,6 +153,11 @@ impl Cluster {
             return Some(node.clone());
         }
         None
+    }
+
+    pub async fn get_nodes(&self) -> Vec<Node> {
+        let nodes = self.peers.read().await;
+        nodes.iter().map(|p| p.node.clone()).collect()
     }
 
     pub async fn is_this_node(&self, key: &String) -> bool {

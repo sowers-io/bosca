@@ -20,7 +20,6 @@ where
 #[async_trait::async_trait]
 pub trait ClearableCache {
     async fn clear(&self) -> Result<(), Error>;
-    fn watch(&self);
 }
 
 #[async_trait::async_trait]
@@ -32,13 +31,6 @@ where
         self.cache.invalidate_all();
         self.client.clear(&self.name).await?;
         Ok(())
-    }
-
-    fn watch(&self) {
-        // let store = self.store.clone();
-        // let cache = Arc::clone(&self.cache);
-        // let name = self.name.clone();
-        //
     }
 }
 
@@ -77,14 +69,12 @@ where
         let value = self.cache.get(&key).await;
         if value.is_some() {
             value
+        } else if let Ok(Some(data)) = self.client.get(&self.name, &key).await {
+            let v: V = serde_json::from_slice(&data).unwrap();
+            self.cache.insert(key, v.clone()).await;
+            Some(v)
         } else {
-            if let Ok(data) = self.client.get(&self.name, &key).await {
-                let v: V = serde_json::from_slice(&data).unwrap();
-                self.cache.insert(key, v.clone()).await;
-                Some(v)
-            } else {
-                None
-            }
+            None
         }
     }
 
@@ -96,7 +86,7 @@ where
         let key = key.to_string();
         self.cache.insert(key.clone(), value.clone()).await;
         let out = serde_json::to_vec(value).unwrap();
-        if let Err(e) = self.client.put(&self.name, &key, out.into()).await {
+        if let Err(e) = self.client.put(&self.name, &key, out).await {
             error!("error setting cache: {:?}", e);
         }
     }

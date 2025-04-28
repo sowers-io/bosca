@@ -55,9 +55,5 @@ Content-Type: application/json
 }
 
 ###
-GRPC localhost:2002/bosca.dc.DistributedCache/SubscribeNotifications
+GRPC localhost:2001/bosca.dc.DistributedCache/SubscribeNotifications
 Content-Type: application/json
-
-{
-  "cache": "test"
-}

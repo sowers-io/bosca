@@ -16,3 +16,4 @@ prost = "0.13.5"
 hashring = "0.3.6"
 async-graphql = { version = "7.0.15", features = ["chrono", "chrono-tz", "graphiql", "tokio", "unblock", "apollo_persisted_queries", "log", "tracing"] }
 log = "0.4.27"
+uuid = { version = "1.16.0", features = ["v4"] }
