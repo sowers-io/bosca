@@ -24,6 +24,7 @@ use std::ops::Add;
 use std::sync::Arc;
 use std::time::Duration;
 use uuid::Uuid;
+use bosca_dc_client::client::api::NotificationType;
 
 #[derive(Clone)]
 pub struct MetadataDataStore {
@@ -73,16 +74,20 @@ impl MetadataDataStore {
         update_cache: &str,
     ) -> Result<(), Error> {
         let mut subscription = client.subscribe();
+        let removed = NotificationType::ValueDeleted;
         while let Ok(notification) = subscription.recv().await {
             if notification.cache == update_cache {
-                let id = notification.key.unwrap();
-                let id = Uuid::parse_str(&id)?;
-                let mut request = EnqueueRequest {
-                    workflow_id: Some(METADATA_UPDATE_STORAGE.to_string()),
-                    metadata_id: Some(id),
-                    ..Default::default()
-                };
-                ctx.workflow.enqueue_workflow(ctx, &mut request).await?;
+                let t = NotificationType::try_from(notification.notification_type)?;
+                if t == removed {
+                    let id = notification.key.unwrap();
+                    let id = Uuid::parse_str(&id)?;
+                    let mut request = EnqueueRequest {
+                        workflow_id: Some(METADATA_UPDATE_STORAGE.to_string()),
+                        metadata_id: Some(id),
+                        ..Default::default()
+                    };
+                    ctx.workflow.enqueue_workflow(ctx, &mut request).await?;
+                }
             }
         }
         Ok(())

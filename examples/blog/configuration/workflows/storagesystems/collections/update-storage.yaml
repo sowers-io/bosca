@@ -79,6 +79,14 @@ activities:
       workflows:
         - collection.index.default
 
+  # resize the image to the appropriate sizes based on the admin
+  - queue: metadata
+    activity: workflow.execute.child
+    executionGroup: 3
+    configuration:
+      workflows:
+        - image.relationship.resize
+
   - queue: metadata
     activity: collection.supplementary.delete
     executionGroup: 4

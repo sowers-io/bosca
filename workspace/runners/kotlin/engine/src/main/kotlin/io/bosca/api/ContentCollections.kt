@@ -1,6 +1,7 @@
 package io.bosca.api
 
 import com.apollographql.apollo.api.Optional
+import com.apollographql.apollo.api.Upload
 import io.bosca.graphql.*
 import io.bosca.graphql.fragment.*
 import io.bosca.graphql.fragment.Collection
@@ -92,6 +93,24 @@ class ContentCollections(network: NetworkClient) : Api(network) {
         return response.data?.content?.collection?.addSupplementary?.collectionSupplementary
     }
 
+    suspend fun setSupplementaryContents(supplementaryId: String, file: Upload): Boolean {
+        val response = network.graphql.mutation(
+            SetCollectionSupplementaryContentsMutation(
+                supplementaryId,
+                file.contentType,
+                file
+            )
+        ).execute()
+        response.validate()
+        return response.data?.content?.collection?.setSupplementaryContents ?: false
+    }
+
+    suspend fun getSupplementary(collectionId: String): List<CollectionSupplementary> {
+        val response = network.graphql.query(GetCollectionSupplementariesQuery(collectionId)).execute()
+        response.validate()
+        return response.data?.content?.collection?.supplementary?.map { it.collectionSupplementary } ?: emptyList()
+    }
+
     suspend fun edit(id: String, collection: CollectionInput): String? {
         val response = network.graphql.mutation(EditCollectionMutation(id, collection)).execute()
         response.validate()
@@ -177,6 +196,13 @@ class ContentCollections(network: NetworkClient) : Api(network) {
         val response = network.graphql.mutation(RemoveMetadataCollectionMutation(collectionId, metadataId)).execute()
         response.validate()
         return response.data?.content?.collection?.removeChildMetadata?.id
+    }
+
+    suspend fun mergeRelationshipAttributes(collectionId: String, metadataId: String, relationship: String, attributes: Any) {
+        val response =
+            network.graphql.mutation(MergeCollectionRelationshipAttributesMutation(collectionId, metadataId, relationship, attributes))
+                .execute()
+        response.validate()
     }
 
     suspend fun getSupplementaryContentDownload(supplementaryId: String): CollectionSupplementaryContentDownload? {

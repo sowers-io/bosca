@@ -5,6 +5,7 @@ import io.bosca.api.Client
 import io.bosca.graphql.fragment.MetadataSupplementary
 import io.bosca.graphql.fragment.WorkflowJob
 import io.bosca.graphql.type.ActivityInput
+import io.bosca.graphql.type.CollectionSupplementaryInput
 import io.bosca.graphql.type.MetadataSupplementaryInput
 import io.bosca.util.decode
 import io.bosca.util.json
@@ -27,9 +28,12 @@ import kotlin.uuid.Uuid
 data class Coordinates(
     val top: Int = 0,
     val left: Int = 0,
-    val width: Int,
-    val height: Int
-)
+    val width: Int = 0,
+    val height: Int = 0
+) {
+    val isEmpty: Boolean
+        get() = width == 0 && height == 0 && top == 0 && left == 0
+}
 
 @Serializable
 data class ImageAttributes(
@@ -58,7 +62,7 @@ abstract class AbstractImageResizer(client: Client) : Activity(client) {
         size: ImageSize
     ): String {
         val imageProcessorUrl = System.getenv("IMAGE_PROCESSOR_URL") ?: "http://localhost:8003"
-        val resized = if (size.size != null) {
+        val resized = if (size.size != null && !size.size.isEmpty) {
             "$imageProcessorUrl/image?u=$url&f=$format&w=${size.size.width}&h=${size.size.height}&l=${size.size.left}&t=${size.size.top}"
         } else {
             val ratio = size.ratio.toFloat() / 100f

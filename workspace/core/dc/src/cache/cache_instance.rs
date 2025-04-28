@@ -3,6 +3,7 @@ use crate::notification::NotificationService;
 use moka::future::{Cache, CacheBuilder};
 use moka::policy::EvictionPolicy;
 use std::sync::Arc;
+use tracing::info;
 
 pub struct CacheInstance {
     pub(crate) id: String,
@@ -23,16 +24,22 @@ impl CacheInstance {
     ) -> Self {
         let cache_id = id.to_string();
         let mut builder = CacheBuilder::new(max_capacity)
-            .eviction_listener(move |k: Arc<String>, v, _| {
-                let notification = Notification {
-                    cache: cache_id.clone(),
-                    create: None,
-                    notification_type: NotificationType::ValueDeleted as i32,
-                    key: Some(k.to_string()),
-                    value: Some(v),
-                    node: Some(node.clone()),
-                };
-                notifications.notify(notification);
+            .eviction_listener(move |k: Arc<String>, v, cause| {
+                if cause.was_evicted() {
+                    info!(
+                        "Cache {} evicted key {} with cause {:?}",
+                        cache_id, k, cause
+                    );
+                    let notification = Notification {
+                        cache: cache_id.clone(),
+                        create: None,
+                        notification_type: NotificationType::ValueDeleted as i32,
+                        key: Some(k.to_string()),
+                        value: Some(v),
+                        node: Some(node.clone()),
+                    };
+                    notifications.notify(notification);
+                }
             })
             .eviction_policy(EvictionPolicy::tiny_lfu());
         if ttl > 0 {

@@ -903,6 +903,34 @@ impl CollectionsDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, collection_id, metadata_id, relationship, attributes))]
+    pub async fn merge_relationship_attributes(
+        &self,
+        ctx: &BoscaContext,
+        collection_id: &Uuid,
+        metadata_id: &Uuid,
+        relationship: &str,
+        attributes: Value,
+    ) -> Result<(), Error> {
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        let stmt = txn
+            .prepare_cached("update collection_metadata_relationships set attributes = coalesce(attributes, '{}'::jsonb) || $1 where collection_id = $2 and metadata_id = $3 and relationship = $4")
+            .await?;
+        let relationship = relationship.to_owned();
+        txn.execute(
+            &stmt,
+            &[&attributes, &collection_id, &metadata_id, &relationship],
+        )
+            .await?;
+        update_collection_etag(&txn, collection_id).await?;
+        update_metadata_etag(&txn, metadata_id).await?;
+        txn.commit().await?;
+        self.on_collection_changed(ctx, collection_id).await?;
+        self.on_metadata_changed(ctx, metadata_id).await?;
+        Ok(())
+    }
+
     #[tracing::instrument(skip(self, ctx, collection_id, ordering))]
     pub async fn set_ordering(
         &self,

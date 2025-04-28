@@ -13,7 +13,7 @@ use tokio::sync::{broadcast, RwLock};
 use tonic::transport::Channel;
 use uuid::Uuid;
 
-mod api {
+pub mod api {
     tonic::include_proto!("bosca.dc");
 }
 
@@ -96,10 +96,26 @@ impl Client {
             while let Ok(Some(notification)) = stream.message().await {
                 let t = NotificationType::try_from(notification.notification_type).unwrap();
                 match t {
-                    NotificationType::CacheCreated => {}
-                    NotificationType::ValueUpdated => {}
-                    NotificationType::ValueDeleted => {}
-                    NotificationType::CacheCleared => {}
+                    NotificationType::CacheCreated => {
+                        if let Err(e) = listen_client.tx.send(notification) {
+                            error!("failed to send notification: {:?}", e);
+                        }
+                    }
+                    NotificationType::ValueUpdated => {
+                        if let Err(e) = listen_client.tx.send(notification) {
+                            error!("failed to send notification: {:?}", e);
+                        }
+                    }
+                    NotificationType::ValueDeleted => {
+                        if let Err(e) = listen_client.tx.send(notification) {
+                            error!("failed to send notification: {:?}", e);
+                        }
+                    }
+                    NotificationType::CacheCleared => {
+                        if let Err(e) = listen_client.tx.send(notification) {
+                            error!("failed to send notification: {:?}", e);
+                        }
+                    }
                     NotificationType::NodeFound => {
                         if let Some(node) = notification.node {
                             if let Err(e) = listen_client.initialize_client(node.clone()).await {

@@ -92,9 +92,12 @@ type BibleReference {
 }
 
 type CacheObject {
-    caches: [String!]!
-    keys(cache: String!): [String!]!
-    remoteKeys(cache: String!): [String!]!
+    keys: [String!]!
+    name: String!
+}
+
+type CachesObject {
+    caches: [CacheObject!]!
 }
 
 type Categories {
@@ -170,6 +173,7 @@ type CollectionMutation {
     mergeCollectionAttributes(attributes: JSON!, id: String!): Boolean!
     mergeCollectionItemAttributes(attributes: JSON!, id: String!, itemId: String!): Boolean!
     mergeMetadataItemAttributes(attributes: JSON!, id: String!, itemId: String!): Boolean!
+    mergeMetadataRelationshipAttributes(attributes: JSON!, collectionId: String!, metadataId: String!, relationship: String!): Boolean!
     permanentlyDelete(collectionId: String!, recursive: Boolean): Boolean!
     removeChildCollection(collectionId: String!, id: String!): Collection!
     removeChildMetadata(id: String!, metadataId: String!): Collection!
@@ -727,7 +731,7 @@ type PromptsMutation {
 }
 
 type Query {
-    cache: CacheObject!
+    caches: CachesObject!
     configurations: Configurations!
     content: Content!
     persistedQueries: PersistedQueriesObject!

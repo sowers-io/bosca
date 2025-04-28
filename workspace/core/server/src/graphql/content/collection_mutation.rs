@@ -555,7 +555,35 @@ impl CollectionMutationObject {
             .await?;
         Ok(true)
     }
-    
+
+    async fn merge_metadata_relationship_attributes(
+        &self,
+        ctx: &Context<'_>,
+        collection_id: String,
+        metadata_id: String,
+        relationship: String,
+        attributes: serde_json::Value,
+    ) -> Result<bool, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let collection_id = Uuid::parse_str(collection_id.as_str())?;
+        let metadata_id = Uuid::parse_str(metadata_id.as_str())?;
+        ctx.check_collection_action(&collection_id, PermissionAction::Edit)
+            .await?;
+        ctx.check_metadata_action(&metadata_id, PermissionAction::Edit)
+            .await?;
+        ctx.content
+            .collections
+            .merge_relationship_attributes(
+                ctx,
+                &collection_id,
+                &metadata_id,
+                &relationship,
+                attributes,
+            )
+            .await?;
+        Ok(true)
+    }
+
     async fn set_collection_ordering(
         &self,
         ctx: &Context<'_>,
