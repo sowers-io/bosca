@@ -45,7 +45,7 @@ impl DistributedCache for DistributedCacheImpl {
         let req = request.get_ref();
         if let Err(e) = self
             .cache
-            .create_cache(&req.name, req.max_capacity, true)
+            .create_cache(&req.name, req.max_capacity, req.ttl, req.tti, true)
             .await
         {
             return Err(Status::internal(e.to_string()));
@@ -60,7 +60,11 @@ impl DistributedCache for DistributedCacheImpl {
         request: Request<GetValueRequest>,
     ) -> Result<Response<GetValueResponse>, Status> {
         let req = request.get_ref();
-        let value = self.cache.get(&req.cache, &req.key).await.map_err(|e| Status::internal(e.to_string()))?;
+        let value = self
+            .cache
+            .get(&req.cache, &req.key)
+            .await
+            .map_err(|e| Status::internal(e.to_string()))?;
         Ok(Response::new(GetValueResponse { value }))
     }
 
@@ -108,17 +112,20 @@ impl DistributedCache for DistributedCacheImpl {
         match notification_type {
             NotificationType::CacheCreated => {
                 self.cache
-                    .create_cache(&req.cache.clone(), req.max_capacity, false)
+                    .create_cache(&req.cache.clone(), req.max_capacity, req.ttl, req.tti, false)
                     .await
                     .map_err(|e| Status::internal(e.to_string()))?;
             }
             NotificationType::ValueUpdated => {
                 if let Some(k) = &req.key {
                     if let Some(v) = &req.value {
-                        self.cache
-                            .put(&req.cache, k.clone(), v.clone(), false)
-                            .await
-                            .map_err(|e| Status::internal(e.to_string()))?;
+                        let node = self.cluster.get_node(k).await;
+                        if node.is_none() || node.unwrap().id == self.cluster.node.id {
+                            self.cache
+                                .put(&req.cache, k.clone(), v.clone(), false)
+                                .await
+                                .map_err(|e| Status::internal(e.to_string()))?;
+                        }
                     }
                 }
             }
@@ -165,20 +172,17 @@ impl DistributedCache for DistributedCacheImpl {
 
     async fn subscribe_notifications(
         &self,
-        request: Request<SubscribeNotificationsRequest>,
+        _: Request<SubscribeNotificationsRequest>,
     ) -> Result<Response<Self::SubscribeNotificationsStream>, Status> {
         let (tx, rx) = channel(500);
         let mut subscribe = self.notifications.subscribe();
-        let cache = request.get_ref().cache.clone();
         tokio::spawn(async move {
             while let Ok(item) = subscribe.recv().await {
-                if item.cache == cache {
-                    match tx.send(Ok(item)).await {
-                        Ok(_) => {}
-                        Err(e) => {
-                            error!("error sending notification: {}", e);
-                            break;
-                        }
+                match tx.send(Ok(item)).await {
+                    Ok(_) => {}
+                    Err(e) => {
+                        error!("error sending notification: {}", e);
+                        break;
                     }
                 }
             }

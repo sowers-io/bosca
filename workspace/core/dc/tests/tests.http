@@ -18,6 +18,16 @@ Content-Type: application/json
 }
 
 ###
+GRPC localhost:2002/bosca.dc.DistributedCache/PutValue
+Content-Type: application/json
+
+{
+  "cache": "test",
+  "key": "testkey1231245125125",
+  "value": asdf
+}
+
+###
 GRPC localhost:2002/bosca.dc.DistributedCache/GetValue
 Content-Type: application/json
 
@@ -32,7 +42,7 @@ Content-Type: application/json
 
 {
   "cache": "test",
-  "key": "testkey"
+  "key": "testkey1231245125125"
 }
 
 ###

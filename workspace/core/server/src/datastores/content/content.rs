@@ -19,10 +19,10 @@ use crate::models::content::slug::{Slug, SlugType};
 use async_graphql::Error;
 use bosca_database::TracingPool;
 use std::sync::Arc;
-use async_nats::jetstream::Context;
 use uuid::Uuid;
 use crate::datastores::collection_cache::CollectionCache;
 use crate::datastores::metadata_cache::MetadataCache;
+use bosca_dc_client::client::Client;
 
 #[derive(Clone)]
 pub struct ContentDataStore {
@@ -47,7 +47,7 @@ pub struct ContentDataStore {
 
 impl ContentDataStore {
 
-    pub async fn new(pool: TracingPool, cache: &mut BoscaCacheManager, jetstream: Context, notifier: Arc<Notifier>) -> Result<Self, Error> {
+    pub async fn new(pool: TracingPool, cache: &mut BoscaCacheManager, notifier: Arc<Notifier>, client: Client) -> Result<Self, Error> {
         let collections_cache = CollectionCache::new(cache).await?;
         let metadata_cache = MetadataCache::new(cache).await?;
         Ok(Self {
@@ -66,7 +66,7 @@ impl ContentDataStore {
             collection_templates: CollectionTemplatesDataStore::new(
                 pool.clone(),
             ),
-            metadata: MetadataDataStore::new(pool.clone(), metadata_cache.clone(), jetstream, Arc::clone(&notifier)).await?,
+            metadata: MetadataDataStore::new(pool.clone(), metadata_cache.clone(), Arc::clone(&notifier), client).await?,
             metadata_supplementary: MetadataSupplementaryDataStore::new(pool.clone(), metadata_cache.clone(), Arc::clone(&notifier)),
             metadata_permissions: MetadataPermissionsDataStore::new(
                 pool.clone(),

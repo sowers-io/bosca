@@ -3,6 +3,7 @@ use crate::api::service::api::{Node, Notification, NotificationType};
 use crate::notification::NotificationService;
 use hashring::HashRing;
 use prost::Message;
+use std::hash::{Hash, Hasher};
 use std::net::{Ipv4Addr, SocketAddr};
 use std::sync::atomic::AtomicI32;
 use std::sync::atomic::Ordering::Relaxed;
@@ -20,6 +21,14 @@ struct Peer {
     failures: AtomicI32,
 }
 
+impl Hash for Node {
+    fn hash<H: Hasher>(&self, s: &mut H) {
+        (&self.id, &self.ip, self.port).hash(s)
+    }
+}
+
+impl Eq for Node {}
+
 impl PartialEq for Peer {
     fn eq(&self, other: &Self) -> bool {
         self.node.id == other.node.id
@@ -28,13 +37,11 @@ impl PartialEq for Peer {
 
 impl Eq for Peer {}
 
-impl Eq for Node {}
-
 #[derive(Clone)]
 pub struct Cluster {
     pub node: Node,
     peers: Arc<RwLock<Vec<Peer>>>,
-    hash: Arc<RwLock<HashRing<Peer>>>,
+    hash: Arc<RwLock<HashRing<Node>>>,
     notifications: NotificationService,
     receive_port: u16,
     broadcast_port: u16,
@@ -49,15 +56,21 @@ impl Cluster {
     ) -> Self {
         let cluster = Self {
             node: node.clone(),
-            peers: Arc::new(RwLock::new(vec![Peer {
-                node,
-                failures: AtomicI32::new(0),
-            }])),
+            peers: Arc::new(RwLock::new(Vec::new())),
             hash: Arc::new(RwLock::new(HashRing::new())),
             notifications,
             receive_port,
             broadcast_port,
         };
+        {
+            let mut p = cluster.peers.write().await;
+            p.push(Peer {
+                node: node.clone(),
+                failures: AtomicI32::new(0),
+            });
+            let mut hash = cluster.hash.write().await;
+            hash.add(node.clone());
+        }
         let notify_cluster = cluster.clone();
         tokio::spawn(async move {
             let mut subscribe = notify_cluster.notifications.subscribe();
@@ -123,6 +136,8 @@ impl Cluster {
     pub async fn deregister(&self, node: Node, notify: bool) {
         let mut peers = self.peers.write().await;
         peers.retain(|p| p.node.id != node.id);
+        let mut hash = self.hash.write().await;
+        hash.remove(&node);
         if notify {
             self.notifications.notify(Notification {
                 notification_type: NotificationType::NodeLost.into(),
@@ -130,6 +145,22 @@ impl Cluster {
                 ..Default::default()
             });
         }
+    }
+
+    pub async fn get_node(&self, key: &String) -> Option<Node> {
+        let nodes = self.hash.read().await;
+        if let Some(node) = nodes.get(key) {
+            return Some(node.clone());
+        }
+        None
+    }
+
+    pub async fn is_this_node(&self, key: &String) -> bool {
+        let nodes = self.hash.read().await;
+        if let Some(node) = nodes.get(key) {
+            return node.id == self.node.id;
+        }
+        false
     }
 
     pub async fn register(&self, node: Node, notify: bool) {
@@ -146,6 +177,8 @@ impl Cluster {
             {
                 let mut peers = self.peers.write().await;
                 peers.push(peer);
+                let mut hash = self.hash.write().await;
+                hash.add(node.clone());
                 debug!("peers: {:?}", peers);
             }
             if notify {
@@ -166,7 +199,8 @@ impl Cluster {
     }
 
     async fn notify(&self, message: Notification) {
-        for peer in self.peers.read().await.iter() {
+        let peers = self.peers.read().await;
+        for peer in peers.iter() {
             if self.node.id == peer.node.id {
                 continue;
             }

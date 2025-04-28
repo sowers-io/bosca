@@ -1,6 +1,6 @@
 [package]
 name = "bosca-server"
-version = "0.2.0"
+version = "0.5.0"
 edition = "2021"
 
 #[target.'cfg(not(target_env = "msvc"))'.dependencies]
@@ -32,14 +32,10 @@ argon2 = "0.5.3"
 log = "0.4.22"
 jsonwebtoken = "9.3.0"
 tokio-stream = "0.1.16"
-structured-logger = "1.0.3"
 object_store = { version = "0.12.0", features = ["aws"] }
 redis = { version = "0.29.5", features = ["cluster", "cluster-async", "aio", "tokio-comp", "r2d2", "streams", "connection-manager", "uuid", "json"] }
 bosca-database = { path = "../util/database" }
 jsonschema = "0.29.0"
-md5 = "0.7.0"
-
-reqwest = "0.12.8"
 opentelemetry = { version = "0.29.1", features = ["default"] }
 opentelemetry_sdk = { version = "0.29.0", features = ["default", "rt-tokio"] }
 opentelemetry-otlp = { version = "0.29.0", features = ["tracing", "trace", "logs", "metrics", "http", "http-proto", "tokio", "opentelemetry-http", "default", "reqwest"] }
@@ -50,18 +46,15 @@ tracing-opentelemetry = { version = "0.30.0", features = ["default", "async-trai
 axum-tracing-opentelemetry = "0.28.0"
 
 meilisearch-sdk = "0.28.0"
-headers = "0.4.0"
 rustls = { version = "0.23.23", features = ["tls12", "ring"] }
-webpki-roots = "0.26.8"
 
 mimalloc = { version = "0.1.43", features = ["default"] }
 
 hmac = "0.12.1"
 sha2 = "0.10.8"
-url = "2.5.4"
 hex = "0.4.3"
 rand = "0.9.0"
 rrule = "0.13.0"
 moka = { version = "0.12.10", features = ["future"] }
-async-nats = { version = "0.40.0" }
-#console-subscriber = "0.4.0"
+
+bosca-dc-client = { path = "../dc-client" }

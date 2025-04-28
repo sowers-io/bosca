@@ -6,4 +6,5 @@ members = [
     "workspace/core/analytics",
     "workspace/core/util/database",
     "workspace/core/dc",
+    "workspace/core/dc-client",
 ]

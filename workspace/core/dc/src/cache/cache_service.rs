@@ -6,7 +6,7 @@ use log::debug;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use tracing::info;
+use tracing::{info, warn};
 
 #[derive(Clone)]
 pub struct CacheService {
@@ -40,14 +40,23 @@ impl CacheService {
         &self,
         id: &str,
         max_capacity: u64,
+        ttl: u64,
+        tti: u64,
         notify: bool,
     ) -> Result<String, String> {
         let id = id.to_string();
         let mut caches = self.caches.write().await;
         if caches.contains_key(&id) {
-            return Ok(id.clone())
+            return Ok(id.clone());
         }
-        let cache_instance = CacheInstance::new(id.clone(), max_capacity);
+        let cache_instance = CacheInstance::new(
+            self.cluster.node.clone(),
+            self.notifications.clone(),
+            id.clone(),
+            max_capacity,
+            ttl,
+            tti,
+        );
         let cache_id = cache_instance.id.clone();
         caches.insert(id.clone(), cache_instance);
         if notify {
@@ -98,7 +107,11 @@ impl CacheService {
         let caches = self.caches.read().await;
         if let Some(cache) = caches.get(id) {
             debug!("put: cache: {id}, key: {key}");
-            cache.put(key.clone(), value.clone()).await;
+            if self.cluster.is_this_node(&key).await {
+                cache.put(key.clone(), value.clone()).await;
+            } else {
+                warn!("put: cache: {id}, key: {key}, but this node is not the owner of the key, skip put")
+            }
             if notify {
                 let notification = Notification {
                     cache: id.to_string(),
@@ -117,7 +130,7 @@ impl CacheService {
     }
 
     pub async fn delete(&self, id: &str, key: &str, notify: bool) -> Result<(), String> {
-        info!("delete: cache: {id}, key: {key}");
+        debug!("delete: cache: {id}, key: {key}");
         let caches = self.caches.read().await;
         if let Some(cache) = caches.get(id) {
             cache.delete(key).await;
@@ -139,7 +152,7 @@ impl CacheService {
     }
 
     pub async fn clear(&self, id: &str, notify: bool) -> Result<(), String> {
-        info!("delete: cache: {id}");
+        info!("clear: cache: {id}");
         let caches = self.caches.read().await;
         if let Some(cache) = caches.get(id) {
             cache.clear().await;

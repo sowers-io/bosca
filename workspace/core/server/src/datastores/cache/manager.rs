@@ -1,43 +1,23 @@
 use crate::datastores::cache::cache::{BoscaCache, ClearableCache};
 use async_graphql::Error;
-use async_nats::jetstream::Context;
-use async_nats::{jetstream,};
 use log::{error, info};
 use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
-use async_nats::jetstream::kv::Store;
 use tokio::sync::Mutex;
 
 #[derive(Clone)]
 pub struct BoscaCacheManager {
     caches: Arc<Mutex<HashMap<String, Box<dyn ClearableCache + Send + Sync>>>>,
-    jetstream: Context,
+    client: bosca_dc_client::client::Client,
 }
 
 impl BoscaCacheManager {
-    pub fn new(jetstream: Context) -> Self {
+    pub fn new(client: bosca_dc_client::client::Client) -> Self {
         Self {
             caches: Arc::new(Mutex::new(HashMap::new())),
-            jetstream,
+            client,
         }
-    }
-
-    async fn new_store(&self, name: &str) -> Result<Store, Error> {
-        let prefix = option_env!("NAMESPACE").unwrap_or("").to_string();
-        let bucket_name = if prefix.is_empty() { format!("{}_v2", name) } else { format!("{}_{}_v2", prefix, name) };
-        info!("using jetstream bucket: {}", bucket_name);
-        let kv = self
-            .jetstream
-            .create_key_value(jetstream::kv::Config {
-                bucket: bucket_name,
-                history: 1,
-                max_age: Duration::from_secs(1800),
-                ..Default::default()
-            })
-            .await?;
-
-        Ok(kv)
     }
 
     pub async fn new_id_tiered_cache<V>(
@@ -54,7 +34,7 @@ impl BoscaCacheManager {
             name.to_string(),
             size,
             Duration::from_secs(1800),
-            self.new_store(name).await?,
+            self.client.clone(),
         );
         caches.insert(name.to_string(), Box::new(cache.clone()));
         Ok(cache)
@@ -74,7 +54,7 @@ impl BoscaCacheManager {
             name.to_string(),
             size,
             Duration::from_secs(1800),
-            self.new_store(name).await?,
+            self.client.clone(),
         );
         caches.insert(name.to_string(), Box::new(cache.clone()));
         Ok(cache)
@@ -94,7 +74,7 @@ impl BoscaCacheManager {
             name.to_string(),
             size,
             Duration::from_secs(1800),
-            self.new_store(name).await?,
+            self.client.clone(),
         );
         caches.insert(name.to_string(), Box::new(cache.clone()));
         Ok(cache)

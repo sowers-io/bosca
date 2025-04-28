@@ -14,16 +14,12 @@ use crate::models::content::metadata_relationship::{
 use crate::models::workflow::enqueue_request::EnqueueRequest;
 use crate::workflow::core_workflow_ids::{METADATA_DELETE_FINALIZE, METADATA_UPDATE_STORAGE};
 use async_graphql::*;
-use async_nats::jetstream;
-use async_nats::jetstream::kv::Store;
-use async_nats::jetstream::stream::StorageType;
-use async_nats::jetstream::Context;
 use bosca_database::TracingPool;
+use bosca_dc_client::client::Client;
 use bytes::Bytes;
 use chrono::{TimeDelta, TimeZone, Utc};
 use deadpool_postgres::Transaction;
-use futures_util::TryStreamExt;
-use log::{error, info};
+use log::error;
 use serde_json::{Map, Value};
 use std::convert::TryInto;
 use std::ops::Add;
@@ -35,47 +31,37 @@ use uuid::Uuid;
 pub struct MetadataDataStore {
     cache: MetadataCache,
     pool: TracingPool,
-    updates: Store,
+    client: Client,
     notifier: Arc<Notifier>,
+    update_cache: String,
 }
 
 impl MetadataDataStore {
     pub async fn new(
         pool: TracingPool,
         cache: MetadataCache,
-        jetstream: Context,
         notifier: Arc<Notifier>,
+        client: Client,
     ) -> Result<Self, Error> {
         let prefix = option_env!("NAMESPACE").unwrap_or("").to_string();
-        let bucket = format!("{}_metadata_update_storage_queue2", prefix);
-        let updates = jetstream.get_key_value(&bucket).await;
-        let store = if updates.is_err() {
-            jetstream
-                .create_key_value(jetstream::kv::Config {
-                    bucket,
-                    history: 1,
-                    max_age: Duration::from_secs(30),
-                    storage: StorageType::Memory,
-                    ..Default::default()
-                })
-                .await?
-        } else {
-            updates?
-        };
+        let bucket = format!("{}_metadata_update_storage_queue", prefix);
+        client.create(&bucket, 5000, 5, 0).await?;
         Ok(Self {
             cache,
             pool,
-            updates: store,
             notifier,
+            client,
+            update_cache: bucket,
         })
     }
 
     pub fn watch(&self, ctx: &BoscaContext) {
-        let watcher_updates = self.updates.clone();
         let watcher_ctx = ctx.clone();
+        let client = self.client.clone();
+        let update_cache = self.update_cache.clone();
         tokio::spawn(async move {
             loop {
-                if let Err(e) = Self::enqueue_items(watcher_updates.clone(), &watcher_ctx).await {
+                if let Err(e) = Self::enqueue_items(&client, &watcher_ctx, &update_cache).await {
                     error!("Failed to enqueue metadata updates: {:?}", e);
                 }
                 tokio::time::sleep(Duration::from_secs(2)).await;
@@ -83,31 +69,22 @@ impl MetadataDataStore {
         });
     }
 
-    async fn enqueue_items(store: Store, ctx: &BoscaContext) -> Result<(), Error> {
-        // KJB: TODO: Once NATS supports notification on TTLs, this will be updated to be event based.
-        //      See https://github.com/nats-io/nats-server/issues/3268
-        let result = store.keys().await?;
-        let keys = result.try_collect::<Vec<_>>().await?;
-        let now = Utc::now();
-        for key in keys {
-            let Some(time) = store.get(&key).await? else {
-                continue;
-            };
-            if time.is_empty() {
-                continue;
-            }
-            let time: i64 = i64::from_be_bytes(time.as_ref().try_into()?);
-            let time = Utc.timestamp_millis_opt(time).unwrap();
-            if now > time {
-                let id = Uuid::parse_str(&key)?;
-                info!("enqueuing metadata update storage: {}", id);
+    async fn enqueue_items(
+        client: &Client,
+        ctx: &BoscaContext,
+        update_cache: &str,
+    ) -> Result<(), Error> {
+        let mut subscription = client.subscribe();
+        while let Ok(notification) = subscription.recv().await {
+            if notification.cache == update_cache {
+                let id = notification.key.unwrap();
+                let id = Uuid::parse_str(&id)?;
                 let mut request = EnqueueRequest {
                     workflow_id: Some(METADATA_UPDATE_STORAGE.to_string()),
                     metadata_id: Some(id),
                     ..Default::default()
                 };
                 ctx.workflow.enqueue_workflow(ctx, &mut request).await?;
-                store.purge(&key).await?;
             }
         }
         Ok(())
@@ -1164,17 +1141,18 @@ impl MetadataDataStore {
     #[tracing::instrument(skip(self, id))]
     pub async fn update_storage(&self, _: &BoscaContext, id: &Uuid) -> Result<(), Error> {
         self.cache.evict_metadata(id).await;
-
         let id_str = id.to_string();
         let next = Utc::now()
             .add(TimeDelta::new(5, 0).unwrap())
             .timestamp_millis();
         let next = next.to_be_bytes();
-        let bytes = Bytes::from_owner(next.to_vec());
-        if let Err(e) = self.updates.put(id_str.clone(), bytes).await {
-            error!("Failed to put update for metadata {}: {}", id, e);
+        if let Err(e) = self
+            .client
+            .put(&self.update_cache, &id_str, next.to_vec())
+            .await
+        {
+            error!("Failed to put update for metadata {}: {:?}", id, e);
         }
-
         Ok(())
     }
 }

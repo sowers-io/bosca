@@ -1,18 +1,51 @@
-use moka::future::Cache;
+use crate::api::service::api::{Node, Notification, NotificationType};
+use crate::notification::NotificationService;
+use moka::future::{Cache, CacheBuilder};
+use moka::policy::EvictionPolicy;
 
 pub struct CacheInstance {
     pub(crate) id: String,
     cache: Cache<String, Vec<u8>>,
     pub max_capacity: u64,
+    pub ttl: u64,
+    pub tti: u64,
 }
 
 impl CacheInstance {
-    pub fn new(id: String, max_capacity: u64) -> Self {
-        let cache = Cache::new(max_capacity);
+    pub fn new(
+        node: Node,
+        notifications: NotificationService,
+        id: String,
+        max_capacity: u64,
+        ttl: u64,
+        tti: u64,
+    ) -> Self {
+        let cache_id = id.to_string();
+        let mut builder = CacheBuilder::new(max_capacity)
+            .eviction_listener(move |k, v, cause| {
+                let notification = Notification {
+                    cache: cache_id,
+                    max_capacity,
+                    notification_type: NotificationType::ValueDeleted as i32,
+                    key: Some(k.to_string()),
+                    value: Some(v),
+                    node: Some(node.clone()),
+                };
+                notifications.notify(notification);
+            })
+            .eviction_policy(EvictionPolicy::tiny_lfu());
+        if ttl > 0 {
+            builder = builder.time_to_live(std::time::Duration::from_secs(ttl));
+        }
+        if tti > 0 {
+            builder = builder.time_to_live(std::time::Duration::from_secs(tti));
+        }
         Self {
             id,
-            cache,
             max_capacity,
+            ttl,
+            tti,
+            cache: builder.build(),
         }
     }
 
