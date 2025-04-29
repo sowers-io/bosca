@@ -317,6 +317,9 @@ impl CollectionsDataStore {
         let mut values = Vec::new();
         let mut names = Vec::new();
         values.push(&collection.id as &(dyn ToSql + Sync));
+        if let Some(state) = state {
+            values.push(state as &(dyn ToSql + Sync));
+        }
         let ordering = if let Some(ordering) = &collection.ordering {
             build_ordering_names(ordering, &mut names);
             build_ordering(
@@ -332,10 +335,9 @@ impl CollectionsDataStore {
             String::new()
         };
         let mut query = "select child_collection_id, child_metadata_id, collection_items.attributes as attributes from collection_items ".to_owned();
-        if let Some(state) = state {
+        if let Some(_) = state {
             query.push_str(" left join collections on (child_collection_id = collections.id and collections.workflow_state_id = $2) ");
             query.push_str(" left join metadata on (child_metadata_id = metadata.id and metadata.workflow_state_id = $2) ");
-            values.push(state as &(dyn ToSql + Sync));
         } else {
             query.push_str(" left join collections on (child_collection_id = collections.id) ");
             query.push_str(" left join metadata on (child_metadata_id = metadata.id) ");
