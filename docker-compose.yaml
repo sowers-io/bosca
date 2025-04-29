@@ -150,7 +150,8 @@ services:
   dc:
     image: ghcr.io/sowers-io/bosca/cache:latest
     platform: linux/amd64
-    environment: {}
+    environment:
+      DC_HOST: dc
     ports:
       - '5000:5000'
     restart: always

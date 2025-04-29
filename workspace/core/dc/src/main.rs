@@ -1,6 +1,5 @@
 use std::env;
-use std::net::SocketAddr;
-
+use std::net::ToSocketAddrs;
 use crate::api::service::api::distributed_cache_server::DistributedCacheServer;
 use crate::api::service::api::Node;
 use crate::api::service::DistributedCacheImpl;
@@ -98,7 +97,7 @@ async fn main() {
     cluster.broadcast().await;
     let cache_service = CacheService::new(cluster.clone(), notifications.clone());
     let api = DistributedCacheImpl::new(cluster, cache_service, notifications);
-    let addr = format!("{host}:{port}").parse::<SocketAddr>().unwrap();
+    let addr = format!("{host}:{port}").to_socket_addrs().unwrap().next().unwrap();
     info!("Listening on {}", addr);
     let reflection_service = Builder::configure()
         .register_encoded_file_descriptor_set(FILE_DESCRIPTOR_SET)
