@@ -20,14 +20,21 @@ pub struct PathParams {
 #[derive(Debug, Deserialize)]
 pub struct Params {
     supplementary_id: Option<String>,
+    key: Option<String>,
 }
 
 #[tracing::instrument(skip(ctx, params))]
 async fn get_supplementary(
     ctx: &BoscaContext,
+    metadata_id: &Uuid,
     params: &Params,
 ) -> Result<Option<MetadataSupplementary>, Error> {
-    Ok(if let Some(supplementary_id) = &params.supplementary_id {
+    Ok(if let Some(key) = &params.key {
+        ctx.content
+            .metadata_supplementary
+            .get_supplementary_by_key(metadata_id, &key)
+            .await?
+    } else if let Some(supplementary_id) = &params.supplementary_id {
         let supplementary_id = Uuid::parse_str(supplementary_id.as_str())?;
         ctx.content
             .metadata_supplementary
@@ -48,7 +55,10 @@ pub async fn slug(
     let principal = get_principal_from_headers(&ctx, &headers)
         .await
         .map_err(|_| (StatusCode::UNAUTHORIZED, "Unauthorized".to_owned()))?;
-    let principal_groups = ctx.security.get_principal_groups(&principal.id).await
+    let principal_groups = ctx
+        .security
+        .get_principal_groups(&principal.id)
+        .await
         .map_err(|_| (StatusCode::UNAUTHORIZED, "Unauthorized".to_owned()))?;
     let slug = slug.split('.').next().unwrap();
     let mut slug_content = ctx
@@ -71,7 +81,12 @@ pub async fn slug(
         return Err((StatusCode::NOT_FOUND, "Not Found".to_owned()))?;
     }
     let metadata = ctx
-        .check_metadata_content_action_principal(&principal, &principal_groups, &slug.id, PermissionAction::View)
+        .check_metadata_content_action_principal(
+            &principal,
+            &principal_groups,
+            &slug.id,
+            PermissionAction::View,
+        )
         .await
         .map_err(|_| (StatusCode::FORBIDDEN, "Forbidden".to_owned()))?;
     if metadata.deleted
@@ -82,7 +97,7 @@ pub async fn slug(
     {
         return Err((StatusCode::NOT_FOUND, "Not Found".to_owned()))?;
     }
-    let supplementary = get_supplementary(&ctx, &params).await.map_err(|_| {
+    let supplementary = get_supplementary(&ctx, &metadata.id, &params).await.map_err(|_| {
         (
             StatusCode::INTERNAL_SERVER_ERROR,
             "Internal Server Error".to_owned(),
