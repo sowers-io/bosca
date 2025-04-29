@@ -323,7 +323,7 @@ impl CollectionsDataStore {
                 "collections",
                 "collections.attributes",
                 "collection_items.attributes",
-                2,
+                if state.is_some() { 3 } else { 2 },
                 ordering,
                 &mut values,
                 &names,
