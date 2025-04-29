@@ -32,7 +32,7 @@ async fn get_supplementary(
     Ok(if let Some(key) = &params.key {
         ctx.content
             .metadata_supplementary
-            .get_supplementary_by_key(metadata_id, &key)
+            .get_supplementary_by_key(metadata_id, key)
             .await?
     } else if let Some(supplementary_id) = &params.supplementary_id {
         let supplementary_id = Uuid::parse_str(supplementary_id.as_str())?;

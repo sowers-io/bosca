@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use std::process::exit;
 use std::str::FromStr;
 use std::sync::Arc;
+use std::time::Duration;
 use deadpool_postgres::{Config, CreatePoolError, ManagerConfig, Object, Pool, PoolConfig, PoolError, RecyclingMethod, Runtime, Timeouts};
 use base64::Engine;
 use rustls::pki_types::CertificateDer;
@@ -48,7 +49,9 @@ pub fn build_pool(key: &str) -> Result<TracingPool, CreatePoolError> {
     };
     info!("Database Max Connections: {}", max_connections);
     let mut pool_config = PoolConfig::new(max_connections as usize);
-    pool_config.timeouts = Timeouts::wait_millis(5000);
+    pool_config.timeouts = Timeouts::wait_millis(10000);
+    pool_config.timeouts.create = Some(Duration::from_secs(10));
+    pool_config.timeouts.recycle = Some(Duration::from_secs(10));
     config.pool = Some(pool_config);
     config.manager = Some(ManagerConfig {
         recycling_method: RecyclingMethod::Fast,
