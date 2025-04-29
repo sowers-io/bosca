@@ -103,7 +103,8 @@ impl CacheService {
         if let Some(cache) = caches.get(cache) {
             Ok(cache.get(key).await)
         } else {
-            Err(format!("failed get: cache {} not found", cache))
+            warn!("get: cache: {cache} not found");
+            Ok(None)
         }
     }
 
@@ -116,26 +117,39 @@ impl CacheService {
     ) -> Result<(), String> {
         let caches = self.caches.read().await;
         if let Some(cache) = caches.get(id) {
-            debug!("put: cache: {id}, key: {key}");
-            if self.cluster.is_this_node(&key).await {
-                cache.put(key.clone(), value.clone()).await;
-            } else {
-                warn!("put: cache: {id}, key: {key}, but this node is not the owner of the key, skip put")
-            }
-            if notify {
-                let notification = Notification {
-                    cache: id.to_string(),
-                    create: None,
-                    notification_type: NotificationType::ValueUpdated.into(),
-                    key: Some(key),
-                    value: Some(value),
-                    node: Some(self.cluster.node.clone()),
-                };
-                self.notifications.notify(notification);
-            }
-            Ok(())
+            self.put_internal(id, key, value, notify, cache).await;
         } else {
-            Err(format!("failed put: cache {} not found", id))
+            warn!("get: cache: {id} not found");
+        }
+        Ok(())
+    }
+
+    async fn put_internal(
+        &self,
+        id: &str,
+        key: String,
+        value: Vec<u8>,
+        notify: bool,
+        cache: &CacheInstance,
+    ) {
+        debug!("put: cache: {id}, key: {key}");
+        if self.cluster.is_this_node(&key).await {
+            cache.put(key.clone(), value.clone()).await;
+        } else {
+            warn!(
+                "put: cache: {id}, key: {key}, but this node is not the owner of the key, skip put"
+            )
+        }
+        if notify {
+            let notification = Notification {
+                cache: id.to_string(),
+                create: None,
+                notification_type: NotificationType::ValueUpdated.into(),
+                key: Some(key),
+                value: Some(value),
+                node: Some(self.cluster.node.clone()),
+            };
+            self.notifications.notify(notification);
         }
     }
 
@@ -155,10 +169,10 @@ impl CacheService {
                 };
                 self.notifications.notify(notification);
             }
-            Ok(())
         } else {
-            Err(format!("failed delete: cache {} not found", id))
+            warn!("failed delete: cache {} not found", id)
         }
+        Ok(())
     }
 
     pub async fn clear(&self, id: &str, notify: bool) -> Result<(), String> {
@@ -177,9 +191,9 @@ impl CacheService {
                 };
                 self.notifications.notify(notification);
             }
-            Ok(())
         } else {
-            Err(format!("failed clear: cache {} not found", id))
+            warn!("failed clear: cache {} not found", id)
         }
+        Ok(())
     }
 }
