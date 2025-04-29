@@ -15,3 +15,4 @@ collections:
   - $ref: ./collections/authors.yaml
   - $ref: ./collections/standard.yaml
   - $ref: ./collections/topics.yaml
+  - $ref: ./collections/featured.yaml

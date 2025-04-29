@@ -1,0 +1,20 @@
+slug: featured-authors
+name: Featured Authors
+type: STANDARD
+editorType: none
+ordering:
+  - order: ASCENDING
+    path:
+      - sort
+    type: INT
+    location: RELATIONSHIP
+categories:
+  - Featured Collection
+attributes:
+  editor.type: Collection
+  type: Featured Collection
+templates:
+  query:
+    attributes:
+      - attributes:
+          collection: Featured Collections

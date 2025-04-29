@@ -312,6 +312,7 @@ impl CollectionsDataStore {
         collection: &Collection,
         offset: i64,
         limit: i64,
+        state: &Option<String>
     ) -> Result<Vec<CollectionChild>, Error> {
         let mut values = Vec::new();
         let mut names = Vec::new();
@@ -331,9 +332,15 @@ impl CollectionsDataStore {
             String::new()
         };
         let mut query = "select child_collection_id, child_metadata_id, collection_items.attributes as attributes from collection_items ".to_owned();
-        query.push_str(" left join collections on (child_collection_id = collections.id) ");
-        query.push_str(" left join metadata on (child_metadata_id = metadata.id) ");
-        query.push_str(" where collection_id = $1 and (collections.deleted is null or collections.deleted = false) and (metadata.deleted is null or metadata.deleted = false) ");
+        if let Some(state) = state {
+            query.push_str(" left join collections on (child_collection_id = collections.id and collections.workflow_state_id = $2) ");
+            query.push_str(" left join metadata on (child_metadata_id = metadata.id and metadata.workflow_state_id = $2) ");
+            values.push(state as &(dyn ToSql + Sync));
+        } else {
+            query.push_str(" left join collections on (child_collection_id = collections.id) ");
+            query.push_str(" left join metadata on (child_metadata_id = metadata.id) ");
+        }
+        query.push_str(" where collection_id = $1 and ((collections.id is not null and (collections.deleted is null or collections.deleted = false)) or (metadata.id is not null and (metadata.deleted is null or metadata.deleted = false))) ");
         if !ordering.is_empty() {
             query.push_str(ordering.as_str());
         } else {
@@ -351,14 +358,23 @@ impl CollectionsDataStore {
     }
 
     #[tracing::instrument(skip(self, collection))]
-    pub async fn get_children_count(&self, collection: &Collection) -> Result<i64, Error> {
+    pub async fn get_children_count(&self, collection: &Collection, state: &Option<String>) -> Result<i64, Error> {
         let mut query = "select count(*) as count from collection_items ".to_owned();
-        query.push_str(" left join collections on (child_collection_id = collections.id) ");
-        query.push_str(" left join metadata on (child_metadata_id = metadata.id) ");
-        query.push_str(" where collection_id = $1 and (collections.deleted is null or collections.deleted = false) and (metadata.deleted is null or metadata.deleted = false) ");
+        if state.is_some() {
+            query.push_str(" left join collections on (child_collection_id = collections.id and collections.workflow_state_id = $2) ");
+            query.push_str(" left join metadata on (child_metadata_id = metadata.id and metadata.workflow_state_id = $2) ");
+        } else {
+            query.push_str(" left join collections on (child_collection_id = collections.id) ");
+            query.push_str(" left join metadata on (child_metadata_id = metadata.id) ");
+        }
+        query.push_str(" where collection_id = $1 and ((collections.id is not null and (collections.deleted is null or collections.deleted = false)) or (metadata.id is not null and (metadata.deleted is null or metadata.deleted = false))) ");
         let connection = self.pool.get().await?;
         let stmt = connection.prepare_cached(query.as_str()).await?;
-        let rows = connection.query_one(&stmt, &[&collection.id]).await?;
+        let rows = if let Some(state) = state {
+            connection.query_one(&stmt, &[&collection.id, state]).await?
+        } else {
+            connection.query_one(&stmt, &[&collection.id]).await?
+        };
         Ok(rows.get(0))
     }
 

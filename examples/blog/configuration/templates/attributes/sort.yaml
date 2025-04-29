@@ -1,0 +1,7 @@
+key: sort
+name: Sort
+description: How to sort the item in the collection
+type: INT
+ui: INPUT
+list: false
+location: RELATIONSHIP

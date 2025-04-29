@@ -1,0 +1,49 @@
+slug: featured-collections
+name: Featured
+type: SYSTEM
+editorType: Collection
+attributes:
+  collection: Featured Collections
+categories:
+  - Featured Collection
+ordering:
+  - order: DESCENDING
+    field: name
+    type: STRING
+permissions:
+  - group: editors
+    action: view
+  - group: editors
+    action: edit
+  - group: editors
+    action: delete
+  - group: editors
+    action: list
+collections:
+  - $ref: ./featured/authors.yaml
+  - $ref: ./featured/home.yaml
+  - $ref: ./featured/topics.yaml
+templates:
+  collection:
+    name: Featured
+    description: Default Featured Template
+    collection:
+      defaultAttributes:
+        type: Featured Collection
+      ordering:
+        - order: ASCENDING
+          path:
+            - sort
+          type: INT
+          location: RELATIONSHIP
+      filters:
+        filters:
+          - name: Standard
+            filter: "type = \"Standard\""
+          - name: Topic
+            filter: "type = \"Topic\""
+          - name: Blog Post
+            filter: "type = \"Blog Post\""
+      attributes:
+        - $ref: ./attributes/simple-description.yaml
+        - $ref: ./attributes/sort.yaml
