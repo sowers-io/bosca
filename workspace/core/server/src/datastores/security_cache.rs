@@ -1,9 +1,9 @@
+use crate::datastores::cache::cache::BoscaCache;
 use crate::datastores::cache::manager::BoscaCacheManager;
 use crate::models::security::group::Group;
 use crate::models::security::principal::Principal;
 use async_graphql::Error;
 use uuid::Uuid;
-use crate::datastores::cache::cache::BoscaCache;
 
 const CACHE_SECURITY_PRINCIPAL_ID: &str = "security_principal_id";
 const CACHE_SECURITY_PRINCIPAL_GROUP_ID: &str = "security_principal_group_id";
@@ -22,19 +22,17 @@ impl SecurityCache {
     pub async fn new(cache: &mut BoscaCacheManager) -> Result<Self, Error> {
         Ok(Self {
             principal_id: cache
-                .new_id_tiered_cache(
-                    CACHE_SECURITY_PRINCIPAL_ID,
-                    5000,
-                )
+                .new_id_tiered_cache(CACHE_SECURITY_PRINCIPAL_ID, 5000)
                 .await?,
             principal_group_ids: cache
-                .new_id_tiered_cache(
-                    CACHE_SECURITY_PRINCIPAL_GROUP_ID,
-                    5000,
-                )
+                .new_id_tiered_cache(CACHE_SECURITY_PRINCIPAL_GROUP_ID, 5000)
                 .await?,
-            group_id: cache.new_id_tiered_cache(CACHE_SECURITY_GROUP_ID, 5000).await?,
-            group_name: cache.new_string_tiered_cache(CACHE_SECURITY_GROUP_NAME, 5000).await?,
+            group_id: cache
+                .new_id_tiered_cache(CACHE_SECURITY_GROUP_ID, 5000)
+                .await?,
+            group_name: cache
+                .new_string_tiered_cache(CACHE_SECURITY_GROUP_NAME, 5000)
+                .await?,
         })
     }
 
@@ -51,6 +49,7 @@ impl SecurityCache {
     #[tracing::instrument(skip(self, principal_id))]
     pub async fn evict_principal(&self, principal_id: &Uuid) {
         self.principal_id.remove(principal_id).await;
+        self.principal_group_ids.remove(principal_id).await;
     }
 
     #[tracing::instrument(skip(self, id))]
