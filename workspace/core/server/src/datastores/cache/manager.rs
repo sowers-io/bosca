@@ -3,7 +3,6 @@ use async_graphql::Error;
 use log::{error, info};
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::Duration;
 use tokio::sync::Mutex;
 
 #[derive(Clone)]
@@ -25,12 +24,6 @@ impl BoscaCacheManager {
         Ok(caches.keys().map(|k| k.to_string()).collect())
     }
 
-    pub async fn get_cache_keys(&self, name: &str) -> Result<Vec<String>, Error> {
-        let caches = self.caches.lock().await;
-        let cache = caches.get(name).ok_or(Error::from("cache not found"))?;
-        Ok(cache.keys())
-    }
-
     pub async fn new_id_tiered_cache<V>(
         &mut self,
         name: &str,
@@ -44,8 +37,6 @@ impl BoscaCacheManager {
         self.client.create(name, size, 1800, 0).await?;
         let cache = BoscaCache::<V>::new_ttl(
             name.to_string(),
-            size,
-            Duration::from_secs(1800),
             self.client.clone(),
         );
         caches.insert(name.to_string(), Box::new(cache.clone()));
@@ -65,8 +56,6 @@ impl BoscaCacheManager {
         self.client.create(name, size, 1800, 0).await?;
         let cache = BoscaCache::<V>::new_ttl(
             name.to_string(),
-            size,
-            Duration::from_secs(1800),
             self.client.clone(),
         );
         caches.insert(name.to_string(), Box::new(cache.clone()));
@@ -86,8 +75,6 @@ impl BoscaCacheManager {
         self.client.create(name, size, 1800, 0).await?;
         let cache = BoscaCache::<V>::new_ttl(
             name.to_string(),
-            size,
-            Duration::from_secs(1800),
             self.client.clone(),
         );
         caches.insert(name.to_string(), Box::new(cache.clone()));
