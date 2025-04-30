@@ -95,9 +95,12 @@ impl Extension for AuthorizationExtension {
                     Some(data) => {
                         let bctx = ctx.data::<BoscaContext>().unwrap();
                         let mut new_ctx = bctx.clone();
-                        new_ctx.principal = get_principal(data, &bctx.security)
-                            .await
-                            .unwrap_or(get_anonymous_principal());
+                        let principal = get_principal(data, &bctx.security).await;
+                        if let Ok(principal) = principal {
+                            new_ctx.principal = principal;    
+                        } else {
+                            new_ctx.principal = get_anonymous_principal(); 
+                        }
                         if !new_ctx.principal.anonymous {
                             new_ctx.principal_groups = bctx.security.get_principal_groups(&new_ctx.principal.id).await.unwrap_or(vec![]);
                         }

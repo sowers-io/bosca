@@ -335,7 +335,7 @@ impl CollectionsDataStore {
             String::new()
         };
         let mut query = "select child_collection_id, child_metadata_id, collection_items.attributes as attributes from collection_items ".to_owned();
-        if let Some(_) = state {
+        if state.is_some() {
             query.push_str(" left join collections on (child_collection_id = collections.id and collections.workflow_state_id = $2) ");
             query.push_str(" left join metadata on (child_metadata_id = metadata.id and metadata.workflow_state_id = $2) ");
         } else {

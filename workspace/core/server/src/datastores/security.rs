@@ -61,15 +61,28 @@ impl SecurityDataStore {
         })
     }
 
+    #[tracing::instrument(skip(self, url))]
     pub fn sign_url(&self, url: &str) -> String {
         sign_url(url, &self.url_secret_key, 3600)
     }
 
+    #[tracing::instrument(skip(self, url))]
     pub fn verify_signed_url(&self, url: &str) -> bool {
         verify_signed_url(url, &self.url_secret_key)
     }
 
-    #[allow(dead_code)]
+    #[tracing::instrument(skip(self, id))]
+    pub async fn create_verification_token(&self, id: &Uuid) -> Result<String, Error> {
+        let verification_token = hex::encode(Uuid::new_v4().as_bytes());
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        let stmt = txn.prepare_cached("update principals set verification_token = $1 where id = $2").await?;
+        txn.execute(&stmt, &[&verification_token, id]).await?;
+        txn.commit().await?;
+        Ok(verification_token)
+    }
+
+    #[tracing::instrument(skip(self, name, description, group_type))]
     pub async fn add_group(
         &self,
         name: &String,
@@ -451,6 +464,24 @@ impl SecurityDataStore {
         let attrs = credential.get_attributes();
         let hash = attrs.get("password").unwrap().as_str().unwrap();
         Ok(verify(hash, password)?)
+    }
+
+    /// verify forgot password token, so, verified must be true for this to work
+    #[tracing::instrument(skip(self, token))]
+    pub async fn verify_verification_token(
+        &self,
+        token: &str,
+    ) -> Result<Principal, Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("select * from principals where verification_token = $1 and verified = true")
+            .await?;
+        let token = token.to_string();
+        let results = connection.query(&stmt, &[&token]).await?;
+        if results.is_empty() {
+            return Err(Error::new("invalid token"));
+        }
+        Ok(results.first().unwrap().into())
     }
 
     #[tracing::instrument(skip(self, verification_token))]
