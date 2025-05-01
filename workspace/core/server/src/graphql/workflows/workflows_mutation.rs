@@ -19,12 +19,14 @@ use crate::models::workflow::transitions::BeginTransitionInput;
 use crate::models::workflow::workflows::WorkflowInput;
 use crate::security::util::check_has_group;
 use crate::util::transition::begin_transition;
+use crate::workflow::core_workflow_ids::{
+    COLLECTION_DELAYED_TRANSITION, METADATA_DELAYED_TRANSITION,
+};
 use async_graphql::{Context, Error, Object};
 use chrono::{DateTime, Utc};
 use log::warn;
 use serde_json::Value;
 use uuid::Uuid;
-use crate::workflow::core_workflow_ids::{COLLECTION_DELAYED_TRANSITION, METADATA_DELAYED_TRANSITION};
 
 pub(crate) struct WorkflowsMutationObject {}
 
@@ -311,13 +313,26 @@ impl WorkflowsMutationObject {
         delay_until: Option<DateTime<Utc>>,
     ) -> Result<WorkflowExecutionIdObject, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        ctx.check_has_service_account().await?;
+        let metadata_id = metadata_id.map(|id| Uuid::parse_str(&id).unwrap());
+        let collection_id = collection_id.map(|id| Uuid::parse_str(&id).unwrap());
+        let profile_id = profile_id.map(|id| Uuid::parse_str(&id).unwrap());
+        if let Some(metadata_id) = &metadata_id {
+            ctx.check_metadata_action(metadata_id, PermissionAction::Edit)
+                .await?;
+        }
+        if let Some(collection_id) = &collection_id {
+            ctx.check_collection_action(collection_id, PermissionAction::Edit)
+                .await?;
+        }
+        if profile_id.is_some() {
+            ctx.check_has_service_account().await?;
+        }
         let mut request = EnqueueRequest {
             workflow_id: Some(workflow_id),
-            metadata_id: metadata_id.map(|id| Uuid::parse_str(&id).unwrap()),
+            metadata_id,
             metadata_version: version,
-            collection_id: collection_id.map(|id| Uuid::parse_str(&id).unwrap()),
-            profile_id: profile_id.map(|id| Uuid::parse_str(&id).unwrap()),
+            collection_id,
+            profile_id,
             configurations,
             delay_until,
             ..Default::default()
@@ -401,11 +416,14 @@ impl WorkflowsMutationObject {
         ctx: &Context<'_>,
         job_id: WorkflowJobIdInput,
         error: String,
-        try_again: bool
+        try_again: bool,
     ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         ctx.check_has_service_account().await?;
-        warn!("job failure reported: {} :: {} :: {} -> {}", job_id.queue, job_id.id, job_id.index, error);
+        warn!(
+            "job failure reported: {} :: {} :: {} -> {}",
+            job_id.queue, job_id.id, job_id.index, error
+        );
         ctx.workflow
             .set_execution_plan_job_failed(&job_id.into(), &error, try_again)
             .await?;
