@@ -4,7 +4,7 @@ import io.bosca.api.Client
 import io.bosca.graphql.type.TraitInput
 import io.bosca.installer.Installer
 import io.bosca.workflow.models.Traits
-import io.bosca.workflow.yaml.YamlLoader
+import io.bosca.yaml.YamlLoader
 import java.io.File
 
 class TraitsInstaller : Installer {

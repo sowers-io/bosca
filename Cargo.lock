@@ -986,6 +986,8 @@ dependencies = [
  "log",
  "moka",
  "prost",
+ "serde",
+ "serde_json",
  "tokio",
  "tokio-stream",
  "tonic 0.13.0",

@@ -4,7 +4,7 @@ import io.bosca.api.Client
 import io.bosca.installer.Installer
 import io.bosca.workflow.models.StorageSystemDefinition
 import io.bosca.workflow.ext.toInput
-import io.bosca.workflow.yaml.YamlLoader
+import io.bosca.yaml.YamlLoader
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.toList
 import java.io.File

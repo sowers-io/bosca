@@ -11,3 +11,5 @@ build
 .gradle
 .output
 .kotlin
+store
+wp

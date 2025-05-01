@@ -5,7 +5,7 @@ import io.bosca.graphql.type.PermissionAction
 import io.bosca.graphql.type.PermissionInput
 import io.bosca.installer.Installer
 import io.bosca.workflow.models.Groups
-import io.bosca.workflow.yaml.YamlLoader
+import io.bosca.yaml.YamlLoader
 import java.io.File
 
 class GroupsInstaller: Installer {

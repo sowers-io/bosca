@@ -61,6 +61,8 @@ services:
       SEARCH_KEY: p8JcB_HuMHRxN7uVXfrG2wU06b5k7oTvaAAYo6nsi9M
       SEARCH_URL: http://meilisearch:7700
       STORAGE: s3
+      CACHE_HOST: dc
+      CACHE_PORT: 2001
       AWS_BUCKET: bosca
       AWS_FORCE_PATH_STYLE: 'true'
       AWS_ENDPOINT: http://minio:9010
@@ -150,8 +152,7 @@ services:
     platform: linux/amd64
     environment:
       DC_HOST: dc
-    ports:
-      - '5000:5000'
+      DC_PORT: 2001
     restart: always
     networks:
       - boscanet

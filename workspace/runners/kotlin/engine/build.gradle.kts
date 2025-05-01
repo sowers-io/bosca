@@ -21,6 +21,8 @@ dependencies {
     api("dev.langchain4j:langchain4j-qdrant:1.0.0-beta1")
     api("dev.langchain4j:langchain4j-embeddings-all-minilm-l6-v2:1.0.0-beta1")
 
+    api("com.charleskorn.kaml:kaml:0.55.0")
+
     api("net.thisptr:jackson-jq:1.2.0")
 
     testImplementation(kotlin("test"))

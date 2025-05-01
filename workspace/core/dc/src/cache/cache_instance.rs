@@ -1,4 +1,5 @@
 use crate::api::service::api::{Node, Notification, NotificationType};
+use crate::cache::cache_configuration::CacheConfiguration;
 use crate::notification::NotificationService;
 use moka::future::{Cache, CacheBuilder};
 use moka::policy::EvictionPolicy;
@@ -6,32 +7,26 @@ use std::sync::Arc;
 use tracing::info;
 
 pub struct CacheInstance {
-    pub(crate) id: String,
     cache: Cache<String, Vec<u8>>,
-    pub max_capacity: u64,
-    pub ttl: u64,
-    pub tti: u64,
+    pub configuration: CacheConfiguration,
 }
 
 impl CacheInstance {
     pub fn new(
         node: Node,
         notifications: NotificationService,
-        id: String,
-        max_capacity: u64,
-        ttl: u64,
-        tti: u64,
+        configuration: CacheConfiguration,
     ) -> Self {
-        let cache_id = id.to_string();
-        let mut builder = CacheBuilder::new(max_capacity)
+        let cfg = configuration.clone();
+        let mut builder = CacheBuilder::new(configuration.max_capacity)
             .eviction_listener(move |k: Arc<String>, v, cause| {
                 if cause.was_evicted() {
                     info!(
                         "Cache {} evicted key {} with cause {:?}",
-                        cache_id, k, cause
+                        cfg.id, k, cause
                     );
                     let notification = Notification {
-                        cache: cache_id.clone(),
+                        cache: cfg.id.clone(),
                         create: None,
                         notification_type: NotificationType::ValueDeleted as i32,
                         key: Some(k.to_string()),
@@ -42,18 +37,15 @@ impl CacheInstance {
                 }
             })
             .eviction_policy(EvictionPolicy::tiny_lfu());
-        if ttl > 0 {
-            builder = builder.time_to_live(std::time::Duration::from_secs(ttl));
+        if configuration.ttl > 0 {
+            builder = builder.time_to_live(std::time::Duration::from_secs(configuration.ttl));
         }
-        if tti > 0 {
-            builder = builder.time_to_live(std::time::Duration::from_secs(tti));
+        if configuration.tti > 0 {
+            builder = builder.time_to_live(std::time::Duration::from_secs(configuration.tti));
         }
         Self {
-            id,
-            max_capacity,
-            ttl,
-            tti,
             cache: builder.build(),
+            configuration,
         }
     }
 

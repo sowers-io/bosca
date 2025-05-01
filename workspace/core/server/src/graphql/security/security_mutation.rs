@@ -5,6 +5,7 @@ use async_graphql::*;
 use uuid::Uuid;
 use crate::graphql::security::groups_mutation::GroupsMutation;
 use crate::graphql::security::principal_mutation::PrincipalMutation;
+use crate::models::security::credentials::CredentialType;
 
 pub struct SecurityMutationObject {}
 
@@ -39,6 +40,38 @@ impl SecurityMutationObject {
             ctx.principal.clone()
         };
         Ok(PrincipalMutation::new(principal))
+    }
+
+    async fn password(
+        &self,
+        ctx: &Context<'_>,
+        verification_token: String,
+        new_password: String,
+    ) -> Result<bool, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let principal = ctx
+            .security
+            .verify_verification_token(&verification_token)
+            .await?;
+        let credentials = ctx
+            .security
+            .get_principal_credentials(&principal.id)
+            .await?;
+        let Some(mut credential) = credentials
+            .into_iter()
+            .find(|c| c.get_type() == CredentialType::Password)
+        else {
+            return Err(Error::new("invalid principal"));
+        };
+        credential.set_password(new_password)?;
+        ctx.security
+            .set_principal_credential(&principal.id, &credential)
+            .await?;
+        ctx.security
+            .set_principal_verified(&verification_token)
+            .await?;
+        // KJB: TODO: Send change email
+        Ok(true)
     }
 
     async fn expire_refresh_tokens(&self, ctx: &Context<'_>) -> Result<bool, Error> {

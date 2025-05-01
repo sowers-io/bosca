@@ -1,6 +1,6 @@
 package io.bosca.workflow.models
 
-import io.bosca.workflow.yaml.YamlAnyDeserializer
+import io.bosca.yaml.YamlAnyDeserializer
 import kotlinx.serialization.Serializable
 
 enum class AttributeLocation {

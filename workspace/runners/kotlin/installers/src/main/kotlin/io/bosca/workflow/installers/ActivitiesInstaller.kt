@@ -80,6 +80,8 @@ class ActivitiesInstaller(client: Client) : Installer, ActivityRegistry {
         MetadataDeleteAllSupplementary(client),
         MetadataDeleteAllPlanSupplementary(client),
 
+        PublishRelationships(client),
+
         ExecuteChildWorkflow(client),
 
         CollectionTraits(client),

@@ -11,7 +11,7 @@ import io.bosca.workflow.ext.toGuideTemplateInput
 import io.bosca.workflow.ext.toInput
 import io.bosca.workflow.models.CollectionDefinition
 import io.bosca.workflow.models.Collections
-import io.bosca.workflow.yaml.YamlLoader
+import io.bosca.yaml.YamlLoader
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.io.File

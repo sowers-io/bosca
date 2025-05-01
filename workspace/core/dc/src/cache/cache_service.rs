@@ -1,9 +1,12 @@
 use crate::api::service::api::{CreateCacheRequest, Notification, NotificationType};
+use crate::cache::cache_configuration::CacheConfiguration;
 use crate::cache::cache_instance::CacheInstance;
+use crate::cache::store::Store;
 use crate::cluster::Cluster;
 use crate::notification::NotificationService;
 use log::debug;
 use std::collections::HashMap;
+use std::error::Error;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{info, warn};
@@ -13,15 +16,27 @@ pub struct CacheService {
     cluster: Cluster,
     caches: Arc<RwLock<HashMap<String, CacheInstance>>>,
     notifications: NotificationService,
+    store: Store,
 }
 
 impl CacheService {
-    pub fn new(cluster: Cluster, notifications: NotificationService) -> Self {
+    pub async fn new(
+        cluster: Cluster,
+        notifications: NotificationService,
+        store: Store,
+    ) -> Result<Self, Box<dyn Error>> {
         let svc = Self {
             cluster,
             caches: Arc::new(RwLock::new(HashMap::new())),
             notifications: notifications.clone(),
+            store,
         };
+
+        let configurations = svc.store.load().await?;
+        for cfg in configurations {
+            svc.create_cache(cfg, false).await?;
+        }
+
         let register_notifications = notifications.clone();
         let register_svc = svc.clone();
         tokio::spawn(async move {
@@ -33,40 +48,33 @@ impl CacheService {
                 }
             }
         });
-        svc
+        Ok(svc)
     }
 
     pub async fn create_cache(
         &self,
-        id: &str,
-        max_capacity: u64,
-        ttl: u64,
-        tti: u64,
+        configuration: CacheConfiguration,
         notify: bool,
-    ) -> Result<String, String> {
-        let id = id.to_string();
+    ) -> Result<String, Box<dyn Error>> {
         let mut caches = self.caches.write().await;
-        if caches.contains_key(&id) {
-            return Ok(id.clone());
+        if caches.contains_key(&configuration.id) {
+            return Ok(configuration.id.clone());
         }
         let cache_instance = CacheInstance::new(
             self.cluster.node.clone(),
             self.notifications.clone(),
-            id.clone(),
-            max_capacity,
-            ttl,
-            tti,
+            configuration.clone(),
         );
-        let cache_id = cache_instance.id.clone();
-        caches.insert(id.clone(), cache_instance);
+        caches.insert(configuration.id.clone(), cache_instance);
+        self.store.save(configuration.clone()).await?;
         if notify {
             let notification = Notification {
-                cache: id.to_string(),
+                cache: configuration.id.clone(),
                 create: Some(CreateCacheRequest {
-                    name: id.to_string(),
-                    ttl,
-                    tti,
-                    max_capacity,
+                    name: configuration.id.clone(),
+                    ttl: configuration.ttl,
+                    tti: configuration.tti,
+                    max_capacity: configuration.max_capacity,
                 }),
                 notification_type: NotificationType::CacheCreated.into(),
                 key: None,
@@ -75,7 +83,7 @@ impl CacheService {
             };
             self.notifications.notify(notification);
         }
-        Ok(cache_id)
+        Ok(configuration.id.clone())
     }
 
     pub async fn sync_caches(&self) {
@@ -85,9 +93,9 @@ impl CacheService {
                 cache: id.clone(),
                 create: Some(CreateCacheRequest {
                     name: id.to_string(),
-                    ttl: cache.ttl,
-                    tti: cache.tti,
-                    max_capacity: cache.max_capacity,
+                    ttl: cache.configuration.ttl,
+                    tti: cache.configuration.tti,
+                    max_capacity: cache.configuration.max_capacity,
                 }),
                 notification_type: NotificationType::CacheCreated.into(),
                 key: None,

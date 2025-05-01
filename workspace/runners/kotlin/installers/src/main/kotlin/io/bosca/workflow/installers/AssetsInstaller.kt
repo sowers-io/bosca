@@ -8,7 +8,7 @@ import io.bosca.util.toOptional
 import io.bosca.workflow.models.AssetDefinition
 import io.bosca.workflow.models.AssetFolder
 import io.bosca.workflow.models.AssetsDefinition
-import io.bosca.workflow.yaml.YamlLoader
+import io.bosca.yaml.YamlLoader
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
