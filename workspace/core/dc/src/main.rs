@@ -1,5 +1,6 @@
 use std::env;
 use std::net::ToSocketAddrs;
+use std::path::PathBuf;
 use crate::api::service::api::distributed_cache_server::DistributedCacheServer;
 use crate::api::service::api::Node;
 use crate::api::service::DistributedCacheImpl;
@@ -12,6 +13,7 @@ use tonic_reflection::server::Builder;
 use tracing::{error, info, Level};
 use tracing_subscriber::FmtSubscriber;
 use uuid::Uuid;
+use crate::cache::store::Store;
 
 mod api;
 mod cache;
@@ -25,6 +27,10 @@ fn get_id() -> String {
 
 fn get_host() -> String {
     env::var("DC_HOST").unwrap_or_else(|_| "0.0.0.0".to_string())
+}
+
+fn get_store() -> String {
+    env::var("DC_STORE").unwrap_or_else(|_| "./.store".to_string())
 }
 
 fn get_port() -> u16 {
@@ -81,6 +87,7 @@ async fn main() {
     let host = get_host();
     let port = get_port();
     let id = get_id();
+    let store = Store::new(PathBuf::from(get_store()));
     let node = Node {
         id,
         ip: host.clone(),
@@ -95,7 +102,7 @@ async fn main() {
     )
     .await;
     cluster.broadcast().await;
-    let cache_service = CacheService::new(cluster.clone(), notifications.clone());
+    let cache_service = CacheService::new(cluster.clone(), notifications.clone(), store).await.unwrap();
     let api = DistributedCacheImpl::new(cluster, cache_service, notifications);
     let addr = format!("{host}:{port}").to_socket_addrs().unwrap().next().unwrap();
     info!("Listening on {}", addr);

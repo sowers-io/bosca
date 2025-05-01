@@ -15,7 +15,6 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.10.1")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.6.0")
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.0")
-    implementation("com.charleskorn.kaml:kaml:0.55.0")
     implementation(project(":engine"))
     implementation(project(":activities"))
     if (file("../../enterprise/kotlin/enterprise").exists()) {

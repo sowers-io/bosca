@@ -1,4 +1,4 @@
-package io.bosca.workflow.yaml
+package io.bosca.yaml
 
 import com.charleskorn.kaml.*
 import kotlinx.serialization.InternalSerializationApi

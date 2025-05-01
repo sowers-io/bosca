@@ -1,7 +1,7 @@
 package io.bosca.workflow.models
 
 import io.bosca.graphql.type.StorageSystemType
-import io.bosca.workflow.yaml.YamlAnyDeserializer
+import io.bosca.yaml.YamlAnyDeserializer
 import kotlinx.serialization.Serializable
 
 @Serializable

@@ -5,6 +5,7 @@ use crate::api::service::api::{
     Notification, NotificationType, PutValueRequest, PutValueResponse,
     SubscribeNotificationsRequest,
 };
+use crate::cache::cache_configuration::CacheConfiguration;
 use crate::cache::cache_service::CacheService;
 use crate::cluster::Cluster;
 use crate::notification::NotificationService;
@@ -44,11 +45,13 @@ impl DistributedCache for DistributedCacheImpl {
         request: Request<api::CreateCacheRequest>,
     ) -> Result<Response<CreateCacheResponse>, Status> {
         let req = request.get_ref();
-        if let Err(e) = self
-            .cache
-            .create_cache(&req.name, req.max_capacity, req.ttl, req.tti, true)
-            .await
-        {
+        let configuration = CacheConfiguration {
+            id: req.name.clone(),
+            max_capacity: req.max_capacity,
+            ttl: req.ttl,
+            tti: req.tti,
+        };
+        if let Err(e) = self.cache.create_cache(configuration, true).await {
             return Err(Status::internal(e.to_string()));
         }
         Ok(Response::new(CreateCacheResponse {
@@ -119,14 +122,14 @@ impl DistributedCache for DistributedCacheImpl {
         match notification_type {
             NotificationType::CacheCreated => {
                 if let Some(create) = &req.create {
+                    let configuration = CacheConfiguration {
+                        id: create.name.clone(),
+                        max_capacity: create.max_capacity,
+                        ttl: create.ttl,
+                        tti: create.tti,
+                    };
                     self.cache
-                        .create_cache(
-                            &req.cache.clone(),
-                            create.max_capacity,
-                            create.ttl,
-                            create.tti,
-                            false,
-                        )
+                        .create_cache(configuration, false)
                         .await
                         .map_err(|e| Status::internal(e.to_string()))?;
                 }

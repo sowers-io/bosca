@@ -309,18 +309,18 @@ class ContentMetadata(network: NetworkClient) : Api(network) {
         return response.data?.content?.metadata?.setMetadataReady ?: false
     }
 
-    suspend fun setPublic(id: String, ready: Boolean) {
-        val response = network.graphql.mutation(SetMetadataPublicMutation(id, ready)).execute()
+    suspend fun setPublic(id: String, public: Boolean) {
+        val response = network.graphql.mutation(SetMetadataPublicMutation(id, public)).execute()
         response.validate()
     }
 
-    suspend fun setPublicContent(id: String, ready: Boolean) {
-        val response = network.graphql.mutation(SetMetadataPublicContentMutation(id, ready)).execute()
+    suspend fun setPublicContent(id: String, public: Boolean) {
+        val response = network.graphql.mutation(SetMetadataPublicContentMutation(id, public)).execute()
         response.validate()
     }
 
-    suspend fun setPublicSupplementary(id: String, ready: Boolean) {
-        val response = network.graphql.mutation(SetMetadataPublicSupplementaryMutation(id, ready)).execute()
+    suspend fun setPublicSupplementary(id: String, public: Boolean) {
+        val response = network.graphql.mutation(SetMetadataPublicSupplementaryMutation(id, public)).execute()
         response.validate()
     }
 

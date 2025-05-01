@@ -4,7 +4,7 @@ import io.bosca.api.Client
 import io.bosca.graphql.type.CategoryInput
 import io.bosca.installer.Installer
 import io.bosca.workflow.models.Categories
-import io.bosca.workflow.yaml.YamlLoader
+import io.bosca.yaml.YamlLoader
 import java.io.File
 
 class CategoriesInstaller(val client: Client) : Installer {
