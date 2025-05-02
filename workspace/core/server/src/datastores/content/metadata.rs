@@ -146,6 +146,27 @@ impl MetadataDataStore {
     }
 
     #[tracing::instrument(skip(self, query))]
+    pub async fn find_system(&self, query: &mut FindQueryInput) -> Result<Vec<Metadata>, Error> {
+        let category_ids = query.get_category_ids();
+        let mut names = Vec::new();
+        let (query, values) = build_find_args(
+            "metadata",
+            "select m.* from metadata m ",
+            "m",
+            "system_attributes",
+            "system_attributes",
+            query,
+            &category_ids,
+            false,
+            &mut names,
+        );
+        let connection = self.pool.get().await?;
+        let stmt = connection.prepare_cached(query.as_str()).await?;
+        let rows = connection.query(&stmt, values.as_slice()).await?;
+        Ok(rows.iter().map(|r| r.into()).collect())
+    }
+
+    #[tracing::instrument(skip(self, query))]
     pub async fn find_count(&self, query: &mut FindQueryInput) -> Result<i64, Error> {
         let category_ids = query.get_category_ids();
         let mut names = Vec::new();
@@ -514,7 +535,7 @@ impl MetadataDataStore {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
         let stmt = txn
-            .prepare_cached("update metadata set uploaded = now(), system_attributes = $1, modified = now(), content_type = $2, content_length = $3 where id = $4")
+            .prepare_cached("update metadata set uploaded = now(), system_attributes = coalesce(system_attributes, '{}'::jsonb) || $1, modified = now(), content_type = $2, content_length = $3 where id = $4")
             .await?;
         let len = len as i64;
         let mut attrs = Map::new();

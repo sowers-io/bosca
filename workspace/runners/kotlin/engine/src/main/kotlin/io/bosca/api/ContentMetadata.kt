@@ -1,24 +1,19 @@
 package io.bosca.api
 
-import com.apollographql.apollo.api.Optional
 import com.apollographql.apollo.api.Upload
 import com.apollographql.apollo.api.toUpload
 import io.bosca.graphql.*
 import io.bosca.graphql.fragment.*
 import io.bosca.graphql.fragment.Category
-import io.bosca.graphql.fragment.Collection
 import io.bosca.graphql.fragment.Document
 import io.bosca.graphql.fragment.DocumentTemplate
 import io.bosca.graphql.fragment.Guide
 import io.bosca.graphql.fragment.GuideTemplate
 import io.bosca.graphql.fragment.Metadata
-import io.bosca.graphql.fragment.MetadataContent
 import io.bosca.graphql.fragment.MetadataRelationship
 import io.bosca.graphql.fragment.MetadataSupplementary
-import io.bosca.graphql.fragment.MetadataSupplementaryContent
 import io.bosca.graphql.fragment.Permission
 import io.bosca.graphql.fragment.Source
-import io.bosca.graphql.fragment.WorkflowJob
 import io.bosca.graphql.type.*
 import io.bosca.util.toOptional
 import java.io.File
@@ -107,6 +102,36 @@ class ContentMetadata(network: NetworkClient) : Api(network) {
         ).execute()
         response.validate()
         return response.data?.content?.findMetadata?.map { it.metadata } ?: emptyList()
+    }
+
+    suspend fun findMetadataBySystem(
+        attributes: List<FindAttributeInput> = emptyList(),
+        contentTypes: List<String>? = null,
+        categoryIds: List<String>? = null,
+        offset: Int = 0,
+        limit: Int = 10,
+        extensions: ExtensionFilterType? = null,
+    ): List<Metadata> {
+        val response = network.graphql.query(
+            FindMetadataBySystemQuery(
+                FindQueryInput(
+                    attributes = listOf(FindAttributesInput(attributes)),
+                    categoryIds = categoryIds.toOptional(),
+                    contentTypes = contentTypes.toOptional(),
+                    extensionFilter = extensions.toOptional(),
+                    offset = offset.toOptional(),
+                    limit = limit.toOptional()
+                )
+            )
+        ).execute()
+        response.validate()
+        return response.data?.content?.findMetadataBySystem?.map { it.metadata } ?: emptyList()
+    }
+
+    suspend fun getCollectionTemplate(id: String): io.bosca.graphql.fragment.CollectionTemplate {
+        val response = network.graphql.query(GetCollectionTemplateQuery(id)).execute()
+        response.validate()
+        return response.data?.content?.metadata?.collectionTemplate?.collectionTemplate ?: error("No collection template returned")
     }
 
     suspend fun getPermissions(id: String): List<Permission> {

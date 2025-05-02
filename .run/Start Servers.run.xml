@@ -1,0 +1,9 @@
+<component name="ProjectRunConfigurationManager">
+  <configuration default="false" name="Start Servers" type="CompoundRunConfigurationType">
+    <toRun name="Run bosca" targetId="RsBuildProfile:dev" type="CargoCommandRunConfiguration" />
+    <toRun name="Run bosca-dc" type="CargoCommandRunConfiguration" />
+    <toRun name="Runner" type="JetRunConfigurationType" />
+    <toRun name="Administration UI" type="js.build_tools.npm" />
+    <method v="2" />
+  </configuration>
+</component>

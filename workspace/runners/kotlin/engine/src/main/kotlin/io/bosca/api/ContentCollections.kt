@@ -127,6 +127,11 @@ class ContentCollections(network: NetworkClient) : Api(network) {
         response.validate()
     }
 
+    suspend fun addRelationship(input: CollectionMetadataRelationshipInput) {
+        val response = network.graphql.mutation(AddCollectionMetadataRelationshipMutation(input)).execute()
+        response.validate()
+    }
+
     suspend fun addPermission(input: PermissionInput) {
         val response = network.graphql.mutation(AddCollectionPermissionMutation(input)).execute()
         response.validate()
@@ -172,6 +177,16 @@ class ContentCollections(network: NetworkClient) : Api(network) {
         ))).execute()
         response.validate()
         return response.data?.content?.findCollections?.map { it.collection } ?: emptyList()
+    }
+
+    suspend fun findCollectionsBySystem(attributes: List<FindAttributeInput>, offset: Int, limit: Int): List<Collection> {
+        val response = network.graphql.query(FindCollectionsBySystemQuery(FindQueryInput(
+            attributes = listOf(FindAttributesInput(attributes)),
+            offset = offset.toOptional(),
+            limit = limit.toOptional()
+        ))).execute()
+        response.validate()
+        return response.data?.content?.findCollectionsBySystem?.map { it.collection } ?: emptyList()
     }
 
     suspend fun addCollection(collectionId: String, id: String): String? {

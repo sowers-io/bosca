@@ -164,8 +164,9 @@ pub fn build_find_args<'a>(
                 let attr = attrs.attributes.get(j).unwrap();
                 q.push_str(
                     format!(
-                        " {}.attributes->>(${}::varchar) = ${}::varchar ",
+                        " {}.{}->>(${}::varchar) = ${}::varchar ",
                         table_alias,
+                        item_attributes_column,
                         pos,
                         pos + 1
                     )

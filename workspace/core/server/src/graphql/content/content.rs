@@ -68,6 +68,22 @@ impl ContentObject {
             .collect())
     }
 
+    async fn find_collections_by_system(
+        &self,
+        ctx: &Context<'_>,
+        mut query: FindQueryInput,
+    ) -> Result<Vec<CollectionObject>, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        Ok(ctx
+            .content
+            .collections
+            .find_system(&mut query)
+            .await?
+            .into_iter()
+            .map(CollectionObject::new)
+            .collect())
+    }
+
     async fn find_collections_count(
         &self,
         ctx: &Context<'_>,
@@ -94,7 +110,6 @@ impl ContentObject {
         ))
     }
 
-    #[allow(clippy::too_many_arguments)]
     async fn find_metadata(
         &self,
         ctx: &Context<'_>,
@@ -105,6 +120,22 @@ impl ContentObject {
             .content
             .metadata
             .find(&mut query)
+            .await?
+            .into_iter()
+            .map(MetadataObject::new)
+            .collect())
+    }
+
+    async fn find_metadata_by_system(
+        &self,
+        ctx: &Context<'_>,
+        mut query: FindQueryInput,
+    ) -> Result<Vec<MetadataObject>, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        Ok(ctx
+            .content
+            .metadata
+            .find_system(&mut query)
             .await?
             .into_iter()
             .map(MetadataObject::new)

@@ -22,6 +22,7 @@ object InstallerExecutorFactory {
             GroupsInstaller(),
             CollectionsInstaller(client),
             ProfileAttributeTypesInstaller(),
+            StorageSystemsInstaller(),
             AssetsInstaller(),
             StorageSystemsInstaller() // ensure storage systems get initialized now that everything is in place
         )

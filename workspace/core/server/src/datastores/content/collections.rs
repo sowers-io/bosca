@@ -71,6 +71,27 @@ impl CollectionsDataStore {
     }
 
     #[tracing::instrument(skip(self, query))]
+    pub async fn find_system(&self, query: &mut FindQueryInput) -> Result<Vec<Collection>, Error> {
+        let connection = self.pool.get().await?;
+        let category_ids = query.get_category_ids();
+        let mut names = Vec::new();
+        let (query, values) = build_find_args(
+            "collection",
+            "select c.* from collections as c ",
+            "c",
+            "system_attributes",
+            "system_attributes",
+            query,
+            &category_ids,
+            false,
+            &mut names,
+        );
+        let stmt = connection.prepare_cached(query.as_str()).await?;
+        let rows = connection.query(&stmt, values.as_slice()).await?;
+        Ok(rows.iter().map(|r| r.into()).collect())
+    }
+
+    #[tracing::instrument(skip(self, query))]
     pub async fn find(&self, query: &mut FindQueryInput) -> Result<Vec<Collection>, Error> {
         let connection = self.pool.get().await?;
         let category_ids = query.get_category_ids();

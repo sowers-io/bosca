@@ -92,7 +92,6 @@ type BibleReference {
 }
 
 type CacheObject {
-    keys: [String!]!
     name: String!
 }
 
@@ -126,8 +125,8 @@ type Collection {
     etag(addHeader: Boolean!): String
     id: String!
     itemAttributes: JSON
-    items(limit: Int!, offset: Int!): [CollectionItem!]!
-    itemsCount: Int!
+    items(limit: Int!, offset: Int!, state: String): [CollectionItem!]!
+    itemsCount(state: String): Int!
     labels: [String!]!
     metadata(limit: Int!, offset: Int!): [Metadata!]!
     metadataCount: Int!
@@ -286,8 +285,10 @@ type Content {
     collectionTemplates: CollectionTemplates!
     documentTemplates: DocumentTemplates!
     findCollections(query: FindQueryInput!): [Collection!]!
+    findCollectionsBySystem(query: FindQueryInput!): [Collection!]!
     findCollectionsCount(query: FindQueryInput!): Int!
     findMetadata(query: FindQueryInput!): [Metadata!]!
+    findMetadataBySystem(query: FindQueryInput!): [Metadata!]!
     findMetadataCount(query: FindQueryInput!): Int!
     guideTemplates: GuideTemplates!
     metadata(id: String!, version: Int): Metadata
@@ -407,6 +408,7 @@ type Login {
 }
 
 type LoginMutation {
+    forgotPassword(identifier: String!): Boolean!
     password(identifier: String!, password: String!): LoginResponse!
     refreshToken(refreshToken: String!): LoginResponse!
 }
@@ -773,6 +775,7 @@ type SecurityMutation {
     expireRefreshTokens: Boolean!
     groups: GroupsMutation!
     login: LoginMutation!
+    password(newPassword: String!, verificationToken: String!): Boolean!
     principal(id: String): PrincipalMutation!
     removePrincipalGroup(groupId: String!, principalId: String!): Boolean!
     signup: SignupMutation!
@@ -795,6 +798,7 @@ type SignedUrlHeader {
 type SignupMutation {
     password(identifier: String!, password: String!, profile: ProfileInput!): Principal!
     passwordVerify(verificationToken: String!): Boolean!
+    resendPasswordVerification(identifier: String!): Boolean!
 }
 
 type Source {
