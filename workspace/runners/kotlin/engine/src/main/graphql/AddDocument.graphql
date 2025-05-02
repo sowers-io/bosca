@@ -1,0 +1,9 @@
+mutation AddDocument($parentCollectionId: String!, $templateId: String!, $templateVersion: Int!) {
+    content {
+        metadata {
+            addDocument(parentCollectionId: $parentCollectionId, templateId: $templateId, templateVersion: $templateVersion) {
+                ...Metadata
+            }
+        }
+    }
+}

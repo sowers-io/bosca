@@ -86,15 +86,19 @@ class ContentMetadata(network: NetworkClient) : Api(network) {
     }
 
     suspend fun findMetadata(
-        attributes: List<FindAttributeInput>,
-        offset: Int,
-        limit: Int,
+        attributes: List<FindAttributeInput> = emptyList(),
+        contentTypes: List<String>? = null,
+        categoryIds: List<String>? = null,
+        offset: Int = 0,
+        limit: Int = 10,
         extensions: ExtensionFilterType? = null,
     ): List<Metadata> {
         val response = network.graphql.query(
             FindMetadataQuery(
                 FindQueryInput(
                     attributes = listOf(FindAttributesInput(attributes)),
+                    categoryIds = categoryIds.toOptional(),
+                    contentTypes = contentTypes.toOptional(),
                     extensionFilter = extensions.toOptional(),
                     offset = offset.toOptional(),
                     limit = limit.toOptional()
@@ -145,6 +149,20 @@ class ContentMetadata(network: NetworkClient) : Api(network) {
         val response = network.graphql.mutation(AddMetadataMutation(metadata)).execute()
         response.validate()
         return response.data?.content?.metadata?.add?.id
+    }
+
+    suspend fun addDocument(parentCollectionId: String, templateId: String, templateVersion: Int): Metadata {
+        val response =
+            network.graphql.mutation(AddDocumentMutation(parentCollectionId, templateId, templateVersion)).execute()
+        response.validate()
+        return response.data?.content?.metadata?.addDocument?.metadata ?: error("No metadata returned")
+    }
+
+    suspend fun addGuide(parentCollectionId: String, templateId: String, templateVersion: Int): Metadata {
+        val response =
+            network.graphql.mutation(AddGuideMutation(parentCollectionId, templateId, templateVersion)).execute()
+        response.validate()
+        return response.data?.content?.metadata?.addGuide?.metadata ?: error("No metadata returned")
     }
 
     suspend fun addSupplementary(supplementary: MetadataSupplementaryInput): MetadataSupplementary? {
