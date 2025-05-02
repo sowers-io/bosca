@@ -10,10 +10,10 @@ fun JsonElement.toAny(): Any? {
         is JsonPrimitive -> when {
             isString -> content
             booleanOrNull != null -> boolean
-            intOrNull != null -> int
-            floatOrNull != null -> float
             longOrNull != null -> long
             doubleOrNull != null -> double
+            intOrNull != null -> int
+            floatOrNull != null -> float
             else -> null
         }
     }

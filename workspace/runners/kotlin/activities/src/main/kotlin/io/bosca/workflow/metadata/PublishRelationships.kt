@@ -76,6 +76,6 @@ class PublishRelationships(client: Client) : Activity(client) {
 
     companion object {
 
-        const val ID = "metadata.publish.relationships"
+        const val ID = "content.publish.relationships"
     }
 }
