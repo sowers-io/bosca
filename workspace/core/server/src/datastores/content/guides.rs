@@ -393,7 +393,7 @@ impl GuidesDataStore {
         version: i32,
         guide: &GuideInput,
     ) -> Result<(), Error> {
-        let stmt = txn.prepare_cached("insert into guides (metadata_id, version, template_metadata_id, template_metadata_version, guide_metadata_id, guide_metadata_version, rrule, type) values ($1, $2, $3, $4, $5, $6, $7, $8) on conflict (metadata_id, version) do update set template_metadata_id = $3, template_metadata_version = $4, rrule = $5, type = $6, guide_metadata_id = $7, guide_metadata_version = $8").await?;
+        let stmt = txn.prepare_cached("insert into guides (metadata_id, version, template_metadata_id, template_metadata_version, rrule, type) values ($1, $2, $3, $4, $5, $6) on conflict (metadata_id, version) do update set template_metadata_id = $3, template_metadata_version = $4, rrule = $5, type = $6").await?;
         let template_metadata_id = guide
             .template_metadata_id
             .as_ref()
@@ -417,8 +417,10 @@ impl GuidesDataStore {
             &[metadata_id, &version],
         )
         .await?;
-        self.add_guide_txn(ctx, txn, metadata_id, version, guide)
-            .await?;
+        for (index, step) in guide.steps.iter().enumerate() {
+            self.add_guide_step_txn(ctx, txn, metadata_id, version, index as i32, step)
+                .await?;
+        }
         Ok(())
     }
 

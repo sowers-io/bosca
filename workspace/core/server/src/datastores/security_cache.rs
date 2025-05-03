@@ -22,16 +22,16 @@ impl SecurityCache {
     pub async fn new(cache: &mut BoscaCacheManager) -> Result<Self, Error> {
         Ok(Self {
             principal_id: cache
-                .new_id_tiered_cache(CACHE_SECURITY_PRINCIPAL_ID, 5000)
+                .new_id_tiered_cache(CACHE_SECURITY_PRINCIPAL_ID, 20000)
                 .await?,
             principal_group_ids: cache
-                .new_id_tiered_cache(CACHE_SECURITY_PRINCIPAL_GROUP_ID, 5000)
+                .new_id_tiered_cache(CACHE_SECURITY_PRINCIPAL_GROUP_ID, 20000)
                 .await?,
             group_id: cache
-                .new_id_tiered_cache(CACHE_SECURITY_GROUP_ID, 5000)
+                .new_id_tiered_cache(CACHE_SECURITY_GROUP_ID, 20000)
                 .await?,
             group_name: cache
-                .new_string_tiered_cache(CACHE_SECURITY_GROUP_NAME, 5000)
+                .new_string_tiered_cache(CACHE_SECURITY_GROUP_NAME, 20000)
                 .await?,
         })
     }

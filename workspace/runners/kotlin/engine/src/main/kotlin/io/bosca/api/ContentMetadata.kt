@@ -8,6 +8,7 @@ import io.bosca.graphql.fragment.Category
 import io.bosca.graphql.fragment.Document
 import io.bosca.graphql.fragment.DocumentTemplate
 import io.bosca.graphql.fragment.Guide
+import io.bosca.graphql.fragment.GuideStep
 import io.bosca.graphql.fragment.GuideTemplate
 import io.bosca.graphql.fragment.Metadata
 import io.bosca.graphql.fragment.MetadataRelationship
@@ -131,7 +132,8 @@ class ContentMetadata(network: NetworkClient) : Api(network) {
     suspend fun getCollectionTemplate(id: String): io.bosca.graphql.fragment.CollectionTemplate {
         val response = network.graphql.query(GetCollectionTemplateQuery(id)).execute()
         response.validate()
-        return response.data?.content?.metadata?.collectionTemplate?.collectionTemplate ?: error("No collection template returned")
+        return response.data?.content?.metadata?.collectionTemplate?.collectionTemplate
+            ?: error("No collection template returned")
     }
 
     suspend fun getPermissions(id: String): List<Permission> {
@@ -188,6 +190,29 @@ class ContentMetadata(network: NetworkClient) : Api(network) {
             network.graphql.mutation(AddGuideMutation(parentCollectionId, templateId, templateVersion)).execute()
         response.validate()
         return response.data?.content?.metadata?.addGuide?.metadata ?: error("No metadata returned")
+    }
+
+    suspend fun addGuideStep(
+        metadataId: String,
+        metadataVersion: Int,
+        sort: Int,
+        templateId: String,
+        templateStepId: Int,
+        templateVersion: Int
+    ): GuideStep {
+        val response =
+            network.graphql.mutation(
+                AddGuideStepMutation(
+                    metadataId,
+                    metadataVersion,
+                    sort,
+                    templateId,
+                    templateStepId,
+                    templateVersion
+                )
+            ).execute()
+        response.validate()
+        return response.data?.content?.metadata?.addGuideStep?.guideStep ?: error("No stepe returned")
     }
 
     suspend fun addSupplementary(supplementary: MetadataSupplementaryInput): MetadataSupplementary? {

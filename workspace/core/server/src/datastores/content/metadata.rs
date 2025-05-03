@@ -44,7 +44,7 @@ impl MetadataDataStore {
     ) -> Result<Self, Error> {
         let prefix = option_env!("NAMESPACE").unwrap_or("").to_string();
         let bucket = format!("{}_metadata_update_storage_queue", prefix);
-        client.create(&bucket, 5000, 5, 0).await?;
+        client.create(&bucket, 20000, 5, 0).await?;
         Ok(Self {
             cache,
             pool,

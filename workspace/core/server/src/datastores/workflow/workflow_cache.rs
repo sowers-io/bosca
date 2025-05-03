@@ -44,69 +44,69 @@ pub struct WorkflowCache {
 impl WorkflowCache {
     pub async fn new(cache: &mut BoscaCacheManager) -> Result<Self, Error> {
         Ok(Self {
-            trait_cache: cache.new_string_tiered_cache("traits", 5000).await?,
+            trait_cache: cache.new_string_tiered_cache("traits", 20000).await?,
             trait_workflow_ids_cache: cache.new_string_tiered_cache(
                 "trait_workflow_ids",
-                5000,
+                20000,
             ).await?,
             workflow_cache: cache.new_string_tiered_cache(
                 "workflows",
-                5000,
+                20000,
             ).await?,
             storage_system_cache: cache.new_id_tiered_cache(
                 "storage_systems",
-                5000,
+                20000,
             ).await?,
             storage_system_models_cache: cache.new_id_tiered_cache(
                 "storage_system_models",
-                5000,
+                20000,
             ).await?,
-            prompt_cache: cache.new_id_tiered_cache("prompts", 5000).await?,
-            model_cache: cache.new_id_tiered_cache("models", 5000).await?,
-            state_cache: cache.new_string_tiered_cache("states", 100).await?,
+            prompt_cache: cache.new_id_tiered_cache("prompts", 20000).await?,
+            model_cache: cache.new_id_tiered_cache("models", 20000).await?,
+            state_cache: cache.new_string_tiered_cache("states", 20000).await?,
             transition_cache: cache.new_string_tiered_cache(
                 "transitions",
-                100,
+                20000,
             ).await?,
             activity_cache: cache.new_string_tiered_cache(
                 "activities",
-                5000,
+                20000,
             ).await?,
             activity_inputs_cache: cache.new_string_tiered_cache(
                 "activity_inputs",
-                5000,
+                20000,
             ).await?,
             activity_outputs_cache: cache.new_string_tiered_cache(
                 "activity_outputs",
-                5000,
+                20000,
             ).await?,
             workflow_activity_ids_cache: cache.new_string_tiered_cache(
                 "workflow_activity_ids",
-                5000,
+                20000,
             ).await?,
             workflow_activity_cache: cache.new_int_tiered_cache(
                 "workflow_activities",
-                5000,
+                20000,
             ).await?,
             workflow_activity_inputs_cache: cache.new_int_tiered_cache(
                 "workflow_activity_inputs",
-                5000,
+                20000,
             ).await?,
             workflow_activity_outputs_cache: cache.new_int_tiered_cache(
                 "workflow_activity_outputs",
-                5000,
+                20000,
             ).await?,
             workflow_activity_models_cache: cache.new_int_tiered_cache(
                 "workflow_activity_models",
-                5000,
+                20000,
             ).await?,
             workflow_activity_prompts_cache: cache.new_int_tiered_cache(
                 "workflow_activity_prompts",
-                5000,
+                20000,
             ).await?,
             workflow_activity_storage_systems_cache: cache.new_int_tiered_cache(
                 "workflow_activity_storage_systems",
-                5000,
+                20000,
             ).await?,
         })
     }

@@ -15,12 +15,12 @@ pub struct CollectionCache {
 impl CollectionCache {
     pub async fn new(cache: &mut BoscaCacheManager) -> Result<Self, Error> {
         Ok(Self {
-            collection_id: cache.new_id_tiered_cache("collection_id", 5000).await?,
+            collection_id: cache.new_id_tiered_cache("collection_id", 20000).await?,
             parent_id: cache
-                .new_id_tiered_cache("collection_parent_id", 5000)
+                .new_id_tiered_cache("collection_parent_id", 20000)
                 .await?,
             permissions: cache
-                .new_id_tiered_cache("collection_permissions", 5000)
+                .new_id_tiered_cache("collection_permissions", 20000)
                 .await?,
         })
     }

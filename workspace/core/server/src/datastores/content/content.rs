@@ -51,7 +51,7 @@ impl ContentDataStore {
         let collections_cache = CollectionCache::new(cache).await?;
         let metadata_cache = MetadataCache::new(cache).await?;
         Ok(Self {
-            slug_cache: cache.new_string_tiered_cache("slugs", 5000).await?,
+            slug_cache: cache.new_string_tiered_cache("slugs", 20000).await?,
             categories: CategoriesDataStore::new(pool.clone(), Arc::clone(&notifier)),
             collections: CollectionsDataStore::new(pool.clone(), collections_cache.clone(), Arc::clone(&notifier)).await?,
             collection_supplementary: CollectionSupplementaryDataStore::new(pool.clone(), Arc::clone(&notifier)),

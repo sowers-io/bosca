@@ -19,17 +19,17 @@ pub struct MetadataCache {
 impl MetadataCache {
     pub async fn new(cache: &mut BoscaCacheManager) -> Result<Self, Error> {
         Ok(Self {
-            metadata_id: cache.new_id_tiered_cache("metadata_id", 5000).await?,
+            metadata_id: cache.new_id_tiered_cache("metadata_id", 20000).await?,
             metadata_supplementary_id: cache
-                .new_id_tiered_cache("metadata_supplementary_id", 5000)
+                .new_id_tiered_cache("metadata_supplementary_id", 20000)
                 .await?,
             metadata_relationship_id: cache
-                .new_id_tiered_cache("metadata_relationship_id", 5000)
+                .new_id_tiered_cache("metadata_relationship_id", 20000)
                 .await?,
             metadata_supplementaries: cache
-                .new_id_tiered_cache("metadata_supplementaries", 5000)
+                .new_id_tiered_cache("metadata_supplementaries", 20000)
                 .await?,
-            permissions: cache.new_id_tiered_cache("permission_cache", 5000).await?,
+            permissions: cache.new_id_tiered_cache("permission_cache", 20000).await?,
         })
     }
 

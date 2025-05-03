@@ -1,4 +1,8 @@
 fragment DocumentTemplate on DocumentTemplate {
+    metadata {
+        id
+        version
+    }
     configuration
     schema
     content
