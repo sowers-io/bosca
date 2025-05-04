@@ -29,6 +29,7 @@ pub struct FindQueryInput {
     pub attributes: Vec<FindAttributesInput>,
     pub content_types: Option<Vec<String>>,
     pub category_ids: Option<Vec<String>>,
+    pub trait_ids: Option<Vec<String>>,
     pub extension_filter: Option<ExtensionFilterType>,
     pub collection_type: Option<CollectionType>,
     pub ordering: Option<Vec<OrderingInput>>, // TODO: remove once we have indexes
@@ -74,6 +75,7 @@ pub struct FindQuery {
     pub attributes: Vec<FindAttributes>,
     pub content_types: Option<Vec<String>>,
     pub category_ids: Option<Vec<String>>,
+    pub trait_ids: Option<Vec<String>>,
     pub extension_filter: Option<ExtensionFilterType>,
     pub collection_type: Option<CollectionType>,
     pub limit: Option<i64>,

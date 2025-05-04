@@ -1,0 +1,26 @@
+## Get Bible By Slug
+
+GRAPHQL http://localhost:8000/graphql
+
+{
+    content {
+        findMetadata(query: {
+            attributes: [
+                {
+                    attributes: [
+                        {
+                            key: "bible.abbreviation",
+                            value: "ASV"
+                        }
+                    ]
+                }
+            ]
+        }) {
+            bible {
+                find(human: "John 1:1-10") {
+                    usfm
+                }
+            }
+        }
+    }
+}

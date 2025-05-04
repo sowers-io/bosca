@@ -1,0 +1,12 @@
+query FindBibleReference($query: FindQueryInput!, $reference: String!) {
+    content {
+        findMetadata(query: $query) {
+            bible {
+                find(human: $reference) {
+                    usfm
+                    human
+                }
+            }
+        }
+    }
+}

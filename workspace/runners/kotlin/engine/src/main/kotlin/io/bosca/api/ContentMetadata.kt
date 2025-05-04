@@ -192,6 +192,16 @@ class ContentMetadata(network: NetworkClient) : Api(network) {
         return response.data?.content?.metadata?.addGuide?.metadata ?: error("No metadata returned")
     }
 
+    suspend fun findBibleReference(
+        find: FindQueryInput,
+        reference: String
+    ): List<FindBibleReferenceQuery.Find> {
+        val response =
+            network.graphql.query(FindBibleReferenceQuery(find, reference)).execute()
+        response.validate()
+        return response.data?.content?.findMetadata?.flatMap { it.bible?.find ?: emptyList() } ?: emptyList()
+    }
+
     suspend fun addGuideStep(
         metadataId: String,
         metadataVersion: Int,
