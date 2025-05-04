@@ -1,6 +1,6 @@
-query FindBibleReference($query: FindQueryInput!, $reference: String!) {
+query FindBibleReference($id: String!, $reference: String!) {
     content {
-        findMetadata(query: $query) {
+        metadata(id: $id) {
             bible {
                 find(human: $reference) {
                     usfm

@@ -83,6 +83,7 @@ impl CollectionsDataStore {
             "system_attributes",
             query,
             &category_ids,
+            &query.trait_ids,
             false,
             &mut names,
         );
@@ -104,6 +105,7 @@ impl CollectionsDataStore {
             "attributes",
             query,
             &category_ids,
+            &query.trait_ids,
             false,
             &mut names,
         );
@@ -125,6 +127,7 @@ impl CollectionsDataStore {
             "attributes",
             query,
             &category_ids,
+            &query.trait_ids,
             true,
             &mut names,
         );

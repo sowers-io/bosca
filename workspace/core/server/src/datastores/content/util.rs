@@ -89,6 +89,7 @@ pub fn build_find_args<'a>(
     relationship_attributes_column: &str,
     find_query: &'a FindQueryInput,
     category_ids: &'a Option<Vec<Uuid>>,
+    trait_ids: &'a Option<Vec<String>>,
     count: bool,
     names: &'a mut Vec<String>,
 ) -> (String, Vec<&'a (dyn ToSql + Sync)>) {
@@ -102,6 +103,16 @@ pub fn build_find_args<'a>(
                 q.push_str(format!(" inner join {}_categories as cid on (cid.{}_id = {}.id and cid.category_id = ${}) ", base_type, base_type, table_alias, pos).as_str());
                 pos += 1;
                 values.push(category_id as &(dyn ToSql + Sync));
+            }
+        }
+    }
+
+    if let Some(trait_ids) = trait_ids {
+        if !trait_ids.is_empty() {
+            for trait_id in trait_ids {
+                q.push_str(format!(" inner join {}_traits as tid on (tid.{}_id = {}.id and tid.trait_id = ${}) ", base_type, base_type, table_alias, pos).as_str());
+                pos += 1;
+                values.push(trait_id as &(dyn ToSql + Sync));
             }
         }
     }

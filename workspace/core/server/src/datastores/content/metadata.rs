@@ -136,6 +136,7 @@ impl MetadataDataStore {
             "attributes",
             query,
             &category_ids,
+            &query.trait_ids,
             false,
             &mut names,
         );
@@ -157,6 +158,7 @@ impl MetadataDataStore {
             "system_attributes",
             query,
             &category_ids,
+            &query.trait_ids,
             false,
             &mut names,
         );
@@ -178,6 +180,7 @@ impl MetadataDataStore {
             "attributes",
             query,
             &category_ids,
+            &query.trait_ids,
             true,
             &mut names,
         );

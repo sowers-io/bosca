@@ -84,6 +84,7 @@ class ContentMetadata(network: NetworkClient) : Api(network) {
     suspend fun findMetadata(
         attributes: List<FindAttributeInput> = emptyList(),
         contentTypes: List<String>? = null,
+        traitIds: List<String>? = null,
         categoryIds: List<String>? = null,
         offset: Int = 0,
         limit: Int = 10,
@@ -94,6 +95,7 @@ class ContentMetadata(network: NetworkClient) : Api(network) {
                 FindQueryInput(
                     attributes = listOf(FindAttributesInput(attributes)),
                     categoryIds = categoryIds.toOptional(),
+                    traitIds = traitIds.toOptional(),
                     contentTypes = contentTypes.toOptional(),
                     extensionFilter = extensions.toOptional(),
                     offset = offset.toOptional(),
@@ -193,13 +195,13 @@ class ContentMetadata(network: NetworkClient) : Api(network) {
     }
 
     suspend fun findBibleReference(
-        find: FindQueryInput,
+        metadataId: String,
         reference: String
     ): List<FindBibleReferenceQuery.Find> {
         val response =
-            network.graphql.query(FindBibleReferenceQuery(find, reference)).execute()
+            network.graphql.query(FindBibleReferenceQuery(metadataId, reference)).execute()
         response.validate()
-        return response.data?.content?.findMetadata?.flatMap { it.bible?.find ?: emptyList() } ?: emptyList()
+        return response.data?.content?.metadata?.bible?.find ?: emptyList()
     }
 
     suspend fun addGuideStep(

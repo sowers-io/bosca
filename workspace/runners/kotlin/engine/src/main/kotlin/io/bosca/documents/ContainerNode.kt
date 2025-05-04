@@ -9,10 +9,17 @@ data class ContainerAttributes(
     @SerialName("class")
     override val classes: String? = null,
     val name: String? = null,
+    val metadataId: String? = null,
+    val references: List<String>? = null
 ) : DocumentAttributes {
 
     override fun withClasses(classes: String?): ContainerAttributes {
         return copy(classes = classes)
+    }
+
+    fun withReferences(metadataId: String?, references: List<String>?): ContainerAttributes {
+        if (references == null || references.isEmpty()) return copy(metadataId = null, references = null)
+        return copy(metadataId = metadataId, references = references)
     }
 }
 
