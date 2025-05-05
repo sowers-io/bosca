@@ -5,7 +5,9 @@ import io.bosca.graphql.fragment.WorkflowJob
 import io.bosca.graphql.type.ActivityInput
 import io.bosca.workflow.Activity
 import io.bosca.workflow.ActivityContext
+import kotlinx.serialization.Serializable
 
+@Serializable
 data class PublishGuideConfiguration(
     val state: String? = null,
     val public: Boolean? = null,
