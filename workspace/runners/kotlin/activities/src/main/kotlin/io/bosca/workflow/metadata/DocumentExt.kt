@@ -21,15 +21,19 @@ private suspend fun append(node: DocumentNode, client: Client, builder: StringBu
         builder.append(node.text)
         builder.append(" ")
     }
-    if (node is ContainerNode && node.attributes.metadataId != null && node.attributes.references?.isNotEmpty() == true) {
-        for (reference in node.attributes.references) {
-            val content = client.metadata.getBibleChapterContent(node.attributes.metadataId!!, null, reference)
-            if (content == null) continue
-            builder.append("\r\n")
-            builder.append(content.reference.human)
-            builder.append("\r\n")
+    try {
+        if (node is ContainerNode && node.attributes.metadataId != null && node.attributes.references?.isNotEmpty() == true) {
+            for (reference in node.attributes.references) {
+                val content = client.metadata.getBibleChapterContent(node.attributes.metadataId!!, null, reference)
+                if (content == null) continue
+                builder.append("\r\n")
+                builder.append(content.reference.human)
+                builder.append("\r\n")
 
+            }
         }
+    } catch (e: Exception) {
+        println("error: failed to get bible chapter: ${e.message}")
     }
     for (child in node.content) {
         append(child, client, builder)
