@@ -1,0 +1,7 @@
+mutation MergeMetadataItemAttributes($id: String!, $itemId: String!, $attributes: JSON!) {
+    content {
+        collection {
+            mergeMetadataItemAttributes(id: $id, itemId: $itemId, attributes: $attributes)
+        }
+    }
+}

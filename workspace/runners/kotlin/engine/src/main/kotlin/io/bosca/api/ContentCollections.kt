@@ -220,6 +220,20 @@ class ContentCollections(network: NetworkClient) : Api(network) {
         response.validate()
     }
 
+    suspend fun mergeCollectionItemAttributes(collectionId: String, itemId: String, attributes: Any) {
+        val response =
+            network.graphql.mutation(MergeCollectionItemAttributesMutation(collectionId, itemId, attributes))
+                .execute()
+        response.validate()
+    }
+
+    suspend fun mergeMetadataItemAttributes(collectionId: String, itemId: String, attributes: Any) {
+        val response =
+            network.graphql.mutation(MergeMetadataItemAttributesMutation(collectionId, itemId, attributes))
+                .execute()
+        response.validate()
+    }
+
     suspend fun getSupplementaryContentDownload(supplementaryId: String): CollectionSupplementaryContentDownload? {
         val response = network.graphql.query(GetCollectionSupplementaryDownloadQuery(supplementaryId)).execute()
         response.validate()
