@@ -275,6 +275,45 @@ impl CollectionObject {
             .await
     }
 
+    async fn expanded_metadata(
+        &self,
+        ctx: &Context<'_>,
+        offset: i64,
+        limit: i64,
+        state: Option<String>
+    ) -> Result<Vec<MetadataObject>, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        ctx.check_collection_action(&self.collection.id, PermissionAction::List)
+            .await?;
+        let items = ctx
+            .content
+            .collections
+            .get_expanded_metadata(&self.collection, offset, limit, &state)
+            .await?;
+        let mut content = Vec::new();
+        for item in items {
+            if let Some(id) = &item.metadata_id {
+                if let Ok(mut metadata) =
+                    ctx.check_metadata_action(id, PermissionAction::View).await
+                {
+                    metadata.item_attributes = item.attributes;
+                    content.push(metadata.into())
+                }
+            }
+        }
+        Ok(content)
+    }
+
+    async fn expanded_metadata_count(&self, ctx: &Context<'_>, state: Option<String>) -> Result<i64, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        ctx.check_collection_action(&self.collection.id, PermissionAction::List)
+            .await?;
+        ctx.content
+            .collections
+            .get_expanded_metadata_count(&self.collection, &state)
+            .await
+    }
+    
     async fn workflow(&self) -> CollectionWorkflowObject {
         CollectionWorkflowObject {
             collection: &self.collection,

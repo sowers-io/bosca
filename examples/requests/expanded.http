@@ -1,0 +1,17 @@
+## Get Bible By Slug
+
+GRAPHQL http://localhost:8000/graphql
+Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJib3NjYS5pbyIsImV4cCI6MTc0NjU0NjQ1MCwiaWF0IjoxNzQ2NDYwMDUwLCJpc3MiOiJib3NjYS1ncmFwaHFsIiwic3ViIjoiNWZmMzAxNTItNTUyZC00ZmYzLTlhYjItYTFmMDJkYzE2ZDc0In0._1x15g2PiFp49VVADUqmlGoXzdqO7o93l0jfz6vEbJ0
+
+query {
+    content {
+        collection(id: "1d673dbd-2d2a-4e6c-b075-fc164ced8c84") {
+            expandedMetadata(limit: 100, offset: 0) {
+                id
+                attributes
+            }
+            expandedMetadataCount
+        }
+
+    }
+}

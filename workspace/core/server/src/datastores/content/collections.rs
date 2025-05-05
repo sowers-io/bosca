@@ -347,7 +347,7 @@ impl CollectionsDataStore {
         let ordering = if let Some(ordering) = &collection.ordering {
             build_ordering_names(ordering, &mut names);
             build_ordering(
-                "collections",
+                "collections", // KJB: TODO: this isn't adequate, need a way to include both collection or metadata. Probably with a case statement.
                 "collections.attributes",
                 "collection_items.attributes",
                 if state.is_some() { 3 } else { 2 },
@@ -401,6 +401,84 @@ impl CollectionsDataStore {
         } else {
             connection.query_one(&stmt, &[&collection.id]).await?
         };
+        Ok(rows.get(0))
+    }
+
+    #[tracing::instrument(skip(self, collection, offset, limit, state))]
+    pub async fn get_expanded_metadata(
+        &self,
+        collection: &Collection,
+        offset: i64,
+        limit: i64,
+        state: &Option<String>
+    ) -> Result<Vec<CollectionChild>, Error> {
+        let mut values = Vec::new();
+        let mut names = Vec::new();
+        values.push(&collection.id as &(dyn ToSql + Sync));
+        if let Some(state) = state {
+            values.push(state as &(dyn ToSql + Sync));
+        }
+        let ordering = if let Some(ordering) = &collection.ordering {
+            build_ordering_names(ordering, &mut names);
+            build_ordering(
+                "metadata",
+                "metadata.attributes",
+                "child.attributes",
+                if state.is_some() { 3 } else { 2 },
+                ordering,
+                &mut values,
+                &names,
+            ).0
+        } else {
+            String::new()
+        };
+        let mut query = "select child.child_collection_id as child_collection_id, child.child_metadata_id as child_metadata_id, child.attributes as attributes from collection_items parent inner join collection_items as child on (parent.child_collection_id = child.collection_id and parent.child_collection_id is not null) ".to_owned();
+        if state.is_some() {
+            query.push_str(" left join metadata on (child.child_metadata_id = metadata.id and metadata.workflow_state_id = $2) ");
+        } else {
+            query.push_str(" left join metadata on (child.child_metadata_id = metadata.id) ");
+        }
+        query.push_str(" where parent.collection_id = $1 and (metadata.id is not null and (metadata.deleted is null or metadata.deleted = false)) ");
+        if !ordering.is_empty() {
+            query.push_str(ordering.as_str());
+        } else {
+            query.push_str(" order by lower(metadata.name) asc");
+        }
+        query.push_str(
+            format!(" offset ${} limit ${}", values.len() + 1, values.len() + 2).as_str(),
+        );
+        values.push(&offset as &(dyn ToSql + Sync));
+        values.push(&limit as &(dyn ToSql + Sync));
+        let connection = self.pool.get().await?;
+        let stmt = connection.prepare_cached(query.as_str()).await?;
+        let rows = connection.query(&stmt, values.as_slice()).await?;
+        Ok(rows.iter().map(|r| r.into()).collect())
+    }
+
+    #[tracing::instrument(skip(self, collection, state))]
+    pub async fn get_expanded_metadata_count(
+        &self,
+        collection: &Collection,
+        state: &Option<String>
+    ) -> Result<i64, Error> {
+        let mut values = Vec::new();
+        values.push(&collection.id as &(dyn ToSql + Sync));
+        if let Some(state) = state {
+            values.push(state as &(dyn ToSql + Sync));
+        }
+        let mut query = "select count(*) from collection_items parent inner join collection_items as child on (parent.child_collection_id = child.collection_id and parent.child_collection_id is not null) ".to_owned();
+        if state.is_some() {
+            query.push_str(" left join metadata on (child.child_metadata_id = metadata.id and metadata.workflow_state_id = $2) ");
+        } else {
+            query.push_str(" left join metadata on (child.child_metadata_id = metadata.id) ");
+        }
+        query.push_str(" where parent.collection_id = $1 and (metadata.id is not null and (metadata.deleted is null or metadata.deleted = false)) ");
+        let connection = self.pool.get().await?;
+        let stmt = connection.prepare_cached(query.as_str()).await?;
+        let rows = connection.query_one(&stmt, values.as_slice()).await?;
+        if rows.is_empty() {
+            return Ok(0);
+        }
         Ok(rows.get(0))
     }
 
