@@ -21,6 +21,8 @@ pub mod api {
 pub struct Client {
     clients: Arc<RwLock<HashMap<String, DistributedCacheClient<Channel>>>>,
     hash: Arc<RwLock<HashRing<Node>>>,
+    #[allow(dead_code)]
+    origin_rx: Arc<broadcast::Receiver<Notification>>,
     tx: Arc<broadcast::Sender<Notification>>,
 }
 
@@ -40,10 +42,11 @@ impl Default for Client {
 
 impl Client {
     pub fn new() -> Self {
-        let (tx, _) = broadcast::channel::<Notification>(500);
+        let (tx, rx) = broadcast::channel::<Notification>(500);
         Self {
             clients: Arc::new(RwLock::new(HashMap::new())),
             hash: Arc::new(RwLock::new(HashRing::new())),
+            origin_rx: Arc::new(rx),
             tx: Arc::new(tx),
         }
     }
@@ -113,23 +116,23 @@ impl Client {
                 let t = NotificationType::try_from(notification.notification_type).unwrap();
                 match t {
                     NotificationType::CacheCreated => {
-                        if listen_client.tx.send(notification).is_err() {
-                            error!("failed to send notification");
+                        if let Err(e) = listen_client.tx.send(notification) {
+                            error!("failed to send cache created notification: {}", e);
                         }
                     }
                     NotificationType::ValueUpdated => {
-                        if listen_client.tx.send(notification).is_err() {
-                            error!("failed to send notification");
+                        if let Err(e) = listen_client.tx.send(notification) {
+                            error!("failed to send value updated notification: {}", e);
                         }
                     }
                     NotificationType::ValueDeleted => {
-                        if listen_client.tx.send(notification).is_err() {
-                            error!("failed to send notification");
+                        if let Err(e) = listen_client.tx.send(notification) {
+                            error!("failed to send value deleted notification: {}", e);
                         }
                     }
                     NotificationType::CacheCleared => {
-                        if listen_client.tx.send(notification).is_err() {
-                            error!("failed to send notification");
+                        if let Err(e) = listen_client.tx.send(notification) {
+                            error!("failed to send cache cleared notification: {}", e);
                         }
                     }
                     NotificationType::NodeFound => {

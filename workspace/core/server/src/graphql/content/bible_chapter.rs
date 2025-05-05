@@ -28,7 +28,7 @@ impl BibleChapterObject {
     }
 
     async fn human(&self) -> String {
-        format!("{} {}", self.book.name_short, self.chapter.reference.chapter().unwrap_or_default())
+        format!("{} {}", self.book.name_long, self.chapter.reference.chapter().unwrap_or_default())
     }
 
     async fn reference(&self) -> BibleReferenceObject {

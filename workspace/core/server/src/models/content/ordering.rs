@@ -28,7 +28,7 @@ pub struct Ordering {
 impl Ordering {
     pub fn get_field(&self) -> Option<&String> {
         if let Some(field) = &self.field {
-            if field != "created" {
+            if field != "created" && field != "modified" && field != "slug" && field != "name" {
                 return None;
             }
             return Some(field);

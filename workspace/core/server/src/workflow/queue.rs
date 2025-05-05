@@ -256,9 +256,7 @@ impl JobQueues {
                     .execute(&stmt, &[metadata_id, &plan_id.id, &plan_id.queue])
                     .await
                 {
-                    if !e.to_string().contains("metadata_workflow_plans_id_fkey") {
-                        return Err(e.into());
-                    }
+                    error!("failed to register metadata workflow plan: {}", e);
                 }
             }
             if let Some(collection_id) = &plan.collection_id {
@@ -272,9 +270,7 @@ impl JobQueues {
                     .execute(&stmt, &[collection_id, &plan_id.id, &plan_id.queue])
                     .await
                 {
-                    if !e.to_string().contains("collection_workflow_plans_id_fkey") {
-                        return Err(e.into());
-                    }
+                    error!("failed to register collection workflow plan: {}", e);
                 }
             }
         }

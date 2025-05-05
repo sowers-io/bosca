@@ -107,6 +107,7 @@ class ImageResizer(client: Client) : AbstractImageResizer(client) {
     @OptIn(ExperimentalUuidApi::class)
     override suspend fun execute(context: ActivityContext, job: WorkflowJob) {
         val metadata = job.metadata?.metadata ?: throw FullFailureException("metadata missing")
+        if (!metadata.content.metadataContent.type.startsWith("image/")) return
         val configuration = getConfiguration<ImageResizerConfiguration>(job)
         val content = client.metadata.getMetadataContentDownload(metadata.id)
             ?: error("missing content")

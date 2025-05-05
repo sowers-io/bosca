@@ -28,7 +28,7 @@ impl BibleBookObject {
     }
 
     async fn human(&self) -> &String {
-        &self.book.name_short
+        &self.book.name_long
     }
 
     async fn abbreviation(&self) -> &String {

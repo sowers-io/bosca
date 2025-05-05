@@ -62,7 +62,7 @@ private fun toDocumentNode(node: ContentNode): DocumentNode {
                     attributes = BibleAttributes(
                         classes = node.attributes?.get("class"),
                         references = listOfNotNull(
-                            BibleReference(usfm = node.attributes?.get("usfm"), human = node.attributes?.get("human"))
+                            io.bosca.documents.BibleReference(usfm = node.attributes?.get("usfm"), human = node.attributes?.get("human"))
                         )
                     ),
                     content = content

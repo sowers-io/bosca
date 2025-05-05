@@ -148,6 +148,12 @@ impl WorkflowsMutationObject {
                 let metadata = ctx
                     .check_metadata_version_action(&id, version, PermissionAction::Edit)
                     .await?;
+                if metadata.workflow_state_id == "pending" {
+                    ctx.content
+                        .metadata_workflows
+                        .set_metadata_not_ready(ctx, &metadata.id)
+                        .await?;
+                }
                 ctx.workflow
                     .cancel_workflows(
                         METADATA_DELAYED_TRANSITION,

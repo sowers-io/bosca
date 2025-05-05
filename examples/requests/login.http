@@ -1,0 +1,15 @@
+## Get Bible By Slug
+
+GRAPHQL http://localhost:8000/graphql
+
+mutation {
+    security {
+        login {
+            password(identifier: "admin", password: "password") {
+                token {
+                    token
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,8 @@
+## Get Bible By Slug
+
+GRAPHQL http://localhost:8000/graphql
+Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJib3NjYS5pbyIsImV4cCI6MTc0NjQ4MjkxNSwiaWF0IjoxNzQ2Mzk2NTE1LCJpc3MiOiJib3NjYS1ncmFwaHFsIiwic3ViIjoiZTRhN2U3YmEtY2VlMS00MTNhLThlOWUtYTMwYmM3OGFjMTY3In0.8vAudl2qgjR_GuKpL-F4ujxz26NanvinyMX8whDoxEk
+
+mutation {
+    clearCache
+}

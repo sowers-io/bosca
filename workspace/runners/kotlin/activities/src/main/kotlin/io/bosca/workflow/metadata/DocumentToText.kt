@@ -26,7 +26,7 @@ class DocumentToText(client: Client) : Activity(client) {
             job.metadata?.metadata?.id ?: error("metadata id is missing"),
             job.metadata?.metadata?.version ?: error("metadata version is missing")
         ) ?: error("missing document")
-        val content = document.asText()
+        val content = document.asText(client)
         setSupplementaryContents(job, OUTPUT_NAME, "Document Text", content.trim(), "text/plain")
     }
 

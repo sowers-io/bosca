@@ -1,0 +1,54 @@
+fragment Bible on Bible {
+  systemId
+  name
+  nameLocal
+  description
+  abbreviation
+  abbreviationLocal
+  styles
+  languages {
+    ...BibleLanguage
+  }
+}
+
+fragment BibleBook on BibleBook {
+  usfm
+  nameShort
+  nameLong
+  abbreviation
+}
+
+fragment BibleBookWithChapters on BibleBook {
+  ...BibleBook
+  chapters {
+    ...BibleChapter
+  }
+}
+
+fragment BibleChapter on BibleChapter {
+  usfm
+}
+
+fragment BibleChapterContent on BibleChapter {
+  usfm
+  human
+  reference {
+    human
+    usfm
+  }
+  component
+}
+
+fragment BibleReference on BibleReference {
+  usfm
+  human
+}
+
+fragment BibleLanguage on BibleLanguage {
+  iso
+  name
+  nameLocal
+  script
+  scriptCode
+  scriptDirection
+}

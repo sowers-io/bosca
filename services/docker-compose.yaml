@@ -75,8 +75,9 @@ services:
       - boscanet
 
   postgres:
-    image: postgres:16-alpine
+    image: postgres:17.4-alpine
     restart: always
+    command: -c 'max_connections=400'
     ports:
       - '5433:5432'
     volumes:

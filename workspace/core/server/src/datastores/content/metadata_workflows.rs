@@ -156,6 +156,20 @@ impl MetadataWorkflowsDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, id))]
+    pub async fn set_metadata_not_ready(&self, ctx: &BoscaContext, id: &Uuid) -> Result<(), Error> {
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        let stmt = txn
+            .prepare_cached("update metadata set ready = null, modified = now() where id = $1")
+            .await?;
+        txn.execute(&stmt, &[id]).await?;
+        update_metadata_etag(&txn, id).await?;
+        txn.commit().await?;
+        self.on_metadata_changed(ctx, id).await?;
+        Ok(())
+    }
+
     #[tracing::instrument(skip(self, ctx, metadata, configurations))]
     pub async fn set_metadata_ready_and_enqueue(
         &self,

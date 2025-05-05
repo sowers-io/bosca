@@ -46,7 +46,7 @@ class MetadataToJson(client: Client) : Activity(client) {
         val json = ow.writeValueAsString(metadata)
         val content =
             if (metadata.content.metadataContent.type == "bosca/v-document" || metadata.content.metadataContent.type == "bosca/v-guide") {
-                client.metadata.getDocument(metadata.id, metadata.version)?.asText()
+                client.metadata.getDocument(metadata.id, metadata.version)?.asText(client)
             } else if (metadata.content.metadataContent.type.startsWith("text/")) {
                 client.metadata.getTextContents(metadata.id)
             } else {

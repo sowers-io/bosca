@@ -38,7 +38,7 @@ impl Reference {
     }
 
     pub fn format(&self, book: &Book) -> String {
-        let mut human = book.name_short.clone();
+        let mut human = book.name_long.clone();
         if let Some(chapter) = self.chapter() {
             human.push(' ');
             human.push_str(&chapter);
