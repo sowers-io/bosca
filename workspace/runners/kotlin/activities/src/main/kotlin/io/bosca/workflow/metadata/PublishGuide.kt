@@ -65,6 +65,7 @@ class PublishGuide(client: Client) : Activity(client) {
                         "Publishing Guide Module from Workflow",
                         true
                     )
+
                     if (configuration.public == true && !it.public) {
                         client.metadata.setPublic(it.id, true)
                     }
