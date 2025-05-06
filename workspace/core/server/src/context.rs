@@ -31,12 +31,14 @@ use meilisearch_sdk::client::Client;
 use std::env;
 use std::sync::Arc;
 use uuid::Uuid;
+use crate::datastores::security_oauth2::SecurityOAuth2;
 
 #[derive(Clone)]
 pub struct BoscaContext {
     pub content: ContentDataStore,
     pub profile: ProfileDataStore,
     pub security: SecurityDataStore,
+    pub security_oauth2: SecurityOAuth2,
     pub storage: ObjectStorage,
     pub workflow: WorkflowDataStore,
     pub workflow_schedule: WorkflowScheduleDataStore,
@@ -93,6 +95,7 @@ impl BoscaContext {
                 url_secret_key,
             )
             .await?,
+            security_oauth2: SecurityOAuth2::new()?,
             workflow: WorkflowDataStore::new(
                 bosca_pool.clone(),
                 &mut cache,

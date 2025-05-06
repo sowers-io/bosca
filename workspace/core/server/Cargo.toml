@@ -45,6 +45,10 @@ tracing-subscriber = "0.3.19"
 tracing-opentelemetry = { version = "0.30.0", features = ["default", "async-trait"] }
 axum-tracing-opentelemetry = "0.28.0"
 
+oauth2 = { version = "5.0.0" }
+time = { version = "0.3.41" }
+url = "2.5.4"
+
 meilisearch-sdk = "0.28.0"
 rustls = { version = "0.23.23", features = ["tls12", "ring"] }
 

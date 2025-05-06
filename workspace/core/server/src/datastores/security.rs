@@ -1,7 +1,8 @@
-use std::fmt::Debug;
 use crate::datastores::cache::manager::BoscaCacheManager;
 use crate::datastores::security_cache::SecurityCache;
-use crate::models::security::credentials::{Credential, CredentialType, PasswordCredential};
+use crate::models::security::credentials::{Credential, CredentialType};
+use crate::models::security::credentials_oauth2::Oauth2Credential;
+use crate::models::security::credentials_password::PasswordCredential;
 use crate::models::security::group::Group;
 use crate::models::security::group_type::GroupType;
 use crate::models::security::password::verify;
@@ -10,12 +11,13 @@ use crate::security::jwt::Jwt;
 use crate::security::token::Token;
 use crate::util::signed_url::{sign_url, verify_signed_url};
 use async_graphql::*;
+use bosca_database::TracingPool;
 use chrono::{DateTime, Utc};
 use deadpool_postgres::{GenericClient, Object};
 use log::warn;
 use serde_json::Value;
+use std::fmt::Debug;
 use uuid::Uuid;
-use bosca_database::TracingPool;
 
 #[derive(Clone)]
 pub struct SecurityDataStore {
@@ -37,7 +39,7 @@ pub const MODEL_MANAGERS_GROUP: &str = "model.managers";
 pub const WORKFLOW_MANAGERS_GROUP: &str = "workflow.managers";
 
 pub struct RefreshToken {
-    pub token: String
+    pub token: String,
 }
 
 impl Debug for RefreshToken {
@@ -76,7 +78,9 @@ impl SecurityDataStore {
         let verification_token = hex::encode(Uuid::new_v4().as_bytes());
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
-        let stmt = txn.prepare_cached("update principals set verification_token = $1 where id = $2").await?;
+        let stmt = txn
+            .prepare_cached("update principals set verification_token = $1 where id = $2")
+            .await?;
         txn.execute(&stmt, &[&verification_token, id]).await?;
         txn.commit().await?;
         Ok(verification_token)
@@ -183,7 +187,9 @@ impl SecurityDataStore {
         &self,
         principal: &Principal,
     ) -> Result<RefreshToken, jsonwebtoken::errors::Error> {
-        self.jwt.new_refresh_token(principal).map(|t| RefreshToken { token: t })
+        self.jwt
+            .new_refresh_token(principal)
+            .map(|t| RefreshToken { token: t })
     }
 
     #[tracing::instrument(skip(self, refresh_token))]
@@ -197,9 +203,10 @@ impl SecurityDataStore {
         if let Some(result) = results.first() {
             let expires: DateTime<Utc> = result.get("expires");
             if expires > Utc::now() {
-                warn!("refresh token expired");
                 let principal_id: Uuid = result.get("principal_id");
                 return Ok(Some(principal_id));
+            } else {
+                warn!("refresh token expired");
             }
         }
         Ok(None)
@@ -271,10 +278,7 @@ impl SecurityDataStore {
     }
 
     #[tracing::instrument(skip(self, id))]
-    pub async fn get_principal_credentials(
-        &self,
-        id: &Uuid,
-    ) -> Result<Vec<Credential>, Error> {
+    pub async fn get_principal_credentials(&self, id: &Uuid) -> Result<Vec<Credential>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached("select * from principal_credentials where principal = $1")
@@ -285,8 +289,12 @@ impl SecurityDataStore {
             let type_ = result.get("type");
             let attributes = result.get("attributes");
             let credential = match type_ {
-                CredentialType::Password => Credential::Password(PasswordCredential::new_from_attributes(attributes)),
-                CredentialType::Oauth2 => return Err(Error::new("unsupported")),
+                CredentialType::Password => {
+                    Credential::Password(PasswordCredential::new_from_attributes(attributes))
+                }
+                CredentialType::Oauth2 => {
+                    Credential::Oauth2(Oauth2Credential::new_from_attributes(attributes))
+                }
             };
             credentials.push(credential);
         }
@@ -366,21 +374,22 @@ impl SecurityDataStore {
     }
 
     #[tracing::instrument(skip(self, principal))]
-    pub async fn get_principal_groups(
-        &self,
-        principal: &Uuid,
-    ) -> Result<Vec<Uuid>, Error> {
+    pub async fn get_principal_groups(&self, principal: &Uuid) -> Result<Vec<Uuid>, Error> {
         if let Some(principal) = self.cache.get_principal_group_ids(principal).await {
             return Ok(principal);
         }
         let connection = self.pool.get().await?;
         let mut groups = Vec::<Uuid>::new();
-        let stmt = connection.prepare_cached("select group_id from principal_groups where principal = $1").await?;
+        let stmt = connection
+            .prepare_cached("select group_id from principal_groups where principal = $1")
+            .await?;
         let results = connection.query(&stmt, &[principal]).await?;
         for result in results.iter() {
             groups.push(result.get("group_id"));
         }
-        self.cache.cache_principal_group_ids(principal, groups.clone()).await;
+        self.cache
+            .cache_principal_group_ids(principal, groups.clone())
+            .await;
         Ok(groups)
     }
 
@@ -431,6 +440,30 @@ impl SecurityDataStore {
         self.get_principal_by_id_internal(&connection, &id).await
     }
 
+    #[tracing::instrument(skip(self, identifier, oauth2_type))]
+    pub async fn get_principal_by_identifier_oauth2(
+        &self,
+        identifier: &str,
+        oauth2_type: &str,
+    ) -> Result<Principal, Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached(
+                "select principal from principal_credentials where attributes->>'identifier' = $1 and attributes->>'type' = $2",
+            )
+            .await?;
+        let id = identifier.to_lowercase();
+        let oauth2_type = oauth2_type.to_lowercase();
+        let results = connection.query(&stmt, &[&id, &oauth2_type]).await?;
+        if results.is_empty() {
+            return Err(Error::new("invalid credential"));
+        }
+        let id: Uuid = results.first().unwrap().get("principal");
+        drop(results);
+        drop(stmt);
+        self.get_principal_by_id_internal(&connection, &id).await
+    }
+
     #[tracing::instrument(skip(self, identifier, password))]
     pub async fn get_principal_by_password(
         &self,
@@ -456,11 +489,7 @@ impl SecurityDataStore {
     }
 
     #[tracing::instrument(skip(self, credential, password))]
-    pub fn verify_password(
-        &self,
-        credential: &Credential,
-        password: &str,
-    ) -> Result<bool, Error> {
+    pub fn verify_password(&self, credential: &Credential, password: &str) -> Result<bool, Error> {
         let attrs = credential.get_attributes();
         let hash = attrs.get("password").unwrap().as_str().unwrap();
         Ok(verify(hash, password)?)
@@ -468,13 +497,12 @@ impl SecurityDataStore {
 
     /// verify forgot password token, so, verified must be true for this to work
     #[tracing::instrument(skip(self, token))]
-    pub async fn verify_verification_token(
-        &self,
-        token: &str,
-    ) -> Result<Principal, Error> {
+    pub async fn verify_verification_token(&self, token: &str) -> Result<Principal, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
-            .prepare_cached("select * from principals where verification_token = $1 and verified = true")
+            .prepare_cached(
+                "select * from principals where verification_token = $1 and verified = true",
+            )
             .await?;
         let token = token.to_string();
         let results = connection.query(&stmt, &[&token]).await?;

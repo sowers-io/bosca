@@ -10,3 +10,4 @@ pub mod cache;
 pub mod metadata_cache;
 pub mod collection_cache;
 pub mod bible;
+pub mod security_oauth2;

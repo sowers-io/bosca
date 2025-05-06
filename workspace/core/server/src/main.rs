@@ -47,6 +47,7 @@ use crate::shutdown_hook::shutdown_hook;
 use crate::slugs::slug;
 use mimalloc::MiMalloc;
 use tower_http::cors::CorsLayer;
+use crate::security::oauth2::{oauth2_callback, oauth2_redirect};
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
@@ -92,6 +93,11 @@ async fn main() {
         .route("/download", get(collection_download))
         .with_state(ctx.clone());
 
+    let oauth2 = Router::new()
+        .route("/redirect", get(oauth2_redirect))
+        .route("/callback", get(oauth2_callback))
+        .with_state(ctx.clone());
+
     let content = Router::new()
         .route("/{slug}", get(slug))
         .with_state(ctx.clone());
@@ -101,6 +107,7 @@ async fn main() {
         .nest("/files/metadata", metadata_files)
         .nest("/files/collection", collection_files)
         .nest("/content", content)
+        .nest("/oauth2", oauth2)
         .route("/graphql", post(graphql_handler))
         .route("/graphql", get(graphql_handler))
         .route_service("/ws", AuthGraphQLSubscription::new(schema.clone(), ctx))

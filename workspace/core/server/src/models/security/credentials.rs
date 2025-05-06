@@ -1,9 +1,11 @@
-use std::fmt::{Debug, Formatter};
-use crate::models::security::password::encrypt;
+use crate::models::security::credentials_oauth2::Oauth2Credential;
+use crate::models::security::credentials_password::PasswordCredential;
 use async_graphql::{Enum, Error};
 use bytes::{BufMut, BytesMut};
+use oauth2::TokenResponse;
 use postgres_types::{to_sql_checked, FromSql, IsNull, ToSql, Type};
-use serde_json::{Map, Value};
+use serde_json::Value;
+use std::fmt::Debug;
 
 #[derive(Enum, Debug, Copy, Clone, Eq, PartialEq)]
 pub enum CredentialType {
@@ -17,103 +19,50 @@ pub trait CredentialInterface {
 }
 
 pub enum Credential {
-    Password(PasswordCredential)
+    Password(PasswordCredential),
+    Oauth2(Oauth2Credential),
 }
 
 impl Credential {
     pub fn get_type(&self) -> CredentialType {
         match self {
-            Credential::Password(c) => c.credential_type
+            Credential::Password(c) => c.credential_type,
+            Credential::Oauth2(c) => c.credential_type,
         }
     }
 
     pub fn identifier(&self) -> String {
         match self {
-            Credential::Password(c) => c.identifier()
+            Credential::Password(c) => c.identifier(),
+            Credential::Oauth2(c) => c.identifier(),
         }
     }
 
     pub fn get_attributes(&self) -> Value {
         match self {
-            Credential::Password(c) => c.attributes.clone()
+            Credential::Password(c) => c.attributes.clone(),
+            Credential::Oauth2(c) => c.attributes.clone(),
         }
     }
 
     pub fn set_identifier(&mut self, identifier: String) {
         match self {
-            Credential::Password(c) => c.set_identifier(identifier)
+            Credential::Password(c) => c.set_identifier(identifier),
+            Credential::Oauth2(c) => c.set_identifier(identifier),
         }
     }
 
     pub fn set_password(&mut self, password: String) -> Result<(), Error> {
         match self {
-            Credential::Password(c) => c.set_password(password)
-        }
-    }
-}
-
-pub struct PasswordCredential {
-    credential_type: CredentialType,
-    attributes: Value,
-}
-
-impl Debug for PasswordCredential {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("PasswordCredential").finish()
-    }
-}
-
-impl PasswordCredential {
-    pub fn new(identifier: String, password: String) -> Result<Self, Error> {
-        let mut map = Map::<String, Value>::new();
-        map.insert("identifier".to_string(), Value::String(identifier.to_lowercase()));
-        map.insert("password".to_string(), Value::String(encrypt(password)?));
-        Ok(Self {
-            credential_type: CredentialType::Password,
-            attributes: Value::Object(map),
-        })
-    }
-
-    pub fn new_from_attributes(attributes: Value) -> Self {
-        Self {
-            credential_type: CredentialType::Password,
-            attributes,
+            Credential::Password(c) => c.set_password(password),
+            Credential::Oauth2(_) => Err(Error::new("Cannot set password on Oauth2 credential")),
         }
     }
 
-    pub fn set_password(&mut self, password: String) -> Result<(), Error> {
-        let mut map = self.attributes.as_object_mut().unwrap().clone();
-        map.insert("password".to_string(), Value::String(encrypt(password)?));
-        self.attributes = Value::Object(map);
-        Ok(())
-    }
-}
-
-impl CredentialInterface for PasswordCredential {
-
-    fn identifier(&self) -> String {
-        self.attributes
-            .as_object()
-            .unwrap()
-            .get("identifier")
-            .unwrap()
-            .as_str()
-            .unwrap()
-            .to_string()
-    }
-
-    fn set_identifier(&mut self, identifier: String) {
-        let mut map = self.attributes.as_object_mut().unwrap().clone();
-        map.insert("identifier".to_string(), Value::String(identifier));
-        self.attributes = Value::Object(map);
-    }
-}
-
-impl From<Value> for PasswordCredential {
-    fn from(value: Value) -> Self {
-        Self {
-            credential_type: CredentialType::Password,
-            attributes: value,
+    pub fn set_tokens(&mut self, password: impl TokenResponse) -> Result<(), Error> {
+        match self {
+            Credential::Password(_) => Err(Error::new("Cannot set tokens on Password credential")),
+            Credential::Oauth2(c) => c.set_tokens(password),
         }
     }
 }
