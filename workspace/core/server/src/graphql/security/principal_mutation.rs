@@ -33,7 +33,7 @@ impl PrincipalMutation {
                 .into_iter()
                 .find(|c| c.get_type() == CredentialType::Password)
             else {
-                return Err(Error::new("invalid principal"));
+                return Ok(false)
             };
             credential
         };

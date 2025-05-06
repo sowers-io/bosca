@@ -301,6 +301,22 @@ impl SecurityDataStore {
         Ok(credentials)
     }
 
+    #[tracing::instrument(skip(self, id, attributes))]
+    pub async fn merge_principal_attributes(
+        &self,
+        id: &Uuid,
+        attributes: Value,
+    ) -> Result<(), Error> {
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        let stmt = txn
+            .prepare_cached("update principals set attributes = coalesce(attributes, '{}'::jsonb) || $1 where id = $2")
+            .await?;
+        txn.execute(&stmt, &[&attributes, id]).await?;
+        txn.commit().await?;
+        Ok(())
+    }
+
     #[tracing::instrument(skip(self, id, credential))]
     pub async fn set_principal_credential(
         &self,

@@ -1,4 +1,5 @@
 use crate::context::BoscaContext;
+use crate::models::security::credentials::CredentialType;
 use crate::util::profile::add_oauth_principal;
 use axum::body::Body;
 use axum::extract::{Query, State};
@@ -101,13 +102,13 @@ pub async fn oauth2_callback(
     };
     let response = ctx
         .security_oauth2
-        .exchange_authorization_code(&oauth2_type, verifier, &params.code)
+        .exchange_authorization_code(oauth2_type, verifier, &params.code)
         .await
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.message))?;
     let access_token = response.access_token().clone().into_secret();
     let account = ctx
         .security_oauth2
-        .get_account(&oauth2_type, &access_token)
+        .get_account(oauth2_type, &access_token)
         .await
         .map_err(|_| {
             (
@@ -118,9 +119,57 @@ pub async fn oauth2_callback(
     let jar = if let Some(id) = account.id() {
         let principal = if let Ok(principal) = ctx
             .security
-            .get_principal_by_identifier_oauth2(&id, oauth2_type)
+            .get_principal_by_identifier_oauth2(id, oauth2_type)
             .await
         {
+            let credentials = ctx
+                .security
+                .get_principal_credentials(&principal.id)
+                .await
+                .map_err(|_| {
+                    (
+                        StatusCode::UNAUTHORIZED,
+                        "Failed to create Principal".to_string(),
+                    )
+                })?;
+            let mut credentials = credentials
+                .into_iter()
+                .filter(|c| {
+                    c.get_type() == CredentialType::Oauth2
+                        && c.identifier_type().unwrap_or_default() == oauth2_type
+                })
+                .collect::<Vec<_>>();
+            let credential = credentials.first_mut().unwrap();
+            credential.set_tokens(response).map_err(|_| {
+                (
+                    StatusCode::UNAUTHORIZED,
+                    "Failed to update Principal tokens".to_string(),
+                )
+            })?;
+            ctx.security
+                .set_principal_credential(&principal.id, credential)
+                .await
+                .map_err(|_| {
+                    (
+                        StatusCode::UNAUTHORIZED,
+                        "Failed to create Principal".to_string(),
+                    )
+                })?;
+            let attributes = serde_json::to_value(&account).map_err(|_| {
+                (
+                    StatusCode::UNAUTHORIZED,
+                    "Failed to create Principal".to_string(),
+                )
+            })?;
+            ctx.security
+                .merge_principal_attributes(&principal.id, attributes)
+                .await
+                .map_err(|_| {
+                    (
+                        StatusCode::UNAUTHORIZED,
+                        "Failed to update Principal".to_string(),
+                    )
+                })?;
             principal
         } else {
             let (principal, _) = add_oauth_principal(&ctx, &account, &response, true)

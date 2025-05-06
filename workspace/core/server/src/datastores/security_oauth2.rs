@@ -25,6 +25,7 @@ pub struct SecurityOAuth2Request {
 pub struct SecurityOAuth2 {
     pub domain: String,
     http: reqwest::Client,
+    #[allow(clippy::type_complexity)]
     clients: HashMap<
         String,
         Client<
@@ -54,7 +55,8 @@ impl SecurityOAuth2 {
             .split(',')
             .map(|s| s.trim().to_string())
             .collect();
-        let redirect_url = env::var("OAUTH2_REDIRECT_URL")?;
+        let redirect_url = env::var("OAUTH2_REDIRECT_URL")
+            .unwrap_or("http://localhost:8000/oauth2/callback".to_string());
 
         let mut clients = HashMap::new();
         match env::var("OAUTH2_CLIENTS") {

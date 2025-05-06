@@ -38,6 +38,13 @@ impl Credential {
         }
     }
 
+    pub fn identifier_type(&self) -> Option<String> {
+        match self {
+            Credential::Password(_) => None,
+            Credential::Oauth2(c) => Some(c.attributes["type"].as_str().unwrap().to_string()),
+        }
+    }
+
     pub fn get_attributes(&self) -> Value {
         match self {
             Credential::Password(c) => c.attributes.clone(),

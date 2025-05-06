@@ -43,7 +43,7 @@ impl Account {
     }
 
     pub fn oauth2_type(&self) -> String {
-        if let Some(_) = &self.google {
+        if self.google.is_some() {
             "google".to_string()
         } else {
             "".to_string()
