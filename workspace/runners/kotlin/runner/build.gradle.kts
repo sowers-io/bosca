@@ -66,7 +66,8 @@ graalvmNative {
                 "--initialize-at-build-time=com.oracle.truffle.trufflenode",
                 "--install-exit-handlers",
                 "--features=io.bosca.graalvm.BoscaFeature",
-                "--enable-preview"
+                "--enable-preview",
+                "-D=java.io.tmpdir=/tmp/bosca"
             )
             if (System.getenv("MARCH") != null) {
                 args.add("-march=${System.getenv("MARCH")}")

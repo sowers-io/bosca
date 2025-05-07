@@ -19,8 +19,8 @@ pub struct RedirectParams {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CallbackParams {
     state: String,
-    scope: String,
     code: String,
+    scope: Option<String>,
     authuser: Option<String>,
     hd: Option<String>,
     prompt: Option<String>,
