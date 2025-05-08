@@ -95,7 +95,7 @@ jobs:
             ghcr.io/sowers-io/bosca/analytics:${{ github.sha }}
 
   build-and-publish-runner-community:
-    runs-on: ubuntu-large
+    runs-on: ubuntu-22.04
     env:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
@@ -142,7 +142,7 @@ jobs:
             ghcr.io/sowers-io/bosca/blog-installer:${{ github.sha }}
 
   build-and-publish-runner-community-compatibility:
-    runs-on: ubuntu-large
+    runs-on: ubuntu-22.04
     env:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
@@ -188,7 +188,7 @@ jobs:
             ghcr.io/sowers-io/bosca/blog-installer-compatibility:${{ github.sha }}
 
   build-and-publish-runner-enterprise:
-    runs-on: ubuntu-large
+    runs-on: ubuntu-22.04
     env:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
@@ -228,7 +228,7 @@ jobs:
             ghcr.io/sowers-io/bosca/kotlin-runner-enterprise:${{ github.sha }}
 
   build-and-publish-runner-enterprise-compatibility:
-    runs-on: ubuntu-large
+    runs-on: ubuntu-22.04
     env:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
