@@ -146,6 +146,7 @@ jobs:
         with:
           java-version: '24'
           distribution: 'graalvm-community'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
       - run: |
           export JAVA_HOME=/opt/hostedtoolcache/graalvm-community-jdk-24.0.1_linux-x64_bin/24.0.1/x64/graalvm-community-openjdk-24.0.1+9.1
           export PATH=$PATH:$JAVA_HOME/bin
@@ -195,6 +196,7 @@ jobs:
         with:
           java-version: '24'
           distribution: 'graalvm-community'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
       - run: |
           export JAVA_HOME=/opt/hostedtoolcache/graalvm-community-jdk-24.0.1_linux-x64_bin/24.0.1/x64/graalvm-community-openjdk-24.0.1+9.1
           export PATH=$PATH:$JAVA_HOME/bin
@@ -246,6 +248,7 @@ jobs:
         with:
           java-version: '24'
           distribution: 'graalvm-community'
+          github-token: ${{ secrets.XGITHUB_TOKEN }}
       - run: |
           export JAVA_HOME=/opt/hostedtoolcache/graalvm-community-jdk-24.0.1_linux-x64_bin/24.0.1/x64/graalvm-community-openjdk-24.0.1+9.1
           export PATH=$PATH:$JAVA_HOME/bin
@@ -289,6 +292,7 @@ jobs:
         with:
           java-version: '24'
           distribution: 'graalvm-community'
+          github-token: ${{ secrets.XGITHUB_TOKEN }}
       - run: |
           export JAVA_HOME=/opt/hostedtoolcache/graalvm-community-jdk-24.0.1_linux-x64_bin/24.0.1/x64/graalvm-community-openjdk-24.0.1+9.1
           export PATH=$PATH:$JAVA_HOME/bin
