@@ -2,11 +2,9 @@ name: Build & Publish Backend and Frontend
 
 on:
   push:
-#    branches: [ "main" ]
     tags:
       - '*'
   pull_request:
-#    branches: [ "main" ]
     tags:
       - '*'
 
@@ -35,7 +33,6 @@ jobs:
     env:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-      IMAGE_TAG: ${{ github.sha }}
       SCCACHE_GHA_ENABLED: "true"
       RUSTC_WRAPPER: "sccache"
     steps:
@@ -66,6 +63,7 @@ jobs:
           tags: |
             ghcr.io/sowers-io/bosca/database-migrations:latest
             ghcr.io/sowers-io/bosca/database-migrations:${{ github.sha }}
+            ghcr.io/sowers-io/bosca/database-migrations:${{ github.ref_name }}
       - name: Build and push server
         uses: docker/build-push-action@v3
         with:
@@ -75,6 +73,7 @@ jobs:
           tags: |
             ghcr.io/sowers-io/bosca/server:latest
             ghcr.io/sowers-io/bosca/server:${{ github.sha }}
+            ghcr.io/sowers-io/bosca/server:${{ github.ref_name }}
       - name: Build and push cache server
         uses: docker/build-push-action@v3
         with:
@@ -84,6 +83,7 @@ jobs:
           tags: |
             ghcr.io/sowers-io/bosca/cache:latest
             ghcr.io/sowers-io/bosca/cache:${{ github.sha }}
+            ghcr.io/sowers-io/bosca/cache:${{ github.ref_name }}
       - name: Build and push analytics
         uses: docker/build-push-action@v3
         with:
@@ -93,13 +93,13 @@ jobs:
           tags: |
             ghcr.io/sowers-io/bosca/analytics:latest
             ghcr.io/sowers-io/bosca/analytics:${{ github.sha }}
+            ghcr.io/sowers-io/bosca/analytics:${{ github.ref_name }}
 
   build-and-publish-runner-community:
     runs-on: ubuntu-22.04
     env:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-      IMAGE_TAG: ${{ github.sha }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -120,7 +120,6 @@ jobs:
           registry: ghcr.io
           username: ${{ secrets.DOCKER_USERNAME }}
           password: ${{ secrets.DOCKER_PASSWORD }}
-
       - name: Build and Publish Runner Image
         uses: docker/build-push-action@v3
         with:
@@ -130,7 +129,7 @@ jobs:
           tags: |
             ghcr.io/sowers-io/bosca/kotlin-runner-community:latest
             ghcr.io/sowers-io/bosca/kotlin-runner-community:${{ github.sha }}
-
+            ghcr.io/sowers-io/bosca/kotlin-runner-community:${{ github.ref_name }}
       - name: Build and Publish Runner Image
         uses: docker/build-push-action@v3
         with:
@@ -140,13 +139,13 @@ jobs:
           tags: |
             ghcr.io/sowers-io/bosca/blog-installer:latest
             ghcr.io/sowers-io/bosca/blog-installer:${{ github.sha }}
+            ghcr.io/sowers-io/bosca/blog-installer:${{ github.ref_name }}
 
   build-and-publish-runner-community-compatibility:
     runs-on: ubuntu-22.04
     env:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-      IMAGE_TAG: ${{ github.sha }}
       MARCH: compatibility
     steps:
       - uses: actions/checkout@v4
@@ -177,6 +176,7 @@ jobs:
           tags: |
             ghcr.io/sowers-io/bosca/kotlin-runner-community-compatibility:latest
             ghcr.io/sowers-io/bosca/kotlin-runner-community-compatibility:${{ github.sha }}
+            ghcr.io/sowers-io/bosca/kotlin-runner-community-compatibility:${{ github.ref_name }}
       - name: Build and Publish Runner Image
         uses: docker/build-push-action@v3
         with:
@@ -186,13 +186,13 @@ jobs:
           tags: |
             ghcr.io/sowers-io/bosca/blog-installer-compatibility:latest
             ghcr.io/sowers-io/bosca/blog-installer-compatibility:${{ github.sha }}
+            ghcr.io/sowers-io/bosca/blog-installer-compatibility:${{ github.ref_name }}
 
   build-and-publish-runner-enterprise:
     runs-on: ubuntu-22.04
     env:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-      IMAGE_TAG: ${{ github.sha }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -226,13 +226,13 @@ jobs:
           tags: |
             ghcr.io/sowers-io/bosca/kotlin-runner-enterprise:latest
             ghcr.io/sowers-io/bosca/kotlin-runner-enterprise:${{ github.sha }}
+            ghcr.io/sowers-io/bosca/kotlin-runner-enterprise:${{ github.ref_name }}
 
   build-and-publish-runner-enterprise-compatibility:
     runs-on: ubuntu-22.04
     env:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-      IMAGE_TAG: ${{ github.sha }}
       MARCH: compatibility
     steps:
       - uses: actions/checkout@v4
@@ -267,13 +267,13 @@ jobs:
           tags: |
             ghcr.io/sowers-io/bosca/kotlin-runner-enterprise-compatibility:latest
             ghcr.io/sowers-io/bosca/kotlin-runner-enterprise-compatibility:${{ github.sha }}
+            ghcr.io/sowers-io/bosca/kotlin-runner-enterprise-compatibility:${{ github.ref_name }}
 
   build-and-publish-imageprocessor:
     runs-on: ubuntu-22.04
     env:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-      IMAGE_TAG: ${{ github.sha }}
     steps:
       - uses: actions/checkout@v3
       - name: Set up Docker Buildx
@@ -293,13 +293,13 @@ jobs:
           tags: |
             ghcr.io/sowers-io/bosca/imageprocessor:latest
             ghcr.io/sowers-io/bosca/imageprocessor:${{ github.sha }}
+            ghcr.io/sowers-io/bosca/imageprocessor:${{ github.ref_name }}
 
   build-and-publish-administration:
     runs-on: ubuntu-22.04
     env:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-      IMAGE_TAG: ${{ github.sha }}
       NUXT_UI_PRO_LICENSE: ${{ secrets.NUXT_UI_PRO_LICENSE }}
     steps:
       - uses: actions/checkout@v4
@@ -329,6 +329,7 @@ jobs:
           tags: |
             ghcr.io/sowers-io/bosca/administration:latest
             ghcr.io/sowers-io/bosca/administration:${{ github.sha }}
+            ghcr.io/sowers-io/bosca/administration:${{ github.ref_name }}
       - name: Build and Publish Administration Query Installer Image
         uses: docker/build-push-action@v3
         with:
@@ -338,3 +339,4 @@ jobs:
           tags: |
             ghcr.io/sowers-io/bosca/administration-query-installer:latest
             ghcr.io/sowers-io/bosca/administration-query-installer:${{ github.sha }}
+            ghcr.io/sowers-io/bosca/administration-query-installer:${{ github.ref_name }}
