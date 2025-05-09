@@ -47,6 +47,6 @@ jobs:
           file: docs/Dockerfile
           push: true
           tags: |
-            $IMAGE_PREFIX/bosca/documentation:latest
-            $IMAGE_PREFIX/bosca/documentation:${{ github.sha }}
-            $IMAGE_PREFIX/bosca/documentation:${{ github.ref_name }}
+            ${{ secrets.IMAGE_PREFIX }}/bosca/documentation:latest
+            ${{ secrets.IMAGE_PREFIX }}/bosca/documentation:${{ github.sha }}
+            ${{ secrets.IMAGE_PREFIX }}/bosca/documentation:${{ github.ref_name }}
