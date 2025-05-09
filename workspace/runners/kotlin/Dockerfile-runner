@@ -16,4 +16,4 @@ WORKDIR /app
 COPY --from=build /build/runner/build/native/nativeCompile/bosca-runner .
 
 EXPOSE 8000
-CMD ["/app/bosca-runner", "run", "-D", "java.io.tmpdir", "/tmp/bosca"]
+CMD ["/app/bosca-runner", "run"]

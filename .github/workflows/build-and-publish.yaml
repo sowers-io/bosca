@@ -2,11 +2,11 @@ name: Build & Publish Backend and Frontend
 
 on:
   push:
-    branches: [ "main" ]
+#    branches: [ "main" ]
     tags:
       - '*'
   pull_request:
-    branches: [ "main" ]
+#    branches: [ "main" ]
     tags:
       - '*'
 
