@@ -12,12 +12,24 @@ jobs:
   lint:
     runs-on: ubuntu-22.04
     env:
+      RUNNER_TOOL_CACHE: /toolcache
 #      SCCACHE_GHA_ENABLED: "true"
 #      RUSTC_WRAPPER: "sccache"
     steps:
 #      - name: Run sccache-cache
 #        uses: mozilla-actions/sccache-action@v0.0.9
       - uses: actions/checkout@v3
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
       - run: |
           PB_REL="https://github.com/protocolbuffers/protobuf/releases"
           curl -LO $PB_REL/download/v30.2/protoc-30.2-linux-x86_64.zip
@@ -26,6 +38,15 @@ jobs:
       - run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
       - run: export PATH="$HOME/.cargo/bin:$PATH" && cargo clippy
 
+      - uses: actions/cache/save@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
   build-and-publish-backend:
     runs-on: ubuntu-22.04
     env:
@@ -39,6 +60,17 @@ jobs:
 #      - name: Run sccache-cache
 #        uses: mozilla-actions/sccache-action@v0.0.9
       - uses: actions/checkout@v3
+
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+
       - run: |
           PB_REL="https://github.com/protocolbuffers/protobuf/releases"
           curl -LO $PB_REL/download/v30.2/protoc-30.2-linux-x86_64.zip
@@ -94,6 +126,15 @@ jobs:
             $IMAGE_PREFIX/bosca/analytics:latest
             $IMAGE_PREFIX/bosca/analytics:${{ github.sha }}
             $IMAGE_PREFIX/bosca/analytics:${{ github.ref_name }}
+      - uses: actions/cache/save@v4
+        with:
+          path: |
+            ~/.cargo/bin/
+            ~/.cargo/registry/index/
+            ~/.cargo/registry/cache/
+            ~/.cargo/git/db/
+            target/
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
 
   build-and-publish-runner-community:
     runs-on: ubuntu-22.04
