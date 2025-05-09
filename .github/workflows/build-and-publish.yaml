@@ -87,9 +87,9 @@ jobs:
           file: Dockerfile-migrations
           push: true
           tags: |
-            $IMAGE_PREFIX/bosca/database-migrations:latest
-            $IMAGE_PREFIX/bosca/database-migrations:${{ github.sha }}
-            $IMAGE_PREFIX/bosca/database-migrations:${{ github.ref_name }}
+            ${{ secrets.IMAGE_PREFIX }}/bosca/database-migrations:latest
+            ${{ secrets.IMAGE_PREFIX }}/bosca/database-migrations:${{ github.sha }}
+            ${{ secrets.IMAGE_PREFIX }}/bosca/database-migrations:${{ github.ref_name }}
       - name: Build and push server
         uses: docker/build-push-action@v3
         with:
@@ -97,9 +97,9 @@ jobs:
           file: Dockerfile-server
           push: true
           tags: |
-            $IMAGE_PREFIX/bosca/server:latest
-            $IMAGE_PREFIX/bosca/server:${{ github.sha }}
-            $IMAGE_PREFIX/bosca/server:${{ github.ref_name }}
+            ${{ secrets.IMAGE_PREFIX }}/bosca/server:latest
+            ${{ secrets.IMAGE_PREFIX }}/bosca/server:${{ github.sha }}
+            ${{ secrets.IMAGE_PREFIX }}/bosca/server:${{ github.ref_name }}
       - name: Build and push cache server
         uses: docker/build-push-action@v3
         with:
@@ -107,9 +107,9 @@ jobs:
           file: Dockerfile-dc
           push: true
           tags: |
-            $IMAGE_PREFIX/bosca/cache:latest
-            $IMAGE_PREFIX/bosca/cache:${{ github.sha }}
-            $IMAGE_PREFIX/bosca/cache:${{ github.ref_name }}
+            ${{ secrets.IMAGE_PREFIX }}/bosca/cache:latest
+            ${{ secrets.IMAGE_PREFIX }}/bosca/cache:${{ github.sha }}
+            ${{ secrets.IMAGE_PREFIX }}/bosca/cache:${{ github.ref_name }}
       - name: Build and push analytics
         uses: docker/build-push-action@v3
         with:
@@ -117,9 +117,9 @@ jobs:
           file: Dockerfile-analytics
           push: true
           tags: |
-            $IMAGE_PREFIX/bosca/analytics:latest
-            $IMAGE_PREFIX/bosca/analytics:${{ github.sha }}
-            $IMAGE_PREFIX/bosca/analytics:${{ github.ref_name }}
+            ${{ secrets.IMAGE_PREFIX }}/bosca/analytics:latest
+            ${{ secrets.IMAGE_PREFIX }}/bosca/analytics:${{ github.sha }}
+            ${{ secrets.IMAGE_PREFIX }}/bosca/analytics:${{ github.ref_name }}
       - uses: actions/cache/save@v4
         with:
           path: |
@@ -163,9 +163,9 @@ jobs:
           file: Dockerfile-runner
           push: true
           tags: |
-            $IMAGE_PREFIX/bosca/kotlin-runner-community:latest
-            $IMAGE_PREFIX/bosca/kotlin-runner-community:${{ github.sha }}
-            $IMAGE_PREFIX/bosca/kotlin-runner-community:${{ github.ref_name }}
+            ${{ secrets.IMAGE_PREFIX }}/bosca/kotlin-runner-community:latest
+            ${{ secrets.IMAGE_PREFIX }}/bosca/kotlin-runner-community:${{ github.sha }}
+            ${{ secrets.IMAGE_PREFIX }}/bosca/kotlin-runner-community:${{ github.ref_name }}
       - name: Build and Publish Runner Image
         uses: docker/build-push-action@v3
         with:
@@ -173,9 +173,9 @@ jobs:
           file: Dockerfile-blog-installer
           push: true
           tags: |
-            $IMAGE_PREFIX/bosca/blog-installer:latest
-            $IMAGE_PREFIX/bosca/blog-installer:${{ github.sha }}
-            $IMAGE_PREFIX/bosca/blog-installer:${{ github.ref_name }}
+            ${{ secrets.IMAGE_PREFIX }}/bosca/blog-installer:latest
+            ${{ secrets.IMAGE_PREFIX }}/bosca/blog-installer:${{ github.sha }}
+            ${{ secrets.IMAGE_PREFIX }}/bosca/blog-installer:${{ github.ref_name }}
 
   build-and-publish-runner-community-compatibility:
     runs-on: ubuntu-22.04
@@ -211,9 +211,9 @@ jobs:
           file: Dockerfile-runner
           push: true
           tags: |
-            $IMAGE_PREFIX/bosca/kotlin-runner-community-compatibility:latest
-            $IMAGE_PREFIX/bosca/kotlin-runner-community-compatibility:${{ github.sha }}
-            $IMAGE_PREFIX/bosca/kotlin-runner-community-compatibility:${{ github.ref_name }}
+            ${{ secrets.IMAGE_PREFIX }}/bosca/kotlin-runner-community-compatibility:latest
+            ${{ secrets.IMAGE_PREFIX }}/bosca/kotlin-runner-community-compatibility:${{ github.sha }}
+            ${{ secrets.IMAGE_PREFIX }}/bosca/kotlin-runner-community-compatibility:${{ github.ref_name }}
       - name: Build and Publish Runner Image
         uses: docker/build-push-action@v3
         with:
@@ -221,9 +221,9 @@ jobs:
           file: Dockerfile-blog-installer
           push: true
           tags: |
-            $IMAGE_PREFIX/bosca/blog-installer-compatibility:latest
-            $IMAGE_PREFIX/bosca/blog-installer-compatibility:${{ github.sha }}
-            $IMAGE_PREFIX/bosca/blog-installer-compatibility:${{ github.ref_name }}
+            ${{ secrets.IMAGE_PREFIX }}/bosca/blog-installer-compatibility:latest
+            ${{ secrets.IMAGE_PREFIX }}/bosca/blog-installer-compatibility:${{ github.sha }}
+            ${{ secrets.IMAGE_PREFIX }}/bosca/blog-installer-compatibility:${{ github.ref_name }}
 
   build-and-publish-runner-enterprise:
     runs-on: ubuntu-22.04
@@ -262,9 +262,9 @@ jobs:
           file: Dockerfile-runner
           push: true
           tags: |
-            $IMAGE_PREFIX/bosca/kotlin-runner-enterprise:latest
-            $IMAGE_PREFIX/bosca/kotlin-runner-enterprise:${{ github.sha }}
-            $IMAGE_PREFIX/bosca/kotlin-runner-enterprise:${{ github.ref_name }}
+            ${{ secrets.IMAGE_PREFIX }}/bosca/kotlin-runner-enterprise:latest
+            ${{ secrets.IMAGE_PREFIX }}/bosca/kotlin-runner-enterprise:${{ github.sha }}
+            ${{ secrets.IMAGE_PREFIX }}/bosca/kotlin-runner-enterprise:${{ github.ref_name }}
 
   build-and-publish-runner-enterprise-compatibility:
     runs-on: ubuntu-22.04
@@ -304,9 +304,9 @@ jobs:
           file: Dockerfile-runner
           push: true
           tags: |
-            $IMAGE_PREFIX/bosca/kotlin-runner-enterprise-compatibility:latest
-            $IMAGE_PREFIX/bosca/kotlin-runner-enterprise-compatibility:${{ github.sha }}
-            $IMAGE_PREFIX/bosca/kotlin-runner-enterprise-compatibility:${{ github.ref_name }}
+            ${{ secrets.IMAGE_PREFIX }}/bosca/kotlin-runner-enterprise-compatibility:latest
+            ${{ secrets.IMAGE_PREFIX }}/bosca/kotlin-runner-enterprise-compatibility:${{ github.sha }}
+            ${{ secrets.IMAGE_PREFIX }}/bosca/kotlin-runner-enterprise-compatibility:${{ github.ref_name }}
 
   build-and-publish-imageprocessor:
     runs-on: ubuntu-22.04
@@ -331,9 +331,9 @@ jobs:
           file: workspace/core/imageprocessor/Dockerfile
           push: true
           tags: |
-            $IMAGE_PREFIX/bosca/imageprocessor:latest
-            $IMAGE_PREFIX/bosca/imageprocessor:${{ github.sha }}
-            $IMAGE_PREFIX/bosca/imageprocessor:${{ github.ref_name }}
+            ${{ secrets.IMAGE_PREFIX }}/bosca/imageprocessor:latest
+            ${{ secrets.IMAGE_PREFIX }}/bosca/imageprocessor:${{ github.sha }}
+            ${{ secrets.IMAGE_PREFIX }}/bosca/imageprocessor:${{ github.ref_name }}
 
   build-and-publish-administration:
     runs-on: ubuntu-22.04
@@ -368,9 +368,9 @@ jobs:
           file: Dockerfile-administration
           push: true
           tags: |
-            $IMAGE_PREFIX/bosca/administration:latest
-            $IMAGE_PREFIX/bosca/administration:${{ github.sha }}
-            $IMAGE_PREFIX/bosca/administration:${{ github.ref_name }}
+            ${{ secrets.IMAGE_PREFIX }}/bosca/administration:latest
+            ${{ secrets.IMAGE_PREFIX }}/bosca/administration:${{ github.sha }}
+            ${{ secrets.IMAGE_PREFIX }}/bosca/administration:${{ github.ref_name }}
       - name: Build and Publish Administration Query Installer Image
         uses: docker/build-push-action@v3
         with:
@@ -378,6 +378,6 @@ jobs:
           file: Dockerfile-administration-query-installer
           push: true
           tags: |
-            $IMAGE_PREFIX/bosca/administration-query-installer:latest
-            $IMAGE_PREFIX/bosca/administration-query-installer:${{ github.sha }}
-            $IMAGE_PREFIX/bosca/administration-query-installer:${{ github.ref_name }}
+            ${{ secrets.IMAGE_PREFIX }}/bosca/administration-query-installer:latest
+            ${{ secrets.IMAGE_PREFIX }}/bosca/administration-query-installer:${{ github.sha }}
+            ${{ secrets.IMAGE_PREFIX }}/bosca/administration-query-installer:${{ github.ref_name }}
