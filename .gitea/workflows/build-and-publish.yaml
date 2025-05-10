@@ -84,16 +84,6 @@ jobs:
             ${{ secrets.IMAGE_PREFIX }}/bosca/database-migrations:latest
             ${{ secrets.IMAGE_PREFIX }}/bosca/database-migrations:${{ github.sha }}
             ${{ secrets.IMAGE_PREFIX }}/bosca/database-migrations:${{ github.ref_name }}
-      - name: Build and push server
-        uses: docker/build-push-action@v3
-        with:
-          context: .
-          file: Dockerfile-server
-          push: true
-          tags: |
-            ${{ secrets.IMAGE_PREFIX }}/bosca/server:latest
-            ${{ secrets.IMAGE_PREFIX }}/bosca/server:${{ github.sha }}
-            ${{ secrets.IMAGE_PREFIX }}/bosca/server:${{ github.ref_name }}
       - name: Build and push cache server
         uses: docker/build-push-action@v3
         with:
@@ -104,6 +94,16 @@ jobs:
             ${{ secrets.IMAGE_PREFIX }}/bosca/cache:latest
             ${{ secrets.IMAGE_PREFIX }}/bosca/cache:${{ github.sha }}
             ${{ secrets.IMAGE_PREFIX }}/bosca/cache:${{ github.ref_name }}
+      - name: Build and push server
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: Dockerfile-server
+          push: true
+          tags: |
+            ${{ secrets.IMAGE_PREFIX }}/bosca/server:latest
+            ${{ secrets.IMAGE_PREFIX }}/bosca/server:${{ github.sha }}
+            ${{ secrets.IMAGE_PREFIX }}/bosca/server:${{ github.ref_name }}
       - name: Build and push analytics
         uses: docker/build-push-action@v3
         with:
