@@ -22,6 +22,18 @@ class Run(
         val runners = mutableListOf<JobRunner>()
         var server: HttpServer? = null
 
+        Thread {
+            server = HttpServer.create(InetSocketAddress(9000), 0)
+            server?.let { server ->
+                server.createContext("/health") { exchange ->
+                    exchange.sendResponseHeaders(200, 0)
+                    exchange.responseBody.use { it.write("Healthy".toByteArray()) }
+                }
+                server.executor = null
+                server.start()
+            }
+        }.start()
+
         val queues = System.getenv("BOSCA_QUEUES")?.trim() ?: ""
         for (queueConfig in queues.split(";")) {
             val queueParts = queueConfig.split(",")
@@ -72,18 +84,6 @@ class Run(
         for (runner in runners) {
             runner.run()
         }
-
-        Thread {
-            server = HttpServer.create(InetSocketAddress(9000), 0)
-            server?.let { server ->
-                server.createContext("/health") { exchange ->
-                    exchange.sendResponseHeaders(200, 0)
-                    exchange.responseBody.use { it.write("Healthy".toByteArray()) }
-                }
-                server.executor = null
-                server.start()
-            }
-        }.start()
 
         for (runner in runners) {
             if (runner.isShutdown()) {
