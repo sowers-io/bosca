@@ -37,6 +37,7 @@ import io.bosca.workflow.email.EmailActivity
 import io.bosca.workflow.general.Delay
 import io.bosca.workflow.general.If
 import io.bosca.workflow.json.JSONata
+import io.bosca.workflow.media.image.IfSquare
 import io.bosca.workflow.media.image.ImageRelationshipResizer
 import io.bosca.workflow.media.image.ImageResizer
 import io.bosca.workflow.metadata.*
@@ -96,6 +97,7 @@ class ActivitiesInstaller(client: Client) : Installer, ActivityRegistry {
         CollectionDeleteAllSupplementary(client),
         CollectionDeleteAllPlanSupplementary(client),
 
+        IfSquare(client),
         ImageResizer(client),
         ImageRelationshipResizer(client),
 
