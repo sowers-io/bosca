@@ -137,7 +137,7 @@ class JobRunner(
                 )
                 return
             }
-            println("processing job: $id : ${workflowActivity.workflowActivity.activityId} : ${jobs.incrementAndGet()} : ${active.get()}")
+//            println("processing job: $id : ${workflowActivity.workflowActivity.activityId} : ${jobs.incrementAndGet()} : ${active.get()}")
             val context = ActivityContext()
             try {
                 activity.execute(context, this)
@@ -145,7 +145,7 @@ class JobRunner(
                 context.cleanup()
             }
             client.workflows.setWorkflowJobComplete(id)
-            println("processing complete: $id : ${workflowActivity.workflowActivity.activityId} : ${active.get()}")
+//            println("processing complete: $id : ${workflowActivity.workflowActivity.activityId} : ${active.get()}")
         } catch (_: CancellationException) {
             println("cancelled job: $id")
             client.workflows.setWorkflowJobFailed(id, "job cancellation", true)
