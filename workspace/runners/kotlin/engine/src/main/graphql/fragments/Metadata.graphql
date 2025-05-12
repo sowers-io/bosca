@@ -38,5 +38,9 @@ fragment Metadata on Metadata {
     supplementary {
         ...MetadataSupplementary
     }
+    categories {
+        id
+        name
+    }
 }
 
