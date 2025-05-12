@@ -11,6 +11,8 @@ import io.bosca.workflow.ActivityContext
 import io.bosca.workflow.search.IndexConfiguration
 import io.bosca.workflow.search.newMeilisearchConfig
 import io.bosca.workflow.search.suspendWaitForTask
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.launch
 
 class RebuildData(client: io.bosca.api.Client) : Activity(client) {
 
@@ -47,52 +49,60 @@ class RebuildData(client: io.bosca.api.Client) : Activity(client) {
         }
     }
 
-    override suspend fun execute(context: ActivityContext, job: WorkflowJob) {
+    override suspend fun execute(context: ActivityContext, job: WorkflowJob) = coroutineScope {
         val storageSystems = client.workflows.getStorageSystems()
 
         for (system in storageSystems) {
             deleteAll(system)
         }
 
-        var offset = 0
-        do {
-            val metadatas = client.metadata.getAll(offset, 100)
-            if (metadatas.isEmpty()) break
-            for (metadata in metadatas) {
-                client.workflows.enqueueMetadataWorkflow(
-                    "metadata.update.storage",
-                    metadata.id,
-                    metadata.version
-                )
-            }
-            offset += 100
-        } while (true)
+        val metadatas = launch {
+            var offset = 0
+            do {
+                val metadatas = client.metadata.getAll(offset, 100)
+                if (metadatas.isEmpty()) break
+                for (metadata in metadatas) {
+                    client.workflows.enqueueMetadataWorkflow(
+                        "metadata.update.storage",
+                        metadata.id,
+                        metadata.version
+                    )
+                }
+                offset += 100
+            } while (true)
+        }
 
-        offset = 0
-        do {
-            val collections = client.collections.getAll(offset, 100)
-            if (collections.isEmpty()) break
-            for (collection in collections) {
-                client.workflows.enqueueCollectionWorkflow(
-                    "collection.update.storage",
-                    collection.id
-                )
-            }
-            offset += 100
-        } while (true)
+        val collections = launch {
+            var offset = 0
+            do {
+                val collections = client.collections.getAll(offset, 100)
+                if (collections.isEmpty()) break
+                for (collection in collections) {
+                    client.workflows.enqueueCollectionWorkflow(
+                        "collection.update.storage",
+                        collection.id
+                    )
+                }
+                offset += 100
+            } while (true)
+        }
 
-        offset = 0
-        do {
-            val profiles = client.profiles.getAll(offset, 100)
-            if (profiles.isEmpty()) break
-            for ((profile, _) in profiles) {
-                client.workflows.enqueueProfileWorkflow(
-                    "profile.update.storage",
-                    profile.id
-                )
-            }
-            offset += 100
-        } while (true)
+        val profiles = launch {
+            var offset = 0
+            do {
+                val profiles = client.profiles.getAll(offset, 100)
+                if (profiles.isEmpty()) break
+                for ((profile, _) in profiles) {
+                    client.workflows.enqueueProfileWorkflow(
+                        "profile.update.storage",
+                        profile.id
+                    )
+                }
+                offset += 100
+            } while (true)
+        }
+
+        arrayOf(metadatas, collections, profiles).forEach { it.join() }
     }
 
     companion object {
