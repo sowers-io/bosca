@@ -15,6 +15,7 @@ import javax.imageio.ImageIO
 
 @Serializable
 data class IfSquareConfiguration(
+    val negate: Boolean = false,
     val expression: String,
     val workflows: List<String> = emptyList(),
 )
@@ -51,7 +52,7 @@ class IfSquare(client: Client) : Activity(client) {
                 false
             }
         }
-        if (response) {
+        if (response != cfg.negate) {
             client.workflows.enqueueChildWorkflows(
                 cfg.workflows,
                 job.id
