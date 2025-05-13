@@ -6,7 +6,6 @@ import io.bosca.graphql.type.ActivityInput
 import io.bosca.workflow.Activity
 import io.bosca.workflow.ActivityContext
 import kotlinx.serialization.Serializable
-import java.net.URLEncoder
 import javax.imageio.ImageIO
 
 @Serializable
@@ -36,11 +35,7 @@ class IfSquare(client: Client) : Activity(client) {
         if (ctx.executed) return
         if (!(job.metadata?.metadata?.content?.metadataContent?.type ?: "").startsWith("image/")) return
         val cfg = getConfiguration<IfSquareConfiguration>(job)
-        val download = client.metadata.getMetadataContentDownload(job.metadata?.metadata?.id ?: error("missing metadata id"))
-                ?: error("failed to get metadata: missing content")
-        val url = URLEncoder.encode(download.urls.download.url, Charsets.UTF_8)
-        val imageProcessorUrl = "${System.getenv("IMAGE_PROCESSOR_URL") ?: "http://localhost:8003"}/metadata?u=$url"
-        val file = downloadToFile(context, job.id, "text/json", imageProcessorUrl)
+        val file = getContentFile(context, job)
         val metadata = ImageIO.read(file)
         val square = metadata.width == metadata.height
         if (square != cfg.negate) {
