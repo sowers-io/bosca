@@ -1,8 +1,14 @@
 FROM debian:bookworm-slim
 
-RUN apt update && apt install -y ffmpeg
+RUN apt update && apt install -y zip unzip curl build-essential zlib1g-dev ffmpeg
+RUN curl -s "https://get.sdkman.io" | bash
 
-COPY workspace/runners/kotlin/runner/build/native/nativeCompile/* /
+RUN bash -c "source ~/.sdkman/bin/sdkman-init.sh && sdk install java 24.0.1-graalce"
+ENV JAVA_HOME=/root/.sdkman/candidates/java/current
 
-EXPOSE 8000
-CMD ["./bosca-runner", "run"]
+#COPY workspace/runners/kotlin/runner/build/native/nativeCompile/* /
+COPY workspace/runners/kotlin/runner/build/distributions/* /
+RUN tar xf runner-1.0-SNAPSHOT.tar && mv runner-1.0-SNAPSHOT runner
+
+EXPOSE 9000
+CMD ["./runner/bin/runner", "run"]

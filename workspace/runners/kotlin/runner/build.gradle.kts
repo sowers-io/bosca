@@ -49,37 +49,37 @@ tasks.register<JavaExec>("runMain") {
     args = listOf("run")
 }
 
-graalvmNative {
-    binaries {
-        named("main") {
-            imageName.set("bosca-runner")
-            mainClass.set("io.bosca.MainKt")
-            val args = mutableListOf(
-                "-H:+StaticExecutableWithDynamicLibC",
-                "-H:+AllowDeprecatedBuilderClassesOnImageClasspath",
-                "-H:+UnlockExperimentalVMOptions",
-                "-O1",
-                "--enable-url-protocols=http",
-                "--initialize-at-run-time=io.grpc.netty.shaded.io.netty.handler.ssl.BouncyCastleAlpnSslUtils",
-                "--initialize-at-run-time=ai.onnxruntime.OrtEnvironment",
-                "--initialize-at-run-time=ai.onnxruntime.OnnxRuntime",
-                "--initialize-at-build-time=com.oracle.truffle.trufflenode",
-                "--install-exit-handlers",
-                "--features=io.bosca.graalvm.BoscaFeature",
-                "--enable-preview",
-                "-D=java.io.tmpdir=/tmp/bosca"
-            )
-            if (System.getenv("MARCH") != null) {
-                args.add("-march=${System.getenv("MARCH")}")
-            }
-            buildArgs.addAll(args)
-        }
-    }
-    toolchainDetection.set(true)
-    
-    // Configure reachability metadata
-    metadataRepository {
-        // We're now using a Feature class instead of JSON files
-        enabled.set(false)
-    }
-}
+//graalvmNative {
+//    binaries {
+//        named("main") {
+//            imageName.set("bosca-runner")
+//            mainClass.set("io.bosca.MainKt")
+//            val args = mutableListOf(
+//                "-H:+StaticExecutableWithDynamicLibC",
+//                "-H:+AllowDeprecatedBuilderClassesOnImageClasspath",
+//                "-H:+UnlockExperimentalVMOptions",
+//                "-O1",
+//                "--enable-url-protocols=http",
+//                "--initialize-at-run-time=io.grpc.netty.shaded.io.netty.handler.ssl.BouncyCastleAlpnSslUtils",
+//                "--initialize-at-run-time=ai.onnxruntime.OrtEnvironment",
+//                "--initialize-at-run-time=ai.onnxruntime.OnnxRuntime",
+//                "--initialize-at-build-time=com.oracle.truffle.trufflenode",
+//                "--install-exit-handlers",
+//                "--features=io.bosca.graalvm.BoscaFeature",
+//                "--enable-preview",
+//                "-D=java.io.tmpdir=/tmp/bosca"
+//            )
+//            if (System.getenv("MARCH") != null) {
+//                args.add("-march=${System.getenv("MARCH")}")
+//            }
+//            buildArgs.addAll(args)
+//        }
+//    }
+//    toolchainDetection.set(true)
+//
+//    // Configure reachability metadata
+//    metadataRepository {
+//        // We're now using a Feature class instead of JSON files
+//        enabled.set(false)
+//    }
+//}

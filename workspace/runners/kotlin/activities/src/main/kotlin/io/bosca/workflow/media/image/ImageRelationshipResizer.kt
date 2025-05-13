@@ -1,16 +1,11 @@
 package io.bosca.workflow.media.image
 
 import io.bosca.api.Client
+import io.bosca.graphql.fragment.*
 import io.bosca.graphql.fragment.Collection
-import io.bosca.graphql.fragment.CollectionRelationship
-import io.bosca.graphql.fragment.Metadata
-import io.bosca.graphql.fragment.MetadataRelationship
-import io.bosca.graphql.fragment.WorkflowJob
 import io.bosca.graphql.type.ActivityInput
 import io.bosca.util.decode
 import io.bosca.workflow.ActivityContext
-import io.bosca.workflow.FullFailureException
-import okhttp3.internal.format
 import java.net.URLEncoder
 import kotlin.uuid.ExperimentalUuidApi
 
@@ -41,9 +36,29 @@ class ImageRelationshipResizer(client: Client) : AbstractImageResizer(client) {
         val configuration = getConfiguration<ImageResizerConfiguration>(job)
         for (relationship in relationships) {
             if (relationship.metadata.metadataRelationshipMetadata.content.type.startsWith("image/")) {
-                relationship.attributes?.let { attributes ->
+                val attributes = relationship.attributes
+                if (attributes != null) {
                     val attr = attributes.decode<ImageAttributes>()
                     val crop = attr?.crop ?: Coordinates()
+                    val download =
+                        client.metadata.getMetadataContentDownload(relationship.metadata.metadataRelationshipMetadata.id)
+                            ?: error("failed to crop: missing supplementary content")
+                    val url = URLEncoder.encode(download.urls.download.url, Charsets.UTF_8)
+                    val supplementaryId = process(
+                        context,
+                        job,
+                        relationship.metadata.metadataRelationshipMetadata.id,
+                        url,
+                        "jpeg",
+                        ImageSize(
+                            "${crop.width}x${crop.height}-${crop.top}-${crop.left}-cropped",
+                            1,
+                            crop
+                        )
+                    )
+                    processMetadata(context, job, configuration, metadata, relationship, supplementaryId, crop)
+                } else {
+                    val crop = Coordinates()
                     val download =
                         client.metadata.getMetadataContentDownload(relationship.metadata.metadataRelationshipMetadata.id)
                             ?: error("failed to crop: missing supplementary content")
