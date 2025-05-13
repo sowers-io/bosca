@@ -3,24 +3,11 @@ package io.bosca.workflow.media.image
 import io.bosca.api.Client
 import io.bosca.graphql.fragment.WorkflowJob
 import io.bosca.graphql.type.ActivityInput
-import io.bosca.util.json
 import io.bosca.workflow.Activity
 import io.bosca.workflow.ActivityContext
 import kotlinx.serialization.Serializable
 import java.net.URLEncoder
-
-@Serializable
-data class ImageMetadata(
-    val format: String? = null,
-    val size: Int? = null,
-    val width: Int? = null,
-    val height: Int? = null,
-    val space: String? = null,
-    val channels: Int? = null,
-    val depth: String? = null,
-    val density: Int? = null,
-    val chromaSubsampling: String? = null
-)
+import javax.imageio.ImageIO
 
 @Serializable
 data class IfSquareConfiguration(
@@ -54,7 +41,7 @@ class IfSquare(client: Client) : Activity(client) {
         val url = URLEncoder.encode(download.urls.download.url, Charsets.UTF_8)
         val imageProcessorUrl = "${System.getenv("IMAGE_PROCESSOR_URL") ?: "http://localhost:8003"}/metadata?u=$url"
         val file = downloadToFile(context, job.id, "text/json", imageProcessorUrl)
-        val metadata = json.decodeFromString<ImageMetadata>(file.readText())
+        val metadata = ImageIO.read(file)
         val square = metadata.width == metadata.height
         if (square != cfg.negate) {
             client.workflows.enqueueChildWorkflows(
