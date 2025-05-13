@@ -47,6 +47,7 @@ class IfSquare(client: Client) : Activity(client) {
     override suspend fun execute(context: ActivityContext, job: WorkflowJob) {
         val ctx = getContext<IfSquareContext>(job)
         if (ctx.executed) return
+        if (!(job.metadata?.metadata?.content?.metadataContent?.type ?: "").startsWith("image/")) return
         val cfg = getConfiguration<IfSquareConfiguration>(job)
         val download = client.metadata.getMetadataContentDownload(job.metadata?.metadata?.id ?: error("missing metadata id"))
                 ?: error("failed to get metadata: missing content")
