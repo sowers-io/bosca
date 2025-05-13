@@ -15,8 +15,8 @@ import javax.imageio.ImageIO
 
 @Serializable
 data class IfSquareConfiguration(
-    val negate: Boolean = false,
     val workflows: List<String> = emptyList(),
+    val negate: Boolean = false,
 )
 
 @Serializable

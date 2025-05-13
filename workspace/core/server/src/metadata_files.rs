@@ -3,16 +3,15 @@ use crate::models::content::metadata_supplementary::MetadataSupplementary;
 use crate::models::security::permission::PermissionAction;
 use crate::models::workflow::enqueue_request::EnqueueRequest;
 use crate::util::security::get_principal_from_headers;
+use crate::util::upload::upload_field;
 use crate::workflow::core_workflow_ids::METADATA_PROCESS;
 use async_graphql::Error;
 use axum::body::Body;
 use axum::extract::{Multipart, Query};
 use axum::extract::{Request, State};
 use http::{HeaderMap, HeaderValue, StatusCode};
-use log::error;
 use serde::Deserialize;
 use uuid::Uuid;
-use crate::util::upload::upload_field;
 
 #[derive(Debug, Deserialize)]
 pub struct Params {
@@ -122,10 +121,16 @@ pub async fn metadata_download(
                 "Internal Server Error".to_owned(),
             )
         })?;
-    let buf = ctx.storage.get_buffer(&path).await.map_err(|e| {
-        error!("Error getting buffer: {}", e);
-        (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
-    })?;
+    let buf = ctx.storage.get_buffer(&path).await;
+    let buf = match buf {
+        Ok(buf) => buf,
+        Err(e) => {
+            return match e {
+                object_store::Error::NotFound { path: _, source: _ } => Err((StatusCode::NOT_FOUND, "Not Found".to_owned())),
+                _ => Err((StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
+            }
+        }
+    };
     let body = Body::from_stream(buf);
     let mut headers = HeaderMap::new();
     headers.insert(
