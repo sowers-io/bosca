@@ -67,7 +67,6 @@ graalvmNative {
                 "--install-exit-handlers",
                 "--features=io.bosca.graalvm.BoscaFeature",
                 "--enable-preview",
-                "-Djava.awt.headless=true",
                 "-D=java.io.tmpdir=/tmp/bosca"
             )
             if (System.getenv("MARCH") != null) {

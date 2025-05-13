@@ -31,13 +31,46 @@ async function main() {
     server.get('/health', {}, async function (_, reply) {
         reply.code(200).send({ok: true})
     })
+    server.get('/metadata', {}, async function (request, reply) {
+        const opts = request.query as QueryOpts
+        if (!opts.u) {
+            reply.code(400).send()
+            return
+        }
+        const imageUrl = new URL(opts.u)
+        let isSupported = false
+        for (const supported of supportedUrls) {
+            if (opts.u.startsWith(supported)) {
+                isSupported = true
+                break
+            }
+        }
+        if (!isSupported) {
+            reply.code(401).send()
+            return
+        }
+        const response = await fetch(imageUrl)
+        if (!response.ok || !response.body) {
+            reply.code(500).send()
+            return
+        }
+        // @ts-ignore
+        const image = await response.arrayBuffer()
+        const transformer = sharp(image)
+        const metadata = await transformer.metadata()
+        delete metadata.exif
+        delete metadata.icc
+        delete metadata.iptc
+        delete metadata.xmp
+        const data = JSON.stringify(metadata)
+        await reply.header('Content-Type', 'text/json').send(data)
+    })
     server.get('/image', {}, async function (request, reply) {
         const opts = request.query as QueryOpts
         if (!opts.u) {
             reply.code(400).send()
             return
         }
-        console.log('resizing: ', opts.u)
         const imageUrl = new URL(opts.u)
         let isSupported = false
         for (const supported of supportedUrls) {
