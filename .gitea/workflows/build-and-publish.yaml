@@ -68,7 +68,7 @@ jobs:
       - run: export PATH="$HOME/.cargo/bin:$HOME/.local/bin:$PATH" && cargo build --release
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
-      - name: Login to DockerHub
+      - name: Login to Docker Registry
         uses: docker/login-action@v2
         with:
           registry: ${{ secrets.REGISTRY }}
@@ -152,7 +152,7 @@ jobs:
       - run: cd workspace/runners/kotlin && ./gradlew distTar --no-daemon
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
-      - name: Login to DockerHub
+      - name: Login to Docker Registry
         uses: docker/login-action@v2
         with:
           registry: ${{ secrets.REGISTRY }}
@@ -186,7 +186,7 @@ jobs:
       - uses: actions/checkout@v3
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
-      - name: Login to DockerHub
+      - name: Login to Docker Registry
         uses: docker/login-action@v2
         with:
           registry: ${{ secrets.REGISTRY }}
@@ -230,7 +230,7 @@ jobs:
       - run: ./scripts/build-administration
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
-      - name: Login to DockerHub
+      - name: Login to Docker Registry
         uses: docker/login-action@v2
         with:
           registry: ${{ secrets.REGISTRY }}
@@ -287,7 +287,7 @@ jobs:
       - run: cd workspace/runners/kotlin && ./gradlew distTar --no-daemon
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
-      - name: Login to DockerHub
+      - name: Login to Docker Registry
         uses: docker/login-action@v2
         with:
           registry: ${{ secrets.REGISTRY }}
