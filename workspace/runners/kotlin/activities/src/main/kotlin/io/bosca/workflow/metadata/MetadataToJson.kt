@@ -69,6 +69,7 @@ class MetadataToJson(client: Client) : Activity(client) {
         }
         val objectMap = json.parseToJsonElement().jsonObject + mapOf(
             "_type" to JsonPrimitive("metadata"),
+            "_contentType" to JsonPrimitive(metadata.content.metadataContent.type),
             "_relationships" to ow.writeValueAsString(relationshipMap).parseToJsonElement(),
             "_parents" to ow.writeValueAsString(parentCollections).parseToJsonElement(),
             "_content" to JsonPrimitive(content)
