@@ -24,7 +24,7 @@ pub struct FindAttributesInput {
     pub attributes: Vec<FindAttributeInput>,
 }
 
-#[derive(InputObject, Clone, Serialize, Deserialize)]
+#[derive(InputObject, Clone, Serialize, Deserialize, Default)]
 pub struct FindQueryInput {
     pub attributes: Vec<FindAttributesInput>,
     pub content_types: Option<Vec<String>>,
