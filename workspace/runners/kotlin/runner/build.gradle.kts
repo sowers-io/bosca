@@ -34,6 +34,7 @@ kotlin {
 
 application {
     mainClass.set("io.bosca.MainKt")
+    applicationDefaultJvmArgs = listOf("-XX:+ExitOnOutOfMemoryError")
 }
 
 tasks.register<JavaExec>("runMain") {
