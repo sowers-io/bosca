@@ -9,6 +9,7 @@ use uuid::Uuid;
 pub struct Book {
     pub metadata_id: Uuid,
     pub version: i32,
+    pub variant: String,
     pub reference: Reference,
     pub name_short: String,
     pub name_long: String,
@@ -29,6 +30,7 @@ impl From<&Row> for Book {
         Self {
             metadata_id: row.get("metadata_id"),
             version: row.get("version"),
+            variant: row.get("variant"),
             reference: Reference::new(row.get("usfm")),
             name_short: row.get("name_short"),
             name_long: row.get("name_long"),

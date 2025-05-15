@@ -183,12 +183,12 @@ impl MetadataObject {
             .collect())
     }
 
-    async fn bible(&self, ctx: &Context<'_>) -> Result<Option<BibleObject>, Error> {
+    async fn bible(&self, ctx: &Context<'_>, variant: Option<String>) -> Result<Option<BibleObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let bible = ctx
             .content
             .bibles
-            .get_bible(&self.metadata.id, self.metadata.version)
+            .get_bible(&self.metadata.id, self.metadata.version, variant)
             .await?;
         Ok(bible.map(BibleObject::new))
     }

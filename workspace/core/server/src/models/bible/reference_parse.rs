@@ -22,18 +22,14 @@ pub async fn parse(
     let mut joined_references: HashMap<String, String> = HashMap::new();
     for reference in &references {
         if let Some(chapter) = reference.chapter_usfm() {
-            let usfms = joined_references
-                .entry(chapter)
-                .or_default();
+            let usfms = joined_references.entry(chapter).or_default();
 
             if !usfms.is_empty() {
                 usfms.push('+');
             }
             usfms.push_str(reference.usfm());
         } else if let Some(book) = reference.book_usfm() {
-            let usfms = joined_references
-                .entry(book)
-                .or_default();
+            let usfms = joined_references.entry(book).or_default();
             if usfms.is_empty() {
                 usfms.push_str(reference.usfm());
             }
@@ -58,7 +54,7 @@ async fn parse_single(
     let books = ctx
         .content
         .bibles
-        .get_books(&bible.metadata_id, bible.version)
+        .get_books(&bible.metadata_id, bible.version, &bible.variant)
         .await?;
 
     for b in books.into_iter() {
@@ -91,13 +87,15 @@ async fn parse_single(
     let chapters = ctx
         .content
         .bibles
-        .get_chapters(&bible.metadata_id, bible.version, book.reference.usfm())
+        .get_chapters(&bible.metadata_id, bible.version, &bible.variant, book.reference.usfm())
         .await?;
 
-    if let Some(chapter) = chapters
-        .into_iter()
-        .find(|c| c.reference.chapter().unwrap_or_default().eq_ignore_ascii_case(&number_parts[0]))
-    {
+    if let Some(chapter) = chapters.into_iter().find(|c| {
+        c.reference
+            .chapter()
+            .unwrap_or_default()
+            .eq_ignore_ascii_case(&number_parts[0])
+    }) {
         if number_parts.len() == 1 {
             return Ok(Some(chapter.reference.clone()));
         }
@@ -114,13 +112,17 @@ async fn parse_single(
                 let usfms: Vec<String> = (start..=end)
                     .map(|i| format!("{}.{}", chapter.reference.usfm(), i))
                     .collect();
-                return Ok(Some(Reference::new(usfms.join("+"))))
+                return Ok(Some(Reference::new(usfms.join("+"))));
             } else {
                 number_parts[1] = range_parts[0].to_string();
             }
         }
 
-        return Ok(Some(Reference::new(format!("{}.{}", chapter.reference.usfm(), number_parts[1]))))
+        return Ok(Some(Reference::new(format!(
+            "{}.{}",
+            chapter.reference.usfm(),
+            number_parts[1]
+        ))));
     }
 
     Ok(Some(book.reference.clone()))

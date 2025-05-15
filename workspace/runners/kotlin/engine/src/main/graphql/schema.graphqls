@@ -51,6 +51,7 @@ type Bible {
     book(usfm: String!): BibleBook
     books: [BibleBook!]!
     chapter(usfm: String!): BibleChapter
+    defaultVariant: Boolean!
     description: String!
     find(human: String!): [FindBibleResult!]!
     languages: [BibleLanguage!]!
@@ -58,6 +59,7 @@ type Bible {
     nameLocal: String!
     styles: JSON!
     systemId: String!
+    variant: String!
 }
 
 type BibleBook {
@@ -123,6 +125,8 @@ type Collection {
     deleted: Boolean!
     description: String
     etag(addHeader: Boolean!): String
+    expandedMetadata(limit: Int!, offset: Int!, state: String): [Metadata!]!
+    expandedMetadataCount(state: String): Int!
     id: String!
     itemAttributes: JSON
     items(limit: Int!, offset: Int!, state: String): [CollectionItem!]!
@@ -302,6 +306,7 @@ type ContentMutation {
     collection: CollectionMutation!
     metadata: MetadataMutation!
     rebuildStorageSystemContent: Boolean!
+    resizeImage: Boolean!
     sources: SourceMutation!
 }
 
@@ -422,7 +427,7 @@ type LoginResponse {
 
 type Metadata {
     attributes(filter: AttributesFilterInput): JSON
-    bible: Bible
+    bible(variant: String): Bible
     categories: [Category!]!
     collectionTemplate: CollectionTemplate
     content: MetadataContent!
@@ -1297,12 +1302,14 @@ input BibleInput {
     abbreviation: String!
     abbreviationLocal: String!
     books: [BookInput!]!
+    defaultVariant: Boolean!
     description: String!
     language: BibleLanguageInput!
     name: String!
     nameLocal: String!
     styles: [StyleInput!]!
     systemId: String!
+    variant: String!
 }
 
 input BibleLanguageInput {

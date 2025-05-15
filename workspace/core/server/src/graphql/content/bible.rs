@@ -3,10 +3,10 @@ use crate::graphql::content::bible_book::BibleBookObject;
 use crate::graphql::content::bible_chapter::BibleChapterObject;
 use crate::graphql::content::bible_language::BibleLanguageObject;
 use crate::models::bible::bible::Bible;
+use crate::models::bible::reference::Reference;
 use crate::models::bible::reference_parse::parse;
 use async_graphql::{Context, Error, Object, SimpleObject};
 use serde_json::{json, Value};
-use crate::models::bible::reference::Reference;
 
 pub struct BibleObject {
     bible: Bible,
@@ -24,24 +24,32 @@ pub struct FindBibleResult {
     pub human: String,
     pub book: BibleBookObject,
     pub chapter: Option<BibleChapterObject>,
-    pub component: Option<FilteredComponent>
+    pub component: Option<FilteredComponent>,
 }
 
 #[derive(SimpleObject)]
 pub struct FilteredComponent {
-    pub content: Value
+    pub content: Value,
 }
 
 #[derive(SimpleObject)]
 pub struct BibleChapterComponent {
     pub chapter: BibleChapterObject,
-    pub component: FilteredComponent
+    pub component: FilteredComponent,
 }
 
 #[Object(name = "Bible")]
 impl BibleObject {
     async fn system_id(&self) -> &String {
         &self.bible.system_id
+    }
+
+    async fn variant(&self) -> &String {
+        &self.bible.variant
+    }
+
+    async fn default_variant(&self) -> bool {
+        self.bible.default_variant
     }
 
     async fn name(&self) -> &String {
@@ -69,7 +77,11 @@ impl BibleObject {
         let languages = ctx
             .content
             .bibles
-            .get_bible_languages(&self.bible.metadata_id, self.bible.version)
+            .get_bible_languages(
+                &self.bible.metadata_id,
+                self.bible.version,
+                &self.bible.variant,
+            )
             .await?;
         Ok(languages
             .into_iter()
@@ -83,9 +95,27 @@ impl BibleObject {
         let mut items = Vec::new();
         for result in results.iter_mut() {
             if let Some(book_usfm) = result.book_usfm() {
-                if let Some(book) = ctx.content.bibles.get_book(&self.bible.metadata_id, self.bible.version, &book_usfm).await? {
+                if let Some(book) = ctx
+                    .content
+                    .bibles
+                    .get_book(
+                        &self.bible.metadata_id,
+                        self.bible.version,
+                        &self.bible.variant,
+                        &book_usfm,
+                    )
+                    .await?
+                {
                     let chapter = if let Some(chapter_usfm) = result.chapter_usfm() {
-                        ctx.content.bibles.get_chapter(&self.bible.metadata_id, self.bible.version, &chapter_usfm).await?
+                        ctx.content
+                            .bibles
+                            .get_chapter(
+                                &self.bible.metadata_id,
+                                self.bible.version,
+                                &self.bible.variant,
+                                &chapter_usfm,
+                            )
+                            .await?
                     } else {
                         None
                     };
@@ -98,8 +128,10 @@ impl BibleObject {
                         human: result.format(&book),
                         usfm: result.usfm().clone(),
                         book: BibleBookObject::new(book.clone()),
-                        chapter: chapter.map(|c| BibleChapterObject::new(book.clone(), c, Some(result.clone()))),
-                        component: component.map(|c| FilteredComponent { content: json!(c) })
+                        chapter: chapter.map(|c| {
+                            BibleChapterObject::new(book.clone(), c, Some(result.clone()))
+                        }),
+                        component: component.map(|c| FilteredComponent { content: json!(c) }),
                     });
                 }
             }
@@ -112,7 +144,11 @@ impl BibleObject {
         let books = ctx
             .content
             .bibles
-            .get_books(&self.bible.metadata_id, self.bible.version)
+            .get_books(
+                &self.bible.metadata_id,
+                self.bible.version,
+                &self.bible.variant,
+            )
             .await?;
         Ok(books.into_iter().map(BibleBookObject::new).collect())
     }
@@ -126,7 +162,12 @@ impl BibleObject {
         let books = ctx
             .content
             .bibles
-            .get_book(&self.bible.metadata_id, self.bible.version, &usfm)
+            .get_book(
+                &self.bible.metadata_id,
+                self.bible.version,
+                &self.bible.variant,
+                &usfm,
+            )
             .await?;
         Ok(books.map(BibleBookObject::new))
     }
@@ -147,19 +188,35 @@ impl BibleObject {
         let Some(book) = ctx
             .content
             .bibles
-            .get_book(&self.bible.metadata_id, self.bible.version, &book_usfm)
-            .await? else {
+            .get_book(
+                &self.bible.metadata_id,
+                self.bible.version,
+                &self.bible.variant,
+                &book_usfm,
+            )
+            .await?
+        else {
             return Ok(None);
         };
         let Some(chapter) = ctx
             .content
             .bibles
-            .get_chapter(&self.bible.metadata_id, self.bible.version, &chapter_usfm)
-            .await? else {
-            return Ok(None)
+            .get_chapter(
+                &self.bible.metadata_id,
+                self.bible.version,
+                &self.bible.variant,
+                &chapter_usfm,
+            )
+            .await?
+        else {
+            return Ok(None);
         };
         if reference.verse().is_some() {
-            Ok(Some(BibleChapterObject::new(book, chapter, Some(reference))))
+            Ok(Some(BibleChapterObject::new(
+                book,
+                chapter,
+                Some(reference),
+            )))
         } else {
             Ok(Some(BibleChapterObject::new(book, chapter, None)))
         }

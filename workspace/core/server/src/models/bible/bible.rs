@@ -9,6 +9,8 @@ use crate::models::bible::components::style::{Style, StyleInput};
 pub struct Bible {
     pub metadata_id: Uuid,
     pub version: i32,
+    pub variant: String,
+    pub default_variant: bool,
     pub system_id: String,
     pub name: String,
     pub name_local: String,
@@ -21,6 +23,8 @@ pub struct Bible {
 #[derive(InputObject)]
 pub struct BibleInput {
     pub system_id: String,
+    pub variant: String,
+    pub default_variant: bool,
     pub name: String,
     pub name_local: String,
     pub description: String,
@@ -38,6 +42,8 @@ impl From<&Row> for Bible {
         Self {
             metadata_id: row.get("metadata_id"),
             version: row.get("version"),
+            variant: row.get("variant"),
+            default_variant: row.get("default_variant"),
             system_id: row.get("system_id"),
             name: row.get("name"),
             name_local: row.get("name_local"),

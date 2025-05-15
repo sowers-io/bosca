@@ -35,15 +35,17 @@ impl BibleBookObject {
         &self.book.abbreviation
     }
 
-    async fn chapters(
-        &self,
-        ctx: &Context<'_>,
-    ) -> Result<Vec<BibleChapterObject>, Error> {
+    async fn chapters(&self, ctx: &Context<'_>) -> Result<Vec<BibleChapterObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let chapters = ctx
             .content
             .bibles
-            .get_chapters(&self.book.metadata_id, self.book.version, self.book.reference.usfm())
+            .get_chapters(
+                &self.book.metadata_id,
+                self.book.version,
+                &self.book.variant,
+                self.book.reference.usfm(),
+            )
             .await?;
         Ok(chapters
             .into_iter()
