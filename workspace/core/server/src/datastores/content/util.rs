@@ -19,7 +19,8 @@ pub fn build_ordering_names(ordering: &[Ordering], names: &mut Vec<String>) {
 
 pub fn build_ordering<'a>(
     table_alias: &str,
-    item_attributes_column: &str,
+    collection_item_attributes_column: &str,
+    metadata_item_attributes_column: &str,
     relationship_attributes_column: &str,
     start_index: i32,
     ordering: &[Ordering],
@@ -41,8 +42,12 @@ pub fn build_ordering<'a>(
             buf.push('(');
             if attr.attribute_location.unwrap_or(AttributeLocation::Relationship) == AttributeLocation::Relationship {
                 buf.push_str(relationship_attributes_column);
-            } else {
-                buf.push_str(item_attributes_column);
+            } else if !collection_item_attributes_column.is_empty() && !metadata_item_attributes_column.is_empty() {
+                buf.push_str(format!("(case when {collection_item_attributes_column} is null then {metadata_item_attributes_column} else {collection_item_attributes_column} end)").as_str());
+            } else if !collection_item_attributes_column.is_empty() {
+                buf.push_str(collection_item_attributes_column);
+            } else if !metadata_item_attributes_column.is_empty() {
+                buf.push_str(metadata_item_attributes_column);
             }
             for _ in path.iter() {
                 let name = names.get(n).unwrap();
@@ -211,7 +216,7 @@ pub fn build_find_args<'a>(
             let js = json!(ordering);
             let ordering: Vec<Ordering> = serde_json::from_value(js).unwrap();
             build_ordering_names(&ordering, names);
-            let (ordering_sql, index) = build_ordering(table_alias, item_attributes_column, relationship_attributes_column, pos, &ordering, &mut values, names);
+            let (ordering_sql, index) = build_ordering(table_alias, item_attributes_column, "", relationship_attributes_column, pos, &ordering, &mut values, names);
             pos = index;
             if !ordering_sql.is_empty() {
                 q.push_str(ordering_sql.as_str());

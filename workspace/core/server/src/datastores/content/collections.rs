@@ -1,4 +1,5 @@
 use crate::context::BoscaContext;
+use crate::datastores::collection_cache::CollectionCache;
 use crate::datastores::content::tag::{update_collection_etag, update_metadata_etag};
 use crate::datastores::content::util::{build_find_args, build_ordering, build_ordering_names};
 use crate::datastores::notifier::Notifier;
@@ -15,6 +16,7 @@ use crate::models::security::permission::{Permission, PermissionAction};
 use crate::models::workflow::enqueue_request::EnqueueRequest;
 use crate::workflow::core_workflow_ids::COLLECTION_UPDATE_STORAGE;
 use async_graphql::*;
+use bosca_database::TracingPool;
 use deadpool_postgres::{GenericClient, Transaction};
 use log::error;
 use postgres_types::ToSql;
@@ -23,19 +25,20 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use tokio_postgres::Statement;
 use uuid::Uuid;
-use bosca_database::TracingPool;
-use crate::datastores::collection_cache::CollectionCache;
 
 #[derive(Clone)]
 pub struct CollectionsDataStore {
     pool: TracingPool,
     notifier: Arc<Notifier>,
-    cache: CollectionCache
+    cache: CollectionCache,
 }
 
 impl CollectionsDataStore {
-
-    pub async fn new(pool: TracingPool, cache: CollectionCache, notifier: Arc<Notifier>) -> Result<Self, Error> {
+    pub async fn new(
+        pool: TracingPool,
+        cache: CollectionCache,
+        notifier: Arc<Notifier>,
+    ) -> Result<Self, Error> {
         Ok(Self {
             cache,
             pool,
@@ -218,7 +221,14 @@ impl CollectionsDataStore {
         Ok(parents)
     }
 
-    #[tracing::instrument(skip(self, ctx, collection_id, child_collection_id, child_metadata_id, attributes))]
+    #[tracing::instrument(skip(
+        self,
+        ctx,
+        collection_id,
+        child_collection_id,
+        child_metadata_id,
+        attributes
+    ))]
     pub async fn set_child_item_attributes(
         &self,
         ctx: &BoscaContext,
@@ -336,7 +346,7 @@ impl CollectionsDataStore {
         collection: &Collection,
         offset: i64,
         limit: i64,
-        state: &Option<String>
+        state: &Option<String>,
     ) -> Result<Vec<CollectionChild>, Error> {
         let mut values = Vec::new();
         let mut names = Vec::new();
@@ -347,14 +357,16 @@ impl CollectionsDataStore {
         let ordering = if let Some(ordering) = &collection.ordering {
             build_ordering_names(ordering, &mut names);
             build_ordering(
-                "collections", // KJB: TODO: this isn't adequate, need a way to include both collection or metadata. Probably with a case statement.
+                "collections",
                 "collections.attributes",
+                "metadata.attributes",
                 "collection_items.attributes",
                 if state.is_some() { 3 } else { 2 },
                 ordering,
                 &mut values,
                 &names,
-            ).0
+            )
+            .0
         } else {
             String::new()
         };
@@ -384,7 +396,11 @@ impl CollectionsDataStore {
     }
 
     #[tracing::instrument(skip(self, collection))]
-    pub async fn get_children_count(&self, collection: &Collection, state: &Option<String>) -> Result<i64, Error> {
+    pub async fn get_children_count(
+        &self,
+        collection: &Collection,
+        state: &Option<String>,
+    ) -> Result<i64, Error> {
         let mut query = "select count(*) as count from collection_items ".to_owned();
         if state.is_some() {
             query.push_str(" left join collections on (child_collection_id = collections.id and collections.workflow_state_id = $2) ");
@@ -397,7 +413,9 @@ impl CollectionsDataStore {
         let connection = self.pool.get().await?;
         let stmt = connection.prepare_cached(query.as_str()).await?;
         let rows = if let Some(state) = state {
-            connection.query_one(&stmt, &[&collection.id, state]).await?
+            connection
+                .query_one(&stmt, &[&collection.id, state])
+                .await?
         } else {
             connection.query_one(&stmt, &[&collection.id]).await?
         };
@@ -410,7 +428,7 @@ impl CollectionsDataStore {
         collection: &Collection,
         offset: i64,
         limit: i64,
-        state: &Option<String>
+        state: &Option<String>,
     ) -> Result<Vec<CollectionChild>, Error> {
         let mut values = Vec::new();
         let mut names = Vec::new();
@@ -422,13 +440,15 @@ impl CollectionsDataStore {
             build_ordering_names(ordering, &mut names);
             build_ordering(
                 "metadata",
+                "",
                 "metadata.attributes",
                 "child.attributes",
                 if state.is_some() { 3 } else { 2 },
                 ordering,
                 &mut values,
                 &names,
-            ).0
+            )
+            .0
         } else {
             String::new()
         };
@@ -459,7 +479,7 @@ impl CollectionsDataStore {
     pub async fn get_expanded_metadata_count(
         &self,
         collection: &Collection,
-        state: &Option<String>
+        state: &Option<String>,
     ) -> Result<i64, Error> {
         let mut values = Vec::new();
         values.push(&collection.id as &(dyn ToSql + Sync));
@@ -494,7 +514,17 @@ impl CollectionsDataStore {
         values.push(&collection.id as &(dyn ToSql + Sync));
         let ordering = if let Some(ordering) = &collection.ordering {
             build_ordering_names(ordering, &mut names);
-            build_ordering("c", "c.attributes", "ci.attributes", 2, ordering, &mut values, &names).0
+            build_ordering(
+                "c",
+                "c.attributes",
+                "",
+                "ci.attributes",
+                2,
+                ordering,
+                &mut values,
+                &names,
+            )
+            .0
         } else {
             String::new()
         };
@@ -539,7 +569,17 @@ impl CollectionsDataStore {
         values.push(&collection.id as &(dyn ToSql + Sync));
         let ordering = if let Some(ordering) = &collection.ordering {
             build_ordering_names(ordering, &mut names);
-            build_ordering("m", "m.attributes", "ci.attributes", 2, ordering, &mut values, &names).0
+            build_ordering(
+                "m",
+                "",
+                "m.attributes",
+                "ci.attributes",
+                2,
+                ordering,
+                &mut values,
+                &names,
+            )
+            .0
         } else {
             String::new()
         };
@@ -992,7 +1032,8 @@ impl CollectionsDataStore {
         let stmt = txn
             .prepare_cached("update collection_items set attributes = coalesce(attributes, '{}'::jsonb) || $1 where collection_id = $2 and child_collection_id = $3")
             .await?;
-        txn.execute(&stmt, &[&attributes, collection_id, item_id]).await?;
+        txn.execute(&stmt, &[&attributes, collection_id, item_id])
+            .await?;
         update_collection_etag(&txn, collection_id).await?;
         update_collection_etag(&txn, item_id).await?;
         txn.commit().await?;
@@ -1014,7 +1055,8 @@ impl CollectionsDataStore {
         let stmt = txn
             .prepare_cached("update collection_items set attributes = coalesce(attributes, '{}'::jsonb) || $1 where collection_id = $2 and child_metadata_id = $3")
             .await?;
-        txn.execute(&stmt, &[&attributes, collection_id, item_id]).await?;
+        txn.execute(&stmt, &[&attributes, collection_id, item_id])
+            .await?;
         update_collection_etag(&txn, collection_id).await?;
         update_metadata_etag(&txn, item_id).await?;
         txn.commit().await?;
@@ -1042,7 +1084,7 @@ impl CollectionsDataStore {
             &stmt,
             &[&attributes, &collection_id, &metadata_id, &relationship],
         )
-            .await?;
+        .await?;
         update_collection_etag(&txn, collection_id).await?;
         update_metadata_etag(&txn, metadata_id).await?;
         txn.commit().await?;
@@ -1168,7 +1210,11 @@ impl CollectionsDataStore {
                 for child in children.iter_mut() {
                     child.metadata.parent_collection_id = Some(id.to_string());
                 }
-                let ids = ctx.content.metadata.add_all_txn(ctx, txn, children, false).await?;
+                let ids = ctx
+                    .content
+                    .metadata
+                    .add_all_txn(ctx, txn, children, false)
+                    .await?;
                 for (metadata_id, _, _) in ids.iter() {
                     ctx.content
                         .metadata_permissions
