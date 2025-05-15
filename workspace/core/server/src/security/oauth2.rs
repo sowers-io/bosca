@@ -191,6 +191,7 @@ pub async fn oauth2_callback(
         CookieJar::new().add(
             Cookie::build(("_bat", token.token))
                 .http_only(false)
+                .domain(ctx.security_oauth2.domain.clone())
                 .path("/")
                 .max_age(time::Duration::seconds(
                     (token.expires_at - token.issued_at) as i64,
