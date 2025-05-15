@@ -5,7 +5,6 @@ import io.bosca.graphql.fragment.WorkflowJob
 import io.bosca.graphql.type.ActivityInput
 import io.bosca.workflow.Activity
 import io.bosca.workflow.ActivityContext
-import io.bosca.workflow.metadata.asText
 
 class DocumentToText(client: Client) : Activity(client) {
 

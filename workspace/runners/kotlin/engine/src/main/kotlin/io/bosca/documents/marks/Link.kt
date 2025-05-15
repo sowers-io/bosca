@@ -6,7 +6,9 @@ import kotlinx.serialization.Serializable
 @Serializable
 class LinkAttributes(
     val href: String? = null,
-    val url: String? = null
+    val url: String? = null,
+    val rel: String? = null,
+    val target: String? = null,
 ) : MarkAttributes
 
 @Serializable

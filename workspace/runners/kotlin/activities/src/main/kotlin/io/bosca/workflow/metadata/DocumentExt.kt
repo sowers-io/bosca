@@ -16,6 +16,19 @@ suspend fun Document.asText(client: Client): String {
     return string.toString().trim()
 }
 
+private fun append(component: Any, key: String?, builder: StringBuilder) {
+    if (component is Map<*, *>) {
+        component.entries.forEach { entry ->
+            append(entry.value!!, entry.key as String, builder)
+        }
+    } else if (component is List<*>) {
+        component.forEach { append(it!!, key, builder) }
+    } else if (component is String && key == "text") {
+        builder.append(component)
+        builder.append(" ")
+    }
+}
+
 private suspend fun append(node: DocumentNode, client: Client, builder: StringBuilder) {
     if (node is TextNode) {
         builder.append(node.text)
@@ -26,10 +39,12 @@ private suspend fun append(node: DocumentNode, client: Client, builder: StringBu
             for (reference in node.attributes.references) {
                 val content = client.metadata.getBibleChapterContent(node.attributes.metadataId!!, null, reference)
                 if (content == null) continue
-                builder.append("\r\n")
+                builder.append("\r\n------------------\r\n")
                 builder.append(content.reference.human)
-                builder.append("\r\n")
-
+                builder.append("\r\n\r\n")
+                @Suppress("UNCHECKED_CAST")
+                append(content.component as Map<String, Any>, null, builder)
+                builder.append("\r\n------------------\r\n")
             }
         }
     } catch (e: Exception) {
