@@ -5,6 +5,7 @@ use crate::models::security::permission::PermissionAction;
 use async_graphql::{Context, Error, Object};
 use chrono::{DateTime, Utc};
 use serde_json::Value;
+use std::collections::HashMap;
 
 pub struct ProfileGuideProgressObject {
     progress: GuideProgress,
@@ -52,5 +53,32 @@ impl ProfileGuideProgressObject {
 
     async fn completed_step_ids(&self) -> &Vec<i64> {
         &self.progress.completed_step_ids
+    }
+
+    async fn next_step_id(&self, ctx: &Context<'_>) -> Result<Option<i64>, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let all_step_ids = ctx.content.guides.get_guide_step_ids(&self.progress.metadata_id, self.progress.version).await?;
+        let mut completions = HashMap::new();
+        for id in &self.progress.completed_step_ids {
+            completions.insert(id, true);
+        }
+        let mut first_not_complete = None;
+        let mut next_step_id = None;
+        for step_id in all_step_ids {
+            let session_complete = completions.get(&step_id).copied().unwrap_or(false);
+            if !session_complete && first_not_complete.is_none() {
+                first_not_complete = Some(step_id);
+            }
+            if !session_complete && next_step_id.is_none() {
+                next_step_id = Some(step_id);
+            } else if session_complete {
+                next_step_id = None;
+            }
+        }
+        Ok(if next_step_id.is_none() {
+            first_not_complete
+        } else {
+            next_step_id
+        })
     }
 }

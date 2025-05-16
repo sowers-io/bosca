@@ -218,16 +218,6 @@ jobs:
           ssh-known-hosts: ${{ secrets.KNOWN_HOSTS }}
           ssh-key: ${{ secrets.READ_SSH_KEY }}
           token: ${{ secrets.PRIVATE_PAT }}
-      - uses: actions/cache@v4
-        with:
-          path: |
-            ~/.deno
-            ~/.cache/deno
-          key: ${{ runner.os }}-deno-${{ hashFiles('**/package.json') }}
-      - uses: denoland/setup-deno@v2
-        with:
-          deno-version: v2.x
-      - run: ./scripts/build-administration
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2
       - name: Login to Docker Registry
@@ -239,29 +229,23 @@ jobs:
       - name: Build and Publish Administration Image
         uses: docker/build-push-action@v3
         with:
-          context: .
+          context: workspace/web/administration
           file: Dockerfile-administration
           push: true
           tags: |
             ${{ secrets.IMAGE_PREFIX }}/bosca/administration:latest
             ${{ secrets.IMAGE_PREFIX }}/bosca/administration:${{ github.sha }}
             ${{ secrets.IMAGE_PREFIX }}/bosca/administration:${{ github.ref_name }}
-      - name: Build and Publish Administration Query Installer Image
-        uses: docker/build-push-action@v3
-        with:
-          context: .
-          file: Dockerfile-administration-query-installer
-          push: true
-          tags: |
-            ${{ secrets.IMAGE_PREFIX }}/bosca/administration-query-installer:latest
-            ${{ secrets.IMAGE_PREFIX }}/bosca/administration-query-installer:${{ github.sha }}
-            ${{ secrets.IMAGE_PREFIX }}/bosca/administration-query-installer:${{ github.ref_name }}
-      - uses: actions/cache/save@v4
-        with:
-          path: |
-            ~/.deno
-            ~/.cache/deno
-          key: ${{ runner.os }}-deno-${{ hashFiles('**/package.json') }}
+#      - name: Build and Publish Administration Query Installer Image
+#        uses: docker/build-push-action@v3
+#        with:
+#          context: .
+#          file: Dockerfile-administration-query-installer
+#          push: true
+#          tags: |
+#            ${{ secrets.IMAGE_PREFIX }}/bosca/administration-query-installer:latest
+#            ${{ secrets.IMAGE_PREFIX }}/bosca/administration-query-installer:${{ github.sha }}
+#            ${{ secrets.IMAGE_PREFIX }}/bosca/administration-query-installer:${{ github.ref_name }}
 
   build-and-publish-runner-community:
     runs-on: ubuntu-22.04

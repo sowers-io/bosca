@@ -1,4 +1,5 @@
 use crate::context::BoscaContext;
+use crate::datastores::guide_cache::GuideCache;
 use crate::datastores::notifier::Notifier;
 use crate::models::content::document::DocumentInput;
 use crate::models::content::guide::{Guide, GuideInput};
@@ -11,15 +12,14 @@ use crate::models::content::metadata::MetadataInput;
 use crate::models::content::metadata_profile::MetadataProfileInput;
 use crate::models::security::permission::{Permission, PermissionAction};
 use async_graphql::*;
+use bosca_database::TracingPool;
+use chrono::{Timelike, Utc};
 use deadpool_postgres::{GenericClient, Transaction};
 use log::{error, info};
 use rrule::{RRuleSet, Tz};
 use serde_json::json;
 use std::sync::Arc;
-use chrono::{Timelike, Utc};
 use uuid::Uuid;
-use bosca_database::TracingPool;
-use crate::datastores::guide_cache::GuideCache;
 
 #[derive(Clone)]
 pub struct GuidesDataStore {
@@ -279,6 +279,27 @@ impl GuidesDataStore {
             return Ok(None);
         }
         Ok(Some((&rows).into()))
+    }
+
+    #[tracing::instrument(skip(self, metadata_id, version))]
+    pub async fn get_guide_step_ids(
+        &self,
+        metadata_id: &Uuid,
+        version: i32,
+    ) -> Result<Vec<i64>, Error> {
+        if let Some(ids) = self.cache.get_guide_step_ids(metadata_id).await {
+            return Ok(ids);
+        }
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("select id from guide_steps where metadata_id = $1 and version = $2 order by sort asc")
+            .await?;
+        let rows = connection
+            .query(&stmt, &[metadata_id, &version])
+            .await?;
+        let ids = rows.iter().map(|r| r.get("id")).collect();
+        self.cache.set_guide_step_ids(metadata_id, &ids).await;
+        Ok(ids)
     }
 
     #[tracing::instrument(skip(self, metadata_id, version, offset, limit))]

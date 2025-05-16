@@ -137,6 +137,12 @@ impl GuideObject {
         self.get_size(ctx).await
     }
 
+    pub async fn step_by_offset(&self, ctx: &Context<'_>, offset: i64) -> Result<Option<GuideStepObject>, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let steps = get_steps(ctx, &self.guide, Some(offset), Some(1)).await?;
+        Ok(steps.into_iter().next())
+    }
+
     pub async fn steps(
         &self,
         ctx: &Context<'_>,
@@ -144,36 +150,40 @@ impl GuideObject {
         limit: Option<i64>,
     ) -> Result<Vec<GuideStepObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        let steps = ctx
-            .content
-            .guides
-            .get_guide_steps(&self.guide.metadata_id, self.guide.version, offset, limit)
-            .await?;
-        if let Some(rrule) = self.guide.rrule.clone() {
-            if let Some(last_step) = steps.last() {
-                // TODO: cache this somewhere
-                let recurrences = rrule.all((last_step.sort + 1) as u16);
-                let mut dates = recurrences.dates.into_iter().map(|d| d.to_utc());
-                if let Some(offset) = offset {
-                    let mut x = 0;
-                    while x < offset {
-                        dates.next();
-                        x += 1;
-                    }
+        get_steps(ctx, &self.guide, offset, limit).await
+    }
+}
+
+async fn get_steps(ctx: &BoscaContext, guide: &Guide, offset: Option<i64>, limit: Option<i64>) -> Result<Vec<GuideStepObject>, Error> {
+    let steps = ctx
+        .content
+        .guides
+        .get_guide_steps(&guide.metadata_id, guide.version, offset, limit)
+        .await?;
+    if let Some(rrule) = guide.rrule.clone() {
+        if let Some(last_step) = steps.last() {
+            // TODO: cache this somewhere
+            let recurrences = rrule.all((last_step.sort + 1) as u16);
+            let mut dates = recurrences.dates.into_iter().map(|d| d.to_utc());
+            if let Some(offset) = offset {
+                let mut x = 0;
+                while x < offset {
+                    dates.next();
+                    x += 1;
                 }
-                let mut results = Vec::new();
-                for step in steps {
-                    results.push(GuideStepObject::new(step, dates.next()));
-                }
-                Ok(results)
-            } else {
-                Ok(Vec::new())
             }
+            let mut results = Vec::new();
+            for step in steps {
+                results.push(GuideStepObject::new(step, dates.next()));
+            }
+            Ok(results)
         } else {
-            Ok(steps
-                .into_iter()
-                .map(|s| GuideStepObject::new(s, None))
-                .collect())
+            Ok(Vec::new())
         }
+    } else {
+        Ok(steps
+            .into_iter()
+            .map(|s| GuideStepObject::new(s, None))
+            .collect())
     }
 }
