@@ -19,16 +19,18 @@ use std::sync::Arc;
 use chrono::{Timelike, Utc};
 use uuid::Uuid;
 use bosca_database::TracingPool;
+use crate::datastores::guide_cache::GuideCache;
 
 #[derive(Clone)]
 pub struct GuidesDataStore {
+    cache: GuideCache,
     pool: TracingPool,
     notifier: Arc<Notifier>,
 }
 
 impl GuidesDataStore {
-    pub fn new(pool: TracingPool, notifier: Arc<Notifier>) -> Self {
-        Self { pool, notifier }
+    pub fn new(pool: TracingPool, cache: GuideCache, notifier: Arc<Notifier>) -> Self {
+        Self { cache, pool, notifier }
     }
 
     #[tracing::instrument(skip(self, ctx, id))]
@@ -222,7 +224,6 @@ impl GuidesDataStore {
                 .await?;
             }
         }
-
         Ok(())
     }
 
@@ -320,6 +321,9 @@ impl GuidesDataStore {
         metadata_id: &Uuid,
         version: i32,
     ) -> Result<i64, Error> {
+        if let Some(count) = self.cache.get_guide_step_count(metadata_id).await {
+            return Ok(count);
+        }
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached(
@@ -329,7 +333,9 @@ impl GuidesDataStore {
         let rows = connection
             .query_one(&stmt, &[metadata_id, &version])
             .await?;
-        Ok(rows.get("count"))
+        let count: i64 = rows.get("count");
+        self.cache.set_guide_step_count(metadata_id, count).await;
+        Ok(count)
     }
 
     #[tracing::instrument(skip(self, metadata_id, version, step_id))]
@@ -421,6 +427,7 @@ impl GuidesDataStore {
             self.add_guide_step_txn(ctx, txn, metadata_id, version, index as i32, step)
                 .await?;
         }
+        self.cache.evict_guide(metadata_id).await;
         Ok(())
     }
 

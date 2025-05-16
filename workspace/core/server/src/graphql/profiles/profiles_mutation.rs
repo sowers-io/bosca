@@ -4,6 +4,7 @@ use crate::models::profiles::profile::ProfileInput;
 use crate::models::profiles::profile_attribute_type::ProfileAttributeTypeInput;
 use async_graphql::*;
 use uuid::Uuid;
+use crate::graphql::profiles::profile_mutation::ProfileMutationObject;
 
 pub struct ProfilesMutationObject {}
 
@@ -107,5 +108,16 @@ impl ProfilesMutationObject {
         ctx.check_has_admin_account().await?;
         ctx.profile.delete_profile_attribute_type(&attribute_id).await?;
         Ok(true)
+    }
+
+    async fn profile(&self, ctx: &Context<'_>) -> Result<ProfileMutationObject, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        if ctx.principal.anonymous {
+            return Err(Error::new("unauthorized"));
+        }
+        let Some(profile) = ctx.profile.get_by_principal(&ctx.principal.id).await? else {
+            return Err(Error::new("profile not found"));
+        };
+        Ok(ProfileMutationObject::new(profile))
     }
 }

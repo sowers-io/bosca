@@ -1,6 +1,7 @@
 use crate::datastores::bible::bible::BiblesDataStore;
 use crate::datastores::cache::cache::BoscaCache;
 use crate::datastores::cache::manager::BoscaCacheManager;
+use crate::datastores::collection_cache::CollectionCache;
 use crate::datastores::content::categories::CategoriesDataStore;
 use crate::datastores::content::collection_permissions::CollectionPermissionsDataStore;
 use crate::datastores::content::collection_supplementary::CollectionSupplementaryDataStore;
@@ -14,15 +15,15 @@ use crate::datastores::content::metadata_permissions::MetadataPermissionsDataSto
 use crate::datastores::content::metadata_supplementary::MetadataSupplementaryDataStore;
 use crate::datastores::content::metadata_workflows::MetadataWorkflowsDataStore;
 use crate::datastores::content::sources::SourcesDataStore;
+use crate::datastores::guide_cache::GuideCache;
+use crate::datastores::metadata_cache::MetadataCache;
 use crate::datastores::notifier::Notifier;
 use crate::models::content::slug::{Slug, SlugType};
 use async_graphql::Error;
 use bosca_database::TracingPool;
+use bosca_dc_client::client::Client;
 use std::sync::Arc;
 use uuid::Uuid;
-use crate::datastores::collection_cache::CollectionCache;
-use crate::datastores::metadata_cache::MetadataCache;
-use bosca_dc_client::client::Client;
 
 #[derive(Clone)]
 pub struct ContentDataStore {
@@ -50,6 +51,7 @@ impl ContentDataStore {
     pub async fn new(pool: TracingPool, cache: &mut BoscaCacheManager, notifier: Arc<Notifier>, client: Client) -> Result<Self, Error> {
         let collections_cache = CollectionCache::new(cache).await?;
         let metadata_cache = MetadataCache::new(cache).await?;
+        let guide_cache = GuideCache::new(cache).await?;
         Ok(Self {
             slug_cache: cache.new_string_tiered_cache("slugs", 20000).await?,
             categories: CategoriesDataStore::new(pool.clone(), Arc::clone(&notifier)),
@@ -66,7 +68,7 @@ impl ContentDataStore {
             collection_templates: CollectionTemplatesDataStore::new(
                 pool.clone(),
             ),
-            metadata: MetadataDataStore::new(pool.clone(), metadata_cache.clone(), Arc::clone(&notifier), client).await?,
+            metadata: MetadataDataStore::new(pool.clone(), metadata_cache.clone(), guide_cache.clone(), Arc::clone(&notifier), client).await?,
             metadata_supplementary: MetadataSupplementaryDataStore::new(pool.clone(), metadata_cache.clone(), Arc::clone(&notifier)),
             metadata_permissions: MetadataPermissionsDataStore::new(
                 pool.clone(),
@@ -77,7 +79,7 @@ impl ContentDataStore {
                 Arc::clone(&notifier),
             ),
             documents: DocumentsDataStore::new(pool.clone(), Arc::clone(&notifier)),
-            guides: GuidesDataStore::new(pool.clone(), Arc::clone(&notifier)),
+            guides: GuidesDataStore::new(pool.clone(), guide_cache.clone(), Arc::clone(&notifier)),
             sources: SourcesDataStore::new(pool.clone()),
             bibles: BiblesDataStore::new(pool.clone(), Arc::clone(&notifier)),
             pool,

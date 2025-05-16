@@ -25,10 +25,12 @@ use std::sync::Arc;
 use std::time::Duration;
 use uuid::Uuid;
 use bosca_dc_client::client::api::NotificationType;
+use crate::datastores::guide_cache::GuideCache;
 
 #[derive(Clone)]
 pub struct MetadataDataStore {
     cache: MetadataCache,
+    guide_cache: GuideCache,
     pool: TracingPool,
     client: Client,
     notifier: Arc<Notifier>,
@@ -39,6 +41,7 @@ impl MetadataDataStore {
     pub async fn new(
         pool: TracingPool,
         cache: MetadataCache,
+        guide_cache: GuideCache,
         notifier: Arc<Notifier>,
         client: Client,
     ) -> Result<Self, Error> {
@@ -47,6 +50,7 @@ impl MetadataDataStore {
         client.create(&bucket, 20000, 5, 0).await?;
         Ok(Self {
             cache,
+            guide_cache,
             pool,
             notifier,
             client,
@@ -147,7 +151,7 @@ impl MetadataDataStore {
     }
 
     #[tracing::instrument(skip(self, query))]
-    pub async fn find_system(&self, query: &mut FindQueryInput) -> Result<Vec<Metadata>, Error> {
+    pub async fn find_system(&self, query: &FindQueryInput) -> Result<Vec<Metadata>, Error> {
         let category_ids = query.get_category_ids();
         let mut names = Vec::new();
         let (query, values) = build_find_args(
@@ -169,7 +173,7 @@ impl MetadataDataStore {
     }
 
     #[tracing::instrument(skip(self, query))]
-    pub async fn find_count(&self, query: &mut FindQueryInput) -> Result<i64, Error> {
+    pub async fn find_count(&self, query: &FindQueryInput) -> Result<i64, Error> {
         let category_ids = query.get_category_ids();
         let mut names = Vec::new();
         let (query, values) = build_find_args(
@@ -1104,7 +1108,11 @@ impl MetadataDataStore {
             .await?;
 
         update_metadata_etag(txn, &id).await?;
+
         self.cache.evict_metadata(&id).await;
+        if metadata.guide.is_some() {
+            self.guide_cache.evict_guide(&id).await;
+        }
 
         if let Some(parent_collection_id) = &metadata.parent_collection_id {
             let parent_collection_id = Uuid::parse_str(parent_collection_id.as_str())?;
@@ -1175,11 +1183,14 @@ impl MetadataDataStore {
     #[tracing::instrument(skip(self, id))]
     pub async fn update_storage(&self, _: &BoscaContext, id: &Uuid) -> Result<(), Error> {
         self.cache.evict_metadata(id).await;
+        // TODO: make this conditional
+        self.guide_cache.evict_guide(id).await;
         let id_str = id.to_string();
         let next = Utc::now()
             .add(TimeDelta::new(5, 0).unwrap())
             .timestamp_millis();
         let next = next.to_be_bytes();
+        // when this gets evicted, it'll kick of a workflow for updating things
         if let Err(e) = self
             .client
             .put(&self.update_cache, &id_str, next.to_vec())

@@ -273,7 +273,7 @@ impl WorkflowsMutationObject {
         &self,
         ctx: &Context<'_>,
         workflow_id: String,
-        mut query: FindQueryInput,
+        query: FindQueryInput,
         configurations: Option<Vec<WorkflowConfigurationInput>>,
         delay_until: Option<DateTime<Utc>>,
     ) -> Result<Vec<WorkflowExecutionIdObject>, Error> {
@@ -287,7 +287,7 @@ impl WorkflowsMutationObject {
             ..Default::default()
         };
         // TODO: page through items
-        for metadata in ctx.content.metadata.find(&mut query).await? {
+        for metadata in ctx.content.metadata.find(&query).await? {
             request.metadata_id = Some(metadata.id);
             request.metadata_version = Some(metadata.version);
             let id = ctx.workflow.enqueue_workflow(ctx, &mut request).await?;
@@ -295,7 +295,7 @@ impl WorkflowsMutationObject {
         }
         request.metadata_id = None;
         request.metadata_version = None;
-        for collection in ctx.content.collections.find(&mut query).await? {
+        for collection in ctx.content.collections.find(&query).await? {
             request.collection_id = Some(collection.id);
             let id = ctx.workflow.enqueue_workflow(ctx, &mut request).await?;
             ids.push(id);

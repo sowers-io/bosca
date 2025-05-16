@@ -1,16 +1,19 @@
-use std::fmt::Debug;
 use crate::context::BoscaContext;
+use crate::models::content::guide_history::GuideHistory;
+use crate::models::content::guide_progress::GuideProgress;
 use crate::models::profiles::profile::{Profile, ProfileInput};
 use crate::models::profiles::profile_attribute::ProfileAttribute;
 use crate::models::profiles::profile_attribute_type::{
     ProfileAttributeType, ProfileAttributeTypeInput,
 };
-use async_graphql::Error;
-use deadpool_postgres::{GenericClient, Transaction};
-use uuid::Uuid;
-use bosca_database::TracingPool;
 use crate::models::workflow::enqueue_request::EnqueueRequest;
 use crate::workflow::core_workflow_ids::PROFILE_UPDATE_STORAGE;
+use async_graphql::Error;
+use bosca_database::TracingPool;
+use deadpool_postgres::{GenericClient, Transaction};
+use serde_json::Value;
+use std::fmt::Debug;
+use uuid::Uuid;
 
 #[derive(Clone)]
 pub struct ProfileDataStore {
@@ -211,6 +214,112 @@ impl ProfileDataStore {
         Ok(rows.iter().map(|r| r.into()).collect())
     }
 
+    #[tracing::instrument(skip(self, profile_id))]
+    pub async fn get_progressions(
+        &self,
+        profile_id: &Uuid,
+        offset: i64,
+        limit: i64,
+    ) -> async_graphql::Result<Vec<GuideProgress>, Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("select * from profile_guide_progress where profile_id = $1 order by modified desc offset $2 limit $3")
+            .await?;
+        let rows = connection.query(&stmt, &[profile_id, &offset, &limit]).await?;
+        Ok(rows.iter().map(|r| r.into()).collect())
+    }
+
+    #[tracing::instrument(skip(self, profile_id))]
+    pub async fn get_progress(
+        &self,
+        profile_id: &Uuid,
+        metadata_id: &Uuid,
+        version: i32,
+    ) -> async_graphql::Result<Option<GuideProgress>, Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("select * from profile_guide_progress where profile_id = $1 and metadata_id = $2 and version = $3")
+            .await?;
+        let rows = connection.query(&stmt, &[profile_id, metadata_id, &version]).await?;
+        Ok(rows.first().map(|r| r.into()))
+    }
+
+    #[tracing::instrument(skip(self, profile_id))]
+    pub async fn get_progression_count(
+        &self,
+        profile_id: &Uuid,
+    ) -> async_graphql::Result<i64, Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("select count(*) as c from profile_guide_progress where profile_id = $1")
+            .await?;
+        let rows = connection.query(&stmt, &[profile_id]).await?;
+        let r = rows.first().unwrap();
+        Ok(r.get("c"))
+    }
+
+    #[tracing::instrument(skip(self, profile_id, offset, limit))]
+    pub async fn get_histories(
+        &self,
+        profile_id: &Uuid,
+        offset: i64,
+        limit: i64,
+    ) -> async_graphql::Result<Vec<GuideHistory>, Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("select * from profile_guide_history where profile_id = $1 order by completed desc offset $2 limit $3")
+            .await?;
+        let rows = connection.query(&stmt, &[profile_id, &offset, &limit]).await?;
+        Ok(rows.iter().map(|r| r.into()).collect())
+    }
+
+    #[tracing::instrument(skip(self, profile_id))]
+    pub async fn get_histories_count(
+        &self,
+        profile_id: &Uuid,
+    ) -> async_graphql::Result<i64, Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("select count(*) as c from profile_guide_history where profile_id = $1")
+            .await?;
+        let rows = connection.query(&stmt, &[profile_id]).await?;
+        let r = rows.first().unwrap();
+        Ok(r.get("c"))
+    }
+
+    #[tracing::instrument(skip(self, profile_id, metadata_id, version))]
+    pub async fn get_history(
+        &self,
+        profile_id: &Uuid,
+        metadata_id: &Uuid,
+        version: i32,
+        offset: i64,
+        limit: i64,
+    ) -> async_graphql::Result<Vec<GuideHistory>, Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("select * from profile_guide_history where profile_id = $1 and metadata_id = $2 and version = $3 order by completed desc offset $4 limit $5")
+            .await?;
+        let rows = connection.query(&stmt, &[profile_id, metadata_id, &version, &offset, &limit]).await?;
+        Ok(rows.iter().map(|r| r.into()).collect())
+    }
+
+    #[tracing::instrument(skip(self, profile_id))]
+    pub async fn get_history_count(
+        &self,
+        profile_id: &Uuid,
+        metadata_id: &Uuid,
+        version: i32,
+    ) -> async_graphql::Result<i64, Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("select count(*) as c from profile_guide_history where profile_id = $1 and metadata_id = $2 and version = $3")
+            .await?;
+        let rows = connection.query(&stmt, &[profile_id, metadata_id, &version]).await?;
+        let r = rows.first().unwrap();
+        Ok(r.get("c"))
+    }
+
     #[tracing::instrument(skip(self, ctx, principal, profile))]
     pub async fn edit_by_principal(
         &self,
@@ -332,5 +441,106 @@ impl ProfileDataStore {
         };
         ctx.workflow.enqueue_workflow(ctx, &mut request).await?;
         Ok(())
+    }
+
+    #[tracing::instrument(
+        skip(self, profile_id, metadata_id, metadata_version, collection_id)
+    )]
+    pub async fn add_bookmark(
+        &self,
+        _: &BoscaContext,
+        profile_id: &Uuid,
+        metadata_id: Option<Uuid>,
+        metadata_version: Option<i64>,
+        collection_id: Option<Uuid>,
+    ) -> async_graphql::Result<(), Error> {
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        if metadata_id.is_some() && metadata_version.is_some() {
+            let stmt = txn
+                .prepare_cached(
+                    "insert into profile_bookmarks (profile_id, metadata_id, metadata_version) values ($1, $2, $3) on conflict (profile_id, metadata_id, metadata_version) do nothing",
+                )
+                .await?;
+            txn.execute(&stmt, &[&profile_id, &metadata_id, &metadata_version]).await?;
+        } else {
+            let stmt = txn
+                .prepare_cached(
+                    "insert into profile_bookmarks (profile_id, collection_id) values ($1, $2) on conflict (profile_id, collection_id) do nothing",
+                ).await?;
+            txn.execute(&stmt, &[&profile_id, &collection_id]).await?;
+        }
+        txn.commit().await?;
+        // TODO: fire workflow
+        Ok(())
+    }
+
+    #[tracing::instrument(
+        skip(self, profile_id, metadata_id, metadata_version, collection_id)
+    )]
+    pub async fn delete_bookmark(
+        &self,
+        _: &BoscaContext,
+        profile_id: &Uuid,
+        metadata_id: Option<Uuid>,
+        metadata_version: Option<i64>,
+        collection_id: Option<Uuid>,
+    ) -> async_graphql::Result<(), Error> {
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        if metadata_id.is_some() && metadata_version.is_some() {
+            let stmt = txn
+                .prepare_cached(
+                    "delete from profile_bookmarks where profile_id = $1 and metadata_id = $2 and metadata_version = $3",
+                )
+                .await?;
+            txn.execute(&stmt, &[&profile_id, &metadata_id, &metadata_version]).await?;
+        } else {
+            let stmt = txn
+                .prepare_cached(
+                    "delete from profile_bookmarks where profile_id = $1 and collection_id = $2",
+                ).await?;
+            txn.execute(&stmt, &[&profile_id, &collection_id]).await?;
+        }
+        txn.commit().await?;
+        // TODO: fire workflow
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self, ctx, profile_id, metadata_id, metadata_version, attributes))]
+    pub async fn add_progress(
+        &self,
+        ctx: &BoscaContext,
+        profile_id: &Uuid,
+        metadata_id: &Uuid,
+        metadata_version: i32,
+        attributes: &Value,
+        step_id: i64,
+    ) -> async_graphql::Result<bool, Error> {
+        let step_count = ctx.content.guides.get_guide_step_count(metadata_id, metadata_version).await? as i32;
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        let stmt = txn
+            .prepare_cached("insert into profile_guide_progress as p (profile_id, metadata_id, version, attributes, completed_step_ids) values ($1, $2, $3, $4, ARRAY[$5]::bigint[]) on conflict (profile_id, metadata_id, version) do update set modified = now(), attributes = coalesce(p.attributes, '{}'::jsonb) || $4, completed_step_ids = array_append(p.completed_step_ids, $5) where not (p.completed_step_ids @> ARRAY[$5]::bigint[]) returning array_length(p.completed_step_ids, 1) as l, attributes")
+            .await?;
+        let results = txn.query(&stmt, &[&profile_id, &metadata_id, &metadata_version, &attributes, &step_id]).await?;
+        if results.is_empty() {
+            return Ok(false)
+        }
+        let result = results.first().unwrap();
+        let completed: i32 = result.get("l");
+        if completed == step_count {
+            let attributes: Value = result.get("attributes");
+            let stmt = txn
+                .prepare_cached("insert into profile_guide_history (profile_id, metadata_id, version, attributes, completed) values ($1, $2, $3, $4, now())")
+                .await?;
+            txn.execute(&stmt, &[&profile_id, &metadata_id, &metadata_version, &attributes]).await?;
+            let stmt = txn.prepare_cached("delete from profile_guide_progress where profile_id = $1 and metadata_id = $2 and version = $3")
+                .await?;
+            txn.execute(&stmt, &[&profile_id, &metadata_id, &metadata_version]).await?;
+        }
+        txn.commit().await?;
+        // TODO: fire workflow
+        Ok(true)
     }
 }

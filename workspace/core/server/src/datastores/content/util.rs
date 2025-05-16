@@ -17,6 +17,7 @@ pub fn build_ordering_names(ordering: &[Ordering], names: &mut Vec<String>) {
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 pub fn build_ordering<'a>(
     table_alias: &str,
     collection_item_attributes_column: &str,

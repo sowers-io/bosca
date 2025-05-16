@@ -74,7 +74,7 @@ impl CollectionsDataStore {
     }
 
     #[tracing::instrument(skip(self, query))]
-    pub async fn find_system(&self, query: &mut FindQueryInput) -> Result<Vec<Collection>, Error> {
+    pub async fn find_system(&self, query: &FindQueryInput) -> Result<Vec<Collection>, Error> {
         let connection = self.pool.get().await?;
         let category_ids = query.get_category_ids();
         let mut names = Vec::new();
@@ -96,7 +96,7 @@ impl CollectionsDataStore {
     }
 
     #[tracing::instrument(skip(self, query))]
-    pub async fn find(&self, query: &mut FindQueryInput) -> Result<Vec<Collection>, Error> {
+    pub async fn find(&self, query: &FindQueryInput) -> Result<Vec<Collection>, Error> {
         let connection = self.pool.get().await?;
         let category_ids = query.get_category_ids();
         let mut names = Vec::new();

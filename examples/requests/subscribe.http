@@ -1,0 +1,60 @@
+GRAPHQL http://localhost:8000/graphql
+
+mutation {
+    security {
+        login {
+            password(identifier: "admin", password: "password") {
+                profile {
+                    id
+                    name
+                }
+                token {
+                    token
+                }
+            }
+        }
+    }
+}
+
+###
+GRAPHQL http://localhost:8000/graphql
+Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJib3NjYS5pbyIsImV4cCI6MTc0NzQ1MjM1NSwiaWF0IjoxNzQ3MzY1OTU1LCJpc3MiOiJib3NjYS1ncmFwaHFsIiwic3ViIjoiZmU3NDE3MGEtMDBhNS00ZTEyLWEyYjItODM3ZWNmZmI0NmMzIn0.nYEAbwBbmEk0VS8xB80vvsCPXgt4BxmVCk2cEniK8ls
+
+mutation {
+    profiles {
+        profile {
+            addProgress(
+                metadataId: "5ec83b0a-879b-46a4-9d38-09bbbb6fbf56"
+                metadataVersion: 1
+                attributes: {test: 1234}
+                stepId: 2
+            )
+        }
+    }
+}
+
+###
+GRAPHQL http://localhost:8000/graphql
+Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJhdWQiOiJib3NjYS5pbyIsImV4cCI6MTc0NzQ1MjM1NSwiaWF0IjoxNzQ3MzY1OTU1LCJpc3MiOiJib3NjYS1ncmFwaHFsIiwic3ViIjoiZmU3NDE3MGEtMDBhNS00ZTEyLWEyYjItODM3ZWNmZmI0NmMzIn0.nYEAbwBbmEk0VS8xB80vvsCPXgt4BxmVCk2cEniK8ls
+
+query {
+    profiles {
+        current {
+            guides {
+                progressions {
+                    all(offset: 0 limit: 100) {
+                        metadata {
+                            id
+                            guide {
+                                stepCount
+                            }
+                        }
+                        percentage
+                        completedStepIds
+                    }
+                    count
+                }
+            }
+        }
+    }
+}

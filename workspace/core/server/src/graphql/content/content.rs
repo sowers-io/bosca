@@ -55,13 +55,13 @@ impl ContentObject {
     async fn find_collections(
         &self,
         ctx: &Context<'_>,
-        mut query: FindQueryInput,
+        query: FindQueryInput,
     ) -> Result<Vec<CollectionObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         Ok(ctx
             .content
             .collections
-            .find(&mut query)
+            .find(&query)
             .await?
             .into_iter()
             .map(CollectionObject::new)
@@ -71,13 +71,13 @@ impl ContentObject {
     async fn find_collections_by_system(
         &self,
         ctx: &Context<'_>,
-        mut query: FindQueryInput,
+        query: FindQueryInput,
     ) -> Result<Vec<CollectionObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         Ok(ctx
             .content
             .collections
-            .find_system(&mut query)
+            .find_system(&query)
             .await?
             .into_iter()
             .map(CollectionObject::new)
@@ -113,13 +113,13 @@ impl ContentObject {
     async fn find_metadata(
         &self,
         ctx: &Context<'_>,
-        mut query: FindQueryInput,
+        query: FindQueryInput,
     ) -> Result<Vec<MetadataObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         Ok(ctx
             .content
             .metadata
-            .find(&mut query)
+            .find(&query)
             .await?
             .into_iter()
             .map(MetadataObject::new)
@@ -129,13 +129,13 @@ impl ContentObject {
     async fn find_metadata_by_system(
         &self,
         ctx: &Context<'_>,
-        mut query: FindQueryInput,
+        query: FindQueryInput,
     ) -> Result<Vec<MetadataObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         Ok(ctx
             .content
             .metadata
-            .find_system(&mut query)
+            .find_system(&query)
             .await?
             .into_iter()
             .map(MetadataObject::new)
@@ -145,10 +145,10 @@ impl ContentObject {
     async fn find_metadata_count(
         &self,
         ctx: &Context<'_>,
-        mut query: FindQueryInput,
+        query: FindQueryInput,
     ) -> Result<i64, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        ctx.content.metadata.find_count(&mut query).await
+        ctx.content.metadata.find_count(&query).await
     }
 
     async fn metadata(

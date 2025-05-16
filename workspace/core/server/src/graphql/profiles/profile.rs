@@ -1,11 +1,12 @@
 use crate::context::BoscaContext;
+use crate::graphql::content::collection::CollectionObject;
 use crate::graphql::profiles::profile_attribute::ProfileAttributeObject;
+use crate::graphql::profiles::profile_guides::ProfileGuidesObject;
+use crate::graphql::security::principal::PrincipalObject;
 use crate::models::profiles::profile::Profile;
 use crate::models::profiles::profile_visibility::ProfileVisibility;
-use async_graphql::{Context, Error, Object};
-use crate::graphql::content::collection::CollectionObject;
-use crate::graphql::security::principal::PrincipalObject;
 use crate::models::security::permission::PermissionAction;
+use async_graphql::{Context, Error, Object};
 
 pub struct ProfileObject {
     profile: Profile,
@@ -99,6 +100,17 @@ impl ProfileObject {
                 .map(ProfileAttributeObject::new)
                 .collect())
         }
+    }
+
+    async fn guides(&self, ctx: &Context<'_>) -> Result<ProfileGuidesObject, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let Some(principal) = self.profile.principal else {
+            return Err(Error::new("No principal"));
+        };
+        if ctx.principal.id != principal {
+            ctx.check_has_admin_account().await?;
+        }
+        Ok(ProfileGuidesObject::new(self.profile.clone()))
     }
 }
 
