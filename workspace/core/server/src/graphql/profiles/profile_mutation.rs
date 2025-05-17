@@ -1,4 +1,5 @@
 use crate::context::BoscaContext;
+use crate::graphql::profiles::profile_guide_progress::ProfileGuideProgressObject;
 use crate::models::profiles::profile::Profile;
 use async_graphql::*;
 use uuid::Uuid;
@@ -24,11 +25,12 @@ impl ProfileMutationObject {
         metadata_version: i32,
         attributes: serde_json::Value,
         step_id: i64,
-    ) -> Result<bool, Error> {
+    ) -> Result<Option<ProfileGuideProgressObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let metadata_id = Uuid::parse_str(&metadata_id)?;
-        let result = ctx.profile.add_progress(ctx, &self.profile.id, &metadata_id, metadata_version, &attributes, step_id).await?;
-        Ok(result)
+        ctx.profile.add_progress(ctx, &self.profile.id, &metadata_id, metadata_version, &attributes, step_id).await?;
+        let progress = ctx.profile.get_progress(&self.profile.id, &metadata_id, metadata_version).await?;
+        Ok(progress.map(|p| ProfileGuideProgressObject::new(p)))
     }
 
     async fn add_bookmark(
