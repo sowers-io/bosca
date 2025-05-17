@@ -10,7 +10,6 @@ pub struct GuideProgress {
     pub attributes: Value,
     pub started: DateTime<Utc>,
     pub modified: DateTime<Utc>,
-    pub completed: Option<DateTime<Utc>>,
     pub completed_step_ids: Vec<i64>,
 }
 
@@ -22,7 +21,6 @@ impl From<&Row> for GuideProgress {
             attributes: row.get("attributes"),
             started: row.get("started"),
             modified: row.get("modified"),
-            completed: row.get("completed"),
             completed_step_ids: row.get("completed_step_ids"),
         }
     }

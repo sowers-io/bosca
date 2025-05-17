@@ -47,10 +47,6 @@ impl ProfileGuideProgressObject {
         &self.progress.modified
     }
 
-    async fn completed(&self) -> &Option<DateTime<Utc>> {
-        &self.progress.completed
-    }
-
     async fn completed_step_ids(&self) -> &Vec<i64> {
         &self.progress.completed_step_ids
     }
