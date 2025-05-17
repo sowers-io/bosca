@@ -534,7 +534,7 @@ impl ProfileDataStore {
             (completed, attributes)
         } else {
             let stmt = txn
-                .prepare_cached("insert into profile_guide_progress as p (profile_id, metadata_id, version, attributes) values ($1, $2, $3, $4) on conflict (profile_id, metadata_id, version) do update set modified = now(), attributes = coalesce(p.attributes, '{}'::jsonb) || $4 returning array_length(p.completed_step_ids, 1) as l, attributes")
+                .prepare_cached("insert into profile_guide_progress as p (profile_id, metadata_id, version, attributes, completed_step_ids) values ($1, $2, $3, $4, '{}'::bigint[]) on conflict (profile_id, metadata_id, version) do update set modified = now(), attributes = coalesce(p.attributes, '{}'::jsonb) || $4 returning array_length(p.completed_step_ids, 1) as l, attributes")
                 .await?;
             let results = txn.query(&stmt, &[&profile_id, &metadata_id, &metadata_version, &attributes]).await?;
             if results.is_empty() {
