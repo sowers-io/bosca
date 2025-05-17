@@ -4,6 +4,7 @@ mod collection_files;
 mod context;
 mod datastores;
 mod graphql;
+mod image_files;
 mod initialization;
 mod logger;
 mod metadata_files;
@@ -40,14 +41,15 @@ use crate::authed_subscription::AuthGraphQLSubscription;
 use crate::collection_files::{collection_download, collection_upload};
 use crate::graphql::handlers::{graphiql_handler, graphql_handler};
 use crate::graphql::schema::new_schema;
+use crate::image_files::image;
 use crate::initialization::content::initialize_content;
 use crate::initialization::security::initialize_security;
 use crate::initialization::telemetry::new_tracing;
+use crate::security::oauth2::{oauth2_callback, oauth2_redirect};
 use crate::shutdown_hook::shutdown_hook;
 use crate::slugs::slug;
 use mimalloc::MiMalloc;
 use tower_http::cors::CorsLayer;
-use crate::security::oauth2::{oauth2_callback, oauth2_redirect};
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
@@ -99,6 +101,7 @@ async fn main() {
         .with_state(ctx.clone());
 
     let content = Router::new()
+        .route("/image", get(image))
         .route("/{slug}", get(slug))
         .with_state(ctx.clone());
 
