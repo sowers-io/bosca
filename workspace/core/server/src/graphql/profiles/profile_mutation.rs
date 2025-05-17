@@ -30,7 +30,7 @@ impl ProfileMutationObject {
         let metadata_id = Uuid::parse_str(&metadata_id)?;
         ctx.profile.add_progress(ctx, &self.profile.id, &metadata_id, metadata_version, &attributes, step_id).await?;
         let progress = ctx.profile.get_progress(&self.profile.id, &metadata_id, metadata_version).await?;
-        Ok(progress.map(|p| ProfileGuideProgressObject::new(p)))
+        Ok(progress.map(ProfileGuideProgressObject::new))
     }
 
     async fn add_bookmark(

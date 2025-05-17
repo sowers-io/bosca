@@ -517,20 +517,35 @@ impl ProfileDataStore {
         attributes: &Value,
         step_id: i64,
     ) -> async_graphql::Result<bool, Error> {
-        let step_count = ctx.content.guides.get_guide_step_count(metadata_id, metadata_version).await? as i32;
+        let steps = ctx.content.guides.get_guide_step_ids(metadata_id, metadata_version).await?;
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
-        let stmt = txn
-            .prepare_cached("insert into profile_guide_progress as p (profile_id, metadata_id, version, attributes, completed_step_ids) values ($1, $2, $3, $4, ARRAY[$5]::bigint[]) on conflict (profile_id, metadata_id, version) do update set modified = now(), attributes = coalesce(p.attributes, '{}'::jsonb) || $4, completed_step_ids = array_append(p.completed_step_ids, $5) where not (p.completed_step_ids @> ARRAY[$5]::bigint[]) returning array_length(p.completed_step_ids, 1) as l, attributes")
-            .await?;
-        let results = txn.query(&stmt, &[&profile_id, &metadata_id, &metadata_version, &attributes, &step_id]).await?;
-        if results.is_empty() {
-            return Ok(false)
-        }
-        let result = results.first().unwrap();
-        let completed: i32 = result.get("l");
-        if completed == step_count {
+        let (completed, attributes) = if steps.contains(&step_id) {
+            let stmt = txn
+                .prepare_cached("insert into profile_guide_progress as p (profile_id, metadata_id, version, attributes, completed_step_ids) values ($1, $2, $3, $4, ARRAY[$5]::bigint[]) on conflict (profile_id, metadata_id, version) do update set modified = now(), attributes = coalesce(p.attributes, '{}'::jsonb) || $4, completed_step_ids = array_append(p.completed_step_ids, $5) where not (p.completed_step_ids @> ARRAY[$5]::bigint[]) returning array_length(p.completed_step_ids, 1) as l, attributes")
+                .await?;
+            let results = txn.query(&stmt, &[&profile_id, &metadata_id, &metadata_version, &attributes, &step_id]).await?;
+            if results.is_empty() {
+                return Ok(false)
+            }
+            let result = results.first().unwrap();
+            let completed: i32 = result.get("l");
             let attributes: Value = result.get("attributes");
+            (completed, attributes)
+        } else {
+            let stmt = txn
+                .prepare_cached("insert into profile_guide_progress as p (profile_id, metadata_id, version, attributes) values ($1, $2, $3, $4, '{}') on conflict (profile_id, metadata_id, version) do update set modified = now(), attributes = coalesce(p.attributes, '{}'::jsonb) || $4 returning array_length(p.completed_step_ids, 1) as l, attributes")
+                .await?;
+            let results = txn.query(&stmt, &[&profile_id, &metadata_id, &metadata_version, &attributes]).await?;
+            if results.is_empty() {
+                return Ok(false)
+            }
+            let result = results.first().unwrap();
+            let completed: i32 = result.get("l");
+            let attributes: Value = result.get("attributes");
+            (completed, attributes)
+        };
+        if completed == steps.len() as i32 {
             let stmt = txn
                 .prepare_cached("insert into profile_guide_history (profile_id, metadata_id, version, attributes, completed) values ($1, $2, $3, $4, now())")
                 .await?;
