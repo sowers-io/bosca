@@ -233,7 +233,7 @@ jobs:
           file: Dockerfile-administration
           push: true
           build-args: |
-            "NUXT_UI_PRO_LICENSE=${{ secrets.NUXT_UI_PRO_LICENSE }}"
+            "VAR_NUXT_UI_PRO_LICENSE=${{ secrets.NUXT_UI_PRO_LICENSE }}"
           tags: |
             ${{ secrets.IMAGE_PREFIX }}/bosca/administration:latest
             ${{ secrets.IMAGE_PREFIX }}/bosca/administration:${{ github.sha }}
