@@ -529,8 +529,8 @@ impl ProfileDataStore {
                 return Ok(false)
             }
             let result = results.first().unwrap();
-            let completed: i32 = result.get("l");
-            let attributes: Value = result.get("attributes");
+            let completed: Option<i32> = result.get("l");
+            let attributes: Option<Value> = result.get("attributes");
             (completed, attributes)
         } else {
             let stmt = txn
@@ -541,11 +541,11 @@ impl ProfileDataStore {
                 return Ok(false)
             }
             let result = results.first().unwrap();
-            let completed: i32 = result.get("l");
-            let attributes: Value = result.get("attributes");
+            let completed: Option<i32> = result.get("l");
+            let attributes: Option<Value> = result.get("attributes");
             (completed, attributes)
         };
-        if completed == steps.len() as i32 {
+        if completed.unwrap_or(0) == steps.len() as i32 {
             let stmt = txn
                 .prepare_cached("insert into profile_guide_history (profile_id, metadata_id, version, attributes, completed) values ($1, $2, $3, $4, now())")
                 .await?;
