@@ -65,7 +65,7 @@ impl RedisTransaction {
                 }
                 RedisTransactionOp::RemoveMetadataRunning(_)
                 | RedisTransactionOp::RemoveCollectionRunning(_) => {
-                    let incrby = format!("local c = redis.call('HINCRBY', 'running::metadata', tostring(KEYS[{}]), -1)\nif c == 0 then\nredis.call('HDEL', 'running::metadata', tostring(KEYS[{}]))\nend\n", key_ix + 1, key_ix + 2);
+                    let incrby = format!("local c = redis.call('HINCRBY', 'running::metadata', tostring(KEYS[{}]), -1)\nif c <= 0 then\nredis.call('HDEL', 'running::metadata', tostring(KEYS[{}]))\nend\n", key_ix + 1, key_ix + 2);
                     script.push_str(&incrby);
                     key_ix += 2;
                 }
