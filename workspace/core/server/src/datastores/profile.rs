@@ -6,6 +6,7 @@ use crate::models::profiles::profile_attribute::ProfileAttribute;
 use crate::models::profiles::profile_attribute_type::{
     ProfileAttributeType, ProfileAttributeTypeInput,
 };
+use crate::models::profiles::profile_bookmark::ProfileBookmark;
 use crate::models::workflow::enqueue_request::EnqueueRequest;
 use crate::workflow::core_workflow_ids::PROFILE_UPDATE_STORAGE;
 use async_graphql::Error;
@@ -177,10 +178,14 @@ impl ProfileDataStore {
         }
         let id: Uuid = results[0].get("id");
         let stmt = txn.prepare_cached("insert into slugs (slug, profile_id) values (case when length($1) > 0 then $1 else slugify($2) end, $3) on conflict (slug) do update set slug = slugify($2) || nextval('duplicate_slug_seq')").await?;
-        txn.execute(&stmt, &[&profile.slug, &profile.name, &id]).await?;
+        txn.execute(&stmt, &[&profile.slug, &profile.name, &id])
+            .await?;
         let stmt = txn.prepare_cached("insert into profile_attributes (profile, type_id, visibility, confidence, priority, source, attributes, metadata_id) values ($1, $2, $3, $4, $5, $6, $7, $8)").await?;
         for attribute in profile.attributes.iter() {
-            let metadata_id = attribute.metadata_id.as_ref().map(|id| Uuid::parse_str(id).unwrap());
+            let metadata_id = attribute
+                .metadata_id
+                .as_ref()
+                .map(|id| Uuid::parse_str(id).unwrap());
             txn.execute(
                 &stmt,
                 &[
@@ -225,7 +230,9 @@ impl ProfileDataStore {
         let stmt = connection
             .prepare_cached("select * from profile_guide_progress where profile_id = $1 order by modified desc offset $2 limit $3")
             .await?;
-        let rows = connection.query(&stmt, &[profile_id, &offset, &limit]).await?;
+        let rows = connection
+            .query(&stmt, &[profile_id, &offset, &limit])
+            .await?;
         Ok(rows.iter().map(|r| r.into()).collect())
     }
 
@@ -240,7 +247,9 @@ impl ProfileDataStore {
         let stmt = connection
             .prepare_cached("select * from profile_guide_progress where profile_id = $1 and metadata_id = $2 and version = $3")
             .await?;
-        let rows = connection.query(&stmt, &[profile_id, metadata_id, &version]).await?;
+        let rows = connection
+            .query(&stmt, &[profile_id, metadata_id, &version])
+            .await?;
         Ok(rows.first().map(|r| r.into()))
     }
 
@@ -251,7 +260,9 @@ impl ProfileDataStore {
     ) -> async_graphql::Result<i64, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
-            .prepare_cached("select count(*) as c from profile_guide_progress where profile_id = $1")
+            .prepare_cached(
+                "select count(*) as c from profile_guide_progress where profile_id = $1",
+            )
             .await?;
         let rows = connection.query(&stmt, &[profile_id]).await?;
         let r = rows.first().unwrap();
@@ -269,7 +280,9 @@ impl ProfileDataStore {
         let stmt = connection
             .prepare_cached("select * from profile_guide_history where profile_id = $1 order by completed desc offset $2 limit $3")
             .await?;
-        let rows = connection.query(&stmt, &[profile_id, &offset, &limit]).await?;
+        let rows = connection
+            .query(&stmt, &[profile_id, &offset, &limit])
+            .await?;
         Ok(rows.iter().map(|r| r.into()).collect())
     }
 
@@ -300,7 +313,9 @@ impl ProfileDataStore {
         let stmt = connection
             .prepare_cached("select * from profile_guide_history where profile_id = $1 and metadata_id = $2 and version = $3 order by completed desc offset $4 limit $5")
             .await?;
-        let rows = connection.query(&stmt, &[profile_id, metadata_id, &version, &offset, &limit]).await?;
+        let rows = connection
+            .query(&stmt, &[profile_id, metadata_id, &version, &offset, &limit])
+            .await?;
         Ok(rows.iter().map(|r| r.into()).collect())
     }
 
@@ -315,7 +330,9 @@ impl ProfileDataStore {
         let stmt = connection
             .prepare_cached("select count(*) as c from profile_guide_history where profile_id = $1 and metadata_id = $2 and version = $3")
             .await?;
-        let rows = connection.query(&stmt, &[profile_id, metadata_id, &version]).await?;
+        let rows = connection
+            .query(&stmt, &[profile_id, metadata_id, &version])
+            .await?;
         let r = rows.first().unwrap();
         Ok(r.get("c"))
     }
@@ -375,25 +392,41 @@ impl ProfileDataStore {
     }
 
     #[tracing::instrument(skip(self, profile_id, attribute_id))]
-    pub async fn delete_profile_attribute(&self, profile_id: &Uuid, attribute_id: &Uuid) -> Result<(), Error> {
+    pub async fn delete_profile_attribute(
+        &self,
+        profile_id: &Uuid,
+        attribute_id: &Uuid,
+    ) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached("delete from profile_attributes where profile = $1 and id = $2")
             .await?;
-        connection.execute(&stmt, &[profile_id, attribute_id]).await?;
+        connection
+            .execute(&stmt, &[profile_id, attribute_id])
+            .await?;
         Ok(())
     }
 
     #[tracing::instrument(skip(self, txn, profile_id, profile))]
-    async fn edit_profile_attributes(&self, txn: &Transaction<'_>, profile_id: &Uuid, profile: &ProfileInput) -> Result<(), Error> {
+    async fn edit_profile_attributes(
+        &self,
+        txn: &Transaction<'_>,
+        profile_id: &Uuid,
+        profile: &ProfileInput,
+    ) -> Result<(), Error> {
         if let Some(slug) = &profile.slug {
-            let stmt = txn.prepare_cached("update slugs set slug = $1 where profile_id = $2").await?;
+            let stmt = txn
+                .prepare_cached("update slugs set slug = $1 where profile_id = $2")
+                .await?;
             txn.execute(&stmt, &[slug, profile_id]).await?;
         }
         let update_stmt = txn.prepare("update profile_attributes set visibility = $1, confidence = $2, priority = $3, source = $4, attributes = $5, metadata_id = $6 where id = $7 and profile = $8").await?;
         let insert_stmt = txn.prepare_cached("insert into profile_attributes (profile, type_id, visibility, confidence, priority, source, attributes, metadata_id) values ($1, $2, $3, $4, $5, $6, $7, $8)").await?;
         for attribute in profile.attributes.iter() {
-            let metadata_id = attribute.metadata_id.as_ref().map(|id| Uuid::parse_str(id).unwrap());
+            let metadata_id = attribute
+                .metadata_id
+                .as_ref()
+                .map(|id| Uuid::parse_str(id).unwrap());
             if let Some(id) = attribute.id.as_ref() {
                 let attr_id = Uuid::parse_str(id)?;
                 txn.execute(
@@ -406,9 +439,10 @@ impl ProfileDataStore {
                         &attribute.attributes,
                         &metadata_id,
                         &attr_id,
-                        profile_id
+                        profile_id,
                     ],
-                ).await?;
+                )
+                .await?;
             } else {
                 txn.execute(
                     &insert_stmt,
@@ -422,18 +456,15 @@ impl ProfileDataStore {
                         &attribute.attributes,
                         &metadata_id,
                     ],
-                ).await?;
+                )
+                .await?;
             }
         }
         Ok(())
     }
 
     #[tracing::instrument(skip(self, ctx, id))]
-    pub async fn update_storage(
-        &self,
-        ctx: &BoscaContext,
-        id: &Uuid,
-    ) -> Result<(), Error> {
+    pub async fn update_storage(&self, ctx: &BoscaContext, id: &Uuid) -> Result<(), Error> {
         let mut request = EnqueueRequest {
             workflow_id: Some(PROFILE_UPDATE_STORAGE.to_string()),
             profile_id: Some(*id),
@@ -443,9 +474,63 @@ impl ProfileDataStore {
         Ok(())
     }
 
-    #[tracing::instrument(
-        skip(self, profile_id, metadata_id, metadata_version, collection_id)
-    )]
+    #[tracing::instrument(skip(self, profile_id))]
+    pub async fn get_bookmarks_count(
+        &self,
+        profile_id: &Uuid,
+    ) -> async_graphql::Result<i64, Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("select count(*) as c from profile_bookmarks where profile_id = $1")
+            .await?;
+        let rows = connection.query(&stmt, &[profile_id]).await?;
+        let row = rows.first().unwrap();
+        let c = row.get("c");
+        Ok(c)
+    }
+
+    #[tracing::instrument(skip(self, profile_id))]
+    pub async fn get_bookmarks(
+        &self,
+        profile_id: &Uuid,
+    ) -> async_graphql::Result<Vec<ProfileBookmark>, Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("select * from profile_bookmarks where profile_id = $1")
+            .await?;
+        let rows = connection.query(&stmt, &[profile_id]).await?;
+        Ok(rows.iter().map(|r| r.into()).collect())
+    }
+
+    #[tracing::instrument(skip(self, profile_id))]
+    pub async fn is_bookmarked(
+        &self,
+        _: &BoscaContext,
+        profile_id: &Uuid,
+        metadata_id: &Uuid,
+        metadata_version: Option<i64>,
+        collection_id: Option<Uuid>,
+    ) -> async_graphql::Result<bool, Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached(
+                "select count(*) as c from profile_bookmarks where profile_id = $1 and ((metadata_id = $2 and metadata_version = $3) or (collection_id = $4))",
+            ).await?;
+        let rows = connection
+            .query(
+                &stmt,
+                &[&profile_id, &metadata_id, &metadata_version, &collection_id],
+            )
+            .await?;
+        if rows.is_empty() {
+            return Ok(false);
+        }
+        let row = rows.first().unwrap();
+        let count: i64 = row.get("c");
+        Ok(count > 0)
+    }
+
+    #[tracing::instrument(skip(self, profile_id, metadata_id, metadata_version, collection_id))]
     pub async fn add_bookmark(
         &self,
         _: &BoscaContext,
@@ -462,7 +547,8 @@ impl ProfileDataStore {
                     "insert into profile_bookmarks (profile_id, metadata_id, metadata_version) values ($1, $2, $3) on conflict (profile_id, metadata_id, metadata_version) do nothing",
                 )
                 .await?;
-            txn.execute(&stmt, &[&profile_id, &metadata_id, &metadata_version]).await?;
+            txn.execute(&stmt, &[&profile_id, &metadata_id, &metadata_version])
+                .await?;
         } else {
             let stmt = txn
                 .prepare_cached(
@@ -475,9 +561,7 @@ impl ProfileDataStore {
         Ok(())
     }
 
-    #[tracing::instrument(
-        skip(self, profile_id, metadata_id, metadata_version, collection_id)
-    )]
+    #[tracing::instrument(skip(self, profile_id, metadata_id, metadata_version, collection_id))]
     pub async fn delete_bookmark(
         &self,
         _: &BoscaContext,
@@ -494,12 +578,14 @@ impl ProfileDataStore {
                     "delete from profile_bookmarks where profile_id = $1 and metadata_id = $2 and metadata_version = $3",
                 )
                 .await?;
-            txn.execute(&stmt, &[&profile_id, &metadata_id, &metadata_version]).await?;
+            txn.execute(&stmt, &[&profile_id, &metadata_id, &metadata_version])
+                .await?;
         } else {
             let stmt = txn
                 .prepare_cached(
                     "delete from profile_bookmarks where profile_id = $1 and collection_id = $2",
-                ).await?;
+                )
+                .await?;
             txn.execute(&stmt, &[&profile_id, &collection_id]).await?;
         }
         txn.commit().await?;
@@ -517,16 +603,31 @@ impl ProfileDataStore {
         attributes: &Value,
         step_id: i64,
     ) -> async_graphql::Result<bool, Error> {
-        let steps = ctx.content.guides.get_guide_step_ids(metadata_id, metadata_version).await?;
+        let steps = ctx
+            .content
+            .guides
+            .get_guide_step_ids(metadata_id, metadata_version)
+            .await?;
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
         let (completed, attributes) = if steps.contains(&step_id) {
             let stmt = txn
                 .prepare_cached("insert into profile_guide_progress as p (profile_id, metadata_id, version, attributes, completed_step_ids) values ($1, $2, $3, $4, ARRAY[$5]::bigint[]) on conflict (profile_id, metadata_id, version) do update set modified = now(), attributes = coalesce(p.attributes, '{}'::jsonb) || $4, completed_step_ids = array_append(p.completed_step_ids, $5) where not (p.completed_step_ids @> ARRAY[$5]::bigint[]) returning array_length(p.completed_step_ids, 1) as l, attributes")
                 .await?;
-            let results = txn.query(&stmt, &[&profile_id, &metadata_id, &metadata_version, &attributes, &step_id]).await?;
+            let results = txn
+                .query(
+                    &stmt,
+                    &[
+                        &profile_id,
+                        &metadata_id,
+                        &metadata_version,
+                        &attributes,
+                        &step_id,
+                    ],
+                )
+                .await?;
             if results.is_empty() {
-                return Ok(false)
+                return Ok(false);
             }
             let result = results.first().unwrap();
             let completed: Option<i32> = result.get("l");
@@ -536,9 +637,14 @@ impl ProfileDataStore {
             let stmt = txn
                 .prepare_cached("insert into profile_guide_progress as p (profile_id, metadata_id, version, attributes, completed_step_ids) values ($1, $2, $3, $4, '{}'::bigint[]) on conflict (profile_id, metadata_id, version) do update set modified = now(), attributes = coalesce(p.attributes, '{}'::jsonb) || $4 returning array_length(p.completed_step_ids, 1) as l, attributes")
                 .await?;
-            let results = txn.query(&stmt, &[&profile_id, &metadata_id, &metadata_version, &attributes]).await?;
+            let results = txn
+                .query(
+                    &stmt,
+                    &[&profile_id, &metadata_id, &metadata_version, &attributes],
+                )
+                .await?;
             if results.is_empty() {
-                return Ok(false)
+                return Ok(false);
             }
             let result = results.first().unwrap();
             let completed: Option<i32> = result.get("l");
@@ -549,10 +655,15 @@ impl ProfileDataStore {
             let stmt = txn
                 .prepare_cached("insert into profile_guide_history (profile_id, metadata_id, version, attributes, completed) values ($1, $2, $3, $4, now())")
                 .await?;
-            txn.execute(&stmt, &[&profile_id, &metadata_id, &metadata_version, &attributes]).await?;
+            txn.execute(
+                &stmt,
+                &[&profile_id, &metadata_id, &metadata_version, &attributes],
+            )
+            .await?;
             let stmt = txn.prepare_cached("delete from profile_guide_progress where profile_id = $1 and metadata_id = $2 and version = $3")
                 .await?;
-            txn.execute(&stmt, &[&profile_id, &metadata_id, &metadata_version]).await?;
+            txn.execute(&stmt, &[&profile_id, &metadata_id, &metadata_version])
+                .await?;
         }
         txn.commit().await?;
         // TODO: fire workflow
