@@ -538,7 +538,7 @@ impl ProfileDataStore {
         if metadata_id.is_some() && metadata_version.is_some() {
             let stmt = txn
                 .prepare_cached(
-                    "insert into profile_bookmarks (profile_id, metadata_id, metadata_version) values ($1, $2, $3) on conflict (profile_id, metadata_id, metadata_version) do nothing",
+                    "insert into profile_bookmarks (profile_id, metadata_id, metadata_version) values ($1, $2, $3) on conflict (profile_id, metadata_id, metadata_version, collection_id) do nothing",
                 )
                 .await?;
             txn.execute(&stmt, &[&profile_id, &metadata_id, &metadata_version])
@@ -546,7 +546,7 @@ impl ProfileDataStore {
         } else {
             let stmt = txn
                 .prepare_cached(
-                    "insert into profile_bookmarks (profile_id, collection_id) values ($1, $2) on conflict (profile_id, collection_id) do nothing",
+                    "insert into profile_bookmarks (profile_id, collection_id) values ($1, $2) on conflict (profile_id, metadata_id, metadata_version, collection_id) do nothing",
                 ).await?;
             txn.execute(&stmt, &[&profile_id, &collection_id]).await?;
         }
