@@ -530,7 +530,7 @@ impl ProfileDataStore {
         _: &BoscaContext,
         profile_id: &Uuid,
         metadata_id: Option<Uuid>,
-        metadata_version: Option<i64>,
+        metadata_version: Option<i32>,
         collection_id: Option<Uuid>,
     ) -> async_graphql::Result<(), Error> {
         let mut connection = self.pool.get().await?;
@@ -561,7 +561,7 @@ impl ProfileDataStore {
         _: &BoscaContext,
         profile_id: &Uuid,
         metadata_id: Option<Uuid>,
-        metadata_version: Option<i64>,
+        metadata_version: Option<i32>,
         collection_id: Option<Uuid>,
     ) -> async_graphql::Result<(), Error> {
         let mut connection = self.pool.get().await?;

@@ -50,7 +50,7 @@ impl ProfileMutationObject {
         &self,
         ctx: &Context<'_>,
         metadata_id: Option<String>,
-        version: Option<i64>,
+        version: Option<i32>,
         collection_id: Option<String>,
     ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
@@ -78,7 +78,7 @@ impl ProfileMutationObject {
         &self,
         ctx: &Context<'_>,
         metadata_id: Option<String>,
-        version: Option<i64>,
+        version: Option<i32>,
         collection_id: Option<String>,
     ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
