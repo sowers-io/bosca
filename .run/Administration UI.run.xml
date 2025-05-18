@@ -5,8 +5,7 @@
     <scripts>
       <script value="dev" />
     </scripts>
-    <node-interpreter value="$USER_HOME$/.deno/bin/deno" />
-    <package-manager value="$USER_HOME$/.deno/bin/deno" />
+    <node-interpreter value="project" />
     <envs />
     <method v="2" />
   </configuration>

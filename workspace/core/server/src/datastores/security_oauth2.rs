@@ -1,4 +1,4 @@
-use crate::security::account::{Account, GoogleAccount};
+use crate::security::account::{Account, FacebookUser, GoogleAccount};
 use async_graphql::Error;
 use log::warn;
 use oauth2::basic::{
@@ -89,6 +89,32 @@ impl SecurityOAuth2 {
                                 )?));
                             clients.insert("google".to_string(), oauth2);
                         }
+                        "facebook" => {
+                            let Ok(client_id) = env::var("FACEBOOK_APP_ID") else {
+                                return Err(Error::from(
+                                    "Environment variable FACEBOOK_APP_ID could not be read",
+                                ));
+                            };
+                            let Ok(client_secret) = env::var("FACEBOOK_APP_SECRET") else {
+                                return Err(Error::from(
+                                    "Environment variable FACEBOOK_APP_SECRET could not be read",
+                                ));
+                            };
+                            let oauth2 = BasicClient::new(ClientId::new(client_id))
+                                .set_client_secret(ClientSecret::new(client_secret))
+                                .set_auth_uri(AuthUrl::new(
+                                    "https://www.facebook.com/v3.2/dialog/oauth".to_string(),
+                                )?)
+                                .set_token_uri(TokenUrl::new(
+                                    "https://graph.facebook.com/v3.2/oauth/access_token"
+                                        .to_string(),
+                                )?)
+                                .set_redirect_uri(RedirectUrl::new(redirect_url.clone())?)
+                                .set_revocation_url_option(Some(RevocationUrl::new(
+                                    "https://graph.facebook.com/me/permissions".to_string(),
+                                )?));
+                            clients.insert("facebook".to_string(), oauth2);
+                        }
                         _ => {
                             let Ok(oauth2_client_id) = env::var("OAUTH2_CLIENT_ID") else {
                                 return Err(Error::from(
@@ -134,6 +160,10 @@ impl SecurityOAuth2 {
         })
     }
 
+    pub fn get_facebook_client_secret(&self) -> Option<String> {
+        env::var("FACEBOOK_APP_SECRET").ok()
+    }
+
     pub fn new_default_redirect_url(
         &self,
         oauth2_type: &str,
@@ -144,6 +174,13 @@ impl SecurityOAuth2 {
                 vec![
                     Scope::new("https://www.googleapis.com/auth/userinfo.profile".to_string()),
                     Scope::new("https://www.googleapis.com/auth/userinfo.email".to_string()),
+                ],
+            ),
+            "facebook" => self.new_redirect_url(
+                "facebook",
+                vec![
+                    Scope::new("public_profile".to_string()),
+                    Scope::new("email".to_string()),
                 ],
             ),
             _ => self.new_redirect_url(
@@ -208,6 +245,16 @@ impl SecurityOAuth2 {
                     .await?;
                 let account: GoogleAccount = response.json().await?;
                 Ok(Account::new_google(account))
+            }
+            "facebook" => {
+                let response = self
+                    .http
+                    .get("https://graph.facebook.com/me?fields=id,name,email,picture".to_string())
+                    .query(&[("access_token", token)])
+                    .send()
+                    .await?;
+                let account: FacebookUser = response.json().await?;
+                Ok(Account::new_facebook(account))
             }
             _ => Err(Error::from("invalid oauth2 type")),
         }

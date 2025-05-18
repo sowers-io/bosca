@@ -75,7 +75,7 @@ pub async fn oauth2_redirect(
     ))
 }
 
-#[tracing::instrument(skip(ctx, params))]
+#[tracing::instrument(skip(ctx, params, jar))]
 pub async fn oauth2_callback(
     State(ctx): State<BoscaContext>,
     Query(params): Query<CallbackParams>,

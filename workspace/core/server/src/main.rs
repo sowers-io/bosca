@@ -45,6 +45,7 @@ use crate::image_files::image;
 use crate::initialization::content::initialize_content;
 use crate::initialization::security::initialize_security;
 use crate::initialization::telemetry::new_tracing;
+use crate::security::facebook_deauthorize::{oauth2_facebook_deauthorize, oauth2_facebook_deauthorize_status};
 use crate::security::oauth2::{oauth2_callback, oauth2_redirect};
 use crate::shutdown_hook::shutdown_hook;
 use crate::slugs::slug;
@@ -98,6 +99,8 @@ async fn main() {
     let oauth2 = Router::new()
         .route("/redirect", get(oauth2_redirect))
         .route("/callback", get(oauth2_callback))
+        .route("/facebook/deauthorize", post(oauth2_facebook_deauthorize))
+        .route("/facebook/deauthorize/status", get(oauth2_facebook_deauthorize_status))
         .with_state(ctx.clone());
 
     let content = Router::new()

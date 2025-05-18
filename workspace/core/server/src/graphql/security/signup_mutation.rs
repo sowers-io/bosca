@@ -20,7 +20,10 @@ impl SignupMutationObject {
         profile: ProfileInput,
     ) -> Result<PrincipalObject, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        let auto_verify = env!("AUTO_VERIFY_SIGNUP").parse::<bool>().unwrap_or(false);
+        let auto_verify = option_env!("AUTO_VERIFY_SIGNUP")
+            .unwrap_or("false")
+            .parse::<bool>()
+            .unwrap_or(false);
         let (principal, profile) =
             add_password_principal(ctx, &identifier, &password, &profile, auto_verify, true)
                 .await?;
