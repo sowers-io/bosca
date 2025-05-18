@@ -18,11 +18,17 @@ impl ProfileBookmarksObject {
 impl ProfileBookmarksObject {
     pub async fn count(&self, ctx: &Context<'_>) -> Result<i64, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
+        if self.profile.principal.is_none() || self.profile.principal != Some(ctx.principal.id) {
+            return Ok(0);
+        }
         ctx.profile.get_bookmarks_count(&self.profile.id).await
     }
 
     pub async fn bookmarks(&self, ctx: &Context<'_>) -> Result<Vec<ProfileBookmarkObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
+        if self.profile.principal.is_none() || self.profile.principal != Some(ctx.principal.id) {
+            return Ok(Vec::new());
+        }
         let bookmarks = ctx.profile.get_bookmarks(&self.profile.id).await?;
         Ok(bookmarks
             .into_iter()
@@ -38,6 +44,9 @@ impl ProfileBookmarksObject {
         collection_id: Option<String>,
     ) -> Result<Option<ProfileBookmarkObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
+        if self.profile.principal.is_none() || self.profile.principal != Some(ctx.principal.id) {
+            return Ok(None);
+        }
         Ok(ctx
             .profile
             .get_bookmark(

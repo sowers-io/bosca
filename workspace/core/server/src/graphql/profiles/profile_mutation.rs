@@ -10,9 +10,7 @@ pub struct ProfileMutationObject {
 
 impl ProfileMutationObject {
     pub fn new(profile: Profile) -> Self {
-        Self {
-            profile
-        }
+        Self { profile }
     }
 }
 
@@ -27,9 +25,24 @@ impl ProfileMutationObject {
         step_id: i64,
     ) -> Result<Option<ProfileGuideProgressObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
+        if self.profile.principal.is_none() || self.profile.principal != Some(ctx.principal.id) {
+            return Err(Error::new("Unauthorized"));
+        }
         let metadata_id = Uuid::parse_str(&metadata_id)?;
-        ctx.profile.add_progress(ctx, &self.profile.id, &metadata_id, metadata_version, &attributes, step_id).await?;
-        let progress = ctx.profile.get_progress(&self.profile.id, &metadata_id, metadata_version).await?;
+        ctx.profile
+            .add_progress(
+                ctx,
+                &self.profile.id,
+                &metadata_id,
+                metadata_version,
+                &attributes,
+                step_id,
+            )
+            .await?;
+        let progress = ctx
+            .profile
+            .get_progress(&self.profile.id, &metadata_id, metadata_version)
+            .await?;
         Ok(progress.map(ProfileGuideProgressObject::new))
     }
 
@@ -41,13 +54,20 @@ impl ProfileMutationObject {
         collection_id: Option<String>,
     ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
+        if self.profile.principal.is_none() || self.profile.principal != Some(ctx.principal.id) {
+            return Err(Error::new("Unauthorized"));
+        }
         if let Some(metadata_id) = metadata_id {
             let metadata_id = Uuid::parse_str(&metadata_id)?;
-            ctx.profile.add_bookmark(ctx, &self.profile.id, Some(metadata_id), version, None).await?;
+            ctx.profile
+                .add_bookmark(ctx, &self.profile.id, Some(metadata_id), version, None)
+                .await?;
             Ok(true)
         } else if let Some(collection_id) = collection_id {
             let collection_id = Uuid::parse_str(&collection_id)?;
-            ctx.profile.add_bookmark(ctx, &self.profile.id, None, None, Some(collection_id)).await?;
+            ctx.profile
+                .add_bookmark(ctx, &self.profile.id, None, None, Some(collection_id))
+                .await?;
             Ok(true)
         } else {
             Ok(false)
@@ -62,13 +82,20 @@ impl ProfileMutationObject {
         collection_id: Option<String>,
     ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
+        if self.profile.principal.is_none() || self.profile.principal != Some(ctx.principal.id) {
+            return Err(Error::new("Unauthorized"));
+        }
         if let Some(metadata_id) = metadata_id {
             let metadata_id = Uuid::parse_str(&metadata_id)?;
-            ctx.profile.delete_bookmark(ctx, &self.profile.id, Some(metadata_id), version, None).await?;
+            ctx.profile
+                .delete_bookmark(ctx, &self.profile.id, Some(metadata_id), version, None)
+                .await?;
             Ok(true)
         } else if let Some(collection_id) = collection_id {
             let collection_id = Uuid::parse_str(&collection_id)?;
-            ctx.profile.delete_bookmark(ctx, &self.profile.id, None, None, Some(collection_id)).await?;
+            ctx.profile
+                .delete_bookmark(ctx, &self.profile.id, None, None, Some(collection_id))
+                .await?;
             Ok(true)
         } else {
             Ok(false)
@@ -81,8 +108,13 @@ impl ProfileMutationObject {
         attribute_id: String,
     ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
+        if self.profile.principal.is_none() || self.profile.principal != Some(ctx.principal.id) {
+            return Err(Error::new("Unauthorized"));
+        }
         let attribute_id = Uuid::parse_str(&attribute_id)?;
-        ctx.profile.delete_profile_attribute(&self.profile.id, &attribute_id).await?;
+        ctx.profile
+            .delete_profile_attribute(&self.profile.id, &attribute_id)
+            .await?;
         Ok(true)
     }
 }

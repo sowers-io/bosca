@@ -18,18 +18,27 @@ impl ProfileGuideHistoriesObject {
 impl ProfileGuideHistoriesObject {
     async fn all(&self, ctx: &Context<'_>, offset: i64, limit: i64) -> Result<Vec<ProfileGuideHistoryObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
+        if self.profile.principal.is_none() || self.profile.principal != Some(ctx.principal.id) {
+            return Ok(Vec::new());
+        }
         let histories = ctx.profile.get_histories(&self.profile.id, offset, limit).await?;
         Ok(histories.into_iter().map(ProfileGuideHistoryObject::new).collect())
     }
 
     async fn count(&self, ctx: &Context<'_>) -> Result<i64, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
+        if self.profile.principal.is_none() || self.profile.principal != Some(ctx.principal.id) {
+            return Ok(0);
+        }
         let count = ctx.profile.get_histories_count(&self.profile.id).await?;
         Ok(count)
     }
 
     async fn history(&self, ctx: &Context<'_>, id: String, version: i32, offset: i64, limit: i64) -> Result<Vec<ProfileGuideHistoryObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
+        if self.profile.principal.is_none() || self.profile.principal != Some(ctx.principal.id) {
+            return Ok(Vec::new());
+        }
         let id = Uuid::parse_str(&id)?;
         let history = ctx.profile.get_history(&self.profile.id, &id, version, offset, limit).await?;
         Ok(history.into_iter().map(ProfileGuideHistoryObject::new).collect())
@@ -37,6 +46,9 @@ impl ProfileGuideHistoriesObject {
 
     async fn history_count(&self, ctx: &Context<'_>, id: String, version: i32) -> Result<i64, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
+        if self.profile.principal.is_none() || self.profile.principal != Some(ctx.principal.id) {
+            return Ok(0);
+        }
         let id = Uuid::parse_str(&id)?;
         let count = ctx.profile.get_history_count(&self.profile.id, &id, version).await?;
         Ok(count)
