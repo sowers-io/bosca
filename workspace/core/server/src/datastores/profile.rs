@@ -503,18 +503,17 @@ impl ProfileDataStore {
     }
 
     #[tracing::instrument(skip(self, profile_id))]
-    pub async fn is_bookmarked(
+    pub async fn get_bookmark(
         &self,
-        _: &BoscaContext,
         profile_id: &Uuid,
-        metadata_id: &Uuid,
-        metadata_version: Option<i64>,
+        metadata_id: Option<Uuid>,
+        metadata_version: Option<i32>,
         collection_id: Option<Uuid>,
-    ) -> async_graphql::Result<bool, Error> {
+    ) -> async_graphql::Result<Option<ProfileBookmark>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached(
-                "select count(*) as c from profile_bookmarks where profile_id = $1 and ((metadata_id = $2 and metadata_version = $3) or (collection_id = $4))",
+                "select * from profile_bookmarks where profile_id = $1 and ((metadata_id = $2 and metadata_version = $3) or (collection_id = $4))",
             ).await?;
         let rows = connection
             .query(
@@ -522,12 +521,7 @@ impl ProfileDataStore {
                 &[&profile_id, &metadata_id, &metadata_version, &collection_id],
             )
             .await?;
-        if rows.is_empty() {
-            return Ok(false);
-        }
-        let row = rows.first().unwrap();
-        let count: i64 = row.get("c");
-        Ok(count > 0)
+        Ok(rows.first().map(|r| r.into()))
     }
 
     #[tracing::instrument(skip(self, profile_id, metadata_id, metadata_version, collection_id))]
