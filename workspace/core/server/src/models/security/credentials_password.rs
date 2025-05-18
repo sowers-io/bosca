@@ -17,8 +17,14 @@ impl Debug for PasswordCredential {
 
 impl PasswordCredential {
     pub fn new(identifier: String, password: String) -> Result<Self, Error> {
+        if password.trim().is_empty() {
+            return Err(Error::from("Password is Required"));
+        }
         let mut map = Map::<String, Value>::new();
-        map.insert("identifier".to_string(), Value::String(identifier.to_lowercase()));
+        map.insert(
+            "identifier".to_string(),
+            Value::String(identifier.to_lowercase()),
+        );
         map.insert("password".to_string(), Value::String(encrypt(password)?));
         Ok(Self {
             credential_type: CredentialType::Password,
@@ -42,7 +48,6 @@ impl PasswordCredential {
 }
 
 impl CredentialInterface for PasswordCredential {
-
     fn identifier(&self) -> String {
         self.attributes
             .as_object()
