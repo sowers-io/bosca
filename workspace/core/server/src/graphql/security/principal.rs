@@ -37,7 +37,7 @@ impl PrincipalObject {
     async fn credentials(
         &self,
         ctx: &Context<'_>,
-    ) -> Result<Vec<PrincipalCredentialObject>, async_graphql::Error> {
+    ) -> Result<Vec<PrincipalCredentialObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let credentials = ctx
             .security

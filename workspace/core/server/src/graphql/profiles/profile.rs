@@ -34,10 +34,11 @@ impl ProfileObject {
 
     async fn principal(&self, ctx: &Context<'_>) -> Result<Option<PrincipalObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        ctx.check_has_admin_account().await?;
         if let Some(principal_id) = &self.profile.principal {
-            let principal = ctx.security.get_principal_by_id(principal_id).await?;
-            return Ok(Some(PrincipalObject::new(principal)));
+            if *principal_id == ctx.principal.id || ctx.has_admin_account().await? {
+                let principal = ctx.security.get_principal_by_id(principal_id).await?;
+                return Ok(Some(PrincipalObject::new(principal)));
+            }
         }
         Ok(None)
     }
