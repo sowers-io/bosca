@@ -19,6 +19,7 @@
       <env name="SEARCH_KEY" value="p8JcB_HuMHRxN7uVXfrG2wU06b5k7oTvaAAYo6nsi9M" />
       <env name="SEARCH_URL" value="http://127.0.0.1:7701" />
       <env name="STORAGE" value="/tmp/bosca/fs" />
+      <env name="AUTO_VERIFY_SIGNUP" value="true" />
     </envs>
     <option name="emulateTerminal" value="true" />
     <option name="channel" value="DEFAULT" />

@@ -12,7 +12,7 @@ pub struct SignupMutationObject {}
 
 fn is_auto_verify() -> bool {
     if let Some(auto_verify) = option_env!("AUTO_VERIFY_SIGNUP") {
-        auto_verify.parse::<bool>().unwrap_or(false)
+        auto_verify == "true"
     } else {
         false
     }
