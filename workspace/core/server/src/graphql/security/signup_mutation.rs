@@ -10,6 +10,14 @@ use serde_json::json;
 
 pub struct SignupMutationObject {}
 
+fn is_auto_verify() -> bool {
+    if let Some(auto_verify) = option_env!("AUTO_VERIFY_SIGNUP") {
+        auto_verify.parse::<bool>().unwrap_or(false)
+    } else {
+        false
+    }
+}
+
 #[Object(name = "SignupMutation")]
 impl SignupMutationObject {
     async fn password(
@@ -20,29 +28,29 @@ impl SignupMutationObject {
         profile: ProfileInput,
     ) -> Result<PrincipalObject, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        let auto_verify = option_env!("AUTO_VERIFY_SIGNUP")
-            .unwrap_or("false")
-            .parse::<bool>()
-            .unwrap_or(false);
+        let auto_verify = is_auto_verify();
         let (principal, profile) =
             add_password_principal(ctx, &identifier, &password, &profile, auto_verify, true)
                 .await?;
 
-        let mut request = EnqueueRequest {
-            workflow_id: Some(PROFILE_SIGNUP.to_string()),
-            profile_id: Some(profile),
-            configurations: Some(vec![WorkflowConfigurationInput {
-                activity_id: SEND_EMAIL.to_string(),
-                configuration: json!({
-                    "attributes": {
-                        "verification_token": principal.verification_token.clone().unwrap()
-                    }
-                }),
-            }]),
-            ..Default::default()
-        };
+        if !auto_verify {
+            let mut request = EnqueueRequest {
+                workflow_id: Some(PROFILE_SIGNUP.to_string()),
+                profile_id: Some(profile),
+                configurations: Some(vec![WorkflowConfigurationInput {
+                    activity_id: SEND_EMAIL.to_string(),
+                    configuration: json!({
+                        "attributes": {
+                            "verification_token": principal.verification_token.clone().unwrap()
+                        }
+                    }),
+                }]),
+                ..Default::default()
+            };
+            ctx.workflow.enqueue_workflow(ctx, &mut request).await?;
+        }
 
-        ctx.workflow.enqueue_workflow(ctx, &mut request).await?;
+        // TODO: welcome email
 
         Ok(PrincipalObject::new(principal))
     }
