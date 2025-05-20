@@ -17,7 +17,7 @@ pub async fn add_password_principal(
     identifier: &str,
     password: &str,
     profile: &ProfileInput,
-    auto_verify: bool,
+    verified: Option<bool>,
     set_ready: bool,
 ) -> Result<(Principal, Uuid), Error> {
     let password_credential = Credential::Password(PasswordCredential::new(
@@ -28,7 +28,7 @@ pub async fn add_password_principal(
     let principal_id = ctx
         .security
         .add_principal(
-            auto_verify,
+            verified,
             serde_json::Value::Null,
             &password_credential,
             &groups,
@@ -102,7 +102,7 @@ pub async fn add_oauth_principal(
     let principal_id = ctx
         .security
         .add_principal(
-            account.verified(),
+            Some(account.verified()),
             serde_json::to_value(account)?,
             &password_credential,
             &groups,

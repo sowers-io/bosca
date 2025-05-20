@@ -10,14 +10,6 @@ use serde_json::json;
 
 pub struct SignupMutationObject {}
 
-fn is_auto_verify() -> bool {
-    if let Some(auto_verify) = option_env!("AUTO_VERIFY_SIGNUP") {
-        auto_verify == "true"
-    } else {
-        false
-    }
-}
-
 #[Object(name = "SignupMutation")]
 impl SignupMutationObject {
     async fn password(
@@ -28,12 +20,11 @@ impl SignupMutationObject {
         profile: ProfileInput,
     ) -> Result<PrincipalObject, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        let auto_verify = is_auto_verify();
         let (principal, profile) =
-            add_password_principal(ctx, &identifier, &password, &profile, auto_verify, true)
+            add_password_principal(ctx, &identifier, &password, &profile, None, true)
                 .await?;
 
-        if !auto_verify {
+        if !ctx.security.auto_verify_accounts {
             let mut request = EnqueueRequest {
                 workflow_id: Some(PROFILE_SIGNUP.to_string()),
                 profile_id: Some(profile),

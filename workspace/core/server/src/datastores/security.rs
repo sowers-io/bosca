@@ -25,6 +25,7 @@ pub struct SecurityDataStore {
     pool: TracingPool,
     jwt: Jwt,
     url_secret_key: String,
+    pub auto_verify_accounts: bool,
 }
 
 impl Debug for SecurityDataStore {
@@ -54,12 +55,14 @@ impl SecurityDataStore {
         pool: TracingPool,
         jwt: Jwt,
         url_secret_key: String,
+        auto_verify_accounts: bool,
     ) -> Result<Self, Error> {
         Ok(Self {
             cache: SecurityCache::new(cache).await?,
             pool,
             jwt,
             url_secret_key,
+            auto_verify_accounts
         })
     }
 
@@ -242,11 +245,12 @@ impl SecurityDataStore {
     #[tracing::instrument(skip(self, verified, attributes, credential, groups))]
     pub async fn add_principal(
         &self,
-        verified: bool,
+        verified: Option<bool>,
         attributes: Value,
         credential: &Credential,
         groups: &Vec<&Uuid>,
     ) -> Result<Uuid, Error> {
+        let verified = verified.unwrap_or(self.auto_verify_accounts);
         let verification_token = if verified {
             None
         } else {

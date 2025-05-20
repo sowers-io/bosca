@@ -64,6 +64,21 @@ impl BoscaContext {
                 Uuid::new_v4().to_string()
             }
         };
+        let auto_verify = match env::var("AUTO_VERIFY_SIGNUP") {
+            Ok(auto_verify) => {
+                let v = auto_verify.to_lowercase() == "true";
+                if v {
+                    println!("Environment variable AUTO_VERIFY_SIGNUP is true");
+                }
+                v
+            },
+            _ => {
+                println!(
+                    "Environment variable AUTO_VERIFY_SIGNUP could not be read, falling back to false"
+                );
+                false
+            }
+        };
         let configuration_secret_key = match env::var("CONFIGURATION_SECRET_KEY") {
             Ok(url_secret_key) => url_secret_key,
             _ => {
@@ -93,6 +108,7 @@ impl BoscaContext {
                 bosca_pool.clone(),
                 new_jwt(),
                 url_secret_key,
+                auto_verify,
             )
             .await?,
             security_oauth2: SecurityOAuth2::new()?,
