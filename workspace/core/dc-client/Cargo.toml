@@ -17,3 +17,7 @@ hashring = "0.3.6"
 async-graphql = { version = "7.0.15", features = ["chrono", "chrono-tz", "graphiql", "tokio", "unblock", "apollo_persisted_queries", "log", "tracing"] }
 log = "0.4.27"
 uuid = { version = "1.16.0", features = ["v4"] }
+
+tracing = { version = "0.1.41", features = ["default"] }
+tracing-subscriber = "0.3.19"
+tracing-opentelemetry = { version = "0.30.0", features = ["default", "async-trait"] }

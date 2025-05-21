@@ -1012,6 +1012,9 @@ dependencies = [
  "tokio-stream",
  "tonic 0.13.1",
  "tonic-build",
+ "tracing",
+ "tracing-opentelemetry",
+ "tracing-subscriber",
  "uuid 1.16.0",
 ]
 
