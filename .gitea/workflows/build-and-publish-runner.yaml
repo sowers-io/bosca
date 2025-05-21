@@ -1,0 +1,118 @@
+name: Build & Publish Backend and Frontend
+
+on:
+  push:
+    tags:
+      - '*'
+  pull_request:
+    tags:
+      - '*'
+
+jobs:
+  build-and-publish-runner-enterprise:
+    runs-on: ubuntu-22.04
+    env:
+      RUNNER_TOOL_CACHE: /toolcache
+      IMAGE_PREFIX: ${{ secrets.IMAGE_PREFIX }}
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          ssh-known-hosts: ${{ secrets.KNOWN_HOSTS }}
+          ssh-key: ${{ secrets.READ_SSH_KEY }}
+          token: ${{ secrets.PRIVATE_PAT }}
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'graalvm'
+          java-version: '24'
+      - run: cd workspace/runners/enterprise/bible && ./gradlew publishToMavenLocal
+      - run: cd workspace/runners/kotlin && ./gradlew distTar --no-daemon
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Login to Docker Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ secrets.REGISTRY }}
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Build and Publish Runner Image
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: Dockerfile-runner
+          push: true
+          tags: |
+            ${{ secrets.IMAGE_PREFIX }}/bosca/kotlin-runner-enterprise:latest
+            ${{ secrets.IMAGE_PREFIX }}/bosca/kotlin-runner-enterprise:${{ github.sha }}
+            ${{ secrets.IMAGE_PREFIX }}/bosca/kotlin-runner-enterprise:${{ github.ref_name }}
+      - uses: actions/cache/save@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+
+  build-and-publish-runner-community:
+    runs-on: ubuntu-22.04
+    env:
+      RUNNER_TOOL_CACHE: /toolcache
+      IMAGE_PREFIX: ${{ secrets.IMAGE_PREFIX }}
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: false
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-community-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+      - uses: actions/setup-java@v4
+        with:
+          distribution: 'graalvm'
+          java-version: '24'
+      - run: cd workspace/runners/kotlin && ./gradlew distTar --no-daemon
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      - name: Login to Docker Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ secrets.REGISTRY }}
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Build and Publish Runner Image
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: Dockerfile-runner
+          push: true
+          tags: |
+            ${{ secrets.IMAGE_PREFIX }}/bosca/kotlin-runner-community:latest
+            ${{ secrets.IMAGE_PREFIX }}/bosca/kotlin-runner-community:${{ github.sha }}
+            ${{ secrets.IMAGE_PREFIX }}/bosca/kotlin-runner-community:${{ github.ref_name }}
+      - name: Build and Publish Runner Image
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: Dockerfile-blog-installer
+          push: true
+          tags: |
+            ${{ secrets.IMAGE_PREFIX }}/bosca/blog-installer:latest
+            ${{ secrets.IMAGE_PREFIX }}/bosca/blog-installer:${{ github.sha }}
+            ${{ secrets.IMAGE_PREFIX }}/bosca/blog-installer:${{ github.ref_name }}
+      - uses: actions/cache/save@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-community-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
