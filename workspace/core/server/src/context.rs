@@ -6,10 +6,11 @@ use crate::datastores::notifier::Notifier;
 use crate::datastores::persisted_queries::PersistedQueriesDataStore;
 use crate::datastores::profile::ProfileDataStore;
 use crate::datastores::security::SecurityDataStore;
+use crate::datastores::security_oauth2::SecurityOAuth2;
 use crate::datastores::workflow::workflow::WorkflowDataStore;
 use crate::graphql::content::storage::ObjectStorage;
-use crate::initialization::jwt::new_jwt;
 use crate::initialization::cache::new_cache_client;
+use crate::initialization::jwt::new_jwt;
 use crate::initialization::object_storage::new_object_storage;
 use crate::initialization::redis::new_redis_client;
 use crate::initialization::search::new_search_client;
@@ -31,7 +32,6 @@ use meilisearch_sdk::client::Client;
 use std::env;
 use std::sync::Arc;
 use uuid::Uuid;
-use crate::datastores::security_oauth2::SecurityOAuth2;
 
 #[derive(Clone)]
 pub struct BoscaContext {
@@ -362,6 +362,46 @@ impl BoscaContext {
         action: PermissionAction,
     ) -> Result<Metadata, Error> {
         let metadata = self.check_metadata_action(id, action).await?;
+        if metadata.version == version {
+            return Ok(metadata);
+        }
+        match self.content.metadata.get_by_version(id, version).await? {
+            Some(metadata) => {
+                if !self
+                    .content
+                    .metadata_permissions
+                    .has_metadata_version_permission(
+                        &metadata,
+                        &self.principal,
+                        &self.principal_groups,
+                        action,
+                    )
+                    .await?
+                {
+                    let admin = self.security.get_administrators_group().await?;
+                    if !self.principal_groups.contains(&admin.id) {
+                        return Err(Error::new("invalid permissions"));
+                    }
+                }
+                Ok(metadata)
+            }
+            None => Err(Error::new(format!(
+                "metadata not found: {} / {}",
+                id, version
+            ))),
+        }
+    }
+
+    #[tracing::instrument(skip(self, id, version, action))]
+    pub async fn check_metadata_version_principal_action(
+        &self,
+        principal: &Principal,
+        groups: &Vec<Uuid>,
+        id: &Uuid,
+        version: i32,
+        action: PermissionAction,
+    ) -> Result<Metadata, Error> {
+        let metadata = self.check_metadata_action_principal(principal, groups, id, action).await?;
         if metadata.version == version {
             return Ok(metadata);
         }

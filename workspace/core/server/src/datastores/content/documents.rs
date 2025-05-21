@@ -2,21 +2,22 @@ use crate::context::BoscaContext;
 use crate::datastores::content::tag::update_metadata_etag;
 use crate::datastores::notifier::Notifier;
 use crate::models::content::document::{Document, DocumentInput};
+use crate::models::content::document_collaboration::DocumentCollaboration;
 use crate::models::content::document_template::{DocumentTemplate, DocumentTemplateInput};
 use crate::models::content::document_template_container::DocumentTemplateContainer;
+use crate::models::content::document_template_container_type::DocumentTemplateContainerType;
 use crate::models::content::metadata::MetadataInput;
 use crate::models::content::metadata_profile::MetadataProfileInput;
 use crate::models::content::template_attribute::TemplateAttribute;
 use crate::models::content::template_workflow::TemplateWorkflow;
 use crate::models::security::permission::{Permission, PermissionAction};
 use async_graphql::*;
+use bosca_database::TracingPool;
 use deadpool_postgres::{GenericClient, Transaction};
 use log::error;
 use serde_json::json;
 use std::sync::Arc;
 use uuid::Uuid;
-use bosca_database::TracingPool;
-use crate::models::content::document_template_container_type::DocumentTemplateContainerType;
 
 #[derive(Clone)]
 pub struct DocumentsDataStore {
@@ -368,6 +369,35 @@ impl DocumentsDataStore {
             ],
         )
         .await?;
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self, metadata_id, version))]
+    pub async fn get_document_collaboration(
+        &self,
+        metadata_id: &Uuid,
+        version: i32,
+    ) -> Result<Option<DocumentCollaboration>, Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("select * from document_collaborations where metadata_id = $1 and version = $2")
+            .await?;
+        let rows = connection.query(&stmt, &[metadata_id, &version]).await?;
+        Ok(rows.first().map(|r| r.into()))
+    }
+
+    #[tracing::instrument(skip(self, metadata_id, version, content))]
+    pub async fn set_document_collaboration(
+        &self,
+        metadata_id: &Uuid,
+        version: i32,
+        content: &Vec<u8>,
+    ) -> Result<(), Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("insert into document_collaborations (metadata_id, version, content) values ($1, $2, $3) on conflict (metadata_id, version) do update set content = $3, modified = now()")
+            .await?;
+        connection.execute(&stmt, &[metadata_id, &version, &content]).await?;
         Ok(())
     }
 

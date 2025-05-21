@@ -22,6 +22,7 @@ use async_graphql::{Context, Error, Object};
 use chrono::{DateTime, Utc};
 use serde_json::Value;
 use uuid::Uuid;
+use crate::graphql::content::document_collaboration::DocumentCollaborationObject;
 
 pub struct MetadataObject {
     metadata: Metadata,
@@ -201,6 +202,16 @@ impl MetadataObject {
             .get_document(&self.metadata.id, self.metadata.version)
             .await?;
         Ok(document.map(DocumentObject::new))
+    }
+
+    async fn document_collaboration(&self, ctx: &Context<'_>) -> Result<Option<DocumentCollaborationObject>, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let document = ctx
+            .content
+            .documents
+            .get_document_collaboration(&self.metadata.id, self.metadata.version)
+            .await?;
+        Ok(document.map(DocumentCollaborationObject::new))
     }
 
     async fn document_template(

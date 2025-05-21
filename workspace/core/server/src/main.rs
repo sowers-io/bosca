@@ -17,6 +17,7 @@ mod shutdown_hook;
 mod slugs;
 mod util;
 mod workflow;
+mod document_collaboration;
 
 use crate::metadata_files::{metadata_download, metadata_upload};
 use async_graphql::extensions::apollo_persisted_queries::ApolloPersistedQueries;
@@ -39,6 +40,7 @@ use tower_http::timeout::TimeoutLayer;
 
 use crate::authed_subscription::AuthGraphQLSubscription;
 use crate::collection_files::{collection_download, collection_upload};
+use crate::document_collaboration::{get_document_collaboration, set_document_collaboration};
 use crate::graphql::handlers::{graphiql_handler, graphql_handler};
 use crate::graphql::schema::new_schema;
 use crate::image_files::image;
@@ -108,10 +110,16 @@ async fn main() {
         .route("/{slug}", get(slug))
         .with_state(ctx.clone());
 
+    let documents = Router::new()
+        .route("/collaboration", get(get_document_collaboration))
+        .route("/collaboration", post(set_document_collaboration))
+        .with_state(ctx.clone());
+
     let app = Router::new()
         .route("/", get(graphiql_handler))
         .nest("/files/metadata", metadata_files)
         .nest("/files/collection", collection_files)
+        .nest("/documents", documents)
         .nest("/content", content)
         .nest("/oauth2", oauth2)
         .route("/graphql", post(graphql_handler))
