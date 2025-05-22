@@ -1,4 +1,4 @@
-use futures_util::TryStreamExt;
+use futures_util::{StreamExt, TryStreamExt};
 use k8s_openapi::api::core::v1::Pod;
 use kube::api::WatchParams;
 use kube::{
@@ -6,7 +6,6 @@ use kube::{
     Client as KubeClient, Error,
 };
 use log::{error, info};
-use std::pin::pin;
 use std::time::Duration;
 use tokio::sync::mpsc::Sender;
 use tonic::transport::channel::Change;
@@ -14,12 +13,10 @@ use tonic::transport::Endpoint;
 
 pub async fn watch(namespace: String, port: u16, sender: &Sender<Change<String, Endpoint>>) -> Result<(), Error> {
     let kube_client = KubeClient::try_default().await?;
-    let service_name =
-        std::env::var("DISTRIBUTED_CACHE_SERVICE").unwrap_or_else(|_| "cache".to_string());
-    let field_selector = format!("metadata.name={}", service_name);
-    let wp = WatchParams::default().fields(&field_selector);
+    let field_selector = "metadata.labels.app=cache";
+    let wp = WatchParams::default().fields(field_selector);
     let pods: Api<Pod> = Api::namespaced(kube_client, &namespace);
-    let mut pods_stream = pin!(pods.watch(&wp, "0").await?);
+    let mut pods_stream = pods.watch(&wp, "0").await?.boxed();
     while let Some(event) = pods_stream.try_next().await.unwrap_or(None) {
         info!("pod event: {:?}", event);
         match event {

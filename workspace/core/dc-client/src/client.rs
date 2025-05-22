@@ -70,7 +70,8 @@ impl Client {
             .keep_alive_timeout(Duration::from_secs(3));
         if let Err(e) = sender
             .send(Change::Insert(host.to_string(), endpoint))
-            .await {
+            .await
+        {
             error!("failed to add endpoint: {}", e);
         }
 
@@ -78,6 +79,7 @@ impl Client {
             loop {
                 match std::env::var("KUBERNETES_NAMESPACE") {
                     Ok(namespace) => {
+                        info!("watching kubernetes resources");
                         if let Err(e) = watch(namespace, port, &sender).await {
                             error!("Error watching kubernetes resources: {:?}", e);
                         }
@@ -85,7 +87,7 @@ impl Client {
                     }
                     Err(_) => {
                         info!("Not running in kubernetes");
-                        break;
+                        return;
                     }
                 }
             }
