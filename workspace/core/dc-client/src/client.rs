@@ -58,20 +58,12 @@ impl Client {
         port: u16,
     ) -> Result<DistributedCacheClient<Channel>, Error> {
         let url = format!("http://{}:{}", host, port);
-        match tonic::transport::Endpoint::new(url)?
+        let channel = tonic::transport::Endpoint::new(url)?
             .connect_timeout(Duration::from_secs(3))
             .timeout(Duration::from_secs(3))
             .keep_alive_timeout(Duration::from_secs(3))
-            .connect().await {
-            Ok(conn) => Ok(DistributedCacheClient::new(conn)),
-            Err(e) => {
-                error!("new client: failed to connect to {}:{}: {:?}", host, port, e);
-                Err(Error::new(format!(
-                    "new client: failed to connect to {}:{}: {:?}",
-                    host, port, e
-                )))
-            }
-        }
+            .connect_lazy();
+        Ok(DistributedCacheClient::new(channel))
     }
 
     async fn initialize_client(&self, node: Node) -> Result<(), Error> {
@@ -84,10 +76,14 @@ impl Client {
     }
 
     async fn destroy_client(&self, node: Node) {
-        let mut clients = self.clients.write().await;
-        let mut hash = self.hash.write().await;
-        clients.remove(&node.id);
-        hash.remove(&node);
+        {
+            let mut clients = self.clients.write().await;
+            clients.remove(&node.id);
+        }
+        {
+            let mut hash = self.hash.write().await;
+            hash.remove(&node);
+        }
     }
 
     async fn initialize_first_client(&self, host: String, port: u16) -> Result<(), Error> {
@@ -197,61 +193,50 @@ impl Client {
         Ok(())
     }
 
-    #[tracing::instrument(skip(self, cache, key))]
-    pub async fn get(&self, cache: &str, key: &str) -> Result<Option<Vec<u8>>, Error> {
+    pub async fn get_client(&self, key: &str) -> Result<DistributedCacheClient<Channel>, Error> {
         let hash = self.hash.read().await;
         if let Some(node) = hash.get(&key) {
             let clients = self.clients.read().await;
             if let Some(client) = clients.get(&node.id) {
-                let mut client = client.clone();
-                let request = GetValueRequest {
-                    cache: cache.to_string(),
-                    key: key.to_string(),
-                };
-                let value = client.get_value(request).await?;
-                let r = value.get_ref();
-                Ok(r.value.clone())
-            } else {
-                Ok(None)
+                return Ok(client.clone());
             }
-        } else {
-            Ok(None)
         }
+        Err(Error::new("missing client"))
+    }
+
+    #[tracing::instrument(skip(self, cache, key))]
+    pub async fn get(&self, cache: &str, key: &str) -> Result<Option<Vec<u8>>, Error> {
+        let mut client = self.get_client(key).await?;
+        let request = GetValueRequest {
+            cache: cache.to_string(),
+            key: key.to_string(),
+        };
+        let value = client.get_value(request).await?;
+        let r = value.get_ref();
+        Ok(r.value.clone())
     }
 
     #[tracing::instrument(skip(self, cache, key, value))]
     pub async fn put(&self, cache: &str, key: &str, value: Vec<u8>) -> Result<(), Error> {
-        let hash = self.hash.read().await;
-        if let Some(node) = hash.get(&key) {
-            let clients = self.clients.read().await;
-            if let Some(client) = clients.get(&node.id) {
-                let mut client = client.clone();
-                let request = PutValueRequest {
-                    request_id: Uuid::new_v4().to_string(),
-                    cache: cache.to_string(),
-                    key: key.to_string(),
-                    value,
-                };
-                client.put_value(request).await?;
-            }
-        }
+        let mut client = self.get_client(key).await?;
+        let request = PutValueRequest {
+            request_id: Uuid::new_v4().to_string(),
+            cache: cache.to_string(),
+            key: key.to_string(),
+            value,
+        };
+        client.put_value(request).await?;
         Ok(())
     }
 
     #[tracing::instrument(skip(self, cache, key))]
     pub async fn delete(&self, cache: &str, key: &str) -> Result<(), Error> {
-        let hash = self.hash.read().await;
-        if let Some(node) = hash.get(&key) {
-            let clients = self.clients.read().await;
-            if let Some(client) = clients.get(&node.id) {
-                let mut client = client.clone();
-                let request = DeleteValueRequest {
-                    cache: cache.to_string(),
-                    key: key.to_string(),
-                };
-                client.delete_value(request).await?;
-            }
-        }
+        let mut client = self.get_client(key).await?;
+        let request = DeleteValueRequest {
+            cache: cache.to_string(),
+            key: key.to_string(),
+        };
+        client.delete_value(request).await?;
         Ok(())
     }
 
