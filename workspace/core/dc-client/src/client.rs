@@ -3,14 +3,17 @@ use crate::client::api::{
     ClearCacheRequest, CreateCacheRequest, DeleteValueRequest, Empty, GetValueRequest, Node,
     Notification, NotificationType, PutValueRequest, SubscribeNotificationsRequest,
 };
+use crate::client_watcher::watch;
 use async_graphql::Error;
 use hashring::HashRing;
-use log::error;
+use log::{error, info};
 use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::{broadcast, RwLock};
+use tokio::time::sleep;
+use tonic::transport::channel::Change;
 use tonic::transport::Channel;
 use uuid::Uuid;
 
@@ -57,12 +60,34 @@ impl Client {
         host: String,
         port: u16,
     ) -> Result<DistributedCacheClient<Channel>, Error> {
-        let url = format!("http://{}:{}", host, port);
-        let channel = tonic::transport::Endpoint::new(url)?
-            .connect_timeout(Duration::from_secs(3))
-            .timeout(Duration::from_secs(3))
-            .keep_alive_timeout(Duration::from_secs(3))
-            .connect_lazy();
+        let (channel, sender) = Channel::balance_channel(1024);
+        tokio::spawn(async move {
+            loop {
+                match std::env::var("KUBERNETES_NAMESPACE") {
+                    Ok(namespace) => {
+                        if let Err(e) = watch(namespace, port, &sender).await {
+                            error!("Error watching kubernetes resources: {:?}", e);
+                        }
+                        sleep(Duration::from_secs(3)).await;
+                    }
+                    Err(_) => {
+                        info!("Not running in kubernetes, using defined endpoints");
+                        let url = format!("http://{}:{}", host, port);
+                        let endpoint = tonic::transport::Endpoint::new(url)
+                            .expect("invalid endpoint")
+                            .connect_timeout(Duration::from_secs(3))
+                            .timeout(Duration::from_secs(3))
+                            .keep_alive_timeout(Duration::from_secs(3));
+                        if let Err(e) = sender
+                            .send(Change::Insert(host.to_string(), endpoint))
+                            .await {
+                            error!("failed to add endpoint: {}", e);
+                        }
+                        break;
+                    }
+                }
+            }
+        });
         Ok(DistributedCacheClient::new(channel))
     }
 
@@ -109,7 +134,10 @@ impl Client {
                 .subscribe_notifications(SubscribeNotificationsRequest {})
                 .await
             else {
-                error!("subscribe notifications: failed to connect to {}:{}", host, port);
+                error!(
+                    "subscribe notifications: failed to connect to {}:{}",
+                    host, port
+                );
                 return;
             };
             let stream = response.get_mut();
@@ -139,7 +167,10 @@ impl Client {
                     NotificationType::NodeFound => {
                         if let Some(node) = notification.node {
                             if let Err(e) = listen_client.initialize_client(node.clone()).await {
-                                error!("node found: failed to connect to {}:{}: {:?}", node.ip, node.port, e);
+                                error!(
+                                    "node found: failed to connect to {}:{}: {:?}",
+                                    node.ip, node.port, e
+                                );
                             }
                         }
                     }
