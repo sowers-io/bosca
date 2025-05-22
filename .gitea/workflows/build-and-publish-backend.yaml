@@ -9,38 +9,6 @@ on:
       - '*'
 
 jobs:
-  lint:
-    runs-on: ubuntu-22.04
-    env:
-      RUNNER_TOOL_CACHE: /toolcache
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-      - run: |
-          mkdir -p $HOME/.local
-          PB_REL="https://github.com/protocolbuffers/protobuf/releases"
-          curl -LO $PB_REL/download/v30.2/protoc-30.2-linux-x86_64.zip
-          unzip protoc-30.2-linux-x86_64.zip -d $HOME/.local
-      - run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
-      - run: export PATH="$HOME/.cargo/bin:$HOME/.local/bin:$PATH" && cargo clippy
-      - uses: actions/cache/save@v4
-        with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
-
   build-and-publish-backend:
     runs-on: ubuntu-22.04
     env:
@@ -65,6 +33,7 @@ jobs:
           curl -LO $PB_REL/download/v30.2/protoc-30.2-linux-x86_64.zip
           unzip protoc-30.2-linux-x86_64.zip -d $HOME/.local
       - run: curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+      - run: export PATH="$HOME/.cargo/bin:$HOME/.local/bin:$PATH" && cargo clippy
       - run: export PATH="$HOME/.cargo/bin:$HOME/.local/bin:$PATH" && cargo build --release
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v2

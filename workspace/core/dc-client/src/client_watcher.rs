@@ -13,10 +13,10 @@ use tonic::transport::channel::Change;
 use tonic::transport::Endpoint;
 
 async fn add_endpoint(pod: &Pod, port: u16, sender: &Sender<Change<String, Endpoint>>) -> Result<(), Error> {
-    info!("pod applied: {:?}", pod);
+    info!("pod applied: {:?}", pod.metadata.name);
     if let Some(status) = &pod.status {
         if let Some(pod_ip) = &status.pod_ip {
-            let pod_url = format!("http://{}:{}", pod_ip, port);
+            let pod_url = format!("http://{pod_ip}:{port}");
             info!("discovered cache server: {}", pod_url);
             let new_endpoint = match Endpoint::new(pod_url) {
                 Ok(ep) => ep
@@ -49,20 +49,17 @@ pub async fn watch(
 ) -> Result<(), Error> {
     let kube_client = KubeClient::try_default().await?;
     let pods: Api<Pod> = Api::namespaced(kube_client, &namespace);
-
     let mut stream = watcher(pods, watcher::Config::default().labels("app=cache"))
         .into_stream()
         .boxed();
-
     let mut pending = Vec::new();
-
     while let Some(event) = stream.try_next().await.unwrap_or(None) {
         match event {
             Event::Apply(pod) => {
                 add_endpoint(&pod, port, sender).await?;
             }
             Event::Delete(pod) => {
-                info!("pod deleted: {:?}", pod);
+                info!("pod deleted: {:?}", pod.metadata.name);
                 if let Err(e) = sender
                     .send(Change::Remove(pod.metadata.name.unwrap_or_default()))
                     .await
@@ -84,6 +81,5 @@ pub async fn watch(
             }
         }
     }
-
     Ok(())
 }
