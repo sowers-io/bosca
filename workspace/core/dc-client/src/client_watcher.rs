@@ -21,6 +21,7 @@ pub async fn watch(namespace: String, port: u16, sender: &Sender<Change<String, 
     let pods: Api<Pod> = Api::namespaced(kube_client, &namespace);
     let mut pods_stream = pin!(pods.watch(&wp, "0").await?);
     while let Some(event) = pods_stream.try_next().await.unwrap_or(None) {
+        info!("pod event: {:?}", event);
         match event {
             WatchEvent::Added(pod) | WatchEvent::Modified(pod) => {
                 if let Some(status) = &pod.status {
