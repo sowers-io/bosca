@@ -61,6 +61,19 @@ impl Client {
         port: u16,
     ) -> Result<DistributedCacheClient<Channel>, Error> {
         let (channel, sender) = Channel::balance_channel(1024);
+
+        let url = format!("http://{}:{}", host, port);
+        let endpoint = tonic::transport::Endpoint::new(url)
+            .expect("invalid endpoint")
+            .connect_timeout(Duration::from_secs(3))
+            .timeout(Duration::from_secs(3))
+            .keep_alive_timeout(Duration::from_secs(3));
+        if let Err(e) = sender
+            .send(Change::Insert(host.to_string(), endpoint))
+            .await {
+            error!("failed to add endpoint: {}", e);
+        }
+
         tokio::spawn(async move {
             loop {
                 match std::env::var("KUBERNETES_NAMESPACE") {
@@ -71,18 +84,7 @@ impl Client {
                         sleep(Duration::from_secs(3)).await;
                     }
                     Err(_) => {
-                        info!("Not running in kubernetes, using defined endpoints");
-                        let url = format!("http://{}:{}", host, port);
-                        let endpoint = tonic::transport::Endpoint::new(url)
-                            .expect("invalid endpoint")
-                            .connect_timeout(Duration::from_secs(3))
-                            .timeout(Duration::from_secs(3))
-                            .keep_alive_timeout(Duration::from_secs(3));
-                        if let Err(e) = sender
-                            .send(Change::Insert(host.to_string(), endpoint))
-                            .await {
-                            error!("failed to add endpoint: {}", e);
-                        }
+                        info!("Not running in kubernetes");
                         break;
                     }
                 }
