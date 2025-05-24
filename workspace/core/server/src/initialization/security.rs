@@ -1,11 +1,13 @@
-use std::env;
 use crate::context::BoscaContext;
 use crate::models::profiles::profile::ProfileInput;
 use crate::models::profiles::profile_visibility::ProfileVisibility;
-use crate::util::profile::add_password_principal;
+use crate::models::security::credentials::Credential;
+use crate::models::security::credentials_password::PasswordCredential;
+use crate::util::profile::add_principal_with_credential;
 use async_graphql::Error;
 use log::info;
 use serde_json::Value;
+use std::env;
 
 pub async fn initialize_security(ctx: &BoscaContext) -> Result<(), Error> {
     info!("Initialize Security");
@@ -38,8 +40,9 @@ pub async fn initialize_security(ctx: &BoscaContext) -> Result<(), Error> {
                 visibility: ProfileVisibility::Public,
                 attributes: vec![],
             };
+            let credential = Credential::Password(PasswordCredential::new(admin_username, admin_password)?);
             let principal =
-                add_password_principal(ctx, &admin_username, &admin_password, &profile, Some(true), false).await?;
+                add_principal_with_credential(ctx, &credential, &profile, Some(true), false).await?;
             let group = ctx.security.get_administrators_group().await?;
             ctx.security
                 .add_principal_group(&principal.0.id, &group.id)
@@ -71,8 +74,8 @@ pub async fn initialize_security(ctx: &BoscaContext) -> Result<(), Error> {
                 visibility: ProfileVisibility::Public,
                 attributes: vec![],
             };
-            let principal =
-                add_password_principal(ctx, &sa_username, &sa_password, &profile, Some(true), false).await?;
+            let credential = Credential::Password(PasswordCredential::new(sa_username, sa_password)?);
+            let principal = add_principal_with_credential(ctx, &credential, &profile, Some(true), false).await?;
             let group = ctx.security.get_service_account_group().await?;
             ctx.security
                 .add_principal_group(&principal.0.id, &group.id)

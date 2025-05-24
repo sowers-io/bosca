@@ -18,7 +18,7 @@ impl Debug for Oauth2Credential {
 }
 
 impl Oauth2Credential {
-    pub fn new(account: &Account, tokens: &impl TokenResponse) -> Result<Self, Error> {
+    pub fn new(account: &Account, tokens: Option<&impl TokenResponse>) -> Result<Self, Error> {
         let Some(account_identifier) = account.id() else {
             return Err(Error::new("Account identifier is required"));
         };
@@ -44,6 +44,12 @@ impl Oauth2Credential {
             credential_type: CredentialType::Oauth2,
             attributes,
         }
+    }
+
+    pub fn set_attribute(&mut self, key: &str, value: Value) {
+        let mut map = self.attributes.as_object_mut().unwrap().clone();
+        map.insert(key.to_string(), value);
+        self.attributes = Value::Object(map);
     }
 
     pub fn set_tokens(&mut self, tokens: impl TokenResponse) -> Result<(), Error> {

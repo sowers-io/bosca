@@ -7,3 +7,4 @@ pub mod util;
 pub mod oauth2;
 pub mod account;
 pub mod facebook_deauthorize;
+pub mod firebase;

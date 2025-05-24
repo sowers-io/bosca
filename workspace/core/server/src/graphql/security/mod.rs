@@ -12,3 +12,4 @@ pub mod group;
 pub mod groups;
 pub mod groups_mutation;
 pub mod signup_mutation;
+pub mod security_firebase_mutation;

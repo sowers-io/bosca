@@ -1,11 +1,12 @@
 use crate::context::BoscaContext;
+use crate::graphql::security::groups_mutation::GroupsMutation;
 use crate::graphql::security::login_mutation::LoginMutationObject;
+use crate::graphql::security::principal_mutation::PrincipalMutation;
+use crate::graphql::security::security_firebase_mutation::SecurityFirebaseMutationObject;
 use crate::graphql::security::signup_mutation::SignupMutationObject;
+use crate::models::security::credentials::CredentialType;
 use async_graphql::*;
 use uuid::Uuid;
-use crate::graphql::security::groups_mutation::GroupsMutation;
-use crate::graphql::security::principal_mutation::PrincipalMutation;
-use crate::models::security::credentials::CredentialType;
 
 pub struct SecurityMutationObject {}
 
@@ -106,5 +107,9 @@ impl SecurityMutationObject {
         let group_id = Uuid::parse_str(group_id.as_str())?;
         ctx.security.remove_principal_group(&id, &group_id).await?;
         Ok(true)
+    }
+
+    async fn firebase(&self) -> SecurityFirebaseMutationObject {
+        SecurityFirebaseMutationObject {}
     }
 }

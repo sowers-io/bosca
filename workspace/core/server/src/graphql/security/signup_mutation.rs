@@ -2,9 +2,11 @@ use crate::context::BoscaContext;
 use crate::graphql::content::metadata_mutation::WorkflowConfigurationInput;
 use crate::graphql::security::principal::PrincipalObject;
 use crate::models::profiles::profile::ProfileInput;
+use crate::models::security::credentials::Credential;
+use crate::models::security::credentials_password::PasswordCredential;
 use crate::models::workflow::enqueue_request::EnqueueRequest;
-use crate::util::profile::add_password_principal;
-use crate::workflow::core_workflow_ids::{PROFILE_SIGNUP, SEND_EMAIL};
+use crate::util::profile::add_principal_with_credential;
+use crate::workflow::core_workflow_ids::{PROFILE_SIGNUP, PROFILE_UPDATE_STORAGE, SEND_EMAIL};
 use async_graphql::*;
 use serde_json::json;
 
@@ -20,9 +22,19 @@ impl SignupMutationObject {
         profile: ProfileInput,
     ) -> Result<PrincipalObject, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        let (principal, profile) =
-            add_password_principal(ctx, &identifier, &password, &profile, None, true)
-                .await?;
+
+        let password_credential = Credential::Password(PasswordCredential::new(
+            identifier.to_string(),
+            password.to_string(),
+        )?);
+
+        let (principal, profile) = add_principal_with_credential(
+            ctx,
+            &password_credential,
+            &profile,
+            None,
+            true,
+        ).await?;
 
         if !ctx.security.auto_verify_accounts {
             let mut request = EnqueueRequest {
@@ -36,6 +48,13 @@ impl SignupMutationObject {
                         }
                     }),
                 }]),
+                ..Default::default()
+            };
+            ctx.workflow.enqueue_workflow(ctx, &mut request).await?;
+        } else {
+            let mut request = EnqueueRequest {
+                workflow_id: Some(PROFILE_UPDATE_STORAGE.to_string()),
+                profile_id: Some(profile),
                 ..Default::default()
             };
             ctx.workflow.enqueue_workflow(ctx, &mut request).await?;

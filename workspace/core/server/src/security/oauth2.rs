@@ -1,6 +1,7 @@
 use crate::context::BoscaContext;
-use crate::models::security::credentials::CredentialType;
-use crate::util::profile::add_oauth_principal;
+use crate::models::security::credentials::{Credential, CredentialType};
+use crate::models::security::credentials_oauth2::Oauth2Credential;
+use crate::util::profile::add_principal_with_credential;
 use axum::body::Body;
 use axum::extract::{Query, State};
 use axum_extra::extract::cookie::Cookie;
@@ -172,7 +173,26 @@ pub async fn oauth2_callback(
                 })?;
             principal
         } else {
-            let (principal, _) = add_oauth_principal(&ctx, &account, &response, true)
+            let profile = account.new_profile().map_err(|_| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Failed to process account".to_string(),
+                )
+            })?;
+            let Some(profile) = profile else {
+                return Err((
+                    StatusCode::UNAUTHORIZED,
+                    "Failed to create Profile".to_string(),
+                ))
+            };
+            let credential = Oauth2Credential::new(&account, Some(&response)).map_err(|_| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Failed to process credentials".to_string(),
+                )
+            })?;
+            let credential = Credential::Oauth2(credential);
+            let (principal, _) = add_principal_with_credential(&ctx, &credential, &profile, Some(account.verified()), true)
                 .await
                 .map_err(|_| {
                     (

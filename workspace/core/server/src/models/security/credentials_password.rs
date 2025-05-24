@@ -1,5 +1,5 @@
 use crate::models::security::credentials::{CredentialInterface, CredentialType};
-use crate::models::security::password::encrypt;
+use crate::models::security::password::{encrypt, verify};
 use async_graphql::Error;
 use serde_json::{Map, Value};
 use std::fmt::{Debug, Formatter};
@@ -44,6 +44,11 @@ impl PasswordCredential {
         map.insert("password".to_string(), Value::String(encrypt(password)?));
         self.attributes = Value::Object(map);
         Ok(())
+    }
+
+    pub fn verify(&self, password: &str) -> Result<bool, Error> {
+        let hash = self.attributes.get("password").unwrap().as_str().unwrap();
+        Ok(verify(hash, password)?)
     }
 }
 

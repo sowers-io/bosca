@@ -102,8 +102,14 @@ impl BoscaContext {
         let cache_client = new_cache_client().await?;
         info!("Building Context");
         let mut cache = BoscaCacheManager::new(cache_client.clone());
+        let configuration = ConfigurationDataStore::new(
+            bosca_pool.clone(),
+            configuration_secret_key,
+            Arc::clone(&notifier),
+        );
         let ctx = BoscaContext {
             security: SecurityDataStore::new(
+                configuration.clone(),
                 &mut cache,
                 bosca_pool.clone(),
                 new_jwt(),
@@ -123,11 +129,7 @@ impl BoscaContext {
                 bosca_pool.clone(),
                 Arc::clone(&notifier),
             ),
-            configuration: ConfigurationDataStore::new(
-                bosca_pool.clone(),
-                configuration_secret_key,
-                Arc::clone(&notifier),
-            ),
+            configuration,
             profile: ProfileDataStore::new(bosca_pool.clone()),
             queries: PersistedQueriesDataStore::new(bosca_pool.clone()).await,
             content: ContentDataStore::new(

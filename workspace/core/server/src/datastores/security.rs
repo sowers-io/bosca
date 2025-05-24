@@ -1,23 +1,40 @@
+use crate::context::BoscaContext;
 use crate::datastores::cache::manager::BoscaCacheManager;
 use crate::datastores::security_cache::SecurityCache;
+use crate::models::profiles::profile::ProfileInput;
+use crate::models::profiles::profile_attribute::ProfileAttributeInput;
+use crate::models::profiles::profile_visibility::ProfileVisibility;
 use crate::models::security::credentials::{Credential, CredentialType};
 use crate::models::security::credentials_oauth2::Oauth2Credential;
 use crate::models::security::credentials_password::PasswordCredential;
+use crate::models::security::credentials_scrypt::PasswordScryptCredential;
 use crate::models::security::group::Group;
 use crate::models::security::group_type::GroupType;
 use crate::models::security::password::verify;
 use crate::models::security::principal::Principal;
+use crate::security::account::{Account, FacebookPicture, FacebookPictureData, FacebookUser, GoogleAccount};
+use crate::security::firebase::{FirebaseImportUsers, HashConfig};
 use crate::security::jwt::Jwt;
 use crate::security::token::Token;
+use crate::util::profile::add_principal_with_credential;
 use crate::util::signed_url::{sign_url, verify_signed_url};
 use async_graphql::*;
 use bosca_database::TracingPool;
 use chrono::{DateTime, Utc};
 use deadpool_postgres::{GenericClient, Object};
-use log::warn;
-use serde_json::Value;
+use firebase_scrypt::FirebaseScrypt;
+use log::{error, warn};
+use oauth2::basic::BasicTokenType;
+use oauth2::{EmptyExtraTokenFields, StandardTokenResponse};
+use serde_json::{json, Value};
 use std::fmt::Debug;
+use std::sync::Arc;
+use tokio::sync::RwLock;
 use uuid::Uuid;
+use crate::datastores::configurations::ConfigurationDataStore;
+use crate::models::configuration::configuration::ConfigurationInput;
+use crate::models::workflow::enqueue_request::EnqueueRequest;
+use crate::workflow::core_workflow_ids::PROFILE_UPDATE_STORAGE;
 
 #[derive(Clone)]
 pub struct SecurityDataStore {
@@ -25,6 +42,7 @@ pub struct SecurityDataStore {
     pool: TracingPool,
     jwt: Jwt,
     url_secret_key: String,
+    firebase_scrypt: Arc<RwLock<Option<FirebaseScrypt>>>,
     pub auto_verify_accounts: bool,
 }
 
@@ -51,19 +69,180 @@ impl Debug for RefreshToken {
 
 impl SecurityDataStore {
     pub async fn new(
+        cfg: ConfigurationDataStore,
         cache: &mut BoscaCacheManager,
         pool: TracingPool,
         jwt: Jwt,
         url_secret_key: String,
         auto_verify_accounts: bool,
     ) -> Result<Self, Error> {
+        let firebase = if let Some(value) = cfg.get_configuration_value("firebase.security.hash").await? {
+            let cfg: HashConfig = serde_json::from_value(value)?;
+            Some(FirebaseScrypt::new(
+                &cfg.base64_salt_separator,
+                &cfg.base64_signer_key,
+                cfg.rounds,
+                cfg.mem_cost,
+            ))
+        } else {
+            None
+        };
         Ok(Self {
             cache: SecurityCache::new(cache).await?,
             pool,
             jwt,
             url_secret_key,
-            auto_verify_accounts
+            auto_verify_accounts,
+            firebase_scrypt: Arc::new(RwLock::new(firebase)),
         })
+    }
+
+    #[tracing::instrument(skip(self, ctx, config))]
+    pub async fn set_firebase_hash_config(&self, ctx: &BoscaContext, config: HashConfig) -> Result<(), Error> {
+        let cfg = ConfigurationInput {
+            key: "firebase.security.hash".to_string(),
+            description: "Firebase Security Hash".to_string(),
+            value: serde_json::to_value(&config)?,
+            public: false,
+            permissions: vec![],
+        };
+        ctx.configuration.set_configuration(&cfg).await?;
+        self.firebase_scrypt.write().await.replace(FirebaseScrypt::new(
+            &config.base64_salt_separator,
+            &config.base64_signer_key,
+            config.rounds,
+            config.mem_cost,
+        ));
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self, ctx, import))]
+    pub async fn import_firebase_users(&self, ctx: &BoscaContext, import: &FirebaseImportUsers) -> Result<(), Error> {
+        let Some(firebase_scrypt) = self.firebase_scrypt.read().await.clone() else {
+            return Err(Error::new("missing scrypt configuration"));
+        };
+        for user in &import.users {
+            if user.email.is_empty() {
+                continue;
+            }
+            let name = if user.display_name.is_empty() {
+                "User".to_string()
+            } else {
+                user.display_name.clone()
+            };
+            let profile = ProfileInput {
+                slug: None,
+                name: name.clone(),
+                visibility: ProfileVisibility::User,
+                attributes: vec![
+                    ProfileAttributeInput {
+                        id: None,
+                        type_id: "bosca.profiles.email".to_string(),
+                        visibility: ProfileVisibility::User,
+                        confidence: 100,
+                        priority: 1,
+                        source: "firebase".to_string(),
+                        attributes: Some(json!({"email": user.email.clone()})),
+                        metadata_id: None,
+                        metadata_supplementary: None,
+                        expiration: None,
+                    },
+                    ProfileAttributeInput {
+                        id: None,
+                        type_id: "bosca.profiles.name".to_string(),
+                        visibility: ProfileVisibility::User,
+                        confidence: 100,
+                        priority: 1,
+                        source: "firebase".to_string(),
+                        attributes: Some(json!({"name": name})),
+                        metadata_id: None,
+                        metadata_supplementary: None,
+                        expiration: None,
+                    },
+                ],
+            };
+            let profile_id = if user.provider_user_info.is_empty() {
+                let credential = PasswordScryptCredential::new_with_hash_and_salt(
+                    firebase_scrypt.clone(),
+                    &user.email,
+                    &user.local_id,
+                    &user.salt,
+                    &user.password_hash,
+                );
+                let credential = Credential::PasswordScrypt(credential);
+                let (_, id) = add_principal_with_credential(
+                    ctx,
+                    &credential,
+                    &profile,
+                    if self.auto_verify_accounts { Some(true) } else { Some(user.email_verified) },
+                    true,
+                ).await?;
+                Some(id)
+            } else {
+                let mut account = None;
+                for provider_user_info in &user.provider_user_info {
+                    account = match provider_user_info.provider_id.as_str() {
+                        "google.com" => {
+                            let google = GoogleAccount {
+                                sub: provider_user_info.raw_id.clone(),
+                                name: user.display_name.clone(),
+                                given_name: "".to_string(),
+                                family_name: "".to_string(),
+                                picture: provider_user_info.photo_url.clone(),
+                                email: user.email.clone(),
+                                email_verified: if self.auto_verify_accounts { true } else { user.email_verified },
+                                hd: "".to_string(),
+                            };
+                            Some(Account::new_google(google))
+                        }
+                        "facebook.com" => {
+                            let facebook = FacebookUser {
+                                id: provider_user_info.raw_id.clone(),
+                                name: user.display_name.clone(),
+                                picture: FacebookPicture {
+                                    data: FacebookPictureData {
+                                        url: provider_user_info.photo_url.clone(),
+                                        width: 0,
+                                        height: 0,
+                                        is_silhouette: false,
+                                    },
+                                },
+                                email: user.email.clone(),
+                            };
+                            Some(Account::new_facebook(facebook))
+                        }
+                        _ => {
+                            error!("unsupported provider: {}", provider_user_info.provider_id);
+                            None
+                        }
+                    };
+                }
+                if let Some(account) = account {
+                    let mut credential = Oauth2Credential::new(&account, None::<&StandardTokenResponse<EmptyExtraTokenFields, BasicTokenType>>)?;
+                    credential.set_attribute("local_id", Value::String(user.local_id.clone()));
+                    let credential = Credential::Oauth2(credential);
+                    let (_, id) = add_principal_with_credential(
+                        ctx,
+                        &credential,
+                        &profile,
+                        if self.auto_verify_accounts { Some(true) } else { Some(user.email_verified) },
+                        true,
+                    ).await?;
+                    Some(id)
+                } else {
+                    None
+                }
+            };
+            if let Some(profile_id) = profile_id {
+                let mut request = EnqueueRequest {
+                    workflow_id: Some(PROFILE_UPDATE_STORAGE.to_string()),
+                    profile_id: Some(profile_id),
+                    ..Default::default()
+                };
+                ctx.workflow.enqueue_workflow(ctx, &mut request).await?;
+            }
+        }
+        Ok(())
     }
 
     #[tracing::instrument(skip(self, url))]
@@ -296,6 +475,13 @@ impl SecurityDataStore {
                 CredentialType::Password => {
                     Credential::Password(PasswordCredential::new_from_attributes(attributes))
                 }
+                CredentialType::PasswordScrypt => {
+                    if let Some(firebase) = self.firebase_scrypt.read().await.clone() {
+                        Credential::PasswordScrypt(PasswordScryptCredential::new_from_attributes(firebase, attributes))
+                    } else {
+                        return Err(Error::new("missing scrypt configuration"));
+                    }
+                }
                 CredentialType::Oauth2 => {
                     Credential::Oauth2(Oauth2Credential::new_from_attributes(attributes))
                 }
@@ -510,9 +696,7 @@ impl SecurityDataStore {
 
     #[tracing::instrument(skip(self, credential, password))]
     pub fn verify_password(&self, credential: &Credential, password: &str) -> Result<bool, Error> {
-        let attrs = credential.get_attributes();
-        let hash = attrs.get("password").unwrap().as_str().unwrap();
-        Ok(verify(hash, password)?)
+        credential.verify(password)
     }
 
     /// verify forgot password token, so, verified must be true for this to work

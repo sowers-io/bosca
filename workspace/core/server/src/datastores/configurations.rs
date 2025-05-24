@@ -135,10 +135,11 @@ impl ConfigurationDataStore {
         let stmt = connection
             .prepare_cached("select * from configuration_values v inner join configurations c on v.configuration_id = c.id where c.key = $1")
             .await?;
-        let row = connection.query_one(&stmt, &[&key]).await?;
-        if row.is_empty() {
+        let rows = connection.query(&stmt, &[&key]).await?;
+        if rows.is_empty() {
             return Ok(None);
         }
+        let row = rows.first().unwrap();
         let value: Vec<u8> = row.get("value");
         let nonce: Vec<u8> = row.get("nonce");
         let json_value = self.decrypt_value(&value, &nonce)?;
