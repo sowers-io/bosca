@@ -1,7 +1,10 @@
 use std::sync::atomic::Ordering::Relaxed;
 use std::time::Duration;
 use log::warn;
+#[cfg(unix)]
 use tokio::signal::unix::{signal, SignalKind};
+#[cfg(windows)]
+use tokio::signal::windows::ctrl_c;
 use crate::util::RUNNING_BACKGROUND;
 
 #[cfg(unix)]

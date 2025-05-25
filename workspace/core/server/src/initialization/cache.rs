@@ -5,7 +5,7 @@ use std::env;
 pub async fn new_cache_client() -> Result<Client, Error> {
     let host = match env::var("CACHE_HOST") {
         Ok(host) => host,
-        _ => "localhost".to_string(),
+        _ => "127.0.0.1".to_string(),
     };
     let port = match env::var("CACHE_PORT") {
         Ok(port) => port.parse::<u16>(),

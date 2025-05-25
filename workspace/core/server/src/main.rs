@@ -34,8 +34,6 @@ use tokio::net::TcpListener;
 
 use crate::context::BoscaContext;
 use rustls::crypto::ring;
-#[cfg(windows)]
-use tokio::signal::windows::ctrl_c;
 use tower_http::timeout::TimeoutLayer;
 
 use crate::authed_subscription::AuthGraphQLSubscription;
