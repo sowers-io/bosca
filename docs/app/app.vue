@@ -40,5 +40,12 @@ provide('navigation', navigation)
     </UMain>
 
     <AppFooter />
+
+    <ClientOnly>
+      <LazyUContentSearch
+        :files="files"
+        :navigation="navigation"
+      />
+    </ClientOnly>
   </UApp>
 </template>
