@@ -1,5 +1,16 @@
-FROM gcr.io/distroless/cc-debian12
+FROM node:22-alpine AS build
+WORKDIR /app
 
-COPY workspace/web/administration/.output/query-installer /
+RUN corepack enable
 
-CMD ["./query-installer"]
+# Copy package.json and your lockfile, here we add pnpm-lock.yaml for illustration
+COPY ./installer .
+COPY ./graphql .
+
+# Install dependencies
+RUN pnpm i
+
+# Copy the entire project
+COPY . ./
+
+CMD ["node", "--experimental-strip-types", "installer/main.ts"]
