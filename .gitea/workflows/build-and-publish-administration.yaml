@@ -44,13 +44,13 @@ jobs:
             ${{ secrets.IMAGE_PREFIX }}/bosca/administration:latest
             ${{ secrets.IMAGE_PREFIX }}/bosca/administration:${{ github.sha }}
             ${{ secrets.IMAGE_PREFIX }}/bosca/administration:${{ github.ref_name }}
-#      - name: Build and Publish Administration Query Installer Image
-#        uses: docker/build-push-action@v3
-#        with:
-#          context: .
-#          file: Dockerfile-administration-query-installer
-#          push: true
-#          tags: |
-#            ${{ secrets.IMAGE_PREFIX }}/bosca/administration-query-installer:latest
-#            ${{ secrets.IMAGE_PREFIX }}/bosca/administration-query-installer:${{ github.sha }}
-#            ${{ secrets.IMAGE_PREFIX }}/bosca/administration-query-installer:${{ github.ref_name }}
+      - name: Build and Publish Administration Query Installer Image
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          file: Dockerfile-administration-query-installer
+          push: true
+          tags: |
+            ${{ secrets.IMAGE_PREFIX }}/bosca/administration-query-installer:latest
+            ${{ secrets.IMAGE_PREFIX }}/bosca/administration-query-installer:${{ github.sha }}
+            ${{ secrets.IMAGE_PREFIX }}/bosca/administration-query-installer:${{ github.ref_name }}
