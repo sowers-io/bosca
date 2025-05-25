@@ -47,7 +47,7 @@ jobs:
       - name: Build and Publish Administration Query Installer Image
         uses: docker/build-push-action@v3
         with:
-          context: .
+          context: workspace/web/administration
           file: Dockerfile-administration-query-installer
           push: true
           tags: |
