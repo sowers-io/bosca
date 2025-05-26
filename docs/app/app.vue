@@ -13,11 +13,18 @@ useHead({
   }
 })
 
+const { data: navigation } = await useAsyncData('navigation', () => queryCollectionNavigation('docs'))
+const { data: files } = useLazyAsyncData('search', () => queryCollectionSearchSections('docs'), {
+  server: false
+})
+
 useSeoMeta({
   titleTemplate: `%s - ${seo?.siteName}`,
   ogSiteName: seo?.siteName,
   twitterCard: 'summary_large_image'
 })
+
+provide('navigation', navigation)
 </script>
 
 <template>
@@ -33,5 +40,12 @@ useSeoMeta({
     </UMain>
 
     <AppFooter />
+
+    <ClientOnly>
+      <LazyUContentSearch
+        :files="files"
+        :navigation="navigation"
+      />
+    </ClientOnly>
   </UApp>
 </template>
