@@ -6,8 +6,10 @@ use crate::models::content::attribute_location::AttributeLocation;
 #[derive(Enum, Debug, Copy, Clone, Eq, PartialEq, Serialize, Deserialize)]
 #[derive(Default)]
 pub enum Order {
+    #[serde(alias = "ASCENDING")]
     Ascending,
     #[default]
+    #[serde(alias = "DESCENDING")]
     Descending,
 }
 

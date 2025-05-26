@@ -24,6 +24,7 @@ use bytes::Bytes;
 use chrono::{DateTime, Timelike, Utc};
 use rrule::RRuleSet;
 use uuid::Uuid;
+use crate::graphql::content::metadata_template_mutation::MetadataTemplateMutationObject;
 
 #[derive(InputObject, Clone, Debug, Default)]
 pub struct WorkflowConfigurationInput {
@@ -63,6 +64,15 @@ impl MetadataMutationObject {
                 .unwrap()
         };
         Ok(new_metadata.into())
+    }
+
+    async fn template(&self, ctx: &Context<'_>, metadata_id: String, metadata_version: i32) -> Result<MetadataTemplateMutationObject, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let id = Uuid::parse_str(&metadata_id)?;
+        let metadata = ctx
+            .check_metadata_version_action(&id, metadata_version, PermissionAction::Edit)
+            .await?;
+        Ok(MetadataTemplateMutationObject::new(metadata))
     }
 
     async fn add_document(

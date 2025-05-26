@@ -4,11 +4,11 @@ use crate::datastores::notifier::Notifier;
 use crate::models::content::document::{Document, DocumentInput};
 use crate::models::content::document_collaboration::DocumentCollaboration;
 use crate::models::content::document_template::{DocumentTemplate, DocumentTemplateInput};
-use crate::models::content::document_template_container::DocumentTemplateContainer;
+use crate::models::content::document_template_container::{DocumentTemplateContainer, DocumentTemplateContainerInput};
 use crate::models::content::document_template_container_type::DocumentTemplateContainerType;
 use crate::models::content::metadata::MetadataInput;
 use crate::models::content::metadata_profile::MetadataProfileInput;
-use crate::models::content::template_attribute::TemplateAttribute;
+use crate::models::content::template_attribute::{TemplateAttribute, TemplateAttributeInput};
 use crate::models::content::template_workflow::TemplateWorkflow;
 use crate::models::security::permission::{Permission, PermissionAction};
 use async_graphql::*;
@@ -185,6 +185,197 @@ impl DocumentsDataStore {
         Ok(())
     }
 
+    pub async fn set_default_attributes(
+        &self,
+        metadata_id: &Uuid,
+        version: i32,
+        default_attributes: &serde_json::Value,
+    ) -> Result<(), Error> {
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        let stmt = txn.prepare_cached("update document_templates set default_attributes = $1 where metadata_id = $2 and version = $3").await?;
+        txn.execute(
+            &stmt,
+            &[
+                default_attributes,
+                metadata_id,
+                &version,
+            ]
+        ).await?;
+        txn.commit().await?;
+        Ok(())
+    }
+
+    pub async fn set_content(
+        &self,
+        metadata_id: &Uuid,
+        version: i32,
+        content: &serde_json::Value,
+    ) -> Result<(), Error> {
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        let stmt = txn.prepare_cached("update document_templates set content = $1 where metadata_id = $2 and version = $3").await?;
+        txn.execute(
+            &stmt,
+            &[
+                content,
+                metadata_id,
+                &version,
+            ]
+        ).await?;
+        txn.commit().await?;
+        Ok(())
+    }
+
+    pub async fn set_configuration(
+        &self,
+        metadata_id: &Uuid,
+        version: i32,
+        default_attributes: &serde_json::Value,
+    ) -> Result<(), Error> {
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        let stmt = txn.prepare_cached("update document_templates set configuration = $1 where metadata_id = $2 and version = $3").await?;
+        txn.execute(
+            &stmt,
+            &[
+                default_attributes,
+                metadata_id,
+                &version,
+            ]
+        ).await?;
+        txn.commit().await?;
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self, metadata_id, version, sort, attr))]
+    pub async fn add_template_attribute(
+        &self,
+        metadata_id: &Uuid,
+        version: i32,
+        sort: i32,
+        attr: &TemplateAttributeInput,
+    ) -> Result<(), Error> {
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        let stmt_del_wid = txn.prepare_cached("delete from document_template_attribute_workflows where metadata_id = $1 and version = $2 and key = $3").await?;
+        txn.execute(&stmt_del_wid, &[metadata_id, &version, &attr.key]).await?;
+        let stmt = txn.prepare_cached("insert into document_template_attributes (metadata_id, version, key, name, description, configuration, type, ui, list, sort, supplementary_key) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) on conflict (metadata_id, version, key) do update set name = $4, description = $5, configuration = $6, type = $7, ui = $8, list = $8, sort = $9, supplementary_key = $10").await?;
+        let stmt_wid = txn.prepare_cached("insert into document_template_attribute_workflows (metadata_id, version, key, workflow_id, auto_run) values ($1, $2, $3, $4, $5)").await?;
+        txn.execute(
+            &stmt,
+            &[
+                metadata_id,
+                &version,
+                &attr.key,
+                &attr.name,
+                &attr.description,
+                &attr.configuration,
+                &attr.attribute_type,
+                &attr.ui,
+                &attr.list,
+                &sort,
+                &attr.supplementary_key,
+            ],
+        )
+            .await?;
+        for wid in &attr.workflows {
+            txn.execute(
+                &stmt_wid,
+                &[
+                    metadata_id,
+                    &version,
+                    &attr.key,
+                    &wid.workflow_id,
+                    &wid.auto_run,
+                ],
+            )
+                .await?;
+        }
+        txn.commit().await?;
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self, metadata_id, version, key))]
+    pub async fn delete_template_attribute(
+        &self,
+        metadata_id: &Uuid,
+        version: i32,
+        key: &str,
+    ) -> Result<(), Error> {
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        let stmt_del_wid = txn.prepare_cached("delete from document_template_attributes where metadata_id = $1 and version = $2 and key = $3").await?;
+        let key = key.to_string();
+        txn.execute(&stmt_del_wid, &[metadata_id, &version, &key]).await?;
+        txn.commit().await?;
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self, metadata_id, version, sort, container))]
+    pub async fn add_template_container(
+        &self,
+        metadata_id: &Uuid,
+        version: i32,
+        sort: i32,
+        container: &DocumentTemplateContainerInput,
+    ) -> Result<(), Error> {
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        let stmt_del_wid = txn.prepare_cached("delete from document_template_container_workflows where metadata_id = $1 and version = $2 and id = $3").await?;
+        txn.execute(&stmt_del_wid, &[metadata_id, &version, &container.id]).await?;
+        let stmt = txn.prepare_cached("insert into document_template_containers (metadata_id, version, id, name, description, supplementary_key, type, sort) values ($1, $2, $3, $4, $5, $6, $7, $8) on conflict (metadata_id, version, id) do update set name = $4, description = $5, supplementary_key = $6, type = $7, sort = $8").await?;
+        let stmt_wid = txn.prepare_cached("insert into document_template_container_workflows (metadata_id, version, id, workflow_id, auto_run) values ($1, $2, $3, $4, $5)").await?;
+        let ct = container
+            .container_type
+            .unwrap_or(DocumentTemplateContainerType::Standard);
+        txn.execute(
+            &stmt,
+            &[
+                metadata_id,
+                &version,
+                &container.id,
+                &container.name,
+                &container.description,
+                &container.supplementary_key,
+                &ct,
+                &sort,
+            ],
+        )
+            .await?;
+        for wid in &container.workflows {
+            txn.execute(
+                &stmt_wid,
+                &[
+                    metadata_id,
+                    &version,
+                    &container.id,
+                    &wid.workflow_id,
+                    &wid.auto_run,
+                ],
+            )
+                .await?;
+        }
+        txn.commit().await?;
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self, metadata_id, id))]
+    pub async fn delete_template_container(
+        &self,
+        metadata_id: &Uuid,
+        version: i32,
+        id: &str,
+    ) -> Result<(), Error> {
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        let stmt_del_wid = txn.prepare_cached("delete from document_template_containers where metadata_id = $1 and version = $2 and id = $3").await?;
+        let id = id.to_string();
+        txn.execute(&stmt_del_wid, &[metadata_id, &version, &id]).await?;
+        txn.commit().await?;
+        Ok(())
+    }
+
     #[tracing::instrument(skip(self, txn, metadata_id, version, template))]
     async fn add_template_items_txn(
         &self,
@@ -233,7 +424,9 @@ impl DocumentsDataStore {
             let stmt_wid = txn.prepare_cached("insert into document_template_container_workflows (metadata_id, version, id, workflow_id, auto_run) values ($1, $2, $3, $4, $5)").await?;
             for (index, container) in containers.iter().enumerate() {
                 let sort = index as i32;
-                let ct = container.container_type.unwrap_or(DocumentTemplateContainerType::Standard);
+                let ct = container
+                    .container_type
+                    .unwrap_or(DocumentTemplateContainerType::Standard);
                 txn.execute(
                     &stmt,
                     &[
@@ -380,7 +573,9 @@ impl DocumentsDataStore {
     ) -> Result<Option<DocumentCollaboration>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
-            .prepare_cached("select * from document_collaborations where metadata_id = $1 and version = $2")
+            .prepare_cached(
+                "select * from document_collaborations where metadata_id = $1 and version = $2",
+            )
             .await?;
         let rows = connection.query(&stmt, &[metadata_id, &version]).await?;
         Ok(rows.first().map(|r| r.into()))
@@ -397,11 +592,22 @@ impl DocumentsDataStore {
         let stmt = connection
             .prepare_cached("insert into document_collaborations (metadata_id, version, content) values ($1, $2, $3) on conflict (metadata_id, version) do update set content = $3, modified = now()")
             .await?;
-        connection.execute(&stmt, &[metadata_id, &version, &content]).await?;
+        connection
+            .execute(&stmt, &[metadata_id, &version, &content])
+            .await?;
         Ok(())
     }
 
-    #[tracing::instrument(skip(self, ctx, parent_collection_id, template_id, template_version, title, content_type, permissions))]
+    #[tracing::instrument(skip(
+        self,
+        ctx,
+        parent_collection_id,
+        template_id,
+        template_version,
+        title,
+        content_type,
+        permissions
+    ))]
     #[allow(clippy::too_many_arguments)]
     pub async fn add_document_from_template(
         &self,
@@ -431,7 +637,17 @@ impl DocumentsDataStore {
         Ok((id, version))
     }
 
-    #[tracing::instrument(skip(self, ctx, txn, parent_collection_id, title, template_id, template_version, content_type, permissions))]
+    #[tracing::instrument(skip(
+        self,
+        ctx,
+        txn,
+        parent_collection_id,
+        title,
+        template_id,
+        template_version,
+        content_type,
+        permissions
+    ))]
     #[allow(clippy::too_many_arguments)]
     pub async fn add_document_from_template_txn(
         &self,
@@ -503,7 +719,10 @@ impl DocumentsDataStore {
             .metadata
             .add_txn(ctx, txn, &metadata, true, &None)
             .await?;
-        ctx.content.metadata_permissions.add_metadata_permissions_txn(txn, &id, permissions).await?;
+        ctx.content
+            .metadata_permissions
+            .add_metadata_permissions_txn(txn, &id, permissions)
+            .await?;
         Ok((id, version))
     }
 }

@@ -8,7 +8,9 @@ use std::error::Error;
 #[derive(Default)]
 pub enum AttributeLocation {
     #[default]
+    #[serde(alias = "ITEM")]
     Item,
+    #[serde(alias = "RELATIONSHIP")]
     Relationship,
 }
 

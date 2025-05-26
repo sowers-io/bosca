@@ -8,13 +8,21 @@ use serde::{Deserialize, Serialize};
 #[derive(Default)]
 pub enum AttributeType {
     #[default]
+    #[serde(alias = "STRING")]
     String,
+    #[serde(alias = "INT")]
     Int,
+    #[serde(alias = "FLOAT")]
     Float,
+    #[serde(alias = "DATE")]
     Date,
+    #[serde(alias = "DATE_TIME")]
     DateTime,
+    #[serde(alias = "PROFILE")]
     Profile,
+    #[serde(alias = "METADATA")]
     Metadata,
+    #[serde(alias = "COLLECTION")]
     Collection,
 }
 

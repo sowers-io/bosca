@@ -14,6 +14,7 @@ use crate::util::delete::delete_collection;
 use async_graphql::*;
 use bytes::Bytes;
 use uuid::Uuid;
+use crate::graphql::content::collection_template_mutation::CollectionTemplateMutationObject;
 use crate::util::upload::upload_file;
 
 pub struct CollectionMutationObject {}
@@ -754,5 +755,14 @@ impl CollectionMutationObject {
             .delete_supplementary(ctx, &supplementary_id)
             .await?;
         Ok(true)
+    }
+
+    async fn template(&self, ctx: &Context<'_>, metadata_id: String, metadata_version: i32) -> Result<CollectionTemplateMutationObject, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let id = Uuid::parse_str(&metadata_id)?;
+        let metadata = ctx
+            .check_metadata_version_action(&id, metadata_version, PermissionAction::Edit)
+            .await?;
+        Ok(CollectionTemplateMutationObject::new(metadata))
     }
 }
