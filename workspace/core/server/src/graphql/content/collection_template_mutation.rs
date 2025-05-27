@@ -69,6 +69,19 @@ impl CollectionTemplateMutationObject {
         Ok(Some(MetadataObject::new(self.metadata.clone())))
     }
 
+    async fn set_attributes(
+        &self,
+        ctx: &Context<'_>,
+        attributes: Vec<TemplateAttributeInput>,
+    ) -> Result<Option<MetadataObject>, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        ctx.content
+            .collection_templates
+            .set_template_attributes(ctx, &self.metadata.id, self.metadata.version, &attributes)
+            .await?;
+        Ok(Some(MetadataObject::new(self.metadata.clone())))
+    }
+
     async fn add_attribute(
         &self,
         ctx: &Context<'_>,

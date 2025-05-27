@@ -4,7 +4,9 @@ use crate::datastores::notifier::Notifier;
 use crate::models::content::document::{Document, DocumentInput};
 use crate::models::content::document_collaboration::DocumentCollaboration;
 use crate::models::content::document_template::{DocumentTemplate, DocumentTemplateInput};
-use crate::models::content::document_template_container::{DocumentTemplateContainer, DocumentTemplateContainerInput};
+use crate::models::content::document_template_container::{
+    DocumentTemplateContainer, DocumentTemplateContainerInput,
+};
 use crate::models::content::document_template_container_type::DocumentTemplateContainerType;
 use crate::models::content::metadata::MetadataInput;
 use crate::models::content::metadata_profile::MetadataProfileInput;
@@ -139,8 +141,14 @@ impl DocumentsDataStore {
             ],
         )
         .await?;
-        self.add_template_items_txn(txn, metadata_id, version, template)
-            .await?;
+        self.add_template_items_txn(
+            txn,
+            metadata_id,
+            version,
+            &template.attributes,
+            &template.containers,
+        )
+        .await?;
         Ok(())
     }
 
@@ -175,13 +183,59 @@ impl DocumentsDataStore {
             &[metadata_id, &version],
         )
         .await?;
+        self.add_template_items_txn(
+            txn,
+            metadata_id,
+            version,
+            &template.attributes,
+            &template.containers,
+        )
+        .await?;
+        Ok(())
+    }
+
+    pub async fn set_template_attributes(
+        &self,
+        ctx: &BoscaContext,
+        metadata_id: &Uuid,
+        version: i32,
+        attributes: &Vec<TemplateAttributeInput>,
+    ) -> Result<(), Error> {
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
         txn.execute(
-            "delete from document_template_attribute_workflows where metadata_id = $1 and version = $2",
+            "delete from document_template_attributes where metadata_id = $1 and version = $2",
             &[metadata_id, &version],
         )
         .await?;
-        self.add_template_items_txn(txn, metadata_id, version, template)
+        self.add_template_items_txn(&txn, metadata_id, version, attributes, &None)
             .await?;
+        txn.commit().await?;
+        ctx.content
+            .metadata
+            .on_metadata_changed(ctx, metadata_id)
+            .await?;
+        Ok(())
+    }
+
+    pub async fn set_template_containers(
+        &self,
+        metadata_id: &Uuid,
+        version: i32,
+        containers: &Vec<DocumentTemplateContainerInput>,
+    ) -> Result<(), Error> {
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        txn.execute(
+            "delete from document_template_containers where metadata_id = $1 and version = $2",
+            &[metadata_id, &version],
+        )
+        .await?;
+        let attributes = Vec::new();
+        let containers = Some(containers.to_vec());
+        self.add_template_items_txn(&txn, metadata_id, version, &attributes, &containers)
+            .await?;
+        txn.commit().await?;
         Ok(())
     }
 
@@ -194,14 +248,8 @@ impl DocumentsDataStore {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
         let stmt = txn.prepare_cached("update document_templates set default_attributes = $1 where metadata_id = $2 and version = $3").await?;
-        txn.execute(
-            &stmt,
-            &[
-                default_attributes,
-                metadata_id,
-                &version,
-            ]
-        ).await?;
+        txn.execute(&stmt, &[default_attributes, metadata_id, &version])
+            .await?;
         txn.commit().await?;
         Ok(())
     }
@@ -215,14 +263,8 @@ impl DocumentsDataStore {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
         let stmt = txn.prepare_cached("update document_templates set content = $1 where metadata_id = $2 and version = $3").await?;
-        txn.execute(
-            &stmt,
-            &[
-                content,
-                metadata_id,
-                &version,
-            ]
-        ).await?;
+        txn.execute(&stmt, &[content, metadata_id, &version])
+            .await?;
         txn.commit().await?;
         Ok(())
     }
@@ -236,14 +278,8 @@ impl DocumentsDataStore {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
         let stmt = txn.prepare_cached("update document_templates set configuration = $1 where metadata_id = $2 and version = $3").await?;
-        txn.execute(
-            &stmt,
-            &[
-                default_attributes,
-                metadata_id,
-                &version,
-            ]
-        ).await?;
+        txn.execute(&stmt, &[default_attributes, metadata_id, &version])
+            .await?;
         txn.commit().await?;
         Ok(())
     }
@@ -259,7 +295,8 @@ impl DocumentsDataStore {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
         let stmt_del_wid = txn.prepare_cached("delete from document_template_attribute_workflows where metadata_id = $1 and version = $2 and key = $3").await?;
-        txn.execute(&stmt_del_wid, &[metadata_id, &version, &attr.key]).await?;
+        txn.execute(&stmt_del_wid, &[metadata_id, &version, &attr.key])
+            .await?;
         let stmt = txn.prepare_cached("insert into document_template_attributes (metadata_id, version, key, name, description, configuration, type, ui, list, sort, supplementary_key) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) on conflict (metadata_id, version, key) do update set name = $4, description = $5, configuration = $6, type = $7, ui = $8, list = $8, sort = $9, supplementary_key = $10").await?;
         let stmt_wid = txn.prepare_cached("insert into document_template_attribute_workflows (metadata_id, version, key, workflow_id, auto_run) values ($1, $2, $3, $4, $5)").await?;
         txn.execute(
@@ -278,7 +315,7 @@ impl DocumentsDataStore {
                 &attr.supplementary_key,
             ],
         )
-            .await?;
+        .await?;
         for wid in &attr.workflows {
             txn.execute(
                 &stmt_wid,
@@ -290,7 +327,7 @@ impl DocumentsDataStore {
                     &wid.auto_run,
                 ],
             )
-                .await?;
+            .await?;
         }
         txn.commit().await?;
         Ok(())
@@ -307,7 +344,8 @@ impl DocumentsDataStore {
         let txn = connection.transaction().await?;
         let stmt_del_wid = txn.prepare_cached("delete from document_template_attributes where metadata_id = $1 and version = $2 and key = $3").await?;
         let key = key.to_string();
-        txn.execute(&stmt_del_wid, &[metadata_id, &version, &key]).await?;
+        txn.execute(&stmt_del_wid, &[metadata_id, &version, &key])
+            .await?;
         txn.commit().await?;
         Ok(())
     }
@@ -323,7 +361,8 @@ impl DocumentsDataStore {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
         let stmt_del_wid = txn.prepare_cached("delete from document_template_container_workflows where metadata_id = $1 and version = $2 and id = $3").await?;
-        txn.execute(&stmt_del_wid, &[metadata_id, &version, &container.id]).await?;
+        txn.execute(&stmt_del_wid, &[metadata_id, &version, &container.id])
+            .await?;
         let stmt = txn.prepare_cached("insert into document_template_containers (metadata_id, version, id, name, description, supplementary_key, type, sort) values ($1, $2, $3, $4, $5, $6, $7, $8) on conflict (metadata_id, version, id) do update set name = $4, description = $5, supplementary_key = $6, type = $7, sort = $8").await?;
         let stmt_wid = txn.prepare_cached("insert into document_template_container_workflows (metadata_id, version, id, workflow_id, auto_run) values ($1, $2, $3, $4, $5)").await?;
         let ct = container
@@ -342,7 +381,7 @@ impl DocumentsDataStore {
                 &sort,
             ],
         )
-            .await?;
+        .await?;
         for wid in &container.workflows {
             txn.execute(
                 &stmt_wid,
@@ -354,7 +393,7 @@ impl DocumentsDataStore {
                     &wid.auto_run,
                 ],
             )
-                .await?;
+            .await?;
         }
         txn.commit().await?;
         Ok(())
@@ -371,22 +410,24 @@ impl DocumentsDataStore {
         let txn = connection.transaction().await?;
         let stmt_del_wid = txn.prepare_cached("delete from document_template_containers where metadata_id = $1 and version = $2 and id = $3").await?;
         let id = id.to_string();
-        txn.execute(&stmt_del_wid, &[metadata_id, &version, &id]).await?;
+        txn.execute(&stmt_del_wid, &[metadata_id, &version, &id])
+            .await?;
         txn.commit().await?;
         Ok(())
     }
 
-    #[tracing::instrument(skip(self, txn, metadata_id, version, template))]
+    #[tracing::instrument(skip(self, txn, metadata_id, version, attributes, containers))]
     async fn add_template_items_txn(
         &self,
         txn: &Transaction<'_>,
         metadata_id: &Uuid,
         version: i32,
-        template: &DocumentTemplateInput,
+        attributes: &Vec<TemplateAttributeInput>,
+        containers: &Option<Vec<DocumentTemplateContainerInput>>,
     ) -> Result<(), Error> {
         let stmt = txn.prepare_cached("insert into document_template_attributes (metadata_id, version, key, name, description, configuration, type, ui, list, sort, supplementary_key) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)").await?;
         let stmt_wid = txn.prepare_cached("insert into document_template_attribute_workflows (metadata_id, version, key, workflow_id, auto_run) values ($1, $2, $3, $4, $5)").await?;
-        for (index, attr) in template.attributes.iter().enumerate() {
+        for (index, attr) in attributes.iter().enumerate() {
             let sort = index as i32;
             txn.execute(
                 &stmt,
@@ -419,7 +460,7 @@ impl DocumentsDataStore {
                 .await?;
             }
         }
-        if let Some(containers) = &template.containers {
+        if let Some(containers) = containers {
             let stmt = txn.prepare_cached("insert into document_template_containers (metadata_id, version, id, name, description, supplementary_key, type, sort) values ($1, $2, $3, $4, $5, $6, $7, $8)").await?;
             let stmt_wid = txn.prepare_cached("insert into document_template_container_workflows (metadata_id, version, id, workflow_id, auto_run) values ($1, $2, $3, $4, $5)").await?;
             for (index, container) in containers.iter().enumerate() {

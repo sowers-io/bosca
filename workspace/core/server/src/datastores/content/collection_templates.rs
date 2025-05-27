@@ -105,7 +105,7 @@ impl CollectionTemplatesDataStore {
             ],
         )
         .await?;
-        self.add_template_items_txn(txn, metadata_id, version, template)
+        self.add_template_items_txn(txn, metadata_id, version, &template.attributes)
             .await?;
         Ok(())
     }
@@ -144,27 +144,22 @@ impl CollectionTemplatesDataStore {
             &[metadata_id, &version],
         )
         .await?;
-        txn.execute(
-            "delete from collection_template_attribute_workflows where metadata_id = $1 and version = $2",
-            &[metadata_id, &version],
-        )
-        .await?;
-        self.add_template_items_txn(txn, metadata_id, version, template)
+        self.add_template_items_txn(txn, metadata_id, version, &template.attributes)
             .await?;
         Ok(())
     }
 
-    #[tracing::instrument(skip(self, txn, metadata_id, version, template))]
+    #[tracing::instrument(skip(self, txn, metadata_id, version, attributes))]
     async fn add_template_items_txn(
         &self,
         txn: &Transaction<'_>,
         metadata_id: &Uuid,
         version: i32,
-        template: &CollectionTemplateInput,
+        attributes: &Vec<TemplateAttributeInput>,
     ) -> Result<(), Error> {
         let stmt = txn.prepare_cached("insert into collection_template_attributes (metadata_id, version, key, name, description, configuration, type, ui, list, sort, supplementary_key, location) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)").await?;
         let stmt_wid = txn.prepare_cached("insert into collection_template_attribute_workflows (metadata_id, version, key, workflow_id, auto_run) values ($1, $2, $3, $4, $5)").await?;
-        for (index, attr) in template.attributes.iter().enumerate() {
+        for (index, attr) in attributes.iter().enumerate() {
             let sort = index as i32;
             txn.execute(
                 &stmt,
@@ -200,6 +195,28 @@ impl CollectionTemplatesDataStore {
         }
         Ok(())
     }
+
+    pub async fn set_template_attributes(
+        &self,
+        ctx: &BoscaContext,
+        metadata_id: &Uuid,
+        version: i32,
+        attributes: &Vec<TemplateAttributeInput>,
+    ) -> Result<(), Error> {
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        txn.execute(
+            "delete from collection_template_attributes where metadata_id = $1 and version = $2",
+            &[metadata_id, &version],
+        )
+            .await?;
+        self.add_template_items_txn(&txn, metadata_id, version, attributes)
+            .await?;
+        txn.commit().await?;
+        ctx.content.metadata.on_metadata_changed(ctx, metadata_id).await?;
+        Ok(())
+    }
+
 
     pub async fn set_configuration(
         &self,

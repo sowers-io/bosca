@@ -6,7 +6,7 @@ use crate::models::content::template_attribute::TemplateAttributeInput;
 use async_graphql::*;
 
 pub struct MetadataTemplateMutationObject {
-    metadata: Metadata
+    metadata: Metadata,
 }
 
 impl MetadataTemplateMutationObject {
@@ -17,7 +17,6 @@ impl MetadataTemplateMutationObject {
 
 #[Object(name = "MetadataTemplateMutation")]
 impl MetadataTemplateMutationObject {
-
     async fn set_default_attributes(
         &self,
         ctx: &Context<'_>,
@@ -57,6 +56,19 @@ impl MetadataTemplateMutationObject {
         Ok(Some(MetadataObject::new(self.metadata.clone())))
     }
 
+    async fn set_attributes(
+        &self,
+        ctx: &Context<'_>,
+        attributes: Vec<TemplateAttributeInput>,
+    ) -> Result<Option<MetadataObject>, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        ctx.content
+            .documents
+            .set_template_attributes(ctx, &self.metadata.id, self.metadata.version, &attributes)
+            .await?;
+        Ok(Some(MetadataObject::new(self.metadata.clone())))
+    }
+
     async fn add_attribute(
         &self,
         ctx: &Context<'_>,
@@ -80,6 +92,19 @@ impl MetadataTemplateMutationObject {
         ctx.content
             .documents
             .delete_template_attribute(&self.metadata.id, self.metadata.version, &key)
+            .await?;
+        Ok(Some(MetadataObject::new(self.metadata.clone())))
+    }
+
+    async fn set_containers(
+        &self,
+        ctx: &Context<'_>,
+        containers: Vec<DocumentTemplateContainerInput>,
+    ) -> Result<Option<MetadataObject>, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        ctx.content
+            .documents
+            .set_template_containers(&self.metadata.id, self.metadata.version, &containers)
             .await?;
         Ok(Some(MetadataObject::new(self.metadata.clone())))
     }
