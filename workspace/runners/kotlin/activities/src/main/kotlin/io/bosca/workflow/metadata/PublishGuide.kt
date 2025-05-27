@@ -5,6 +5,7 @@ import io.bosca.graphql.fragment.WorkflowJob
 import io.bosca.graphql.type.ActivityInput
 import io.bosca.workflow.Activity
 import io.bosca.workflow.ActivityContext
+import kotlinx.coroutines.delay
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -38,6 +39,10 @@ class PublishGuide(client: Client) : Activity(client) {
         for (step in guide.steps) {
             step.guideStep.metadata?.metadata?.let {
                 if (it.workflow.metadataWorkflow.state == state) return@let
+                if (it.ready == null) {
+                    client.metadata.setReady(it.id)
+                    delay(5_000)
+                }
                 client.workflows.beginMetadataTransition(
                     it.id,
                     it.version,
@@ -58,6 +63,10 @@ class PublishGuide(client: Client) : Activity(client) {
             for (module in step.guideStep.modules) {
                 module.guideStepModule.metadata?.metadata?.let {
                     if (it.workflow.metadataWorkflow.state == state) return@let
+                    if (it.ready == null) {
+                        client.metadata.setReady(it.id)
+                        delay(5_000)
+                    }
                     client.workflows.beginMetadataTransition(
                         it.id,
                         it.version,
@@ -65,7 +74,6 @@ class PublishGuide(client: Client) : Activity(client) {
                         "Publishing Guide Module from Workflow",
                         true
                     )
-
                     if (configuration.public == true && !it.public) {
                         client.metadata.setPublic(it.id, true)
                     }

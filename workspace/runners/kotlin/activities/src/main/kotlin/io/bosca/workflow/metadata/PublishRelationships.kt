@@ -5,6 +5,7 @@ import io.bosca.graphql.fragment.WorkflowJob
 import io.bosca.graphql.type.ActivityInput
 import io.bosca.workflow.Activity
 import io.bosca.workflow.ActivityContext
+import kotlinx.coroutines.delay
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -35,6 +36,10 @@ class PublishRelationships(client: Client) : Activity(client) {
         job.metadata?.metadata?.let {
             client.metadata.getRelationships(it.id).forEach { relationship ->
                 val metadata = relationship.metadata.metadataRelationshipMetadata
+                if (it.ready == null) {
+                    client.metadata.setReady(it.id)
+                    delay(5_000)
+                }
                 client.workflows.beginMetadataTransition(
                     metadata.id,
                     metadata.version,
@@ -56,6 +61,10 @@ class PublishRelationships(client: Client) : Activity(client) {
         job.collection?.collection?.let {
             client.collections.getRelationships(it.id).forEach { relationship ->
                 val metadata = relationship.metadata.metadataRelationshipMetadata
+                if (it.ready == null) {
+                    client.metadata.setReady(it.id)
+                    delay(5_000)
+                }
                 client.workflows.beginMetadataTransition(
                     metadata.id,
                     metadata.version,
