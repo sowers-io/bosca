@@ -3,8 +3,12 @@ use crate::graphql::profiles::profile::ProfileObject;
 use crate::models::profiles::profile::ProfileInput;
 use crate::models::profiles::profile_attribute_type::ProfileAttributeTypeInput;
 use async_graphql::*;
+use serde_json::json;
 use uuid::Uuid;
+use crate::graphql::content::metadata_mutation::WorkflowConfigurationInput;
 use crate::graphql::profiles::profile_mutation::ProfileMutationObject;
+use crate::models::workflow::enqueue_request::EnqueueRequest;
+use crate::workflow::core_workflow_ids::{PROFILE_ADDED, PROFILE_SIGNUP, SEND_EMAIL};
 
 pub struct ProfilesMutationObject {}
 
@@ -16,8 +20,13 @@ impl ProfilesMutationObject {
         profile: ProfileInput,
     ) -> Result<Option<ProfileObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        ctx.check_has_admin_account().await?;
         let id = ctx.profile.add(ctx, None, &profile, None).await?;
+        let mut request = EnqueueRequest {
+            workflow_id: Some(PROFILE_ADDED.to_string()),
+            profile_id: Some(id),
+            ..Default::default()
+        };
+        ctx.workflow.enqueue_workflow(ctx, &mut request).await?;
         Ok(ctx
             .profile
             .get_by_id(&id)
