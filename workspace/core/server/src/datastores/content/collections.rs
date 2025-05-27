@@ -153,6 +153,34 @@ impl CollectionsDataStore {
         Ok(rows.iter().map(|r| r.into()).collect())
     }
 
+    #[tracing::instrument(skip(self, ctx, id, category_ids))]
+    pub async fn set_categories(
+        &self,
+        ctx: &BoscaContext,
+        id: &Uuid,
+        category_ids: &Vec<Uuid>,
+    ) -> Result<(), Error> {
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        txn.execute(
+            "delete from collection_categories where collection_id = $1",
+            &[id],
+        )
+            .await?;
+        for category_id in category_ids {
+            let stmt = txn
+                .prepare_cached(
+                    "insert into collection_categories (collection_id, category_id) values ($1, $2)",
+                )
+                .await?;
+            txn.execute(&stmt, &[id, &category_id]).await?;
+        }
+        txn.commit().await?;
+        self.cache.evict_collection(id).await;
+        self.on_collection_changed(ctx, id).await?;
+        Ok(())
+    }
+
     #[tracing::instrument(skip(self, id))]
     pub async fn get_trait_ids(&self, id: &Uuid) -> Result<Vec<String>, Error> {
         let connection = self.pool.get().await?;

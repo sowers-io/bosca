@@ -1,6 +1,7 @@
 use crate::context::BoscaContext;
 use crate::datastores::content::tag::update_metadata_etag;
 use crate::datastores::content::util::build_find_args;
+use crate::datastores::guide_cache::GuideCache;
 use crate::datastores::metadata_cache::MetadataCache;
 use crate::datastores::notifier::Notifier;
 use crate::models::content::category::Category;
@@ -15,6 +16,7 @@ use crate::models::workflow::enqueue_request::EnqueueRequest;
 use crate::workflow::core_workflow_ids::{METADATA_DELETE_FINALIZE, METADATA_UPDATE_STORAGE};
 use async_graphql::*;
 use bosca_database::TracingPool;
+use bosca_dc_client::client::api::NotificationType;
 use bosca_dc_client::client::Client;
 use chrono::{TimeDelta, Utc};
 use deadpool_postgres::Transaction;
@@ -24,8 +26,6 @@ use std::ops::Add;
 use std::sync::Arc;
 use std::time::Duration;
 use uuid::Uuid;
-use bosca_dc_client::client::api::NotificationType;
-use crate::datastores::guide_cache::GuideCache;
 
 #[derive(Clone)]
 pub struct MetadataDataStore {
@@ -829,6 +829,34 @@ impl MetadataDataStore {
             .prepare("delete from metadata_categories where metadata_id = $1")
             .await?;
         txn.execute(&stmt, &[id]).await?;
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self, ctx, id, category_ids))]
+    pub async fn set_categories(
+        &self,
+        ctx: &BoscaContext,
+        id: &Uuid,
+        category_ids: &Vec<Uuid>,
+    ) -> Result<(), Error> {
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        txn.execute(
+            "delete from metadata_categories where metadata_id = $1",
+            &[id],
+        )
+        .await?;
+        for category_id in category_ids {
+            let stmt = txn
+                .prepare_cached(
+                    "insert into metadata_categories (metadata_id, category_id) values ($1, $2)",
+                )
+                .await?;
+            txn.execute(&stmt, &[id, &category_id]).await?;
+        }
+        txn.commit().await?;
+        self.cache.evict_metadata(id).await;
+        self.on_metadata_changed(ctx, id).await?;
         Ok(())
     }
 

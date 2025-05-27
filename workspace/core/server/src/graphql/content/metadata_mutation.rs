@@ -454,6 +454,28 @@ impl MetadataMutationObject {
         Ok(false)
     }
 
+    async fn set_categories(
+        &self,
+        ctx: &Context<'_>,
+        metadata_id: String,
+        category_ids: Vec<String>,
+    ) -> Result<bool, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let id = Uuid::parse_str(metadata_id.as_str())?;
+        ctx.check_metadata_action(&id, PermissionAction::Edit)
+            .await?;
+        let mut ids = Vec::new();
+        for category_id in category_ids {
+            let id = Uuid::parse_str(&category_id)?;
+            ids.push(id);
+        }
+        ctx.content
+            .metadata
+            .set_categories(ctx, &id, &ids)
+            .await?;
+        Ok(true)
+    }
+
     async fn add_category(
         &self,
         ctx: &Context<'_>,

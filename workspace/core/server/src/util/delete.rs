@@ -18,7 +18,9 @@ pub async fn delete_collection(
     if collection.collection_type == CollectionType::Root
         || collection.collection_type == CollectionType::System
     {
-        return Err(Error::new("cannot delete root or system collection"));
+        if !ctx.has_admin_account().await? {
+            return Err(Error::new("cannot delete root or system collection"));
+        }
     }
     if recursive.unwrap_or(false) {
         loop {

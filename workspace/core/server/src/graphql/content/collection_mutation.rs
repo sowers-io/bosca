@@ -602,6 +602,28 @@ impl CollectionMutationObject {
         Ok(true)
     }
 
+    async fn set_categories(
+        &self,
+        ctx: &Context<'_>,
+        id: String,
+        category_ids: Vec<String>,
+    ) -> Result<bool, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let id = Uuid::parse_str(id.as_str())?;
+        ctx.check_metadata_action(&id, PermissionAction::Edit)
+            .await?;
+        let mut ids = Vec::new();
+        for category_id in category_ids {
+            let id = Uuid::parse_str(&category_id)?;
+            ids.push(id);
+        }
+        ctx.content
+            .collections
+            .set_categories(ctx, &id, &ids)
+            .await?;
+        Ok(true)
+    }
+
     async fn set_ready(&self, ctx: &Context<'_>, id: String) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let collection_id = Uuid::parse_str(id.as_str())?;
