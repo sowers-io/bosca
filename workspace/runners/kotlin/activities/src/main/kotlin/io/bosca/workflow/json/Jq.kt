@@ -50,7 +50,7 @@ class Jq(client: Client) : Activity(client) {
         val configuration = getConfiguration<JqConfiguration>(job)
 
         val file = getInputSupplementaryFile(context, job, INPUT_NAME)
-        val json = withContext(Dispatchers.IO) { file.readText() }
+        val json = withContext(Dispatchers.IO) { file?.readText() ?: "{}" }
         val nodes = configuration.jq(json)
 
         setSupplementaryContents(

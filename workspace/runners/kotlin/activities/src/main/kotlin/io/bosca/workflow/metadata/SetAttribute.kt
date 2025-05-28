@@ -51,7 +51,7 @@ class SetAttribute(client: Client) : Activity(client) {
     }
 
     override suspend fun execute(context: ActivityContext, job: WorkflowJob) {
-        val text = getInputSupplementaryText(context, job, INPUT_NAME)
+        val text = getInputSupplementaryText(context, job, INPUT_NAME) ?: ""
         val configuration = getConfiguration<SetAttributeConfiguration>(job)
 
         val value = when (configuration.type) {

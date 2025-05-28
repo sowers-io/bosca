@@ -67,7 +67,7 @@ class ExecutePrompt(client: Client) : Activity(client) {
 
         for (input in job.workflowActivity.workflowActivity.inputs) {
             val file = getInputSupplementaryFile(context, job, input.workflowActivityParameter)
-            val text = withContext(Dispatchers.IO) { file.readText() }
+            val text = withContext(Dispatchers.IO) { file?.readText() ?: "" }
             userPrompt = userPrompt.replace("{${input.workflowActivityParameter.name}}", text)
         }
 

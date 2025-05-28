@@ -139,12 +139,12 @@ abstract class Activity(protected val client: Client) {
         return supplementary != null
     }
 
-    protected suspend fun getInputSupplementaryFile(context: ActivityContext, job: WorkflowJob, identifier: String): File {
+    protected suspend fun getInputSupplementaryFile(context: ActivityContext, job: WorkflowJob, identifier: String): File? {
         val parameter = getInputParameter(job, identifier) ?: error("get input file failed: missing supplementary key: $identifier")
         return getInputSupplementaryFile(context, job, parameter)
     }
 
-    protected suspend fun getInputSupplementaryFile(context: ActivityContext, job: WorkflowJob, parameter: WorkflowActivityParameter): File {
+    protected suspend fun getInputSupplementaryFile(context: ActivityContext, job: WorkflowJob, parameter: WorkflowActivityParameter): File? {
         val identifier = parameter.name
         job.metadata?.metadata?.let {
             val supplementary = job.getMetadataSupplementary(parameter) ?: error("get metadata input file failed: missing supplementary: ${job.planId.id} -> $identifier")
@@ -170,16 +170,16 @@ abstract class Activity(protected val client: Client) {
             client.files.download(download.urls.download, file)
             return file
         }
-        error("missing collection or metadata or profile: $identifier: ${job.planId.id}")
+        return null
     }
 
     protected suspend fun getInputSupplementaryText(
         context: ActivityContext,
         job: WorkflowJob,
         key: String
-    ): String {
+    ): String? {
         val file = getInputSupplementaryFile(context, job, key)
-        return file.readText()
+        return file?.readText()
     }
 
     protected suspend inline fun <reified T> decodeInputSupplementary(
@@ -187,7 +187,7 @@ abstract class Activity(protected val client: Client) {
         job: WorkflowJob,
         key: String
     ): T {
-        val text = getInputSupplementaryText(context, job, key)
+        val text = getInputSupplementaryText(context, job, key) ?: return null as T
         return json.decodeFromString(text)
     }
 
