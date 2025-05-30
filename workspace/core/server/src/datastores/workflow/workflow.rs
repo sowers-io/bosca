@@ -60,6 +60,11 @@ impl WorkflowDataStore {
     }
 
     pub fn start_monitoring_expirations(&self) {
+        let bosca_type = option_env!("BOSCA_TYPE").unwrap_or("").to_string();
+        if bosca_type == "frontend" {
+            return;
+        }
+
         info!("starting background monitoring of workflow expiration");
         let jobs_expiration = self.queues.clone();
         tokio::task::spawn(async move {

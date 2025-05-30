@@ -1,6 +1,7 @@
 use std::env;
 use std::net::ToSocketAddrs;
 use std::path::PathBuf;
+use std::time::Duration;
 use crate::api::service::api::distributed_cache_server::DistributedCacheServer;
 use crate::api::service::api::Node;
 use crate::api::service::DistributedCacheImpl;
@@ -114,13 +115,17 @@ async fn main() {
     health_reporter
         .set_serving::<DistributedCacheServer<DistributedCacheImpl>>()
         .await;
-    if let Err(e) = Server::builder()
-        .add_service(reflection_service)
-        .add_service(health_service)
-        .add_service(DistributedCacheServer::new(api))
-        .serve(addr)
-        .await
-    {
-        error!("error running server: {}", e);
-    }
+
+    tokio::spawn(async move {
+        if let Err(e) = Server::builder()
+            .timeout(Duration::from_secs(6))
+            .add_service(reflection_service)
+            .add_service(health_service)
+            .add_service(DistributedCacheServer::new(api))
+            .serve(addr)
+            .await
+        {
+            error!("error running server: {}", e);
+        }
+    }).await.expect("Failed to run server");
 }

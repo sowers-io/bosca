@@ -93,7 +93,7 @@ class JobRunner(
                 client.workflows.setWorkflowJobCheckin(id)
             } catch (_: CancellationException) {
                 println("cancelled checkin: $id")
-                break
+                return@launch
             } catch (e: Exception) {
                 if (e.message?.contains("can't update plan, it's already finished") != true) {
                     println("failed to checkin: ${id}: $e")
@@ -102,7 +102,7 @@ class JobRunner(
             try {
                 delay(60_000)
             } catch (_: CancellationException) {
-                break
+                return@launch
             } catch (e: Exception) {
                 println("failed to checkin delay: ${id}: $e")
             }
@@ -145,6 +145,10 @@ class JobRunner(
                 context.cleanup()
             }
             client.workflows.setWorkflowJobComplete(id)
+            val j = jobs.incrementAndGet()
+            if ((j % 100).toInt() == 0) {
+                println("processed $j jobs...")
+            }
 //            println("processing complete: $id : ${workflowActivity.workflowActivity.activityId} : ${active.get()}")
         } catch (_: CancellationException) {
             println("cancelled job: $id")
