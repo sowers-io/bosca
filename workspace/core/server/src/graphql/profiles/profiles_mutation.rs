@@ -3,12 +3,10 @@ use crate::graphql::profiles::profile::ProfileObject;
 use crate::models::profiles::profile::ProfileInput;
 use crate::models::profiles::profile_attribute_type::ProfileAttributeTypeInput;
 use async_graphql::*;
-use serde_json::json;
 use uuid::Uuid;
-use crate::graphql::content::metadata_mutation::WorkflowConfigurationInput;
 use crate::graphql::profiles::profile_mutation::ProfileMutationObject;
 use crate::models::workflow::enqueue_request::EnqueueRequest;
-use crate::workflow::core_workflow_ids::{PROFILE_ADDED, PROFILE_SIGNUP, SEND_EMAIL};
+use crate::workflow::core_workflow_ids::PROFILE_ADDED;
 
 pub struct ProfilesMutationObject {}
 

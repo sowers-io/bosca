@@ -17,7 +17,7 @@ use crate::models::workflow::enqueue_request::EnqueueRequest;
 use crate::security::account::{
     Account, FacebookPicture, FacebookPictureData, FacebookUser, GoogleAccount,
 };
-use crate::security::firebase::{FirebaseImportUsers, HashConfig};
+use crate::security::firebase::{FirebaseImportUser, FirebaseImportUsers, HashConfig};
 use crate::security::jwt::Jwt;
 use crate::security::token::Token;
 use crate::util::profile::add_principal_with_credential;
@@ -28,7 +28,7 @@ use bosca_database::TracingPool;
 use chrono::{DateTime, Utc};
 use deadpool_postgres::{GenericClient, Object};
 use firebase_scrypt::FirebaseScrypt;
-use log::{error, warn};
+use log::{error, info, warn};
 use oauth2::basic::BasicTokenType;
 use oauth2::{EmptyExtraTokenFields, StandardTokenResponse};
 use serde_json::{json, Value};
@@ -136,144 +136,24 @@ impl SecurityDataStore {
         let Some(firebase_scrypt) = self.firebase_scrypt.read().await.clone() else {
             return Err(Error::new("missing scrypt configuration"));
         };
+        info!("starting firebase user import");
+        let ctx = ctx.clone();
+        let auto_verify_accounts = self.auto_verify_accounts;
+        let import = import.clone();
+
+        let mut batch = Vec::new();
         for user in &import.users {
-            if user.email.is_empty() {
-                continue;
-            }
-            let name = if user.display_name.is_empty() {
-                "User".to_string()
-            } else {
-                user.display_name.clone()
-            };
-            let profile = ProfileInput {
-                slug: None,
-                name: name.clone(),
-                visibility: ProfileVisibility::User,
-                attributes: vec![
-                    ProfileAttributeInput {
-                        id: None,
-                        type_id: "bosca.profiles.email".to_string(),
-                        visibility: ProfileVisibility::User,
-                        confidence: 100,
-                        priority: 1,
-                        source: "firebase".to_string(),
-                        attributes: Some(json!({"email": user.email.clone()})),
-                        metadata_id: None,
-                        metadata_supplementary: None,
-                        expiration: None,
-                    },
-                    ProfileAttributeInput {
-                        id: None,
-                        type_id: "bosca.profiles.name".to_string(),
-                        visibility: ProfileVisibility::User,
-                        confidence: 100,
-                        priority: 1,
-                        source: "firebase".to_string(),
-                        attributes: Some(json!({"name": name})),
-                        metadata_id: None,
-                        metadata_supplementary: None,
-                        expiration: None,
-                    },
-                ],
-            };
-            let profile_id = if user.provider_user_info.is_empty() {
-                let credential = PasswordScryptCredential::new_with_hash_and_salt(
-                    firebase_scrypt.clone(),
-                    &user.email,
-                    &user.local_id,
-                    &user.salt,
-                    &user.password_hash,
-                );
-                let credential = Credential::PasswordScrypt(credential);
-                let (_, id) = add_principal_with_credential(
-                    ctx,
-                    &credential,
-                    &profile,
-                    if self.auto_verify_accounts {
-                        Some(true)
-                    } else {
-                        Some(user.email_verified)
-                    },
-                    true,
-                )
-                .await?;
-                Some(id)
-            } else {
-                let mut account = None;
-                for provider_user_info in &user.provider_user_info {
-                    account = match provider_user_info.provider_id.as_str() {
-                        "google.com" => {
-                            let google = GoogleAccount {
-                                sub: provider_user_info.raw_id.clone(),
-                                name: user.display_name.clone(),
-                                given_name: "".to_string(),
-                                family_name: "".to_string(),
-                                picture: provider_user_info.photo_url.clone(),
-                                email: user.email.clone(),
-                                email_verified: if self.auto_verify_accounts {
-                                    true
-                                } else {
-                                    user.email_verified
-                                },
-                                hd: "".to_string(),
-                            };
-                            Some(Account::new_google(google))
-                        }
-                        "facebook.com" => {
-                            let facebook = FacebookUser {
-                                id: provider_user_info.raw_id.clone(),
-                                name: user.display_name.clone(),
-                                picture: FacebookPicture {
-                                    data: FacebookPictureData {
-                                        url: provider_user_info.photo_url.clone(),
-                                        width: 0,
-                                        height: 0,
-                                        is_silhouette: false,
-                                    },
-                                },
-                                email: user.email.clone(),
-                            };
-                            Some(Account::new_facebook(facebook))
-                        }
-                        _ => {
-                            error!("unsupported provider: {}", provider_user_info.provider_id);
-                            None
-                        }
-                    };
-                }
-                if let Some(account) = account {
-                    let mut credential = Oauth2Credential::new(
-                        &account,
-                        None::<&StandardTokenResponse<EmptyExtraTokenFields, BasicTokenType>>,
-                    )?;
-                    credential.set_attribute("local_id", Value::String(user.local_id.clone()));
-                    let credential = Credential::Oauth2(credential);
-                    let (_, id) = add_principal_with_credential(
-                        ctx,
-                        &credential,
-                        &profile,
-                        if self.auto_verify_accounts {
-                            Some(true)
-                        } else {
-                            Some(user.email_verified)
-                        },
-                        true,
-                    )
-                    .await?;
-                    Some(id)
-                } else {
-                    None
-                }
-            };
-            if let Some(profile_id) = profile_id {
-                let mut request = EnqueueRequest {
-                    workflow_id: Some(PROFILE_UPDATE_STORAGE.to_string()),
-                    profile_id: Some(profile_id),
-                    ..Default::default()
-                };
-                ctx.workflow.enqueue_workflow(ctx, &mut request).await?;
+            batch.push(user.clone());
+            if batch.len() == 1000 {
+                import_firebase_users_batch(ctx.clone(), firebase_scrypt.clone(), batch, auto_verify_accounts);
+                batch = Vec::new();
             }
         }
+
+        if batch.len() > 0 {
+            import_firebase_users_batch(ctx.clone(), firebase_scrypt.clone(), batch, auto_verify_accounts);
+        }
+
         Ok(())
     }
 
@@ -795,4 +675,169 @@ impl SecurityDataStore {
         let principal = self.get_principal_by_id(&id).await?;
         Ok(principal)
     }
+}
+
+fn import_firebase_users_batch(ctx: BoscaContext, firebase_scrypt: FirebaseScrypt, batch: Vec<FirebaseImportUser>, auto_verify_accounts: bool) {
+    tokio::spawn(async move {
+        let mut count = 0;
+        let mut success = 0;
+        let mut errors = 0;
+        for user in batch {
+            if let Err(e) = import_firebase_user(
+                &ctx,
+                &firebase_scrypt,
+                &user,
+                auto_verify_accounts,
+            ).await {
+                errors += 1;
+                error!("failed to import firebase user: {:?}", e);
+            } else {
+                success += 1;
+            }
+            count += 1;
+            if count % 100 == 0 {
+                info!("processed {} users", count);
+            }
+        }
+        info!("firebase user complete :: {} :: {} :: {}", count, success, errors);
+    });
+}
+
+#[tracing::instrument(skip(ctx, firebase_scrypt, user, auto_verify_accounts))]
+async fn import_firebase_user(ctx: &BoscaContext, firebase_scrypt: &FirebaseScrypt, user: &FirebaseImportUser, auto_verify_accounts: bool) -> Result<(), Error> {
+    if user.email.is_empty() {
+        return Ok(());
+    }
+    let name = if user.display_name.is_empty() {
+        "User".to_string()
+    } else {
+        user.display_name.clone()
+    };
+    let profile = ProfileInput {
+        slug: None,
+        name: name.clone(),
+        visibility: ProfileVisibility::User,
+        attributes: vec![
+            ProfileAttributeInput {
+                id: None,
+                type_id: "bosca.profiles.email".to_string(),
+                visibility: ProfileVisibility::User,
+                confidence: 100,
+                priority: 1,
+                source: "firebase".to_string(),
+                attributes: Some(json!({"email": user.email.clone()})),
+                metadata_id: None,
+                metadata_supplementary: None,
+                expiration: None,
+            },
+            ProfileAttributeInput {
+                id: None,
+                type_id: "bosca.profiles.name".to_string(),
+                visibility: ProfileVisibility::User,
+                confidence: 100,
+                priority: 1,
+                source: "firebase".to_string(),
+                attributes: Some(json!({"name": name})),
+                metadata_id: None,
+                metadata_supplementary: None,
+                expiration: None,
+            },
+        ],
+    };
+    let profile_id = if user.provider_user_info.is_empty() {
+        let credential = PasswordScryptCredential::new_with_hash_and_salt(
+            firebase_scrypt.clone(),
+            &user.email,
+            &user.local_id,
+            &user.salt,
+            &user.password_hash,
+        );
+        let credential = Credential::PasswordScrypt(credential);
+        let (_, id) = add_principal_with_credential(
+            ctx,
+            &credential,
+            &profile,
+            if auto_verify_accounts {
+                Some(true)
+            } else {
+                Some(user.email_verified)
+            },
+            true,
+        ).await?;
+        Some(id)
+    } else {
+        let mut account = None;
+        for provider_user_info in &user.provider_user_info {
+            account = match provider_user_info.provider_id.as_str() {
+                "google.com" => {
+                    let google = GoogleAccount {
+                        sub: provider_user_info.raw_id.clone(),
+                        name: user.display_name.clone(),
+                        given_name: "".to_string(),
+                        family_name: "".to_string(),
+                        picture: provider_user_info.photo_url.clone(),
+                        email: user.email.clone(),
+                        email_verified: if auto_verify_accounts {
+                            true
+                        } else {
+                            user.email_verified
+                        },
+                        hd: "".to_string(),
+                    };
+                    Some(Account::new_google(google))
+                }
+                "facebook.com" => {
+                    let facebook = FacebookUser {
+                        id: provider_user_info.raw_id.clone(),
+                        name: user.display_name.clone(),
+                        picture: FacebookPicture {
+                            data: FacebookPictureData {
+                                url: provider_user_info.photo_url.clone(),
+                                width: 0,
+                                height: 0,
+                                is_silhouette: false,
+                            },
+                        },
+                        email: user.email.clone(),
+                    };
+                    Some(Account::new_facebook(facebook))
+                }
+                _ => {
+                    error!("unsupported provider: {}", provider_user_info.provider_id);
+                    None
+                }
+            };
+        }
+        if let Some(account) = account {
+            let mut credential = Oauth2Credential::new(
+                &account,
+                None::<&StandardTokenResponse<EmptyExtraTokenFields, BasicTokenType>>,
+            )?;
+            credential.set_attribute("local_id", Value::String(user.local_id.clone()));
+            let credential = Credential::Oauth2(credential);
+            let (_, id) = add_principal_with_credential(
+                ctx,
+                &credential,
+                &profile,
+                if auto_verify_accounts {
+                    Some(true)
+                } else {
+                    Some(user.email_verified)
+                },
+                true,
+            ).await?;
+            Some(id)
+        } else {
+            None
+        }
+    };
+    if let Some(profile_id) = profile_id {
+        let mut request = EnqueueRequest {
+            workflow_id: Some(PROFILE_UPDATE_STORAGE.to_string()),
+            profile_id: Some(profile_id),
+            ..Default::default()
+        };
+        ctx.workflow.enqueue_workflow(ctx, &mut request).await?;
+    }
+    Ok(())
 }

@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct HashConfig {
     pub algorithm: String,
     pub base64_signer_key: String,
@@ -9,12 +9,13 @@ pub struct HashConfig {
     pub mem_cost: u32,
 }
 
-#[derive(Default, Serialize, Deserialize)]
+#[derive(Clone, Default, Serialize, Deserialize)]
 pub struct FirebaseImportProviderInfo {
     #[serde(rename = "providerId")]
     pub provider_id: String,
     #[serde(rename = "rawId")]
     pub raw_id: String,
+    #[serde(default)]
     pub email: String,
     #[serde(rename = "displayName")]
     pub display_name: String,
@@ -22,7 +23,7 @@ pub struct FirebaseImportProviderInfo {
     pub photo_url: String,
 }
 
-#[derive(Default, Serialize, Deserialize)]
+#[derive(Clone, Default, Serialize, Deserialize)]
 pub struct FirebaseImportUser {
     #[serde(rename = "localId")]
     pub local_id: String,
@@ -46,7 +47,7 @@ pub struct FirebaseImportUser {
     pub provider_user_info: Vec<FirebaseImportProviderInfo>,
 }
 
-#[derive(Default, Serialize, Deserialize)]
+#[derive(Clone, Default, Serialize, Deserialize)]
 pub struct FirebaseImportUsers {
     pub users: Vec<FirebaseImportUser>,
 }

@@ -8,6 +8,7 @@ use crate::models::security::principal::Principal;
 use async_graphql::Error;
 use uuid::Uuid;
 
+#[tracing::instrument(skip(ctx, credential, profile, verified, set_ready))]
 pub async fn add_principal_with_credential(
     ctx: &BoscaContext,
     credential: &Credential,
@@ -15,6 +16,11 @@ pub async fn add_principal_with_credential(
     verified: Option<bool>,
     set_ready: bool,
 ) -> Result<(Principal, Uuid), Error> {
+    let cid = credential.identifier();
+    if let Ok(_) = ctx.security.get_principal_by_identifier(&cid).await {
+        return Err(Error::new("Principal already exists"));
+    }
+
     let groups = vec![];
     let principal_id = ctx
         .security
