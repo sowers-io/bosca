@@ -50,9 +50,13 @@ class IfSquare(client: Client) : Activity(client) {
         running.incrementAndFetch()
         try {
             val square = withContext(Dispatchers.IO) {
-                val metadata = ImageIO.read(file)
-                if (metadata == null) return@withContext false
-                metadata.width == metadata.height
+                try {
+                    val metadata = ImageIO.read(file)
+                    if (metadata == null) return@withContext false
+                    metadata.width == metadata.height
+                } catch (_: IllegalArgumentException) {
+                    false
+                }
             }
             if (square != cfg.negate) {
                 client.workflows.enqueueChildWorkflows(
