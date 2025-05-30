@@ -14,9 +14,8 @@ import io.bosca.graphql.fragment.WorkflowActivity
 import io.bosca.graphql.fragment.WorkflowJob
 import io.bosca.graphql.fragment.WorkflowState
 import io.bosca.graphql.type.*
-import java.time.LocalDateTime
+import io.bosca.util.toOptional
 import java.time.ZonedDateTime
-import java.util.Date
 
 class Workflows(network: NetworkClient) : Api(network) {
 
@@ -335,8 +334,26 @@ class Workflows(network: NetworkClient) : Api(network) {
         response.validate()
     }
 
-    suspend fun beginMetadataTransition(id: String, version: Int, state: String, status: String, restart: Boolean = false, waitForCompletion: Boolean = false) {
-        val response = network.graphql.mutation(BeginMetadataTransitionMutation(id, version, state, status, restart, waitForCompletion)).execute()
+    suspend fun beginMetadataTransition(
+        id: String,
+        version: Int,
+        state: String,
+        status: String,
+        stateValid: ZonedDateTime? = null,
+        restart: Boolean = false,
+        waitForCompletion: Boolean = false
+    ) {
+        val response = network.graphql.mutation(
+            BeginMetadataTransitionMutation(
+                id,
+                version,
+                state,
+                stateValid.toOptional(),
+                status,
+                restart,
+                waitForCompletion
+            )
+        ).execute()
         response.validate()
     }
 

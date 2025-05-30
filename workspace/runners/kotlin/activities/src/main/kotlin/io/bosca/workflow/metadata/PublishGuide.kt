@@ -48,7 +48,7 @@ class PublishGuide(client: Client) : Activity(client) {
                     it.version,
                     state,
                     "Publishing Guide from Workflow",
-                    true
+                    restart = true
                 )
                 if (configuration.public == true && !it.public) {
                     client.metadata.setPublic(it.id, true)
@@ -72,7 +72,7 @@ class PublishGuide(client: Client) : Activity(client) {
                         it.version,
                         state,
                         "Publishing Guide Module from Workflow",
-                        true
+                        restart = true
                     )
                     if (configuration.public == true && !it.public) {
                         client.metadata.setPublic(it.id, true)

@@ -34,7 +34,7 @@ class RestartTransitionTo(client: Client) : Activity(client) {
             job.metadata!!.metadata.version,
             job.metadata!!.metadata.workflow.metadataWorkflow.pending!!,
             "Restart Metadata Transition",
-            true
+            restart = true
         )
     }
 

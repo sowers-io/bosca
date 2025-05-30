@@ -44,13 +44,14 @@ class IfSquare(client: Client) : Activity(client) {
         if (!(job.metadata?.metadata?.content?.metadataContent?.type ?: "").startsWith("image/")) return
         val cfg = getConfiguration<IfSquareConfiguration>(job)
         val file = getContentFile(context, job)
-        while (running.load() > 3) {
+        while (running.load() > 5) {
             delay(10)
         }
         running.incrementAndFetch()
         try {
             val square = withContext(Dispatchers.IO) {
                 val metadata = ImageIO.read(file)
+                if (metadata == null) return@withContext false
                 metadata.width == metadata.height
             }
             if (square != cfg.negate) {

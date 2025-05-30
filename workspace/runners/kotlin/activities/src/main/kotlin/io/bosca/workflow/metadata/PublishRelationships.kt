@@ -45,7 +45,7 @@ class PublishRelationships(client: Client) : Activity(client) {
                     metadata.version,
                     state,
                     "Publishing Relationship from Workflow",
-                    true
+                    restart = true
                 )
                 if (configuration.public == true && !it.public) {
                     client.metadata.setPublic(it.id, true)
@@ -70,7 +70,7 @@ class PublishRelationships(client: Client) : Activity(client) {
                     metadata.version,
                     state,
                     "Publishing Relationship from Workflow",
-                    true
+                    restart = true
                 )
                 if (configuration.public == true && !it.public) {
                     client.metadata.setPublic(it.id, true)
