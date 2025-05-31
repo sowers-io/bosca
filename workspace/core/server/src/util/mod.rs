@@ -3,7 +3,6 @@ use std::sync::atomic::AtomicI32;
 pub mod delete;
 pub mod transition;
 pub mod signed_url;
-pub mod profile;
 pub mod security;
 pub mod upload;
 

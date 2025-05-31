@@ -202,7 +202,60 @@ impl ProfileDataStore {
             .await?;
         }
         txn.commit().await?;
-        self.update_storage(ctx, &id).await?;
+        if collection_id.is_some() {
+            self.update_storage(ctx, &id).await?;
+        }
+        Ok(id)
+    }
+
+    #[tracing::instrument(skip(self, txn,  principal, profile, collection_id))]
+    pub async fn add_txn(
+        &self,
+        txn: &Transaction<'_>,
+        principal: Option<Uuid>,
+        profile: &ProfileInput,
+        collection_id: Option<Uuid>,
+    ) -> Result<Uuid, Error> {
+        let stmt = txn.prepare_cached("insert into profiles (principal, name, visibility, collection_id) values ($1, $2, $3, $4) returning id").await?;
+        let results = txn
+            .query(
+                &stmt,
+                &[
+                    &principal,
+                    &profile.name,
+                    &profile.visibility,
+                    &collection_id,
+                ],
+            )
+            .await?;
+        if results.is_empty() {
+            return Err(Error::new("failed to create profile"));
+        }
+        let id: Uuid = results[0].get("id");
+        let stmt = txn.prepare_cached("insert into slugs (slug, profile_id) values (case when length($1) > 0 then $1 else slugify($2) end, $3) on conflict (slug) do update set slug = slugify($2) || nextval('duplicate_slug_seq')").await?;
+        txn.execute(&stmt, &[&profile.slug, &profile.name, &id])
+            .await?;
+        let stmt = txn.prepare_cached("insert into profile_attributes (profile, type_id, visibility, confidence, priority, source, attributes, metadata_id) values ($1, $2, $3, $4, $5, $6, $7, $8)").await?;
+        for attribute in profile.attributes.iter() {
+            let metadata_id = attribute
+                .metadata_id
+                .as_ref()
+                .map(|id| Uuid::parse_str(id).unwrap());
+            txn.execute(
+                &stmt,
+                &[
+                    &id,
+                    &attribute.type_id,
+                    &attribute.visibility,
+                    &attribute.confidence,
+                    &attribute.priority,
+                    &attribute.source,
+                    &attribute.attributes,
+                    &metadata_id,
+                ],
+            )
+                .await?;
+        }
         Ok(id)
     }
 

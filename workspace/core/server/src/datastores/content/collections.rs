@@ -696,7 +696,7 @@ impl CollectionsDataStore {
     }
 
     #[tracing::instrument(skip(self, txn, collection, update_etag))]
-    async fn add_txn<'a>(
+    pub async fn add_txn<'a>(
         &'a self,
         txn: &'a Transaction<'a>,
         collection: &CollectionInput,

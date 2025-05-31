@@ -5,7 +5,6 @@ use crate::models::profiles::profile::ProfileInput;
 use crate::models::security::credentials::Credential;
 use crate::models::security::credentials_password::PasswordCredential;
 use crate::models::workflow::enqueue_request::EnqueueRequest;
-use crate::util::profile::add_principal_with_credential;
 use crate::workflow::core_workflow_ids::{PROFILE_SIGNUP, PROFILE_UPDATE_STORAGE, SEND_EMAIL};
 use async_graphql::*;
 use serde_json::json;
@@ -28,18 +27,21 @@ impl SignupMutationObject {
             password.to_string(),
         )?);
 
-        let (principal, profile) = add_principal_with_credential(
+        let (principal_id, profile_id) = ctx.security.add_principal_with_credential(
             ctx,
             &password_credential,
             &profile,
             None,
             true,
+            true,
         ).await?;
+
+        let principal = ctx.security.get_principal_by_id(&principal_id).await?;
 
         if !ctx.security.auto_verify_accounts {
             let mut request = EnqueueRequest {
                 workflow_id: Some(PROFILE_SIGNUP.to_string()),
-                profile_id: Some(profile),
+                profile_id: Some(profile_id),
                 configurations: Some(vec![WorkflowConfigurationInput {
                     activity_id: SEND_EMAIL.to_string(),
                     configuration: json!({
@@ -54,7 +56,7 @@ impl SignupMutationObject {
         } else {
             let mut request = EnqueueRequest {
                 workflow_id: Some(PROFILE_UPDATE_STORAGE.to_string()),
-                profile_id: Some(profile),
+                profile_id: Some(profile_id),
                 ..Default::default()
             };
             ctx.workflow.enqueue_workflow(ctx, &mut request).await?;

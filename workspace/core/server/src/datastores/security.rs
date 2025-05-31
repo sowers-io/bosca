@@ -3,6 +3,7 @@ use crate::datastores::cache::manager::BoscaCacheManager;
 use crate::datastores::configurations::ConfigurationDataStore;
 use crate::datastores::security_cache::SecurityCache;
 use crate::models::configuration::configuration::ConfigurationInput;
+use crate::models::content::collection::{CollectionInput, CollectionType};
 use crate::models::profiles::profile::ProfileInput;
 use crate::models::profiles::profile_attribute::ProfileAttributeInput;
 use crate::models::profiles::profile_visibility::ProfileVisibility;
@@ -12,6 +13,7 @@ use crate::models::security::credentials_password::PasswordCredential;
 use crate::models::security::credentials_scrypt::PasswordScryptCredential;
 use crate::models::security::group::Group;
 use crate::models::security::group_type::GroupType;
+use crate::models::security::permission::{Permission, PermissionAction};
 use crate::models::security::principal::Principal;
 use crate::models::workflow::enqueue_request::EnqueueRequest;
 use crate::security::account::{
@@ -20,13 +22,12 @@ use crate::security::account::{
 use crate::security::firebase::{FirebaseImportUser, FirebaseImportUsers, HashConfig};
 use crate::security::jwt::Jwt;
 use crate::security::token::Token;
-use crate::util::profile::add_principal_with_credential;
 use crate::util::signed_url::{sign_url, verify_signed_url};
 use crate::workflow::core_workflow_ids::PROFILE_UPDATE_STORAGE;
 use async_graphql::*;
 use bosca_database::TracingPool;
 use chrono::{DateTime, Utc};
-use deadpool_postgres::{GenericClient, Object};
+use deadpool_postgres::{GenericClient, Object, Transaction};
 use firebase_scrypt::FirebaseScrypt;
 use log::{error, info, warn};
 use oauth2::basic::BasicTokenType;
@@ -35,6 +36,7 @@ use serde_json::{json, Value};
 use std::fmt::Debug;
 use std::sync::Arc;
 use tokio::sync::RwLock;
+use tokio::task::JoinSet;
 use uuid::Uuid;
 
 #[derive(Clone)]
@@ -127,28 +129,6 @@ impl SecurityDataStore {
         Ok(())
     }
 
-    #[tracing::instrument(skip(self, ctx, import))]
-    pub async fn import_firebase_users(
-        &self,
-        ctx: &BoscaContext,
-        import: &FirebaseImportUsers,
-    ) -> Result<(), Error> {
-        let Some(firebase_scrypt) = self.firebase_scrypt.read().await.clone() else {
-            return Err(Error::new("missing scrypt configuration"));
-        };
-        info!("starting firebase user import");
-        let mut count = 0;
-        for user in &import.users {
-            import_firebase_user(ctx, &firebase_scrypt, user, self.auto_verify_accounts).await?;
-            count += 1;
-            if count % 100 == 0 {
-                info!("imported {} firebase users", count);
-            }
-            info!("imported {} firebase users", user.local_id);
-        }
-        Ok(())
-    }
-
     #[tracing::instrument(skip(self, url))]
     pub fn sign_url(&self, url: &str) -> String {
         sign_url(url, &self.url_secret_key, 3600)
@@ -189,6 +169,25 @@ impl SecurityDataStore {
         let id: Uuid = results.first().unwrap().get(0);
         let group = Group::new(id, name.clone(), group_type);
         self.cache.cache_group(&group).await;
+        Ok(group)
+    }
+
+    #[tracing::instrument(skip(self, txn, name, description, group_type))]
+    pub async fn add_group_txn(
+        &self,
+        txn: &Transaction<'_>,
+        name: &String,
+        description: &String,
+        group_type: GroupType,
+    ) -> Result<Group, Error> {
+        let stmt = txn
+            .prepare_cached("insert into groups (name, description, type) values ($1, $2, $3::group_type) returning id")
+            .await?;
+        let results = txn
+            .query(&stmt, &[name, description, &group_type])
+            .await?;
+        let id: Uuid = results.first().unwrap().get(0);
+        let group = Group::new(id, name.clone(), group_type);
         Ok(group)
     }
 
@@ -333,14 +332,28 @@ impl SecurityDataStore {
         credential: &Credential,
         groups: &Vec<&Uuid>,
     ) -> Result<Uuid, Error> {
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        let id = self.add_principal_txn(&txn, verified, attributes, credential, groups).await?;
+        txn.commit().await?;
+        Ok(id)
+    }
+
+    #[tracing::instrument(skip(self, txn, verified, attributes, credential, groups))]
+    pub async fn add_principal_txn(
+        &self,
+        txn: &Transaction<'_>,
+        verified: Option<bool>,
+        attributes: Value,
+        credential: &Credential,
+        groups: &Vec<&Uuid>,
+    ) -> Result<Uuid, Error> {
         let verified = verified.unwrap_or(self.auto_verify_accounts);
         let verification_token = if verified {
             None
         } else {
             Some(hex::encode(Uuid::new_v4().as_bytes()))
         };
-        let mut connection = self.pool.get().await?;
-        let txn = connection.transaction().await?;
         let stmt = txn.prepare_cached("insert into principals (verified, verification_token, anonymous, attributes) values ($1, $2, false, $3) returning id").await?;
         let results = txn
             .query(&stmt, &[&verified, &verification_token, &attributes])
@@ -349,18 +362,17 @@ impl SecurityDataStore {
             return Err(Error::new("failed to create principal"));
         }
         let id = results[0].get("id");
-        drop(stmt);
         let attributes = credential.get_attributes();
         let stmt = txn.prepare_cached("insert into principal_credentials (principal, type, attributes) values ($1, $2, $3)").await?;
-        txn.execute(&stmt, &[&id, &credential.get_type(), &attributes])
-            .await?;
-        let stmt = txn
-            .prepare_cached("insert into principal_groups (principal, group_id) values ($1, $2)")
-            .await?;
-        for group in groups {
-            txn.execute(&stmt, &[&id, group]).await?;
+        txn.execute(&stmt, &[&id, &credential.get_type(), &attributes]).await?;
+        if !groups.is_empty() {
+            let stmt = txn
+                .prepare_cached("insert into principal_groups (principal, group_id) values ($1, $2)")
+                .await?;
+            for group in groups {
+                txn.execute(&stmt, &[&id, group]).await?;
+            }
         }
-        txn.commit().await?;
         Ok(id)
     }
 
@@ -466,6 +478,16 @@ impl SecurityDataStore {
             .prepare_cached("insert into principal_groups (principal, group_id) values ($1, $2)")
             .await?;
         connection.execute(&stmt, &[principal, group]).await?;
+        self.cache.evict_principal(principal).await;
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self, txn, principal, group))]
+    pub async fn add_principal_group_txn(&self, txn: &Transaction<'_>, principal: &Uuid, group: &Uuid) -> Result<(), Error> {
+        let stmt = txn
+            .prepare_cached("insert into principal_groups (principal, group_id) values ($1, $2)")
+            .await?;
+        txn.execute(&stmt, &[principal, group]).await?;
         self.cache.evict_principal(principal).await;
         Ok(())
     }
@@ -667,143 +689,331 @@ impl SecurityDataStore {
         let principal = self.get_principal_by_id(&id).await?;
         Ok(principal)
     }
-}
 
-#[tracing::instrument(skip(ctx, firebase_scrypt, user, auto_verify_accounts))]
-async fn import_firebase_user(ctx: &BoscaContext, firebase_scrypt: &FirebaseScrypt, user: &FirebaseImportUser, auto_verify_accounts: bool) -> Result<(), Error> {
-    if user.email.is_empty() {
-        return Ok(());
-    }
-    let name = if user.display_name.is_empty() {
-        "User".to_string()
-    } else {
-        user.display_name.clone()
-    };
-    let profile = ProfileInput {
-        slug: None,
-        name: name.clone(),
-        visibility: ProfileVisibility::User,
-        attributes: vec![
-            ProfileAttributeInput {
-                id: None,
-                type_id: "bosca.profiles.email".to_string(),
-                visibility: ProfileVisibility::User,
-                confidence: 100,
-                priority: 1,
-                source: "firebase".to_string(),
-                attributes: Some(json!({"email": user.email.clone()})),
-                metadata_id: None,
-                metadata_supplementary: None,
-                expiration: None,
-            },
-            ProfileAttributeInput {
-                id: None,
-                type_id: "bosca.profiles.name".to_string(),
-                visibility: ProfileVisibility::User,
-                confidence: 100,
-                priority: 1,
-                source: "firebase".to_string(),
-                attributes: Some(json!({"name": name})),
-                metadata_id: None,
-                metadata_supplementary: None,
-                expiration: None,
-            },
-        ],
-    };
-    let profile_id = if user.provider_user_info.is_empty() {
-        let credential = PasswordScryptCredential::new_with_hash_and_salt(
-            firebase_scrypt.clone(),
-            &user.email,
-            &user.local_id,
-            &user.salt,
-            &user.password_hash,
-        );
-        let credential = Credential::PasswordScrypt(credential);
-        let (_, id) = add_principal_with_credential(
-            ctx,
-            &credential,
-            &profile,
-            if auto_verify_accounts {
-                Some(true)
-            } else {
-                Some(user.email_verified)
-            },
-            false,
-        ).await?;
-        Some(id)
-    } else {
-        let mut account = None;
-        for provider_user_info in &user.provider_user_info {
-            account = match provider_user_info.provider_id.as_str() {
-                "google.com" => {
-                    let google = GoogleAccount {
-                        sub: provider_user_info.raw_id.clone(),
-                        name: user.display_name.clone(),
-                        given_name: "".to_string(),
-                        family_name: "".to_string(),
-                        picture: provider_user_info.photo_url.clone(),
-                        email: user.email.clone(),
-                        email_verified: if auto_verify_accounts {
-                            true
-                        } else {
-                            user.email_verified
-                        },
-                        hd: "".to_string(),
-                    };
-                    Some(Account::new_google(google))
-                }
-                "facebook.com" => {
-                    let facebook = FacebookUser {
-                        id: provider_user_info.raw_id.clone(),
-                        name: user.display_name.clone(),
-                        picture: FacebookPicture {
-                            data: FacebookPictureData {
-                                url: provider_user_info.photo_url.clone(),
-                                width: 0,
-                                height: 0,
-                                is_silhouette: false,
-                            },
-                        },
-                        email: user.email.clone(),
-                    };
-                    Some(Account::new_facebook(facebook))
-                }
-                _ => {
-                    error!("unsupported provider: {}", provider_user_info.provider_id);
-                    None
-                }
-            };
+    #[tracing::instrument(skip(ctx, users))]
+    pub async fn import_firebase_users(&self, ctx: &BoscaContext, users: &FirebaseImportUsers) -> Result<(), Error> {
+        let Some(firebase_scrypt) = self.firebase_scrypt.read().await.clone() else {
+            return Err(Error::new("missing scrypt configuration"));
+        };
+        let mut u = Vec::new();
+        let mut set = JoinSet::new();
+        let mut ix = 0;
+        for user in users.users.iter() {
+            u.push(user.clone());
+            if u.len() == 5000 {
+                let ctx = ctx.clone();
+                let firebase_scrypt = firebase_scrypt.clone();
+                ix = ix + 1;
+                let ix = ix;
+                set.spawn(async move {
+                    if let Err(e) = ctx.security.import_firebase_users_batch(ix, &ctx, &firebase_scrypt, u).await {
+                        error!("failed to import firebase users: {:?}", e);
+                    }
+                });
+                u = Vec::new();
+            }
         }
-        if let Some(account) = account {
-            let mut credential = Oauth2Credential::new(
-                &account,
-                None::<&StandardTokenResponse<EmptyExtraTokenFields, BasicTokenType>>,
-            )?;
-            credential.set_attribute("local_id", Value::String(user.local_id.clone()));
-            let credential = Credential::Oauth2(credential);
-            let (_, id) = add_principal_with_credential(
+        if u.len() > 0 {
+            let ctx = ctx.clone();
+            let firebase_scrypt = firebase_scrypt.clone();
+            ix = ix + 1;
+            set.spawn(async move {
+                if let Err(e) = ctx.security.import_firebase_users_batch(ix, &ctx, &firebase_scrypt, u).await {
+                    error!("failed to import firebase users: {:?}", e);
+                }
+            });
+        }
+        set.join_all().await;
+        Ok(())
+    }
+
+    async fn import_firebase_users_batch(&self, ix: i32, ctx: &BoscaContext, firebase_scrypt: &FirebaseScrypt, users: Vec<FirebaseImportUser>) -> Result<(), Error> {
+        info!("importing firebase users batch {}...", ix);
+        let mut connection = self.pool.get().await?;
+        let mut txn = connection.transaction().await?;
+        let mut ids = Vec::<Uuid>::new();
+        let mut count = 0;
+        for user in users {
+            let result = self.import_firebase_user(&txn, &ctx, firebase_scrypt, &user).await;
+            match result {
+                Ok(Some(id)) => {
+                    ids.push(id);
+                }
+                Ok(None) => {}
+                Err(e) => {
+                    error!("failed to import firebase user: {:?}", e);
+                }
+            }
+            count += 1;
+            if  count > 1 {
+                if count % 50 == 0 {
+                    info!("processed {ix} {} users", count);
+                }
+                if count % 500 == 0 {
+                    txn.commit().await?;
+                    txn = connection.transaction().await?;
+                }
+            }
+        }
+        txn.commit().await?;
+        info!("finished firebase user import");
+        for profile_id in ids {
+            let mut request = EnqueueRequest {
+                workflow_id: Some(PROFILE_UPDATE_STORAGE.to_string()),
+                profile_id: Some(profile_id),
+                ..Default::default()
+            };
+            ctx.workflow.enqueue_workflow(ctx, &mut request).await?;
+        }
+        Ok(())
+    }
+
+    async fn import_firebase_user(&self, txn: &Transaction<'_>, ctx: &BoscaContext, firebase_scrypt: &FirebaseScrypt, user: &FirebaseImportUser) -> Result<Option<Uuid>, Error> {
+        if user.email.is_empty() {
+            return Ok(None);
+        }
+        let name = if user.display_name.is_empty() {
+            "User".to_string()
+        } else {
+            user.display_name.clone()
+        };
+        let profile = ProfileInput {
+            slug: None,
+            name: name.clone(),
+            visibility: ProfileVisibility::User,
+            attributes: vec![
+                ProfileAttributeInput {
+                    id: None,
+                    type_id: "bosca.profiles.email".to_string(),
+                    visibility: ProfileVisibility::User,
+                    confidence: 100,
+                    priority: 1,
+                    source: "firebase".to_string(),
+                    attributes: Some(json!({"email": user.email.clone()})),
+                    metadata_id: None,
+                    metadata_supplementary: None,
+                    expiration: None,
+                },
+                ProfileAttributeInput {
+                    id: None,
+                    type_id: "bosca.profiles.name".to_string(),
+                    visibility: ProfileVisibility::User,
+                    confidence: 100,
+                    priority: 1,
+                    source: "firebase".to_string(),
+                    attributes: Some(json!({"name": name})),
+                    metadata_id: None,
+                    metadata_supplementary: None,
+                    expiration: None,
+                },
+            ],
+        };
+        let profile_id = if user.provider_user_info.is_empty() {
+            let credential = PasswordScryptCredential::new_with_hash_and_salt(
+                firebase_scrypt.clone(),
+                &user.email,
+                &user.local_id,
+                &user.salt,
+                &user.password_hash,
+            );
+            let credential = Credential::PasswordScrypt(credential);
+            let (_, id) = self.add_principal_with_credential_txn(
+                txn,
                 ctx,
                 &credential,
                 &profile,
-                if auto_verify_accounts {
+                if self.auto_verify_accounts {
                     Some(true)
                 } else {
                     Some(user.email_verified)
                 },
-                false,
             ).await?;
             Some(id)
         } else {
-            None
-        }
-    };
-    if let Some(profile_id) = profile_id {
-        let mut request = EnqueueRequest {
-            workflow_id: Some(PROFILE_UPDATE_STORAGE.to_string()),
-            profile_id: Some(profile_id),
-            ..Default::default()
+            let mut account = None;
+            for provider_user_info in &user.provider_user_info {
+                account = match provider_user_info.provider_id.as_str() {
+                    "google.com" => {
+                        let google = GoogleAccount {
+                            sub: provider_user_info.raw_id.clone(),
+                            name: user.display_name.clone(),
+                            given_name: "".to_string(),
+                            family_name: "".to_string(),
+                            picture: provider_user_info.photo_url.clone(),
+                            email: user.email.clone(),
+                            email_verified: if self.auto_verify_accounts {
+                                true
+                            } else {
+                                user.email_verified
+                            },
+                            hd: "".to_string(),
+                        };
+                        Some(Account::new_google(google))
+                    }
+                    "facebook.com" => {
+                        let facebook = FacebookUser {
+                            id: provider_user_info.raw_id.clone(),
+                            name: user.display_name.clone(),
+                            picture: FacebookPicture {
+                                data: FacebookPictureData {
+                                    url: provider_user_info.photo_url.clone(),
+                                    width: 0,
+                                    height: 0,
+                                    is_silhouette: false,
+                                },
+                            },
+                            email: user.email.clone(),
+                        };
+                        Some(Account::new_facebook(facebook))
+                    }
+                    _ => {
+                        error!("unsupported provider: {}", provider_user_info.provider_id);
+                        None
+                    }
+                };
+            }
+            if let Some(account) = account {
+                let mut credential = Oauth2Credential::new(
+                    &account,
+                    None::<&StandardTokenResponse<EmptyExtraTokenFields, BasicTokenType>>,
+                )?;
+                credential.set_attribute("local_id", Value::String(user.local_id.clone()));
+                let credential = Credential::Oauth2(credential);
+                let (_, id) = self.add_principal_with_credential_txn(
+                    txn,
+                    ctx,
+                    &credential,
+                    &profile,
+                    if self.auto_verify_accounts {
+                        Some(true)
+                    } else {
+                        Some(user.email_verified)
+                    },
+                ).await?;
+                Some(id)
+            } else {
+                None
+            }
         };
-        ctx.workflow.enqueue_workflow(ctx, &mut request).await?;
+        Ok(profile_id)
     }
-    Ok(())
+
+    #[tracing::instrument(skip(self, ctx, credential, profile, verified, set_ready))]
+    pub async fn add_principal_with_credential(
+        &self,
+        ctx: &BoscaContext,
+        credential: &Credential,
+        profile: &ProfileInput,
+        verified: Option<bool>,
+        set_ready: bool,
+        add_collection: bool,
+    ) -> std::result::Result<(Uuid, Uuid), Error> {
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+
+        let groups = vec![];
+        let principal_id = ctx
+            .security
+            .add_principal_txn(
+                &txn,
+                verified,
+                Value::Null,
+                &credential,
+                &groups,
+            )
+            .await?;
+
+        let collection_id = if add_collection {
+            let collection_name = format!("Collection for {}", principal_id);
+            Some(ctx
+                .content
+                .collections
+                .add_txn(
+                    &txn,
+                    &CollectionInput {
+                        name: collection_name,
+                        collection_type: Some(CollectionType::System),
+                        trait_ids: Some(vec!["profile".to_string()]),
+                        ..Default::default()
+                    },
+                    false,
+                )
+                .await?)
+        } else {
+            None
+        };
+
+        let profile = ctx
+            .profile
+            .add_txn(&txn, Some(principal_id), profile, collection_id)
+            .await?;
+
+        txn.commit().await?;
+
+        if let Some(collection_id) = collection_id {
+            let group_name = format!("principal.{}", principal_id);
+            let description = format!("Group for {}", principal_id);
+            let group = ctx
+                .security
+                .add_group(&group_name, &description, GroupType::Principal)
+                .await?;
+            ctx.security
+                .add_principal_group(&principal_id, &group.id)
+                .await?;
+
+            for action in [
+                PermissionAction::View,
+                PermissionAction::List,
+                PermissionAction::Edit,
+            ] {
+                let permission = Permission {
+                    entity_id: collection_id,
+                    group_id: group.id,
+                    action,
+                };
+                ctx.content
+                    .collection_permissions
+                    .add(ctx, &permission)
+                    .await?;
+            }
+
+            if set_ready {
+                let collection = ctx.content.collections.get(&collection_id).await?.expect("Collection not found");
+                let principal = ctx.security.get_principal_by_id(&principal_id).await?;
+                ctx.content
+                    .collection_workflows
+                    .set_ready_and_enqueue(ctx, &principal, &collection, None)
+                    .await?;
+            }
+        }
+
+        Ok((principal_id, profile))
+    }
+
+    #[tracing::instrument(skip(self, txn, ctx, credential, profile, verified))]
+    async fn add_principal_with_credential_txn(
+        &self,
+        txn: &Transaction<'_>,
+        ctx: &BoscaContext,
+        credential: &Credential,
+        profile: &ProfileInput,
+        verified: Option<bool>,
+    ) -> std::result::Result<(Uuid, Uuid), Error> {
+        let groups = vec![];
+        let principal_id = ctx
+            .security
+            .add_principal_txn(
+                &txn,
+                verified,
+                Value::Null,
+                &credential,
+                &groups,
+            )
+            .await?;
+        let profile_id = ctx
+            .profile
+            .add_txn(txn, Some(principal_id), profile, None)
+            .await?;
+        Ok((principal_id, profile_id))
+    }
 }

@@ -22,7 +22,6 @@ impl Oauth2Credential {
         let Some(account_identifier) = account.id() else {
             return Err(Error::new("Account identifier is required"));
         };
-        let tokens = serde_json::to_string(&tokens)?;
         let mut map = Map::<String, Value>::new();
         map.insert(
             "identifier".to_string(),
@@ -32,7 +31,10 @@ impl Oauth2Credential {
             "type".to_string(),
             Value::String(account.oauth2_type().to_lowercase()),
         );
-        map.insert("tokens".to_string(), Value::String(encrypt(tokens)?));
+        if let Some(tokens) = tokens {
+            let tokens = serde_json::to_string(&tokens)?;
+            map.insert("tokens".to_string(), Value::String(encrypt(tokens)?));
+        }
         Ok(Self {
             credential_type: CredentialType::Oauth2,
             attributes: Value::Object(map),

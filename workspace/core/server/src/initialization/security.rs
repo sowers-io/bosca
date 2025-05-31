@@ -3,7 +3,6 @@ use crate::models::profiles::profile::ProfileInput;
 use crate::models::profiles::profile_visibility::ProfileVisibility;
 use crate::models::security::credentials::Credential;
 use crate::models::security::credentials_password::PasswordCredential;
-use crate::util::profile::add_principal_with_credential;
 use async_graphql::Error;
 use log::info;
 use serde_json::Value;
@@ -41,11 +40,11 @@ pub async fn initialize_security(ctx: &BoscaContext) -> Result<(), Error> {
                 attributes: vec![],
             };
             let credential = Credential::Password(PasswordCredential::new(admin_username, admin_password)?);
-            let principal =
-                add_principal_with_credential(ctx, &credential, &profile, Some(true), false).await?;
+            let principal = ctx.security.
+                add_principal_with_credential(ctx, &credential, &profile, Some(true), false, false).await?;
             let group = ctx.security.get_administrators_group().await?;
             ctx.security
-                .add_principal_group(&principal.0.id, &group.id)
+                .add_principal_group(&principal.0, &group.id)
                 .await?;
         }
     }
@@ -75,15 +74,15 @@ pub async fn initialize_security(ctx: &BoscaContext) -> Result<(), Error> {
                 attributes: vec![],
             };
             let credential = Credential::Password(PasswordCredential::new(sa_username, sa_password)?);
-            let principal = add_principal_with_credential(ctx, &credential, &profile, Some(true), false).await?;
+            let principal = ctx.security.add_principal_with_credential(ctx, &credential, &profile, Some(true), false, false).await?;
             let group = ctx.security.get_service_account_group().await?;
             ctx.security
-                .add_principal_group(&principal.0.id, &group.id)
+                .add_principal_group(&principal.0, &group.id)
                 .await?;
             // TODO: relax this
             let group = ctx.security.get_administrators_group().await?;
             ctx.security
-                .add_principal_group(&principal.0.id, &group.id)
+                .add_principal_group(&principal.0, &group.id)
                 .await?;
         }
     }
