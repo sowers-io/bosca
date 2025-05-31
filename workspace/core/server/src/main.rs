@@ -103,6 +103,10 @@ async fn main() {
         .route("/facebook/deauthorize/status", get(oauth2_facebook_deauthorize_status))
         .with_state(ctx.clone());
 
+    let firebase = Router::new()
+        .route("/auth/handler", post(oauth2_callback))
+        .with_state(ctx.clone());
+
     let content = Router::new()
         .route("/image", get(image))
         .route("/{slug}", get(slug))
@@ -120,6 +124,7 @@ async fn main() {
         .nest("/documents", documents)
         .nest("/content", content)
         .nest("/oauth2", oauth2)
+        .nest("/__", firebase)
         .route("/graphql", post(graphql_handler))
         .route("/graphql", get(graphql_handler))
         .route_service("/ws", AuthGraphQLSubscription::new(schema.clone(), ctx))

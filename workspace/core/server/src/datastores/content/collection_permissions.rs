@@ -30,11 +30,6 @@ impl CollectionPermissionsDataStore {
         })
     }
 
-    async fn on_collection_changed(&self, ctx: &BoscaContext, id: &Uuid) -> Result<(), Error> {
-        ctx.content.collections.on_collection_changed(ctx, id).await?;
-        Ok(())
-    }
-
     #[tracing::instrument(skip(self, collection, principal, action))]
     pub async fn has(
         &self,
@@ -121,8 +116,8 @@ impl CollectionPermissionsDataStore {
         Ok(permissions)
     }
 
-    #[tracing::instrument(skip(self, ctx, permission))]
-    pub async fn add(&self, ctx: &BoscaContext, permission: &Permission) -> Result<(), Error> {
+    #[tracing::instrument(skip(self, permission))]
+    pub async fn add(&self, _: &BoscaContext, permission: &Permission) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection.prepare_cached("insert into collection_permissions (collection_id, group_id, action) values ($1, $2, $3) on conflict do nothing").await?;
         connection
@@ -135,7 +130,7 @@ impl CollectionPermissionsDataStore {
                 ],
             )
             .await?;
-        self.on_collection_changed(ctx, &permission.entity_id).await?;
+        self.cache.evict_collection(&permission.entity_id).await;
         Ok(())
     }
 
@@ -158,8 +153,8 @@ impl CollectionPermissionsDataStore {
         Ok(())
     }
 
-    #[tracing::instrument(skip(self, ctx, permission))]
-    pub async fn delete(&self, ctx: &BoscaContext, permission: &Permission) -> Result<(), Error> {
+    #[tracing::instrument(skip(self, permission))]
+    pub async fn delete(&self, _: &BoscaContext, permission: &Permission) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection.prepare_cached("delete from collection_permissions where collection_id = $1 and group_id = $2 and action = $3").await?;
         connection
@@ -172,7 +167,7 @@ impl CollectionPermissionsDataStore {
                 ],
             )
             .await?;
-        self.on_collection_changed(ctx, &permission.entity_id).await?;
+        self.cache.evict_collection(&permission.entity_id).await;
         Ok(())
     }
 

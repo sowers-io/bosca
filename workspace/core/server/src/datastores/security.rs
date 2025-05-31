@@ -137,23 +137,15 @@ impl SecurityDataStore {
             return Err(Error::new("missing scrypt configuration"));
         };
         info!("starting firebase user import");
-        let ctx = ctx.clone();
-        let auto_verify_accounts = self.auto_verify_accounts;
-        let import = import.clone();
-
-        let mut batch = Vec::new();
+        let mut count = 0;
         for user in &import.users {
-            batch.push(user.clone());
-            if batch.len() == 1000 {
-                import_firebase_users_batch(ctx.clone(), firebase_scrypt.clone(), batch, auto_verify_accounts);
-                batch = Vec::new();
+            import_firebase_user(ctx, &firebase_scrypt, user, self.auto_verify_accounts).await?;
+            count += 1;
+            if count % 100 == 0 {
+                info!("imported {} firebase users", count);
             }
+            info!("imported {} firebase users", user.local_id);
         }
-
-        if batch.len() > 0 {
-            import_firebase_users_batch(ctx.clone(), firebase_scrypt.clone(), batch, auto_verify_accounts);
-        }
-
         Ok(())
     }
 
@@ -677,32 +669,6 @@ impl SecurityDataStore {
     }
 }
 
-fn import_firebase_users_batch(ctx: BoscaContext, firebase_scrypt: FirebaseScrypt, batch: Vec<FirebaseImportUser>, auto_verify_accounts: bool) {
-    tokio::spawn(async move {
-        let mut count = 0;
-        let mut success = 0;
-        let mut errors = 0;
-        for user in batch {
-            if let Err(e) = import_firebase_user(
-                &ctx,
-                &firebase_scrypt,
-                &user,
-                auto_verify_accounts,
-            ).await {
-                errors += 1;
-                error!("failed to import firebase user: {:?}", e);
-            } else {
-                success += 1;
-            }
-            count += 1;
-            if count % 100 == 0 {
-                info!("processed {} users", count);
-            }
-        }
-        info!("firebase user complete :: {} :: {} :: {}", count, success, errors);
-    });
-}
-
 #[tracing::instrument(skip(ctx, firebase_scrypt, user, auto_verify_accounts))]
 async fn import_firebase_user(ctx: &BoscaContext, firebase_scrypt: &FirebaseScrypt, user: &FirebaseImportUser, auto_verify_accounts: bool) -> Result<(), Error> {
     if user.email.is_empty() {
@@ -762,7 +728,7 @@ async fn import_firebase_user(ctx: &BoscaContext, firebase_scrypt: &FirebaseScry
             } else {
                 Some(user.email_verified)
             },
-            true,
+            false,
         ).await?;
         Some(id)
     } else {
@@ -824,7 +790,7 @@ async fn import_firebase_user(ctx: &BoscaContext, firebase_scrypt: &FirebaseScry
                 } else {
                     Some(user.email_verified)
                 },
-                true,
+                false,
             ).await?;
             Some(id)
         } else {

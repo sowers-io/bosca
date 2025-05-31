@@ -16,11 +16,6 @@ pub async fn add_principal_with_credential(
     verified: Option<bool>,
     set_ready: bool,
 ) -> Result<(Principal, Uuid), Error> {
-    let cid = credential.identifier();
-    if let Ok(_) = ctx.security.get_principal_by_identifier(&cid).await {
-        return Err(Error::new("Principal already exists"));
-    }
-
     let groups = vec![];
     let principal_id = ctx
         .security
@@ -56,7 +51,6 @@ pub async fn add_principal_with_credential(
             },
         )
         .await?;
-    let collection = ctx.content.collections.get(&collection_id).await?.expect("Collection not found");
 
     let profile = ctx
         .profile
@@ -80,6 +74,7 @@ pub async fn add_principal_with_credential(
 
     let principal = ctx.security.get_principal_by_id(&principal_id).await?;
     if set_ready {
+        let collection = ctx.content.collections.get(&collection_id).await?.expect("Collection not found");
         ctx.content
             .collection_workflows
             .set_ready_and_enqueue(ctx, &principal, &collection, None)

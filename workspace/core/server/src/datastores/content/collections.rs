@@ -45,6 +45,7 @@ impl CollectionsDataStore {
             notifier,
         })
     }
+
     #[tracing::instrument(skip(self, ctx, id))]
     pub async fn on_collection_changed(&self, ctx: &BoscaContext, id: &Uuid) -> Result<(), Error> {
         self.update_storage(ctx, id).await?;
@@ -648,16 +649,20 @@ impl CollectionsDataStore {
     ) -> Result<Uuid, Error> {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
+        let mut is_root = false;
         let parent_id = if let Some(id) = &collection.parent_collection_id {
             Uuid::parse_str(id)?
         } else {
+            is_root = true;
             Uuid::parse_str("00000000-0000-0000-0000-000000000000")?
         };
         match self.add_txn(&txn, collection, true).await {
             Ok(value) => {
                 txn.commit().await?;
                 self.on_collection_changed(ctx, &value).await?;
-                self.on_collection_changed(ctx, &parent_id).await?;
+                if !is_root {
+                    self.on_collection_changed(ctx, &parent_id).await?;
+                }
                 Ok(value)
             }
             Err(err) => {
