@@ -734,6 +734,12 @@ impl SecurityDataStore {
         let mut ids = Vec::<Uuid>::new();
         let mut count = 0;
         for user in users {
+            if self.get_principal_by_identifier(&user.email).await.is_ok() {
+                continue;
+            }
+            if self.get_principal_by_identifier(&user.local_id).await.is_ok() {
+                continue;
+            }
             let result = self.import_firebase_user(&txn, &ctx, firebase_scrypt, &user).await;
             match result {
                 Ok(Some(id)) => {
