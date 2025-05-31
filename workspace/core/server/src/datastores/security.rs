@@ -569,8 +569,6 @@ impl SecurityDataStore {
             return Err(Error::new("invalid credential"));
         }
         let id: Uuid = results.first().unwrap().get("principal");
-        drop(results);
-        drop(stmt);
         self.get_principal_by_id_internal(&connection, &id).await
     }
 
@@ -738,6 +736,16 @@ impl SecurityDataStore {
                 continue;
             }
             if self.get_principal_by_identifier(&user.local_id).await.is_ok() {
+                continue;
+            }
+            let mut found = false;
+            for p in &user.provider_user_info {
+                if self.get_principal_by_identifier(&p.raw_id).await.is_ok() {
+                    found = true;
+                    break;
+                }
+            }
+            if found {
                 continue;
             }
             let result = self.import_firebase_user(&txn, &ctx, firebase_scrypt, &user).await;
