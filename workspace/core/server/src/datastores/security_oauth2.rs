@@ -14,6 +14,11 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::env;
 
+use hmac::{Hmac, Mac};
+use sha2::Sha256;
+use hex::encode;
+
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SecurityOAuth2Request {
     pub url: Url,
@@ -256,10 +261,11 @@ impl SecurityOAuth2 {
                 Ok(Account::new_google(account))
             }
             "facebook" => {
+                let proof = SecurityOAuth2::generate_appsecret_proof(token, &self.get_facebook_client_secret().expect("missing facebook app secret"));
                 let response = self
                     .http
                     .get("https://graph.facebook.com/me?fields=id,name,email,picture".to_string())
-                    .query(&[("access_token", token)])
+                    .query(&[("access_token", token), ("appsecret_proof", proof.as_str())])
                     .send()
                     .await?;
                 let status = response.status();
@@ -276,6 +282,15 @@ impl SecurityOAuth2 {
             _ => Err(Error::from("invalid oauth2 type")),
         }
     }
+
+    fn generate_appsecret_proof(access_token: &str, app_secret: &str) -> String {
+        let mut mac = Hmac::<Sha256>::new_from_slice(app_secret.as_bytes())
+            .expect("HMAC can take key of any size");
+        mac.update(access_token.as_bytes());
+        let result = mac.finalize().into_bytes();
+        encode(result)
+    }
+
 
     pub fn is_internal_redirect_url(&self, url: &str) -> bool {
         self.internal_redirect_urls
