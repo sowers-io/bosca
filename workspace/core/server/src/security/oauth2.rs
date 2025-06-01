@@ -47,24 +47,28 @@ pub async fn oauth2_redirect(
             Cookie::build(("_batov", oauth2_request.verifier.into_secret()))
                 .max_age(time::Duration::seconds(60))
                 .domain(ctx.security_oauth2.domain.clone())
+                .path("/")
                 .build(),
         )
         .add(
             Cookie::build(("_batos", oauth2_request.token.into_secret()))
                 .max_age(time::Duration::seconds(60))
                 .domain(ctx.security_oauth2.domain.clone())
+                .path("/")
                 .build(),
         )
         .add(
             Cookie::build(("_bator", to))
                 .max_age(time::Duration::seconds(60))
                 .domain(ctx.security_oauth2.domain.clone())
+                .path("/")
                 .build(),
         )
         .add(
             Cookie::build(("_batot", params.oauth2_type))
                 .max_age(time::Duration::seconds(60))
                 .domain(ctx.security_oauth2.domain.clone())
+                .path("/")
                 .build(),
         );
     Ok((
