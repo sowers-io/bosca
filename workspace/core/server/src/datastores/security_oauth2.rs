@@ -1,6 +1,6 @@
 use crate::security::account::{Account, FacebookUser, GoogleAccount};
 use async_graphql::Error;
-use log::warn;
+use log::{info, warn};
 use oauth2::basic::{
     BasicClient, BasicRevocationErrorResponse, BasicTokenIntrospectionResponse, BasicTokenResponse,
 };
@@ -262,8 +262,10 @@ impl SecurityOAuth2 {
                     .query(&[("access_token", token)])
                     .send()
                     .await?;
+                let status = response.status();
                 let account: FacebookUser = response.json().await?;
                 if account.id.is_empty() {
+                    info!("facebook user: {:?} -> {} -> {}", account, status, token);
                     return Err(Error::from("invalid facebook account"));
                 }
                 if account.email.is_empty() {

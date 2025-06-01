@@ -168,7 +168,7 @@ pub struct GoogleAccount {
     pub hd: String,
 }
 
-#[derive(Default, Serialize, Deserialize)]
+#[derive(Default, Serialize, Deserialize, Debug)]
 pub struct FacebookUser {
     #[serde(default)]
     pub id: String,
@@ -180,13 +180,13 @@ pub struct FacebookUser {
     pub picture: FacebookPicture,
 }
 
-#[derive(Default, Serialize, Deserialize)]
+#[derive(Default, Serialize, Deserialize, Debug)]
 pub struct FacebookPicture {
     #[serde(default)]
     pub data: FacebookPictureData,
 }
 
-#[derive(Default, Serialize, Deserialize)]
+#[derive(Default, Serialize, Deserialize, Debug)]
 pub struct FacebookPictureData {
     #[serde(default)]
     pub height: i64,
