@@ -8,7 +8,6 @@ use axum_extra::extract::CookieJar;
 use http::{HeaderMap, StatusCode};
 use oauth2::TokenResponse;
 use serde::{Deserialize, Serialize};
-use tracing_subscriber::fmt::format;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct RedirectParams {
@@ -118,7 +117,7 @@ pub async fn oauth2_callback(
         .map_err(|e| {
             (
                 StatusCode::UNAUTHORIZED,
-                format!("Failed to get Oauth2 Account: {:?}", e),
+                format!("Failed to get Oauth2 Account ({oauth2_type}): {:?}", e),
             )
         })?;
     let jar = if let Some(id) = account.id() {

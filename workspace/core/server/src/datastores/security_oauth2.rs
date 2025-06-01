@@ -244,6 +244,15 @@ impl SecurityOAuth2 {
                     .send()
                     .await?;
                 let account: GoogleAccount = response.json().await?;
+                if account.sub.is_empty() {
+                    return Err(Error::from("invalid google account"));
+                }
+                if account.email.is_empty() {
+                    return Err(Error::from("missing google email"));
+                }
+                if !account.email_verified {
+                    return Err(Error::from("google account is not verified"));
+                }
                 Ok(Account::new_google(account))
             }
             "facebook" => {
@@ -254,6 +263,12 @@ impl SecurityOAuth2 {
                     .send()
                     .await?;
                 let account: FacebookUser = response.json().await?;
+                if account.id.is_empty() {
+                    return Err(Error::from("invalid facebook account"));
+                }
+                if account.email.is_empty() {
+                    return Err(Error::from("missing facebook email"));
+                }
                 Ok(Account::new_facebook(account))
             }
             _ => Err(Error::from("invalid oauth2 type")),

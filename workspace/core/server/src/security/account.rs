@@ -148,35 +148,52 @@ impl Account {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Default, Serialize, Deserialize)]
 pub struct GoogleAccount {
+    #[serde(default)]
     pub sub: String,
+    #[serde(default)]
     pub name: String,
+    #[serde(default)]
     pub given_name: String,
+    #[serde(default)]
     pub family_name: String,
+    #[serde(default)]
     pub picture: String,
+    #[serde(default)]
     pub email: String,
+    #[serde(default)]
     pub email_verified: bool,
+    #[serde(default)]
     pub hd: String,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Default, Serialize, Deserialize)]
 pub struct FacebookUser {
+    #[serde(default)]
     pub id: String,
+    #[serde(default)]
     pub name: String,
+    #[serde(default)]
     pub email: String,
+    #[serde(default)]
     pub picture: FacebookPicture,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Default, Serialize, Deserialize)]
 pub struct FacebookPicture {
+    #[serde(default)]
     pub data: FacebookPictureData,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Default, Serialize, Deserialize)]
 pub struct FacebookPictureData {
+    #[serde(default)]
     pub height: i64,
+    #[serde(default)]
     pub is_silhouette: bool,
+    #[serde(default)]
     pub url: String,
+    #[serde(default)]
     pub width: i64,
 }
