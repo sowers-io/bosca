@@ -42,6 +42,7 @@ pub async fn oauth2_redirect(
         .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.message))?;
     let mut hdrs = HeaderMap::new();
     hdrs.insert("Location", oauth2_request.url.to_string().parse().unwrap());
+    hdrs.insert("Cache-Control", "private".parse().unwrap());
     let jar = jar
         .add(
             Cookie::build(("_batov", oauth2_request.verifier.into_secret()))
@@ -236,5 +237,6 @@ pub async fn oauth2_callback(
     };
     let mut hdrs = HeaderMap::new();
     hdrs.insert("Location", to.to_string().parse().unwrap());
+    hdrs.insert("Cache-Control", "private".parse().unwrap());
     Ok((StatusCode::FOUND, hdrs, jar, Body::from("Redirecting...")))
 }

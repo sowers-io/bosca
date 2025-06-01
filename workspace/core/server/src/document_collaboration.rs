@@ -38,7 +38,9 @@ pub async fn get_document_collaboration(
     let collaboration = ctx.content.documents.get_document_collaboration(&metadata_id, params.version).await
         .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Error saving document".to_owned()))?;
     if let Some(collaboration) = collaboration {
-        Ok((HeaderMap::new(), Body::from(collaboration.content)))
+        let mut hdrs = HeaderMap::new();
+        hdrs.insert("Cache-Control", "private".parse().unwrap());
+        Ok((hdrs, Body::from(collaboration.content)))
     } else {
         Err((StatusCode::NOT_FOUND, "Not Found".to_owned()))
     }
