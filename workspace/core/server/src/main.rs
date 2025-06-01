@@ -104,7 +104,7 @@ async fn main() {
         .with_state(ctx.clone());
 
     let firebase = Router::new()
-        .route("/auth/handler", post(oauth2_callback))
+        .route("/auth/handler", get(oauth2_callback))
         .with_state(ctx.clone());
 
     let content = Router::new()
