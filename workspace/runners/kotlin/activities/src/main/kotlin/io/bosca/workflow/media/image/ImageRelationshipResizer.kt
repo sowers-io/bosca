@@ -127,7 +127,7 @@ class ImageRelationshipResizer(client: Client) : AbstractImageResizer(client) {
         val url = URLEncoder.encode(content.urls.download.url, Charsets.UTF_8)
         val formats = mutableMapOf<String, Any>()
         ImageResizer.formats.forEach { format ->
-            println("image resizer: $format")
+            println("image resizer: format: $format")
             val key = "${crop.width}x${crop.height}-${crop.top}-${crop.left}-$format"
             if ((relationship.attributes as Map<*, *>).containsKey(key)) return@forEach
             val sizes = mutableMapOf<String, String>()
@@ -154,7 +154,7 @@ class ImageRelationshipResizer(client: Client) : AbstractImageResizer(client) {
             formats[format] = sizes
             formats[key] = true
         }
-        println("image resizer: $formats")
+        println("image resizer: formats: $formats")
         if (formats.isEmpty()) return
         client.metadata.mergeRelationshipAttributes(
             metadata.id,
@@ -178,7 +178,7 @@ class ImageRelationshipResizer(client: Client) : AbstractImageResizer(client) {
         val url = URLEncoder.encode(content.urls.download.url, Charsets.UTF_8)
         val formats = mutableMapOf<String, Any>()
         ImageResizer.formats.forEach { format ->
-            println("image resizer: $format")
+            println("image resizer: format: $format")
             val key = "${crop.width}x${crop.height}-${crop.top}-${crop.left}-$format"
             if ((relationship.attributes as Map<*, *>).containsKey(key)) return@forEach
             val sizes = mutableMapOf<String, String>()
@@ -187,7 +187,7 @@ class ImageRelationshipResizer(client: Client) : AbstractImageResizer(client) {
                     name = "${size.name}-${crop.width}x${crop.height}-${crop.top}-${crop.left}-${size.ratio}-$format",
                     size = null
                 )
-                println("image resizer: $newSize")
+                println("image resizer: new size: $newSize")
                 process(
                     context,
                     job,
@@ -201,7 +201,7 @@ class ImageRelationshipResizer(client: Client) : AbstractImageResizer(client) {
             formats[format] = sizes
             formats[key] = true
         }
-        println("image resizer: $formats")
+        println("image resizer: formats: $formats")
         if (formats.isEmpty()) return
         client.collections.mergeRelationshipAttributes(
             collection.id,

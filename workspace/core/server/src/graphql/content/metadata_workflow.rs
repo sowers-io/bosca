@@ -43,11 +43,9 @@ impl MetadataWorkflowObject {
         let mut plans = Vec::<WorkflowExecutionPlanObject>::new();
         for (plan_id, queue) in plans_ids {
             let id = WorkflowExecutionId { id: plan_id, queue };
-            let plan = ctx.workflow.get_execution_plan(&id).await?;
-            if plan.is_none() {
-                continue;
+            if let Ok(Some(plan)) = ctx.workflow.get_execution_plan(&id).await {
+                plans.push(plan.into());
             }
-            plans.push(plan.unwrap().into());
         }
         Ok(plans)
     }

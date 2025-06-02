@@ -40,12 +40,16 @@ class IfSquare(client: Client) : Activity(client) {
     @OptIn(ExperimentalAtomicApi::class)
     override suspend fun execute(context: ActivityContext, job: WorkflowJob) {
         val ctx = getContext<IfSquareContext>(job)
-        if (ctx.executed) return
+        if (ctx.executed) {
+            println("*** if square already executed")
+            return
+        }
         if (!(job.metadata?.metadata?.content?.metadataContent?.type ?: "").startsWith("image/")) return
         val cfg = getConfiguration<IfSquareConfiguration>(job)
         val file = getContentFile(context, job)
         while (running.load() > 5) {
-            delay(10)
+            println("waiting for running image resize jobs to finish...")
+            delay(500)
         }
         running.incrementAndFetch()
         try {
@@ -54,7 +58,7 @@ class IfSquare(client: Client) : Activity(client) {
                     val metadata = ImageIO.read(file)
                     if (metadata == null) return@withContext false
                     metadata.width == metadata.height
-                } catch (_: IllegalArgumentException) {
+                } catch (_: Throwable) {
                     false
                 }
             }
