@@ -32,7 +32,10 @@ class ImageRelationshipResizer(client: Client) : AbstractImageResizer(client) {
     private suspend fun onMetadata(context: ActivityContext, job: WorkflowJob) {
         val metadata = job.metadata?.metadata ?: return
         val relationships = client.metadata.getRelationships(metadata.id)
-        if (relationships.isEmpty()) return
+        if (relationships.isEmpty()) {
+            println("image resizer: no relationships found")
+            return
+        }
         val configuration = getConfiguration<ImageResizerConfiguration>(job)
         for (relationship in relationships) {
             if (relationship.metadata.metadataRelationshipMetadata.content.type.startsWith("image/")) {
@@ -129,7 +132,7 @@ class ImageRelationshipResizer(client: Client) : AbstractImageResizer(client) {
         ImageResizer.formats.forEach { format ->
             println("image resizer: format: $format")
             val key = "${crop.width}x${crop.height}-${crop.top}-${crop.left}-$format"
-            if ((relationship.attributes as Map<*, *>).containsKey(key)) return@forEach
+            if (relationship.attributes != null && (relationship.attributes as Map<*, *>).containsKey(key)) return@forEach
             val sizes = mutableMapOf<String, String>()
             for (size in configuration.sizes) {
                 val newSize = size.copy(
@@ -180,7 +183,7 @@ class ImageRelationshipResizer(client: Client) : AbstractImageResizer(client) {
         ImageResizer.formats.forEach { format ->
             println("image resizer: format: $format")
             val key = "${crop.width}x${crop.height}-${crop.top}-${crop.left}-$format"
-            if ((relationship.attributes as Map<*, *>).containsKey(key)) return@forEach
+            if (relationship.attributes != null && (relationship.attributes as Map<*, *>).containsKey(key)) return@forEach
             val sizes = mutableMapOf<String, String>()
             for (size in configuration.sizes) {
                 val newSize = size.copy(
