@@ -137,6 +137,7 @@ impl BoscaContext {
                 &mut cache,
                 Arc::clone(&notifier),
                 cache_client,
+                redis_jobs_queue_client.clone()
             )
             .await?,
             notifier,

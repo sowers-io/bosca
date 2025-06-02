@@ -14,11 +14,16 @@ configuration:
   filterable:
     - type
     - _type
+    - contentType
     - attributes.type
     - _parents.attributes.type
+    - categories.id
+  sortable:
+    - published
+    - modified
   searchable:
     - name
     - attributes.collection
-    - categories.category.name
+    - categories.name
     - _content
     - _parents.name

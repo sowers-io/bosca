@@ -24,6 +24,7 @@ use bosca_database::TracingPool;
 use bosca_dc_client::client::Client;
 use std::sync::Arc;
 use uuid::Uuid;
+use crate::redis::RedisClient;
 
 #[derive(Clone)]
 pub struct ContentDataStore {
@@ -48,7 +49,7 @@ pub struct ContentDataStore {
 
 impl ContentDataStore {
 
-    pub async fn new(pool: TracingPool, cache: &mut BoscaCacheManager, notifier: Arc<Notifier>, client: Client) -> Result<Self, Error> {
+    pub async fn new(pool: TracingPool, cache: &mut BoscaCacheManager, notifier: Arc<Notifier>, client: Client, redis: RedisClient) -> Result<Self, Error> {
         let collections_cache = CollectionCache::new(cache).await?;
         let metadata_cache = MetadataCache::new(cache).await?;
         let guide_cache = GuideCache::new(cache).await?;
@@ -68,7 +69,7 @@ impl ContentDataStore {
             collection_templates: CollectionTemplatesDataStore::new(
                 pool.clone(),
             ),
-            metadata: MetadataDataStore::new(pool.clone(), metadata_cache.clone(), guide_cache.clone(), Arc::clone(&notifier), client).await?,
+            metadata: MetadataDataStore::new(pool.clone(), metadata_cache.clone(), guide_cache.clone(), Arc::clone(&notifier), client, redis).await?,
             metadata_supplementary: MetadataSupplementaryDataStore::new(pool.clone(), metadata_cache.clone(), Arc::clone(&notifier)),
             metadata_permissions: MetadataPermissionsDataStore::new(
                 pool.clone(),

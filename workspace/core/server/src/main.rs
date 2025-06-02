@@ -77,7 +77,7 @@ async fn main() {
     initialize_content(&ctx).await.unwrap();
 
     ctx.workflow.start_monitoring_expirations();
-    ctx.content.metadata.watch(&ctx);
+    ctx.content.metadata.start_monitoring_storage_updates(&ctx);
 
     let persisted_queries = ApolloPersistedQueries::new(ctx.queries.cache.clone());
     let schema = new_schema(ctx.clone(), persisted_queries);

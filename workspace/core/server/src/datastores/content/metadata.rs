@@ -13,18 +13,22 @@ use crate::models::content::metadata_relationship::{
     MetadataRelationship, MetadataRelationshipInput,
 };
 use crate::models::workflow::enqueue_request::EnqueueRequest;
+use crate::redis::RedisClient;
+use crate::util::RUNNING_BACKGROUND;
 use crate::workflow::core_workflow_ids::{METADATA_DELETE_FINALIZE, METADATA_UPDATE_STORAGE};
 use async_graphql::*;
 use bosca_database::TracingPool;
-use bosca_dc_client::client::api::NotificationType;
 use bosca_dc_client::client::Client;
 use chrono::{TimeDelta, Utc};
 use deadpool_postgres::Transaction;
-use log::error;
+use log::{error, info};
+use redis::{AsyncCommands, RedisResult};
 use serde_json::{Map, Value};
 use std::ops::Add;
+use std::sync::atomic::Ordering::Relaxed;
 use std::sync::Arc;
 use std::time::Duration;
+use tokio::time::sleep;
 use uuid::Uuid;
 
 #[derive(Clone)]
@@ -32,9 +36,8 @@ pub struct MetadataDataStore {
     cache: MetadataCache,
     guide_cache: GuideCache,
     pool: TracingPool,
-    client: Client,
     notifier: Arc<Notifier>,
-    update_cache: String,
+    redis: RedisClient,
 }
 
 impl MetadataDataStore {
@@ -43,57 +46,75 @@ impl MetadataDataStore {
         cache: MetadataCache,
         guide_cache: GuideCache,
         notifier: Arc<Notifier>,
-        client: Client,
+        _: Client,
+        redis: RedisClient,
     ) -> Result<Self, Error> {
-        let prefix = option_env!("NAMESPACE").unwrap_or("").to_string();
-        let bucket = format!("{}_metadata_update_storage_queue", prefix);
-        client.create(&bucket, 20000, 5, 0).await?;
         Ok(Self {
             cache,
             guide_cache,
             pool,
             notifier,
-            client,
-            update_cache: bucket,
+            redis,
         })
     }
 
-    pub fn watch(&self, ctx: &BoscaContext) {
-        let watcher_ctx = ctx.clone();
-        let client = self.client.clone();
-        let update_cache = self.update_cache.clone();
-        tokio::spawn(async move {
+    pub fn start_monitoring_storage_updates(&self, ctx: &BoscaContext) {
+        let bosca_type = option_env!("BOSCA_TYPE").unwrap_or("").to_string();
+        if bosca_type == "frontend" {
+            return;
+        }
+
+        info!("starting background monitoring of workflow expiration");
+        let ds = self.clone();
+        let ctx = ctx.clone();
+        tokio::task::spawn(async move {
             loop {
-                if let Err(e) = Self::enqueue_items(&client, &watcher_ctx, &update_cache).await {
-                    error!("Failed to enqueue metadata updates: {:?}", e);
+                RUNNING_BACKGROUND.fetch_add(1, Relaxed);
+                let now = Utc::now().timestamp();
+                if let Ok(redis) = ds.redis.get().await {
+                    if let Ok(mut conn) = redis.get_connection().await {
+                        let ids: RedisResult<Vec<String>> = conn.zrangebyscore("metadata::storage::updates", 0, now).await;
+                        match ids {
+                            Ok(ids) => {
+                                for id in ids {
+                                    if let Ok(id) = Uuid::parse_str(&id) {
+                                        if let Err(e) = ds.update_metadata_storage_immediately(&ctx, id).await {
+                                            error!("failed to update metadata storage immediately: {:?}", e);
+                                        }
+                                    }
+                                }
+                            }
+                            Err(e) => {
+                                error!("failed to get expired metadata from redis: {:?}", e);
+                            }
+                        }
+                        if let Err(e) = conn.zrembyscore::<&str, i64, i64, i32>("metadata::storage::updates", 0, now).await {
+                            error!("failed to remove expired metadata from redis: {:?}", e);
+                        }
+                    } else {
+                        error!("failed to get redis connection");
+                    }
+                } else {
+                    error!("failed to get redis client");
                 }
-                tokio::time::sleep(Duration::from_secs(2)).await;
+                RUNNING_BACKGROUND.fetch_add(-1, Relaxed);
+                sleep(Duration::from_secs(3)).await;
             }
         });
     }
 
-    async fn enqueue_items(
-        client: &Client,
+    #[tracing::instrument(skip(self, ctx, id))]
+    pub async fn update_metadata_storage_immediately(
+        &self,
         ctx: &BoscaContext,
-        update_cache: &str,
+        id: Uuid,
     ) -> Result<(), Error> {
-        let mut subscription = client.subscribe();
-        let removed = NotificationType::ValueDeleted;
-        while let Ok(notification) = subscription.recv().await {
-            if notification.cache == update_cache {
-                let t = NotificationType::try_from(notification.notification_type)?;
-                if t == removed {
-                    let id = notification.key.unwrap();
-                    let id = Uuid::parse_str(&id)?;
-                    let mut request = EnqueueRequest {
-                        workflow_id: Some(METADATA_UPDATE_STORAGE.to_string()),
-                        metadata_id: Some(id),
-                        ..Default::default()
-                    };
-                    ctx.workflow.enqueue_workflow(ctx, &mut request).await?;
-                }
-            }
-        }
+        let mut request = EnqueueRequest {
+            workflow_id: Some(METADATA_UPDATE_STORAGE.to_string()),
+            metadata_id: Some(id),
+            ..Default::default()
+        };
+        ctx.workflow.enqueue_workflow(ctx, &mut request).await?;
         Ok(())
     }
 
@@ -1216,16 +1237,10 @@ impl MetadataDataStore {
         let id_str = id.to_string();
         let next = Utc::now()
             .add(TimeDelta::new(5, 0).unwrap())
-            .timestamp_millis();
-        let next = next.to_be_bytes();
-        // when this gets evicted, it'll kick of a workflow for updating things
-        if let Err(e) = self
-            .client
-            .put(&self.update_cache, &id_str, next.to_vec())
-            .await
-        {
-            error!("Failed to put update for metadata {}: {:?}", id, e);
-        }
+            .timestamp();
+        let conn = self.redis.get().await?;
+        let mut mgr = conn.get_connection().await?;
+        mgr.zadd::<&str, i64, &str, i32>("metadata::storage::updates", id_str.as_str(), next).await?;
         Ok(())
     }
 }
