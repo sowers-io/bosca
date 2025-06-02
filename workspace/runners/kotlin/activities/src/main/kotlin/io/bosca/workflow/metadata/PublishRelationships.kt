@@ -38,15 +38,14 @@ class PublishRelationships(client: Client) : Activity(client) {
                 val metadata = relationship.metadata.metadataRelationshipMetadata
                 if (it.ready == null) {
                     client.metadata.setReady(it.id)
-                    delay(5_000)
+                    var tries = 10
+                    while (tries-- > 0) {
+                        val updated = client.metadata.get(it.id)
+                        if (updated == null) throw Exception("metadata not found while trying to update workflow state")
+                        if (updated.workflow.metadataWorkflow.state == state) break
+                        delay(5000)
+                    }
                 }
-                client.workflows.beginMetadataTransition(
-                    metadata.id,
-                    metadata.version,
-                    state,
-                    "Publishing Relationship from Workflow",
-                    restart = true
-                )
                 if (configuration.public == true && !it.public) {
                     client.metadata.setPublic(it.id, true)
                 }
@@ -56,6 +55,13 @@ class PublishRelationships(client: Client) : Activity(client) {
                 if (configuration.publicSupplementary == true && !metadata.publicSupplementary) {
                     client.metadata.setPublicSupplementary(it.id, true)
                 }
+                client.workflows.beginMetadataTransition(
+                    metadata.id,
+                    metadata.version,
+                    state,
+                    "Publishing Relationship from Workflow",
+                    restart = true
+                )
             }
         }
         job.collection?.collection?.let {
@@ -63,15 +69,14 @@ class PublishRelationships(client: Client) : Activity(client) {
                 val metadata = relationship.metadata.metadataRelationshipMetadata
                 if (it.ready == null) {
                     client.metadata.setReady(it.id)
-                    delay(5_000)
+                    var tries = 10
+                    while (tries-- > 0) {
+                        val updated = client.metadata.get(it.id)
+                        if (updated == null) throw Exception("metadata not found while trying to update workflow state")
+                        if (updated.workflow.metadataWorkflow.state == state) break
+                        delay(5000)
+                    }
                 }
-                client.workflows.beginMetadataTransition(
-                    metadata.id,
-                    metadata.version,
-                    state,
-                    "Publishing Relationship from Workflow",
-                    restart = true
-                )
                 if (configuration.public == true && !it.public) {
                     client.metadata.setPublic(it.id, true)
                 }
@@ -81,6 +86,13 @@ class PublishRelationships(client: Client) : Activity(client) {
                 if (configuration.publicSupplementary == true && !metadata.publicSupplementary) {
                     client.metadata.setPublicSupplementary(it.id, true)
                 }
+                client.workflows.beginMetadataTransition(
+                    metadata.id,
+                    metadata.version,
+                    state,
+                    "Publishing Relationship from Workflow",
+                    restart = true
+                )
             }
         }
     }

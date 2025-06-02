@@ -41,15 +41,14 @@ class PublishGuide(client: Client) : Activity(client) {
                 if (it.workflow.metadataWorkflow.state == state) return@let
                 if (it.ready == null) {
                     client.metadata.setReady(it.id)
-                    delay(5_000)
+                    var tries = 10
+                    while (tries-- > 0) {
+                        val updated = client.metadata.get(it.id)
+                        if (updated == null) throw Exception("metadata not found while trying to update workflow state")
+                        if (updated.workflow.metadataWorkflow.state == state) break
+                        delay(5000)
+                    }
                 }
-                client.workflows.beginMetadataTransition(
-                    it.id,
-                    it.version,
-                    state,
-                    "Publishing Guide from Workflow",
-                    restart = true
-                )
                 if (configuration.public == true && !it.public) {
                     client.metadata.setPublic(it.id, true)
                 }
@@ -59,21 +58,27 @@ class PublishGuide(client: Client) : Activity(client) {
                 if (configuration.publicSupplementary == true && !it.publicSupplementary) {
                     client.metadata.setPublicSupplementary(it.id, true)
                 }
+                client.workflows.beginMetadataTransition(
+                    it.id,
+                    it.version,
+                    state,
+                    "Publishing Guide from Workflow",
+                    restart = true
+                )
             }
             for (module in step.guideStep.modules) {
                 module.guideStepModule.metadata?.metadata?.let {
                     if (it.workflow.metadataWorkflow.state == state) return@let
                     if (it.ready == null) {
                         client.metadata.setReady(it.id)
-                        delay(5_000)
+                        var tries = 10
+                        while (tries-- > 0) {
+                            val updated = client.metadata.get(it.id)
+                            if (updated == null) throw Exception("metadata not found while trying to update workflow state")
+                            if (updated.workflow.metadataWorkflow.state == state) break
+                            delay(5000)
+                        }
                     }
-                    client.workflows.beginMetadataTransition(
-                        it.id,
-                        it.version,
-                        state,
-                        "Publishing Guide Module from Workflow",
-                        restart = true
-                    )
                     if (configuration.public == true && !it.public) {
                         client.metadata.setPublic(it.id, true)
                     }
@@ -83,6 +88,13 @@ class PublishGuide(client: Client) : Activity(client) {
                     if (configuration.publicSupplementary == true && !it.publicSupplementary) {
                         client.metadata.setPublicSupplementary(it.id, true)
                     }
+                    client.workflows.beginMetadataTransition(
+                        it.id,
+                        it.version,
+                        state,
+                        "Publishing Guide Module from Workflow",
+                        restart = true
+                    )
                 }
             }
         }

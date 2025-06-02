@@ -9,6 +9,7 @@ import io.bosca.util.toJsonElement
 import io.bosca.util.toOptional
 import io.bosca.workflow.Activity
 import io.bosca.workflow.ActivityContext
+import io.bosca.workflow.FullFailureException
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.contentOrNull
@@ -119,7 +120,7 @@ class EmailActivity(client: Client) : Activity(client) {
         if (sendGridConfiguration?.token != null) {
             send(sendGridConfiguration, attributes.subject, name, email, html, text)
         } else {
-            TODO()
+            throw FullFailureException("SendGrid configuration missing")
         }
     }
 
