@@ -3,18 +3,9 @@ package io.bosca.workflow.metadata
 import io.bosca.api.Client
 import io.bosca.graphql.fragment.WorkflowJob
 import io.bosca.graphql.type.ActivityInput
+import io.bosca.graphql.type.WorkflowStateType
 import io.bosca.workflow.Activity
 import io.bosca.workflow.ActivityContext
-import kotlinx.coroutines.delay
-import kotlinx.serialization.Serializable
-
-@Serializable
-data class PublishGuideConfiguration(
-    val state: String? = null,
-    val public: Boolean? = null,
-    val publicContent: Boolean? = null,
-    val publicSupplementary: Boolean? = null,
-)
 
 class PublishGuide(client: Client) : Activity(client) {
 
@@ -33,68 +24,33 @@ class PublishGuide(client: Client) : Activity(client) {
     override suspend fun execute(context: ActivityContext, job: WorkflowJob) {
         val metadata = job.metadata?.metadata ?: return
         if (metadata.content.metadataContent.type != "bosca/v-guide") return
-        val configuration = getConfiguration<PublishGuideConfiguration>(job)
-        val state = configuration.state ?: "published"
+        val published = client.workflows.getStates().first { it.type == WorkflowStateType.PUBLISHED }
         val guide = client.metadata.getGuide(metadata.id, metadata.version) ?: return
         for (step in guide.steps) {
             step.guideStep.metadata?.metadata?.let {
-                if (it.workflow.metadataWorkflow.state == state) return@let
-                if (it.ready == null) {
-                    client.metadata.setReady(it.id)
-                    var tries = 10
-                    while (tries-- > 0) {
-                        val updated = client.metadata.get(it.id)
-                        if (updated == null) throw Exception("metadata not found while trying to update workflow state")
-                        if (updated.workflow.metadataWorkflow.state == state) break
-                        delay(5000)
-                    }
-                }
-                if (configuration.public == true && !it.public) {
-                    client.metadata.setPublic(it.id, true)
-                }
-                if (configuration.publicContent == true && !it.publicContent) {
-                    client.metadata.setPublicContent(it.id, true)
-                }
-                if (configuration.publicSupplementary == true && !it.publicSupplementary) {
-                    client.metadata.setPublicSupplementary(it.id, true)
-                }
-                client.workflows.beginMetadataTransition(
-                    it.id,
-                    it.version,
-                    state,
-                    "Publishing Guide from Workflow",
-                    restart = true
-                )
-            }
-            for (module in step.guideStep.modules) {
-                module.guideStepModule.metadata?.metadata?.let {
-                    if (it.workflow.metadataWorkflow.state == state) return@let
-                    if (it.ready == null) {
-                        client.metadata.setReady(it.id)
-                        var tries = 10
-                        while (tries-- > 0) {
-                            val updated = client.metadata.get(it.id)
-                            if (updated == null) throw Exception("metadata not found while trying to update workflow state")
-                            if (updated.workflow.metadataWorkflow.state == state) break
-                            delay(5000)
-                        }
-                    }
-                    if (configuration.public == true && !it.public) {
-                        client.metadata.setPublic(it.id, true)
-                    }
-                    if (configuration.publicContent == true && !it.publicContent) {
-                        client.metadata.setPublicContent(it.id, true)
-                    }
-                    if (configuration.publicSupplementary == true && !it.publicSupplementary) {
-                        client.metadata.setPublicSupplementary(it.id, true)
-                    }
+                if (it.workflow.metadataWorkflow.pending == null &&
+                    it.workflow.metadataWorkflow.state != published.id
+                ) {
                     client.workflows.beginMetadataTransition(
                         it.id,
                         it.version,
-                        state,
-                        "Publishing Guide Module from Workflow",
-                        restart = true
+                        published.id,
+                        "Publishing Guide Step for ${metadata.id}",
                     )
+                }
+            }
+            for (module in step.guideStep.modules) {
+                module.guideStepModule.metadata?.metadata?.let {
+                    if (it.workflow.metadataWorkflow.pending == null &&
+                        it.workflow.metadataWorkflow.state != published.id
+                    ) {
+                        client.workflows.beginMetadataTransition(
+                            it.id,
+                            it.version,
+                            published.id,
+                            "Publishing Guide Module for ${metadata.id}",
+                        )
+                    }
                 }
             }
         }

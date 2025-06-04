@@ -367,9 +367,9 @@ impl MetadataMutationObject {
         let current = ctx
             .check_metadata_action(&id, PermissionAction::Edit)
             .await?;
-        if current.workflow_state_id != "draft" && current.ready.is_some() {
+        if current.locked {
             return Err(Error::new(
-                "Cannot edit a non-draft metadata that has been marked ready",
+                "Cannot edit a locked metadata that has been marked ready",
             ));
         }
         ctx.content.metadata.edit(ctx, &id, &metadata).await?;
@@ -725,6 +725,21 @@ impl MetadataMutationObject {
             .delete_relationship(ctx, &id1, &id2, &relationship)
             .await?;
         Ok(true)
+    }
+
+    async fn set_locked(
+        &self,
+        ctx: &Context<'_>,
+        id: String,
+        version: i32,
+        locked: bool,
+    ) -> Result<MetadataObject, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let id = Uuid::parse_str(&id)?;
+        ctx.check_metadata_version_action(&id, version, PermissionAction::Edit).await?;
+        ctx.content.metadata.set_locked(ctx, &id, version, locked).await?;
+        let metadata = ctx.check_metadata_version_action(&id, version, PermissionAction::Edit).await?;
+        Ok(metadata.into())
     }
 
     async fn set_workflow_state(

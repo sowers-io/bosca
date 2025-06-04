@@ -414,6 +414,14 @@ class ContentMetadata(network: NetworkClient) : Api(network) {
         response.validate()
     }
 
+    suspend fun setLocked(metadataId: String, version: Int, locked: Boolean) {
+        val response =
+            network.graphql.mutation(SetMetadataLockedMutation(metadataId, version, locked))
+                .execute()
+        response.validate()
+    }
+
+
     suspend fun deletePermanently(id: String) {
         val response = network.graphql.mutation(PermanentlyDeleteMetadataMutation(id)).execute()
         response.validate()

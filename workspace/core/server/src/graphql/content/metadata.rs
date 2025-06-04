@@ -56,6 +56,10 @@ impl MetadataObject {
         self.metadata.version
     }
 
+    async fn locked(&self) -> bool {
+        self.metadata.locked
+    }
+
     async fn trait_ids(&self, ctx: &Context<'_>) -> Result<Vec<String>, Error> {
         let ctx = BoscaContext::get(ctx)?;
         ctx.content.metadata.get_trait_ids(&self.metadata.id).await

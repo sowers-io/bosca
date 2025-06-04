@@ -131,7 +131,9 @@ type Collection {
     itemAttributes: JSON
     items(limit: Int!, offset: Int!, state: String): [CollectionItem!]!
     itemsCount(state: String): Int!
+    itemsLocked: Boolean!
     labels: [String!]!
+    locked: Boolean!
     metadata(limit: Int!, offset: Int!): [Metadata!]!
     metadataCount: Int!
     metadataRelationships: [CollectionMetadataRelationship!]!
@@ -180,10 +182,12 @@ type CollectionMutation {
     permanentlyDelete(collectionId: String!, recursive: Boolean): Boolean!
     removeChildCollection(collectionId: String!, id: String!): Collection!
     removeChildMetadata(id: String!, metadataId: String!): Collection!
+    setCategories(categoryIds: [String!]!, id: String!): Boolean!
     setChildItemAttributes(attributes: JSON, childCollectionId: String, childMetadataId: String, id: String!): Collection!
     setCollectionAttributes(attributes: JSON!, id: String!): Boolean!
     setCollectionOrdering(id: String!, ordering: JSON!): Boolean!
     setCollectionSystemAttributes(attributes: JSON!, id: String!): Boolean!
+    setLocked(id: String!, locked: Boolean!): Collection
     setPublic(id: String!, public: Boolean!): Collection!
     setPublicList(id: String!, public: Boolean!): Collection!
     setPublicSupplementary(id: String!, public: Boolean!): Collection!
@@ -193,6 +197,7 @@ type CollectionMutation {
     setSupplementaryUploaded(contentType: String!, len: Int!, supplementaryId: String!): Boolean!
     setWorkflowState(state: CollectionWorkflowState!): Boolean!
     setWorkflowStateComplete(state: CollectionWorkflowCompleteState!): Boolean!
+    template(metadataId: String!, metadataVersion: Int!): CollectionTemplateMutation!
 }
 
 type CollectionSupplementary {
@@ -243,6 +248,16 @@ type CollectionTemplateFilter {
 
 type CollectionTemplateFilters {
     filters: [CollectionTemplateFilter!]!
+}
+
+type CollectionTemplateMutation {
+    addAttribute(attribute: TemplateAttributeInput!, sort: Int!): Metadata
+    deleteAttribute(key: String!): Metadata
+    setAttributes(attributes: [TemplateAttributeInput!]!): Metadata
+    setConfiguration(configuration: JSON!): Metadata
+    setDefaultAttributes(attributes: JSON!): Metadata
+    setFilters(filters: JSON!): Metadata
+    setOrdering(ordering: JSON!): Metadata
 }
 
 type CollectionTemplates {
@@ -316,6 +331,12 @@ type Document {
     title: String!
 }
 
+type DocumentCollaboration {
+    content: [Int!]!
+    created: DateTime!
+    modified: DateTime!
+}
+
 type DocumentTemplate {
     attributes: [TemplateAttribute!]!
     configuration: JSON
@@ -369,6 +390,7 @@ type Guide {
     recurrences: [DateTime!]
     rrule: String
     step(date: DateTime, stepId: Int): GuideStep
+    stepByOffset(offset: Int!): GuideStep
     stepCount: Int!
     steps(limit: Int, offset: Int): [GuideStep!]!
     template: Metadata
@@ -434,6 +456,7 @@ type Metadata {
     created: DateTime!
     deleted: Boolean!
     document: Document
+    documentCollaboration: DocumentCollaboration
     documentTemplate: DocumentTemplate
     etag(addHeader: Boolean!): String
     guide: Guide
@@ -442,6 +465,7 @@ type Metadata {
     itemAttributes: JSON
     labels: [String!]!
     languageTag: String!
+    locked: Boolean!
     modified: DateTime!
     name: String!
     parentCollections(limit: Int!, offset: Int!): [Collection!]!
@@ -504,7 +528,9 @@ type MetadataMutation {
     mergeMetadataAttributes(attributes: JSON!, id: String!): Boolean!
     mergeMetadataRelationshipAttributes(attributes: JSON!, metadata1Id: String!, metadata2Id: String!, relationship: String!): Boolean!
     permanentlyDelete(metadataId: String!): Boolean!
+    setCategories(categoryIds: [String!]!, metadataId: String!): Boolean!
     setGuideStartDate(date: DateTime!, metadataId: String!, metadataVersion: Int!): Metadata
+    setLocked(id: String!, locked: Boolean!, version: Int!): Metadata!
     setMetadataAttributes(attributes: JSON!, id: String!): Boolean!
     setMetadataBible(bible: BibleInput!, id: String!, version: Int!): Boolean!
     setMetadataContents(contentType: String, file: Upload!, id: String!): Boolean!
@@ -522,6 +548,7 @@ type MetadataMutation {
     setSupplementaryUploaded(contentType: String!, len: Int!, supplementaryId: String!): Boolean!
     setWorkflowState(state: MetadataWorkflowState!): Boolean!
     setWorkflowStateComplete(state: MetadataWorkflowCompleteState!): Boolean!
+    template(metadataId: String!, metadataVersion: Int!): MetadataTemplateMutation!
 }
 
 type MetadataProfile {
@@ -572,6 +599,18 @@ type MetadataSupplementaryContentUrls {
 type MetadataSupplementarySource {
     id: String!
     identifier: String
+}
+
+type MetadataTemplateMutation {
+    addAttribute(attribute: TemplateAttributeInput!, sort: Int!): Metadata
+    addContainer(container: DocumentTemplateContainerInput!, sort: Int!): Metadata
+    deleteAttribute(key: String!): Metadata
+    deleteContainer(containerId: String!): Metadata
+    setAttributes(attributes: [TemplateAttributeInput!]!): Metadata
+    setConfiguration(configuration: JSON!): Metadata
+    setContainers(containers: [DocumentTemplateContainerInput!]!): Metadata
+    setContent(content: JSON!): Metadata
+    setDefaultAttributes(attributes: JSON!): Metadata
 }
 
 type MetadataWorkflow {
@@ -668,7 +707,9 @@ type Principals {
 
 type Profile {
     attributes: [ProfileAttribute!]!
+    bookmarks: ProfileBookmarks!
     collection: Collection
+    guides: ProfileGuides!
     id: String!
     name: String!
     principal: Principal
@@ -699,6 +740,60 @@ type ProfileAttributeTypes {
     all: [ProfileAttributeType!]!
 }
 
+type ProfileBookmark {
+    collection: Collection
+    createdAt: DateTime!
+    id: Int!
+    metadata: Metadata
+}
+
+type ProfileBookmarks {
+    bookmark(collectionId: String, metadataId: String, metadataVersion: Int): ProfileBookmark
+    bookmarks: [ProfileBookmark!]!
+    count: Int!
+}
+
+type ProfileGuideHistories {
+    all(limit: Int!, offset: Int!): [ProfileGuideHistory!]!
+    count: Int!
+    history(id: String!, limit: Int!, offset: Int!, version: Int!): [ProfileGuideHistory!]!
+    historyCount(id: String!, version: Int!): Int!
+}
+
+type ProfileGuideHistory {
+    attributes: JSON!
+    completed: DateTime
+    metadata: Metadata!
+}
+
+type ProfileGuideProgress {
+    attributes: JSON!
+    completedStepIds: [Int!]!
+    metadata: Metadata!
+    modified: DateTime!
+    nextStepId: Int
+    percentage: Float!
+    started: DateTime!
+}
+
+type ProfileGuideProgressions {
+    all(limit: Int!, offset: Int!): [ProfileGuideProgress!]!
+    count: Int!
+    progress(id: String!, version: Int!): ProfileGuideProgress
+}
+
+type ProfileGuides {
+    history: ProfileGuideHistories!
+    progressions: ProfileGuideProgressions!
+}
+
+type ProfileMutation {
+    addBookmark(collectionId: String, metadataId: String, version: Int): Boolean!
+    addProgress(attributes: JSON!, metadataId: String!, metadataVersion: Int!, stepId: Int!): ProfileGuideProgress
+    deleteAttribute(attributeId: String!): Boolean!
+    deleteBookmark(collectionId: String, metadataId: String, version: Int): Boolean!
+}
+
 type Profiles {
     all(limit: Int!, offset: Int!): [Profile!]!
     attributeTypes: ProfileAttributeTypes!
@@ -713,6 +808,7 @@ type ProfilesMutation {
     deleteAttributeType(attributeId: String!): Boolean!
     edit(id: String, profile: ProfileInput!): Profile
     editAttributeType(attribute: ProfileAttributeTypeInput!): Boolean!
+    profile: ProfileMutation!
 }
 
 type Prompt {
@@ -775,9 +871,15 @@ type Security {
     principals: Principals!
 }
 
+type SecurityFirebaseMutation {
+    importUsers(file: JSON!): Boolean!
+    setHashConfig(config: JSON!): Boolean!
+}
+
 type SecurityMutation {
     addPrincipalGroup(groupId: String!, principalId: String!): Boolean!
     expireRefreshTokens: Boolean!
+    firebase: SecurityFirebaseMutation!
     groups: GroupsMutation!
     login: LoginMutation!
     password(newPassword: String!, verificationToken: String!): Boolean!
@@ -1182,6 +1284,7 @@ enum ContainerType {
 enum CredentialType {
     OAUTH_2
     PASSWORD
+    PASSWORD_SCRYPT
 }
 
 enum DocumentTemplateContainerType {
@@ -1353,7 +1456,9 @@ input CollectionInput {
     collectionType: CollectionType
     collections: [CollectionChildInput!]
     description: String
+    itemsLocked: Boolean
     labels: [String!]
+    locked: Boolean
     metadata: [MetadataChildInput!]
     name: String!
     ordering: [OrderingInput!]
@@ -1541,6 +1646,7 @@ input MetadataInput {
     guideTemplate: GuideTemplateInput
     labels: [String!]
     languageTag: String!
+    locked: Boolean
     metadataType: MetadataType
     name: String!
     parentCollectionId: String

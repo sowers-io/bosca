@@ -9,6 +9,7 @@ fragment Metadata on Metadata {
     id
     slug
     version
+    locked
     parentId
     name
     type

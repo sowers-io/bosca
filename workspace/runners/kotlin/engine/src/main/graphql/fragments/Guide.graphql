@@ -3,10 +3,9 @@ fragment Guide on Guide {
         id
         version
     }
-    rrule
     type
+    rrule
     steps {
         ...GuideStep
     }
 }
-

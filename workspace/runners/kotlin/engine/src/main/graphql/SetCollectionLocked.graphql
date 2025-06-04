@@ -1,0 +1,9 @@
+mutation SetCollectionLocked($id: String!, $locked: Boolean!) {
+    content {
+        collection {
+            setLocked(id: $id, locked: $locked) {
+              ...Collection
+            }
+        }
+    }
+}

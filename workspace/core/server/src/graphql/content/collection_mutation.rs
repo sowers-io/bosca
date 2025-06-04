@@ -279,6 +279,19 @@ impl CollectionMutationObject {
         Ok(collection.into())
     }
 
+    async fn set_locked(
+        &self,
+        ctx: &Context<'_>,
+        id: String,
+        locked: bool,
+    ) -> Result<Option<CollectionObject>, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let id = Uuid::parse_str(&id)?;
+        ctx.check_collection_action(&id, PermissionAction::Edit).await?;
+        ctx.content.collections.set_locked(ctx, &id, locked).await?;
+        Ok(ctx.content.collections.get(&id).await?.map(|collection| collection.into()))
+    }
+
     async fn add_permission(
         &self,
         ctx: &Context<'_>,

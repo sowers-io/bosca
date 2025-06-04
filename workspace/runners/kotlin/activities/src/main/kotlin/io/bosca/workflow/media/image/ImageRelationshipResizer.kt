@@ -55,7 +55,7 @@ class ImageRelationshipResizer(client: Client) : AbstractImageResizer(client) {
                         "jpeg",
                         ImageSize(
                             "${crop.width}x${crop.height}-${crop.top}-${crop.left}-cropped",
-                            1,
+                            100,
                             crop
                         )
                     )
@@ -74,7 +74,7 @@ class ImageRelationshipResizer(client: Client) : AbstractImageResizer(client) {
                         "jpeg",
                         ImageSize(
                             "${crop.width}x${crop.height}-${crop.top}-${crop.left}-cropped",
-                            1,
+                            100,
                             crop
                         )
                     )
@@ -106,7 +106,7 @@ class ImageRelationshipResizer(client: Client) : AbstractImageResizer(client) {
                         "jpeg",
                         ImageSize(
                             "${crop.width}x${crop.height}-${crop.top}-${crop.left}-cropped",
-                            1,
+                            100,
                             crop
                         )
                     )
@@ -136,7 +136,7 @@ class ImageRelationshipResizer(client: Client) : AbstractImageResizer(client) {
             val sizes = mutableMapOf<String, String>()
             for (size in configuration.sizes) {
                 val newSize = size.copy(
-                    name = if (crop.isEmpty) {
+                    name = if (crop.isZero) {
                         "${size.name}-${size.ratio}-$format"
                     } else {
                         "${size.name}-${crop.width}x${crop.height}-${crop.top}-${crop.left}-${size.ratio}-$format"

@@ -241,7 +241,7 @@ impl BoscaContext {
         {
             Some(supplementary) => {
                 let metadata = self
-                    .check_metadata_action(&supplementary.id, PermissionAction::View)
+                    .check_metadata_action(&supplementary.metadata_id, PermissionAction::View)
                     .await?;
                 if !self
                     .content

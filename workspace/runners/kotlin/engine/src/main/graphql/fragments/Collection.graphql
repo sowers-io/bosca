@@ -18,6 +18,7 @@ fragment CollectionList on Collection {
 
 fragment Collection on Collection {
     id
+    locked
     slug
     traitIds
     name

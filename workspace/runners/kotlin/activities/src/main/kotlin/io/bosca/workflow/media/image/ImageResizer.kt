@@ -2,27 +2,15 @@ package io.bosca.workflow.media.image
 
 import com.apollographql.apollo.api.toUpload
 import io.bosca.api.Client
-import io.bosca.graphql.fragment.MetadataSupplementary
 import io.bosca.graphql.fragment.WorkflowJob
 import io.bosca.graphql.type.ActivityInput
-import io.bosca.graphql.type.CollectionSupplementaryInput
 import io.bosca.graphql.type.MetadataSupplementaryInput
-import io.bosca.util.decode
-import io.bosca.util.json
-import io.bosca.util.toOptional
 import io.bosca.workflow.Activity
 import io.bosca.workflow.ActivityContext
 import io.bosca.workflow.FullFailureException
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
-import java.io.File
-import java.net.URL
-import java.net.HttpURLConnection
 import java.net.URLEncoder
-import java.nio.file.Files
 import kotlin.uuid.ExperimentalUuidApi
-import kotlin.uuid.Uuid
 
 @Serializable
 data class Coordinates(
@@ -32,7 +20,10 @@ data class Coordinates(
     val height: Int = 0
 ) {
     val isEmpty: Boolean
-        get() = width == 0 && height == 0 && top == 0 && left == 0
+        get() = isZero && top == 0 && left == 0
+
+    val isZero: Boolean
+        get() = width == 0 || height == 0
 }
 
 @Serializable
@@ -62,7 +53,7 @@ abstract class AbstractImageResizer(client: Client) : Activity(client) {
         size: ImageSize
     ): String {
         val imageProcessorUrl = System.getenv("IMAGE_PROCESSOR_URL") ?: "http://localhost:8003"
-        val resized = if (size.size != null && !size.size.isEmpty) {
+        val resized = if (size.size != null && !size.size.isZero) {
             "$imageProcessorUrl/image?u=$url&f=$format&w=${size.size.width}&h=${size.size.height}&l=${size.size.left}&t=${size.size.top}"
         } else {
             val ratio = size.ratio.toFloat() / 100f
