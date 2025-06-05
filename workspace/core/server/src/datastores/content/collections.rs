@@ -337,6 +337,27 @@ impl CollectionsDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, id, locked))]
+    pub async fn set_locked(
+        &self,
+        ctx: &BoscaContext,
+        id: &Uuid,
+        locked: bool,
+    ) -> Result<(), Error> {
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        let stmt = txn
+            .prepare_cached(
+                "update collections set locked = $1, modified = now() where id = $2",
+            )
+            .await?;
+        txn.execute(&stmt, &[&locked, id]).await?;
+        txn.commit().await?;
+        self.cache.evict_collection(id).await;
+        self.on_collection_changed(ctx, id).await?;
+        Ok(())
+    }
+
     #[tracing::instrument(skip(self, ctx, id))]
     pub async fn mark_deleted(&self, ctx: &BoscaContext, id: &Uuid) -> Result<(), Error> {
         let connection = self.pool.get().await?;
@@ -1197,8 +1218,11 @@ impl CollectionsDataStore {
                 None => Uuid::parse_str("00000000-0000-0000-0000-000000000000")?,
             };
             if !ignore_permission_check {
-                ctx.check_collection_action_txn(txn, &parent_collection_id, PermissionAction::Edit)
+                let c = ctx.check_collection_action_txn(txn, &parent_collection_id, PermissionAction::Edit)
                     .await?;
+                if c.items_locked && !ctx.has_service_account().await? {
+                    return Err(Error::new("locked"))
+                }
             }
             let id = self.add_txn(txn, collection, false).await?;
             let permissions = if let Some(permissions) = &permissions {

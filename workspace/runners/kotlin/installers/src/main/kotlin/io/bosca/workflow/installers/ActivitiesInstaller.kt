@@ -80,6 +80,7 @@ class ActivitiesInstaller(client: Client) : Installer, ActivityRegistry {
         MetadataDeleteSupplementary(client),
         MetadataDeleteAllSupplementary(client),
         MetadataDeleteAllPlanSupplementary(client),
+        PublishMetadata(client),
 
         PublishRelationships(client),
 
@@ -96,6 +97,7 @@ class ActivitiesInstaller(client: Client) : Installer, ActivityRegistry {
         CollectionDeleteSupplementary(client),
         CollectionDeleteAllSupplementary(client),
         CollectionDeleteAllPlanSupplementary(client),
+        PublishCollection(client),
 
         IfSquare(client),
         ImageResizer(client),

@@ -4,6 +4,18 @@ description: Publish Metadata
 queue: metadata
 activities:
   - queue: transition
+    activity: metadata.publish.guide
+    description: If Guide, Publish the Guide
+
+  - queue: transition
+    activity: metadata.publish
+    description: Publish the Metadata
+
+  - queue: transition
+    activity: collection.publish
+    description: Publish the Collection
+
+  - queue: transition
     activity: metadata.transition.to
     description: Transition Metadata to Published
     configuration:
@@ -16,3 +28,7 @@ activities:
     configuration:
       state: published
       status: moving to published
+
+  - queue: transition
+    activity: content.publish.relationships
+    description: Publish any relationships

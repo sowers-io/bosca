@@ -75,7 +75,7 @@ pub async fn watch(
             }
             Event::InitDone => {
                 for pod in pending.iter() {
-                    add_endpoint(&pod, port, sender).await?;
+                    add_endpoint(pod, port, sender).await?;
                 }
                 pending.clear();
             }

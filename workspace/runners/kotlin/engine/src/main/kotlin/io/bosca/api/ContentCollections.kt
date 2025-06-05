@@ -213,6 +213,20 @@ class ContentCollections(network: NetworkClient) : Api(network) {
         return response.data?.content?.collection?.removeChildMetadata?.id
     }
 
+    suspend fun mergeCollectionAttributes(collectionId: String, attributes: Any) {
+        val response =
+            network.graphql.mutation(MergeCollectionAttributesMutation(collectionId, attributes))
+                .execute()
+        response.validate()
+    }
+
+    suspend fun setLocked(collectionId: String, locked: Boolean) {
+        val response =
+            network.graphql.mutation(SetCollectionLockedMutation(collectionId, locked))
+                .execute()
+        response.validate()
+    }
+
     suspend fun mergeRelationshipAttributes(collectionId: String, metadataId: String, relationship: String, attributes: Any) {
         val response =
             network.graphql.mutation(MergeCollectionRelationshipAttributesMutation(collectionId, metadataId, relationship, attributes))

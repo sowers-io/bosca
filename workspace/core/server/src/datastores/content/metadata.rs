@@ -410,6 +410,28 @@ impl MetadataDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, id, version, locked))]
+    pub async fn set_locked(
+        &self,
+        ctx: &BoscaContext,
+        id: &Uuid,
+        version: i32,
+        locked: bool,
+    ) -> Result<(), Error> {
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        let stmt = txn
+            .prepare_cached(
+                "update metadata set locked = $1, modified = now() where id = $2 and version = $3",
+            )
+            .await?;
+        txn.execute(&stmt, &[&locked, id, &version]).await?;
+        txn.commit().await?;
+        self.cache.evict_metadata(id).await;
+        self.on_metadata_changed(ctx, id).await?;
+        Ok(())
+    }
+
     #[tracing::instrument(skip(self, ctx, id, metadata))]
     pub async fn edit(
         &self,

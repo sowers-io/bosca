@@ -63,6 +63,14 @@ impl CollectionObject {
         &self.collection.description
     }
 
+    async fn locked(&self) -> bool {
+        self.collection.locked
+    }
+
+    async fn items_locked(&self) -> bool {
+        self.collection.items_locked
+    }
+
     async fn categories(&self, ctx: &Context<'_>) -> Result<Vec<CategoryObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         Ok(ctx

@@ -701,7 +701,7 @@ impl SecurityDataStore {
             if u.len() == 5000 {
                 let ctx = ctx.clone();
                 let firebase_scrypt = firebase_scrypt.clone();
-                ix = ix + 1;
+                ix += 1;
                 let ix = ix;
                 set.spawn(async move {
                     if let Err(e) = ctx.security.import_firebase_users_batch(ix, &ctx, &firebase_scrypt, u).await {
@@ -711,10 +711,10 @@ impl SecurityDataStore {
                 u = Vec::new();
             }
         }
-        if u.len() > 0 {
+        if !u.is_empty() {
             let ctx = ctx.clone();
             let firebase_scrypt = firebase_scrypt.clone();
-            ix = ix + 1;
+            ix += 1;
             set.spawn(async move {
                 if let Err(e) = ctx.security.import_firebase_users_batch(ix, &ctx, &firebase_scrypt, u).await {
                     error!("failed to import firebase users: {:?}", e);
@@ -748,7 +748,7 @@ impl SecurityDataStore {
             if found {
                 continue;
             }
-            let result = self.import_firebase_user(&txn, &ctx, firebase_scrypt, &user).await;
+            let result = self.import_firebase_user(&txn, ctx, firebase_scrypt, &user).await;
             match result {
                 Ok(Some(id)) => {
                     ids.push(id);
@@ -932,7 +932,7 @@ impl SecurityDataStore {
                 &txn,
                 verified,
                 Value::Null,
-                &credential,
+                credential,
                 &groups,
             )
             .await?;
@@ -1017,10 +1017,10 @@ impl SecurityDataStore {
         let principal_id = ctx
             .security
             .add_principal_txn(
-                &txn,
+                txn,
                 verified,
                 Value::Null,
-                &credential,
+                credential,
                 &groups,
             )
             .await?;

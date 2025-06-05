@@ -241,7 +241,7 @@ impl BoscaContext {
         {
             Some(supplementary) => {
                 let metadata = self
-                    .check_metadata_action(&supplementary.id, PermissionAction::View)
+                    .check_metadata_action(&supplementary.metadata_id, PermissionAction::View)
                     .await?;
                 if !self
                     .content
@@ -529,6 +529,16 @@ impl BoscaContext {
     pub async fn has_admin_account(&self) -> Result<bool, Error> {
         let admin = self.security.get_administrators_group().await?;
         Ok(self.principal_groups.contains(&admin.id))
+    }
+
+    #[tracing::instrument(skip(self))]
+    pub async fn has_service_account(&self) -> Result<bool, Error> {
+        let sa = self.security.get_service_account_group().await?;
+        if !self.principal_groups.contains(&sa.id) {
+            self.has_admin_account().await
+        } else {
+            Ok(true)
+        }
     }
 
     #[tracing::instrument(skip(self))]
