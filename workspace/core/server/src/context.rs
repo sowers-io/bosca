@@ -532,6 +532,16 @@ impl BoscaContext {
     }
 
     #[tracing::instrument(skip(self))]
+    pub async fn has_service_account(&self) -> Result<bool, Error> {
+        let sa = self.security.get_service_account_group().await?;
+        if !self.principal_groups.contains(&sa.id) {
+            self.has_admin_account().await
+        } else {
+            Ok(true)
+        }
+    }
+
+    #[tracing::instrument(skip(self))]
     pub async fn check_has_service_account(&self) -> Result<(), Error> {
         let sa = self.security.get_service_account_group().await?;
         if !self.principal_groups.contains(&sa.id) {

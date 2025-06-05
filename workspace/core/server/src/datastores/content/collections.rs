@@ -1218,8 +1218,11 @@ impl CollectionsDataStore {
                 None => Uuid::parse_str("00000000-0000-0000-0000-000000000000")?,
             };
             if !ignore_permission_check {
-                ctx.check_collection_action_txn(txn, &parent_collection_id, PermissionAction::Edit)
+                let c = ctx.check_collection_action_txn(txn, &parent_collection_id, PermissionAction::Edit)
                     .await?;
+                if c.items_locked && !ctx.has_service_account().await? {
+                    return Err(Error::new("locked"))
+                }
             }
             let id = self.add_txn(txn, collection, false).await?;
             let permissions = if let Some(permissions) = &permissions {
