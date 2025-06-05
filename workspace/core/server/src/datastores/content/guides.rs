@@ -788,16 +788,38 @@ impl GuidesDataStore {
             )
             .await?;
 
-        let sort = index as i32;
+        let mut guide_step_ids = Vec::new();
+
         let stmt = txn
             .prepare_cached(
-                "update guide_steps set sort = sort + 1 where metadata_id = $1 and sort >= $2",
+                "select id from guide_steps where metadata_id = $1 and version = $2",
             )
             .await?;
-        txn.execute(&stmt, &[metadata_id, &sort]).await?;
+        let response = txn.query(&stmt, &[&metadata_id, &metadata_version]).await?;
+        for res in &response {
+            let id: Option<i64> = res.get("id");
+            if let Some(id) = id {
+                guide_step_ids.push(id);
+            }
+        }
+
+        let mut cur = 0;
+        loop {
+            if cur == guide_step_ids.len() {
+                break;
+            }
+            let id = guide_step_ids[cur];
+            let sort = cur as i32;
+            txn.execute("update guide_steps set sort = $1 where id = $2", &[&sort, &id]).await?;
+            if cur == index {
+                break;
+            }
+            cur += 1;
+        }
 
         let stmt = txn.prepare_cached("insert into guide_steps (metadata_id, version, step_metadata_id, step_metadata_version, sort) values ($1, $2, $3, $4, $5) returning id").await?;
 
+        let step_sort = cur as i32;
         let result = txn
             .query_one(
                 &stmt,
@@ -806,11 +828,21 @@ impl GuidesDataStore {
                     &metadata_version,
                     &step_metadata_id,
                     &step_metadata_version,
-                    &sort,
+                    &step_sort,
                 ],
             )
             .await?;
         let step_id: i64 = result.get("id");
+
+        loop {
+            if cur == guide_step_ids.len() {
+                break;
+            }
+            let id = guide_step_ids[cur];
+            let sort = cur as i32;
+            txn.execute("update guide_steps set sort = $1 where id = $2", &[&sort, &id]).await?;
+            cur += 1;
+        }
 
         let modules = ctx
             .content
@@ -850,7 +882,7 @@ impl GuidesDataStore {
             metadata_version,
             step_metadata_id,
             step_metadata_version,
-            sort,
+            sort: step_sort,
         })
     }
 

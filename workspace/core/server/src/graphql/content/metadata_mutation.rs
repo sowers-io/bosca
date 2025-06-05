@@ -177,6 +177,8 @@ impl MetadataMutationObject {
                     .guides
                     .set_guide_rrule(ctx, &metadata_id, metadata_version, new_rrule)
                     .await?;
+            } else {
+                return Err(Error::new("guide rrule not found"));
             }
         } else {
             return Err(Error::new("guide not found"));
