@@ -199,7 +199,7 @@ impl DocumentsDataStore {
         ctx: &BoscaContext,
         metadata_id: &Uuid,
         version: i32,
-        attributes: &Vec<TemplateAttributeInput>,
+        attributes: &[TemplateAttributeInput],
     ) -> Result<(), Error> {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
@@ -222,7 +222,7 @@ impl DocumentsDataStore {
         &self,
         metadata_id: &Uuid,
         version: i32,
-        containers: &Vec<DocumentTemplateContainerInput>,
+        containers: &[DocumentTemplateContainerInput],
     ) -> Result<(), Error> {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
@@ -422,7 +422,7 @@ impl DocumentsDataStore {
         txn: &Transaction<'_>,
         metadata_id: &Uuid,
         version: i32,
-        attributes: &Vec<TemplateAttributeInput>,
+        attributes: &[TemplateAttributeInput],
         containers: &Option<Vec<DocumentTemplateContainerInput>>,
     ) -> Result<(), Error> {
         let stmt = txn.prepare_cached("insert into document_template_attributes (metadata_id, version, key, name, description, configuration, type, ui, list, sort, supplementary_key) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)").await?;

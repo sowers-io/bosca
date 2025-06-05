@@ -155,7 +155,7 @@ impl CollectionTemplatesDataStore {
         txn: &Transaction<'_>,
         metadata_id: &Uuid,
         version: i32,
-        attributes: &Vec<TemplateAttributeInput>,
+        attributes: &[TemplateAttributeInput],
     ) -> Result<(), Error> {
         let stmt = txn.prepare_cached("insert into collection_template_attributes (metadata_id, version, key, name, description, configuration, type, ui, list, sort, supplementary_key, location) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)").await?;
         let stmt_wid = txn.prepare_cached("insert into collection_template_attribute_workflows (metadata_id, version, key, workflow_id, auto_run) values ($1, $2, $3, $4, $5)").await?;
@@ -201,7 +201,7 @@ impl CollectionTemplatesDataStore {
         ctx: &BoscaContext,
         metadata_id: &Uuid,
         version: i32,
-        attributes: &Vec<TemplateAttributeInput>,
+        attributes: &[TemplateAttributeInput],
     ) -> Result<(), Error> {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
