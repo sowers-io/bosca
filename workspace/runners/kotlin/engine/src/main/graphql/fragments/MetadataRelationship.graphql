@@ -2,6 +2,7 @@ fragment MetadataRelationshipMetadata on Metadata {
     id
     version
     name
+    ready
     public
     publicContent
     publicSupplementary

@@ -44,10 +44,6 @@ class PublishMetadata(client: Client) : Activity(client) {
                 delay(1000)
             }
         }
-        val published = client.workflows.getStates().first { it.type == WorkflowStateType.PUBLISHED }
-        if (metadata.workflow.metadataWorkflow.pending != published.id && metadata.workflow.metadataWorkflow.state != published.id) {
-
-        }
         if (!metadata.public && configuration.public) {
             client.metadata.setPublic(metadata.id, true)
         }
