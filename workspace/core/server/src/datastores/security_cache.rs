@@ -21,18 +21,10 @@ pub struct SecurityCache {
 impl SecurityCache {
     pub async fn new(cache: &mut BoscaCacheManager) -> Result<Self, Error> {
         Ok(Self {
-            principal_id: cache
-                .new_id_tiered_cache(CACHE_SECURITY_PRINCIPAL_ID, 20000)
-                .await?,
-            principal_group_ids: cache
-                .new_id_tiered_cache(CACHE_SECURITY_PRINCIPAL_GROUP_ID, 20000)
-                .await?,
-            group_id: cache
-                .new_id_tiered_cache(CACHE_SECURITY_GROUP_ID, 20000)
-                .await?,
-            group_name: cache
-                .new_string_tiered_cache(CACHE_SECURITY_GROUP_NAME, 20000)
-                .await?,
+            principal_id: cache.new_id_tiered_cache(CACHE_SECURITY_PRINCIPAL_ID).await?,
+            principal_group_ids: cache.new_id_tiered_cache(CACHE_SECURITY_PRINCIPAL_GROUP_ID).await?,
+            group_id: cache.new_id_tiered_cache(CACHE_SECURITY_GROUP_ID).await?,
+            group_name: cache.new_string_tiered_cache(CACHE_SECURITY_GROUP_NAME).await?,
         })
     }
 
@@ -57,7 +49,7 @@ impl SecurityCache {
         self.principal_group_ids.get(id).await
     }
 
-    #[tracing::instrument(skip(self, group_ids))]
+    #[tracing::instrument(skip(self, id, group_ids))]
     pub async fn cache_principal_group_ids(&self, id: &Uuid, group_ids: Vec<Uuid>) {
         self.principal_group_ids.set(id, &group_ids).await;
     }

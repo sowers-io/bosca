@@ -15,8 +15,8 @@ impl GuideCache {
 
     pub async fn new(cache: &mut BoscaCacheManager) -> Result<Self, Error> {
         Ok(Self {
-            guide_step_ids: cache.new_id_tiered_cache("guide_step_ids", 20000).await?,
-            guide_step_count: cache.new_id_tiered_cache("guide_step_count", 20000).await?,
+            guide_step_ids: cache.new_id_tiered_cache("guide_step_ids").await?,
+            guide_step_count: cache.new_id_tiered_cache("guide_step_count").await?,
         })
     }
 

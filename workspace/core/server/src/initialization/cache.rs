@@ -1,15 +1,19 @@
 use async_graphql::Error;
-use bosca_dc_client::client::Client;
 use std::env;
+use crate::redis::RedisClient;
 
-pub async fn new_cache_client() -> Result<Client, Error> {
+pub async fn new_cache_client() -> Result<RedisClient, Error> {
     let host = match env::var("CACHE_HOST") {
         Ok(host) => host,
         _ => "127.0.0.1".to_string(),
     };
+    let password = match env::var("CACHE_PASSWORD") {
+        Ok(host) => Some(host),
+        _ => None,
+    };
     let port = match env::var("CACHE_PORT") {
         Ok(port) => port.parse::<u16>(),
-        _ => Ok(2001),
+        _ => Ok(6380),
     };
     let port = match port {
         Ok(port) => port,
@@ -19,7 +23,6 @@ pub async fn new_cache_client() -> Result<Client, Error> {
             ))
         }
     };
-    let client = Client::new();
-    client.connect(host, port).await?;
+    let client = RedisClient::new_cache(host, port, password).await?;
     Ok(client)
 }

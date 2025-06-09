@@ -1,6 +1,7 @@
 use async_graphql::Error;
 use redis::aio::{ConnectionManager, ConnectionManagerConfig, PubSub};
-use redis::{Client, ConnectionAddr, ConnectionInfo, RedisConnectionInfo};
+use redis::caching::CacheConfig;
+use redis::{AsyncConnectionConfig, Client, ConnectionAddr, ConnectionInfo, ProtocolVersion, RedisConnectionInfo};
 use std::time::Duration;
 
 #[derive(Clone, Debug)]
@@ -47,6 +48,22 @@ impl RedisClient {
         Ok(client)
     }
 
+    async fn new_cache_client(password: String, host: &String, port: u16) -> Result<Client, Error> {
+        let info = ConnectionInfo {
+            addr: ConnectionAddr::Tcp(host.to_string(), port),
+            redis: RedisConnectionInfo {
+                protocol: ProtocolVersion::RESP3,
+                password: Some(password.clone()),
+                ..Default::default()
+            },
+        };
+        let cache_config = CacheConfig::new().set_default_client_ttl(Duration::from_secs(60));
+        let async_config = AsyncConnectionConfig::new().set_cache_config(cache_config);
+        let client = Client::open(info)?;
+        client.get_multiplexed_async_connection_with_config(&async_config).await?;
+        Ok(client)
+    }
+
     pub async fn new(host: String, port: u16, password: Option<String>) -> Result<Self, Error> {
         let cfg = ConnectionManagerConfig::new()
             .set_max_delay(30_000)
@@ -54,10 +71,27 @@ impl RedisClient {
             .set_response_timeout(Duration::from_millis(3000));
         let password = password.unwrap_or_default();
         let client = Self::new_client(password.clone(), &host, port).await?;
-        let mgr = ConnectionManager::new_with_config(client, cfg).await?;
+        let mgr = ConnectionManager::new_with_config(client.clone(), cfg).await?;
         Ok(Self {
             connection: RedisConnection {
-                client: Self::new_client(password.clone(), &host, port).await?,
+                client,
+                manager: mgr,
+            },
+        })
+    }
+
+    pub async fn new_cache(host: String, port: u16, password: Option<String>) -> Result<Self, Error> {
+        let cfg = ConnectionManagerConfig::new()
+            .set_max_delay(30_000)
+            .set_connection_timeout(Duration::from_millis(3000))
+            .set_response_timeout(Duration::from_millis(3000))
+            .set_cache_config(CacheConfig::new().set_default_client_ttl(Duration::from_secs(60)));
+        let password = password.unwrap_or_default();
+        let client = Self::new_cache_client(password.clone(), &host, port).await?;
+        let mgr = ConnectionManager::new_with_config(client.clone(), cfg).await?;
+        Ok(Self {
+            connection: RedisConnection {
+                client,
                 manager: mgr,
             },
         })
@@ -65,5 +99,10 @@ impl RedisClient {
 
     pub async fn get(&self) -> Result<&RedisConnection, Error> {
         Ok(&self.connection)
+    }
+
+    pub async fn get_manager(&self) -> Result<ConnectionManager, Error> {
+        let connection = self.get().await?;
+        connection.get_connection().await
     }
 }

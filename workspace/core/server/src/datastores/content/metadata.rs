@@ -18,7 +18,6 @@ use crate::util::RUNNING_BACKGROUND;
 use crate::workflow::core_workflow_ids::{METADATA_DELETE_FINALIZE, METADATA_UPDATE_STORAGE};
 use async_graphql::*;
 use bosca_database::TracingPool;
-use bosca_dc_client::client::Client;
 use chrono::{TimeDelta, Utc};
 use deadpool_postgres::Transaction;
 use log::{error, info};
@@ -46,7 +45,6 @@ impl MetadataDataStore {
         cache: MetadataCache,
         guide_cache: GuideCache,
         notifier: Arc<Notifier>,
-        _: Client,
         redis: RedisClient,
     ) -> Result<Self, Error> {
         Ok(Self {

@@ -105,6 +105,7 @@ impl BoscaContext {
         let configuration = ConfigurationDataStore::new(
             bosca_pool.clone(),
             configuration_secret_key,
+            cache_client.clone(),
             Arc::clone(&notifier),
         );
         let ctx = BoscaContext {
@@ -136,7 +137,6 @@ impl BoscaContext {
                 bosca_pool,
                 &mut cache,
                 Arc::clone(&notifier),
-                cache_client,
                 redis_jobs_queue_client.clone()
             )
             .await?,

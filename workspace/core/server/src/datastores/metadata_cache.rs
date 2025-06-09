@@ -1,11 +1,11 @@
 use crate::datastores::cache::cache::BoscaCache;
 use crate::datastores::cache::manager::BoscaCacheManager;
 use crate::models::content::metadata::Metadata;
+use crate::models::content::metadata_relationship::MetadataRelationship;
 use crate::models::content::metadata_supplementary::MetadataSupplementary;
 use crate::models::security::permission::Permission;
 use async_graphql::Error;
 use uuid::Uuid;
-use crate::models::content::metadata_relationship::MetadataRelationship;
 
 #[derive(Clone)]
 pub struct MetadataCache {
@@ -19,17 +19,11 @@ pub struct MetadataCache {
 impl MetadataCache {
     pub async fn new(cache: &mut BoscaCacheManager) -> Result<Self, Error> {
         Ok(Self {
-            metadata_id: cache.new_id_tiered_cache("metadata_id", 20000).await?,
-            metadata_supplementary_id: cache
-                .new_id_tiered_cache("metadata_supplementary_id", 20000)
-                .await?,
-            metadata_relationship_id: cache
-                .new_id_tiered_cache("metadata_relationship_id", 20000)
-                .await?,
-            metadata_supplementaries: cache
-                .new_id_tiered_cache("metadata_supplementaries", 20000)
-                .await?,
-            permissions: cache.new_id_tiered_cache("permission_cache", 20000).await?,
+            metadata_id: cache.new_id_tiered_cache("metadata_id").await?,
+            metadata_supplementary_id: cache.new_id_tiered_cache("metadata_supplementary_id").await?,
+            metadata_relationship_id: cache.new_id_tiered_cache("metadata_relationship_id").await?,
+            metadata_supplementaries: cache.new_id_tiered_cache("metadata_supplementaries").await?,
+            permissions: cache.new_id_tiered_cache("permission_cache").await?,
         })
     }
 

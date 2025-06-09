@@ -4,9 +4,13 @@ use crate::datastores::notifier::Notifier;
 use async_graphql::Error;
 use deadpool_postgres::GenericClient;
 use std::sync::Arc;
+use std::sync::atomic::AtomicI64;
 use aes_gcm::{Aes256Gcm, Key, Nonce};
 use aes_gcm::aead::{Aead, KeyInit};
+use chrono::Utc;
+use log::error;
 use rand::Rng;
+use redis::AsyncCommands;
 use sha2::{Digest, Sha256};
 use serde_json::Value;
 use tokio::sync::RwLock;
@@ -14,21 +18,26 @@ use uuid::Uuid;
 use bosca_database::TracingPool;
 use crate::models::configuration::configuration::{Configuration, ConfigurationInput};
 use crate::models::security::permission::Permission;
+use crate::redis::RedisClient;
 
 #[derive(Clone)]
 pub struct ConfigurationDataStore {
     pool: TracingPool,
     notifier: Arc<Notifier>,
     security_key: String,
+    redis: RedisClient,
+    last_read: Arc<AtomicI64>,
     cache: Arc<RwLock<HashMap<String, Value>>>,
 }
 
 impl ConfigurationDataStore {
-    pub fn new(pool: TracingPool, security_key: String, notifier: Arc<Notifier>) -> Self {
+    pub fn new(pool: TracingPool, security_key: String, redis: RedisClient, notifier: Arc<Notifier>) -> Self {
         Self {
             pool,
             notifier,
             security_key,
+            redis,
+            last_read: Arc::new(AtomicI64::new(Utc::now().timestamp())),
             cache: Arc::new(RwLock::new(HashMap::new()))
         }
     }
@@ -99,8 +108,28 @@ impl ConfigurationDataStore {
             let mut cache = self.cache.write().await;
             cache.remove(&configuration.key);
         }
+        self.update_cache_time().await;
         self.notifier.configuration_changed(&id_str).await?;
         Ok(id)
+    }
+
+    async fn update_cache_time(&self) {
+        let Ok(mut mgr) = self.redis.get_manager().await else {
+            return;
+        };
+        if let Err(e) = mgr.set::<&str, i64, ()>("bosca:configuration:cache", Utc::now().timestamp()).await {
+            error!("Failed to update cache time: {}", e);
+        }
+    }
+
+    async fn get_cache_time(&self) -> i64 {
+        let Ok(mut mgr) = self.redis.get_manager().await else {
+            return 0;
+        };
+        if let Ok(Some(time)) = mgr.get("bosca:configuration:cache").await {
+            return time;
+        }
+        0
     }
 
     #[tracing::instrument(skip(self, id))]
@@ -117,6 +146,7 @@ impl ConfigurationDataStore {
             let mut cache = self.cache.write().await;
             cache.remove(&key);
         }
+        self.update_cache_time().await;
         let id = id.to_string();
         self.notifier.configuration_changed(&id).await?;
         Ok(())
@@ -125,10 +155,16 @@ impl ConfigurationDataStore {
     #[tracing::instrument(skip(self, key))]
     pub async fn get_configuration_value(&self, key: &str) -> Result<Option<Value>, Error> {
         {
-            let cache = self.cache.read().await;
-            let value = cache.get(key);
-            if let Some(value) = value {
-                return Ok(Some(value.clone()))
+            let time = self.get_cache_time().await;
+            if time > self.last_read.load(std::sync::atomic::Ordering::Relaxed) {
+                self.last_read.store(Utc::now().timestamp(), std::sync::atomic::Ordering::Relaxed);
+                self.cache.write().await.clear();
+            } else {
+                let cache = self.cache.read().await;
+                let value = cache.get(key);
+                if let Some(value) = value {
+                    return Ok(Some(value.clone()))
+                }
             }
         }
         let connection = self.pool.get().await?;
