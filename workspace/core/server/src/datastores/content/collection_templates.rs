@@ -17,11 +17,11 @@ impl CollectionTemplatesDataStore {
         Self { pool }
     }
 
-    #[tracing::instrument(skip(self, ctx, id))]
-    async fn on_metadata_changed(&self, ctx: &BoscaContext, id: &Uuid) -> Result<(), Error> {
-        ctx.content.metadata.on_metadata_changed(ctx, id).await?;
-        Ok(())
-    }
+    // #[tracing::instrument(skip(self, ctx, id))]
+    // async fn on_metadata_changed(&self, ctx: &BoscaContext, id: &Uuid) -> Result<(), Error> {
+    //     ctx.content.metadata.on_metadata_changed(ctx, id).await?;
+    //     Ok(())
+    // }
 
     #[tracing::instrument(skip(self))]
     pub async fn get_templates(&self) -> Result<Vec<CollectionTemplate>, Error> {
@@ -288,69 +288,69 @@ impl CollectionTemplatesDataStore {
         Ok(())
     }
 
-    #[tracing::instrument(skip(self, metadata_id, version, sort, attr))]
-    pub async fn add_template_attribute(
-        &self,
-        metadata_id: &Uuid,
-        version: i32,
-        sort: i32,
-        attr: &TemplateAttributeInput,
-    ) -> Result<(), Error> {
-        let mut connection = self.pool.get().await?;
-        let txn = connection.transaction().await?;
-        let stmt_del_wid = txn.prepare_cached("delete from collection_template_attribute_workflows where metadata_id = $1 and version = $2 and key = $3").await?;
-        txn.execute(&stmt_del_wid, &[metadata_id, &version, &attr.key])
-            .await?;
-        let stmt = txn.prepare_cached("insert into collection_template_attributes (metadata_id, version, key, name, description, configuration, type, ui, list, sort, supplementary_key) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) on conflict (metadata_id, version, key) do update set name = $4, description = $5, configuration = $6, type = $7, ui = $8, list = $8, sort = $9, supplementary_key = $10").await?;
-        let stmt_wid = txn.prepare_cached("insert into collection_template_attribute_workflows (metadata_id, version, key, workflow_id, auto_run) values ($1, $2, $3, $4, $5)").await?;
-        txn.execute(
-            &stmt,
-            &[
-                metadata_id,
-                &version,
-                &attr.key,
-                &attr.name,
-                &attr.description,
-                &attr.configuration,
-                &attr.attribute_type,
-                &attr.ui,
-                &attr.list,
-                &sort,
-                &attr.supplementary_key,
-            ],
-        )
-        .await?;
-        for wid in &attr.workflows {
-            txn.execute(
-                &stmt_wid,
-                &[
-                    metadata_id,
-                    &version,
-                    &attr.key,
-                    &wid.workflow_id,
-                    &wid.auto_run,
-                ],
-            )
-            .await?;
-        }
-        txn.commit().await?;
-        Ok(())
-    }
+    // #[tracing::instrument(skip(self, metadata_id, version, sort, attr))]
+    // pub async fn add_template_attribute(
+    //     &self,
+    //     metadata_id: &Uuid,
+    //     version: i32,
+    //     sort: i32,
+    //     attr: &TemplateAttributeInput,
+    // ) -> Result<(), Error> {
+    //     let mut connection = self.pool.get().await?;
+    //     let txn = connection.transaction().await?;
+    //     let stmt_del_wid = txn.prepare_cached("delete from collection_template_attribute_workflows where metadata_id = $1 and version = $2 and key = $3").await?;
+    //     txn.execute(&stmt_del_wid, &[metadata_id, &version, &attr.key])
+    //         .await?;
+    //     let stmt = txn.prepare_cached("insert into collection_template_attributes (metadata_id, version, key, name, description, configuration, type, ui, list, sort, supplementary_key) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) on conflict (metadata_id, version, key) do update set name = $4, description = $5, configuration = $6, type = $7, ui = $8, list = $8, sort = $9, supplementary_key = $10").await?;
+    //     let stmt_wid = txn.prepare_cached("insert into collection_template_attribute_workflows (metadata_id, version, key, workflow_id, auto_run) values ($1, $2, $3, $4, $5)").await?;
+    //     txn.execute(
+    //         &stmt,
+    //         &[
+    //             metadata_id,
+    //             &version,
+    //             &attr.key,
+    //             &attr.name,
+    //             &attr.description,
+    //             &attr.configuration,
+    //             &attr.attribute_type,
+    //             &attr.ui,
+    //             &attr.list,
+    //             &sort,
+    //             &attr.supplementary_key,
+    //         ],
+    //     )
+    //     .await?;
+    //     for wid in &attr.workflows {
+    //         txn.execute(
+    //             &stmt_wid,
+    //             &[
+    //                 metadata_id,
+    //                 &version,
+    //                 &attr.key,
+    //                 &wid.workflow_id,
+    //                 &wid.auto_run,
+    //             ],
+    //         )
+    //         .await?;
+    //     }
+    //     txn.commit().await?;
+    //     Ok(())
+    // }
 
-    #[tracing::instrument(skip(self, metadata_id, version, key))]
-    pub async fn delete_template_attribute(
-        &self,
-        metadata_id: &Uuid,
-        version: i32,
-        key: &str,
-    ) -> Result<(), Error> {
-        let mut connection = self.pool.get().await?;
-        let txn = connection.transaction().await?;
-        let stmt_del_wid = txn.prepare_cached("delete from collection_template_attributes where metadata_id = $1 and version = $2 and key = $3").await?;
-        let key = key.to_string();
-        txn.execute(&stmt_del_wid, &[metadata_id, &version, &key])
-            .await?;
-        txn.commit().await?;
-        Ok(())
-    }
+    // #[tracing::instrument(skip(self, metadata_id, version, key))]
+    // pub async fn delete_template_attribute(
+    //     &self,
+    //     metadata_id: &Uuid,
+    //     version: i32,
+    //     key: &str,
+    // ) -> Result<(), Error> {
+    //     let mut connection = self.pool.get().await?;
+    //     let txn = connection.transaction().await?;
+    //     let stmt_del_wid = txn.prepare_cached("delete from collection_template_attributes where metadata_id = $1 and version = $2 and key = $3").await?;
+    //     let key = key.to_string();
+    //     txn.execute(&stmt_del_wid, &[metadata_id, &version, &key])
+    //         .await?;
+    //     txn.commit().await?;
+    //     Ok(())
+    // }
 }

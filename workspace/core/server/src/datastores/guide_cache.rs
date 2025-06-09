@@ -36,10 +36,10 @@ impl GuideCache {
         self.guide_step_count.set(id, &count).await;
     }
 
-    #[tracing::instrument(skip(self, id))]
-    pub async fn evict_guide_step_count(&self, id: &Uuid) {
-        self.guide_step_count.remove(id).await;
-    }
+    // #[tracing::instrument(skip(self, id))]
+    // pub async fn evict_guide_step_count(&self, id: &Uuid) {
+    //     self.guide_step_count.remove(id).await;
+    // }
 
     #[tracing::instrument(skip(self, id))]
     pub async fn get_guide_step_ids(&self, id: &Uuid) -> Option<Vec<i64>> {
@@ -51,8 +51,8 @@ impl GuideCache {
         self.guide_step_ids.set(id, ids).await;
     }
 
-    #[tracing::instrument(skip(self, id))]
-    pub async fn evict_guide_step_ids(&self, id: &Uuid) {
-        self.guide_step_ids.remove(id).await;
-    }
+    // #[tracing::instrument(skip(self, id))]
+    // pub async fn evict_guide_step_ids(&self, id: &Uuid) {
+    //     self.guide_step_ids.remove(id).await;
+    // }
 }

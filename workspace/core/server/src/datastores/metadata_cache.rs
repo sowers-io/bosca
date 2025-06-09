@@ -68,10 +68,10 @@ impl MetadataCache {
         self.permissions.set(id, permissions).await;
     }
 
-    #[tracing::instrument(skip(self, id))]
-    pub async fn evict_permissions(&self, id: &Uuid) {
-        self.permissions.remove(id).await;
-    }
+    // #[tracing::instrument(skip(self, id))]
+    // pub async fn evict_permissions(&self, id: &Uuid) {
+    //     self.permissions.remove(id).await;
+    // }
 
     #[tracing::instrument(skip(self, id))]
     pub async fn get_supplementary(&self, id: &Uuid) -> Option<MetadataSupplementary> {
@@ -98,10 +98,10 @@ impl MetadataCache {
         self.metadata_supplementaries.set(id, supplementaries).await;
     }
 
-    #[tracing::instrument(skip(self, id))]
-    pub async fn evict_supplementaries(&self, id: &Uuid) {
-        self.metadata_supplementaries.remove(id).await;
-    }
+    // #[tracing::instrument(skip(self, id))]
+    // pub async fn evict_supplementaries(&self, id: &Uuid) {
+    //     self.metadata_supplementaries.remove(id).await;
+    // }
 
     #[tracing::instrument(skip(self, id))]
     pub async fn get_relationships(&self, id: &Uuid) -> Option<Vec<MetadataRelationship>> {
@@ -113,8 +113,8 @@ impl MetadataCache {
         self.metadata_relationship_id.set(id, relationships).await;
     }
 
-    #[tracing::instrument(skip(self, id))]
-    pub async fn evict_relationships(&self, id: &Uuid) {
-        self.metadata_relationship_id.remove(id).await;
-    }
+    // #[tracing::instrument(skip(self, id))]
+    // pub async fn evict_relationships(&self, id: &Uuid) {
+    //     self.metadata_relationship_id.remove(id).await;
+    // }
 }

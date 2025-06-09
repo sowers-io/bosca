@@ -48,10 +48,10 @@ impl CollectionCache {
         self.parent_id.set(id, parent_ids).await
     }
 
-    #[tracing::instrument(skip(self, id))]
-    pub async fn evict_parent_ids(&self, id: &Uuid) {
-        self.parent_id.remove(id).await;
-    }
+    // #[tracing::instrument(skip(self, id))]
+    // pub async fn evict_parent_ids(&self, id: &Uuid) {
+    //     self.parent_id.remove(id).await;
+    // }
 
     #[tracing::instrument(skip(self, id))]
     pub async fn get_permissions(&self, id: &Uuid) -> Option<Vec<Permission>> {
@@ -63,8 +63,8 @@ impl CollectionCache {
         self.permissions.set(id, permissions).await;
     }
 
-    #[tracing::instrument(skip(self, id))]
-    pub async fn evict_permissions(&self, id: &Uuid) {
-        self.permissions.remove(id).await;
-    }
+    // #[tracing::instrument(skip(self, id))]
+    // pub async fn evict_permissions(&self, id: &Uuid) {
+    //     self.permissions.remove(id).await;
+    // }
 }

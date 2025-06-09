@@ -7,10 +7,7 @@ pub async fn new_cache_client() -> Result<RedisClient, Error> {
         Ok(host) => host,
         _ => "127.0.0.1".to_string(),
     };
-    let password = match env::var("CACHE_PASSWORD") {
-        Ok(host) => Some(host),
-        _ => None,
-    };
+    let password = env::var("CACHE_PASSWORD").ok();
     let port = match env::var("CACHE_PORT") {
         Ok(port) => port.parse::<u16>(),
         _ => Ok(6380),
