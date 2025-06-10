@@ -1,6 +1,0 @@
-FROM gcr.io/distroless/cc-debian12
-
-COPY target/release/bosca-dc /
-
-EXPOSE 5000
-CMD ["./bosca-dc"]
