@@ -755,7 +755,7 @@ impl DocumentsDataStore {
             }),
             ..Default::default()
         };
-        let (id, version, _) = ctx
+        let (id, version, _, _) = ctx
             .content
             .metadata
             .add_txn(ctx, txn, &metadata, true, &None)

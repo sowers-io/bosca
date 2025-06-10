@@ -29,10 +29,12 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::sleep;
 use uuid::Uuid;
+use crate::datastores::slug_cache::SlugCache;
 
 #[derive(Clone)]
 pub struct MetadataDataStore {
     cache: MetadataCache,
+    slug_cache: SlugCache,
     guide_cache: GuideCache,
     pool: TracingPool,
     notifier: Arc<Notifier>,
@@ -43,12 +45,14 @@ impl MetadataDataStore {
     pub async fn new(
         pool: TracingPool,
         cache: MetadataCache,
+        slug_cache: SlugCache,
         guide_cache: GuideCache,
         notifier: Arc<Notifier>,
         redis: RedisClient,
     ) -> Result<Self, Error> {
         Ok(Self {
             cache,
+            slug_cache,
             guide_cache,
             pool,
             notifier,
@@ -468,12 +472,15 @@ impl MetadataDataStore {
             )
             .await
         {
-            Ok(_) => {
+            Ok((slug, _)) => {
                 txn.commit().await?;
                 self.cache.evict_metadata(id).await;
                 self.on_metadata_changed(ctx, id).await?;
                 for collection_id in collection_ids {
                     self.on_collection_changed(ctx, &collection_id).await?;
+                }
+                if let Some(slug) = slug {
+                    self.slug_cache.set_metadata_slug(id, &slug).await;
                 }
                 Ok(())
             }
@@ -663,7 +670,7 @@ impl MetadataDataStore {
         source_id: &Option<Uuid>,
         source_identifier: &Option<String>,
         source_url: &Option<String>,
-    ) -> Result<i32, Error> {
+    ) -> Result<(Option<String>, i32), Error> {
         let stmt = txn.prepare("update metadata set name = $1, labels = $2, attributes = $3, language_tag = $4, source_id = $5, source_identifier = $6, source_url = $7, content_type = $8, modified = now() where id = $9 returning version").await?;
         let labels = metadata.labels.clone().unwrap_or_default();
         let result = txn
@@ -752,7 +759,7 @@ impl MetadataDataStore {
 
         update_metadata_etag(txn, id).await?;
 
-        Ok(version)
+        Ok((metadata.slug.clone(), version))
     }
 
     #[tracing::instrument(skip(self, txn, id, profile_id, relationship, sort))]
@@ -1066,10 +1073,13 @@ impl MetadataDataStore {
     ) -> Result<(Uuid, i32, i32), Error> {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
-        let (id, version, active_version) = self
+        let (id, version, active_version, slug) = self
             .add_txn(ctx, &txn, metadata, true, &collection_item_attributes)
             .await?;
         txn.commit().await?;
+        if let Some(slug) = slug {
+            self.slug_cache.set_metadata_slug(&id, &slug).await;
+        }
         Ok((id, version, active_version))
     }
 
@@ -1088,7 +1098,7 @@ impl MetadataDataStore {
         metadata: &MetadataInput,
         inherit_permissions: bool,
         collection_item_attributes: &Option<Value>,
-    ) -> Result<(Uuid, i32, i32), Error> {
+    ) -> Result<(Uuid, i32, i32, Option<String>), Error> {
         let mut source_id: Option<Uuid> = None;
         let mut source_identifier: Option<String> = None;
         let mut source_url: Option<String> = None;
@@ -1203,7 +1213,7 @@ impl MetadataDataStore {
                 .await?;
         }
 
-        Ok((id, version, active_version))
+        Ok((id, version, active_version, metadata.slug.clone()))
     }
 
     #[tracing::instrument(skip(self, ctx, metadatas, inherit_permissions))]
@@ -1235,7 +1245,7 @@ impl MetadataDataStore {
     ) -> Result<Vec<(Uuid, i32, i32)>, Error> {
         let mut new_metadatas = Vec::new();
         for metadata_child in metadatas {
-            let (id, version, active_version) = self
+            let (id, version, active_version, _) = self
                 .add_txn(
                     ctx,
                     txn,

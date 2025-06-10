@@ -1,5 +1,4 @@
 use crate::datastores::bible::bible::BiblesDataStore;
-use crate::datastores::cache::cache::BoscaCache;
 use crate::datastores::cache::manager::BoscaCacheManager;
 use crate::datastores::collection_cache::CollectionCache;
 use crate::datastores::content::categories::CategoriesDataStore;
@@ -18,16 +17,17 @@ use crate::datastores::content::sources::SourcesDataStore;
 use crate::datastores::guide_cache::GuideCache;
 use crate::datastores::metadata_cache::MetadataCache;
 use crate::datastores::notifier::Notifier;
+use crate::datastores::slug_cache::SlugCache;
 use crate::models::content::slug::{Slug, SlugType};
+use crate::redis::RedisClient;
 use async_graphql::Error;
 use bosca_database::TracingPool;
 use std::sync::Arc;
 use uuid::Uuid;
-use crate::redis::RedisClient;
 
 #[derive(Clone)]
 pub struct ContentDataStore {
-    slug_cache: BoscaCache<Slug>,
+    slug_cache: SlugCache,
     pool: TracingPool,
 
     pub categories: CategoriesDataStore,
@@ -52,10 +52,11 @@ impl ContentDataStore {
         let collections_cache = CollectionCache::new(cache).await?;
         let metadata_cache = MetadataCache::new(cache).await?;
         let guide_cache = GuideCache::new(cache).await?;
+        let slug_cache = SlugCache::new(cache).await?;
         Ok(Self {
-            slug_cache: cache.new_string_tiered_cache("slugs").await?,
+            slug_cache: slug_cache.clone(),
             categories: CategoriesDataStore::new(pool.clone(), Arc::clone(&notifier)),
-            collections: CollectionsDataStore::new(pool.clone(), collections_cache.clone(), Arc::clone(&notifier)).await?,
+            collections: CollectionsDataStore::new(pool.clone(), collections_cache.clone(), slug_cache.clone(), Arc::clone(&notifier)).await?,
             collection_supplementary: CollectionSupplementaryDataStore::new(pool.clone(), Arc::clone(&notifier)),
             collection_permissions: CollectionPermissionsDataStore::new(
                 pool.clone(),
@@ -68,7 +69,7 @@ impl ContentDataStore {
             collection_templates: CollectionTemplatesDataStore::new(
                 pool.clone(),
             ),
-            metadata: MetadataDataStore::new(pool.clone(), metadata_cache.clone(), guide_cache.clone(), Arc::clone(&notifier), redis).await?,
+            metadata: MetadataDataStore::new(pool.clone(), metadata_cache.clone(), slug_cache, guide_cache.clone(), Arc::clone(&notifier), redis).await?,
             metadata_supplementary: MetadataSupplementaryDataStore::new(pool.clone(), metadata_cache.clone(), Arc::clone(&notifier)),
             metadata_permissions: MetadataPermissionsDataStore::new(
                 pool.clone(),
@@ -89,7 +90,7 @@ impl ContentDataStore {
     #[tracing::instrument(skip(self, slug))]
     pub async fn get_slug(&self, slug: &str) -> async_graphql::Result<Option<Slug>, Error> {
         let slug = slug.to_string();
-        if let Some(s) = self.slug_cache.get(&slug).await {
+        if let Some(s) = self.slug_cache.get_slug(&slug).await {
             return Ok(Some(s));
         }
         let connection = self.pool.get().await?;
@@ -122,7 +123,7 @@ impl ContentDataStore {
                 SlugType::Profile
             },
         };
-        self.slug_cache.set(&slug, &s).await;
+        self.slug_cache.set_slug(&slug, &s).await;
         Ok(Some(s))
     }
 }

@@ -463,7 +463,7 @@ impl GuidesDataStore {
         collection_item_attributes: Option<serde_json::Value>,
     ) -> Result<(Uuid, i32), Error> {
         Ok(if let Some(metadata) = metadata {
-            let (id, version, _) = Box::pin(ctx.content.metadata.add_txn(
+            let (id, version, _, _) = Box::pin(ctx.content.metadata.add_txn(
                 ctx,
                 txn,
                 metadata,
@@ -714,7 +714,7 @@ impl GuidesDataStore {
             }),
             ..Default::default()
         };
-        let (metadata_id, version, _) = ctx
+        let (metadata_id, version, _, _) = ctx
             .content
             .metadata
             .add_txn(ctx, &txn, &metadata, true, &None)

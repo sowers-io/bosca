@@ -25,22 +25,26 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use tokio_postgres::Statement;
 use uuid::Uuid;
+use crate::datastores::slug_cache::SlugCache;
 
 #[derive(Clone)]
 pub struct CollectionsDataStore {
     pool: TracingPool,
     notifier: Arc<Notifier>,
     cache: CollectionCache,
+    slug_cache: SlugCache,
 }
 
 impl CollectionsDataStore {
     pub async fn new(
         pool: TracingPool,
         cache: CollectionCache,
+        slug_cache: SlugCache,
         notifier: Arc<Notifier>,
     ) -> Result<Self, Error> {
         Ok(Self {
             cache,
+            slug_cache,
             pool,
             notifier,
         })
@@ -678,13 +682,16 @@ impl CollectionsDataStore {
             Uuid::parse_str("00000000-0000-0000-0000-000000000000")?
         };
         match self.add_txn(&txn, collection, true).await {
-            Ok(value) => {
+            Ok((id, slug)) => {
                 txn.commit().await?;
-                self.on_collection_changed(ctx, &value).await?;
+                self.on_collection_changed(ctx, &id).await?;
                 if !is_root {
                     self.on_collection_changed(ctx, &parent_id).await?;
                 }
-                Ok(value)
+                if let Some(slug) = slug {
+                    self.slug_cache.set_collection_slug(&id, &slug).await;
+                }
+                Ok(id)
             }
             Err(err) => {
                 txn.rollback().await?;
@@ -704,10 +711,13 @@ impl CollectionsDataStore {
         let txn = connection.transaction().await?;
 
         match self.edit_txn(&txn, id, collection).await {
-            Ok(value) => {
+            Ok(slug) => {
                 txn.commit().await?;
                 self.on_collection_changed(ctx, id).await?;
-                Ok(value)
+                if let Some(slug) = slug {
+                    self.slug_cache.set_collection_slug(id, &slug).await;
+                }
+                Ok(())
             }
             Err(err) => {
                 txn.rollback().await?;
@@ -722,7 +732,7 @@ impl CollectionsDataStore {
         txn: &'a Transaction<'a>,
         collection: &CollectionInput,
         update_etag: bool,
-    ) -> Result<Uuid, Error> {
+    ) -> Result<(Uuid, Option<String>), Error> {
         let stmt: Statement = if collection.collection_type.unwrap_or(CollectionType::Folder)
             == CollectionType::Root
         {
@@ -778,7 +788,7 @@ impl CollectionsDataStore {
             update_collection_etag(txn, &id).await?;
         }
 
-        Ok(id)
+        Ok((id, collection.slug.clone()))
     }
 
     #[tracing::instrument(skip(self, txn, id))]
@@ -844,7 +854,7 @@ impl CollectionsDataStore {
         txn: &'a Transaction<'a>,
         id: &Uuid,
         collection: &CollectionInput,
-    ) -> Result<(), Error> {
+    ) -> Result<Option<String>, Error> {
         let stmt = txn.prepare("update collections set name = $1, description = $2, type = $3, labels = $4, attributes = $5, ordering = $6, modified = now(), template_metadata_id = $7, template_metadata_version = $8 where id = $9").await?;
         let labels = collection.labels.clone().unwrap_or_default();
         let ordering = collection
@@ -897,7 +907,7 @@ impl CollectionsDataStore {
 
         update_collection_etag(txn, id).await?;
 
-        Ok(())
+        Ok(collection.slug.clone())
     }
 
     #[tracing::instrument(skip(self, ctx, id, collection_id, attributes))]
@@ -1224,7 +1234,7 @@ impl CollectionsDataStore {
                     return Err(Error::new("locked"))
                 }
             }
-            let id = self.add_txn(txn, collection, false).await?;
+            let (id, _) = self.add_txn(txn, collection, false).await?;
             let permissions = if let Some(permissions) = &permissions {
                 permissions.clone()
             } else {

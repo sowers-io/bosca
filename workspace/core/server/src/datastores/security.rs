@@ -952,7 +952,7 @@ impl SecurityDataStore {
                     },
                     false,
                 )
-                .await?)
+                .await?.0)
         } else {
             None
         };
