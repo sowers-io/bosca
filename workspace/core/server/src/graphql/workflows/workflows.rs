@@ -161,18 +161,27 @@ impl WorkflowsObject {
             .map(|p| p.into()))
     }
 
+    async fn queues(&self, ctx: &Context<'_>) -> Result<Vec<String>, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        ctx.check_has_service_account().await?;
+        let queues = ctx.workflow.get_queues().await?;
+        Ok(queues)
+    }
+
     async fn executions(
         &self,
         ctx: &Context<'_>,
-        queue: String,
+        queue: Option<String>,
         offset: i64,
         limit: i64,
+        active: Option<bool>,
+        failures: Option<bool>
     ) -> Result<Vec<WorkflowExecution>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         ctx.check_has_service_account().await?;
         let items = ctx
             .workflow
-            .get_execution_plans(&queue, offset, limit)
+            .get_execution_plans(queue, offset, limit, active, failures)
             .await?;
         Ok(items
             .into_iter()

@@ -476,10 +476,10 @@ class Workflows(network: NetworkClient) : Api(network) {
         response.validate()
     }
 
-    suspend fun getStorageSystems(): List<GetStorageSystemsQuery.All> {
+    suspend fun getStorageSystems(): List<StorageSystem> {
         val response = network.graphql.query(GetStorageSystemsQuery()).execute()
         response.validate()
-        return response.data?.workflows?.storageSystems?.all ?: emptyList()
+        return response.data?.workflows?.storageSystems?.all?.map { it.storageSystem } ?: emptyList()
     }
 
     suspend fun getStorageSystem(id: String): StorageSystem? {

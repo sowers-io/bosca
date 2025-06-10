@@ -154,7 +154,8 @@ impl JobQueues {
     #[tracing::instrument(skip(self, workflow_id, metadata_id, metadata_version, collection_id))]
     pub async fn cancel_workflows(
         &self,
-        workflow_id: &str,
+        id: &Option<Uuid>,
+        workflow_id: &Option<String>,
         metadata_id: &Option<Uuid>,
         metadata_version: &Option<i32>,
         collection_id: &Option<Uuid>,
@@ -171,12 +172,25 @@ impl JobQueues {
             connection
                 .query(&stmt, &[metadata_id, metadata_version, &workflow_id])
                 .await?
+        } else if let Some(workflow_id) = workflow_id {
+            let stmt = connection.prepare("select id, queue from workflow_plans where workflow_id = $1 and finished is null").await?;
+            connection
+                .query(&stmt, &[&workflow_id])
+                .await?
+        } else if let Some(id) = id {
+            let stmt = connection.prepare("select id, queue from workflow_plans where id = $1 and finished is null").await?;
+            connection
+                .query(&stmt, &[id])
+                .await?
         } else {
-            return Ok(());
+            return Err(Error::new("invalid request specified"));
         };
 
         let db_txn = connection.transaction().await?;
         let mut redis_txn = RedisTransaction::new();
+
+        let mut collection_ids = HashSet::new();
+        let mut metadata_ids = HashSet::new();
 
         for row in results {
             let id = row.get("id");
@@ -185,6 +199,12 @@ impl JobQueues {
             let Some(mut plan) = self.get_plan_and_lock(&db_txn, &id).await? else {
                 continue;
             };
+            if plan.metadata_id.is_some() && plan.metadata_version.is_some() {
+                metadata_ids.insert(plan.metadata_id.unwrap());
+            }
+            if plan.collection_id.is_some() {
+                collection_ids.insert(plan.collection_id.unwrap());
+            }
             for job in plan.jobs.iter_mut() {
                 job.finished = Some(Utc::now());
                 redis_txn.add_op(CancelQueueJob(job.id.clone()));
@@ -206,11 +226,11 @@ impl JobQueues {
         db_txn.commit().await?;
         redis_txn.execute(&self.redis).await?;
 
-        if let Some(id) = &collection_id {
-            self.notifier.collection_changed(id).await?;
+        for id in collection_ids {
+            self.notifier.collection_changed(&id).await?;
         }
-        if let Some(id) = &metadata_id {
-            self.notifier.metadata_changed(id).await?;
+        for id in metadata_ids {
+            self.notifier.metadata_changed(&id).await?;
         }
 
         Ok(())
@@ -280,17 +300,63 @@ impl JobQueues {
     #[tracing::instrument(skip(self, queue, offset, limit))]
     pub async fn get_all_plans(
         &self,
-        queue: &str,
+        queue: Option<String>,
         offset: i64,
         limit: i64,
+        active: Option<bool>,
+        failures: Option<bool>,
     ) -> Result<Vec<WorkflowExecutionPlan>, Error> {
         let mut plans = Vec::new();
         let connection = self.pool.get().await?;
-        let stmt = connection.prepare("select configuration from workflow_plans where configuration->>'id'->>'queue' = $1 offset $2 limit $3 order by created desc").await?;
-        let result = connection.query(&stmt, &[&queue, &offset, &limit]).await?;
+        let mut query = "select configuration from workflow_plans".to_string();
+        let mut filter = "".to_string();
+        let mut ix = 1;
+        if queue.is_some() {
+            if !filter.is_empty() {
+                filter.push_str(" and ");
+            }
+            filter.push_str("configuration->'id'->>'queue' = $1");
+            ix += 1;
+        }
+        if failures.unwrap_or(false) {
+            if !filter.is_empty() {
+                filter.push_str(" and ");
+            }
+            filter.push_str("jsonb_array_length(configuration->'failed') > 0");
+        }
+        if active.unwrap_or(false) {
+            if !filter.is_empty() {
+                filter.push_str(" and ");
+            }
+            filter.push_str("jsonb_array_length(configuration->'active') > 0");
+        }
+        if !filter.is_empty() {
+            query.push_str(&format!(" where {}", filter));
+        }
+        query.push_str(&format!(" order by created desc offset ${} limit ${}", ix, ix + 1));
+        let result = if let Some(queue) = queue {
+            let stmt = connection.prepare(&query).await?;
+            connection.query(&stmt, &[&queue, &offset, &limit]).await?
+        } else {
+            let stmt = connection.prepare(&query).await?;
+            connection.query(&stmt, &[&offset, &limit]).await?
+        };
         for row in result {
             let configuration: Value = row.get("configuration");
             plans.push(from_value(configuration)?);
+        }
+        Ok(plans)
+    }
+
+    #[tracing::instrument(skip(self))]
+    pub async fn get_queues(&self) -> Result<Vec<String>, Error> {
+        let mut plans = Vec::new();
+        let connection = self.pool.get().await?;
+        let stmt = connection.prepare("select distinct queue from workflow_plans order by queue desc").await?;
+        let result = connection.query(&stmt, &[]).await?;
+        for row in result {
+            let queue: String = row.get("queue");
+            plans.push(queue);
         }
         Ok(plans)
     }

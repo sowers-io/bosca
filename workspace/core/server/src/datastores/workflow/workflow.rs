@@ -1414,6 +1414,12 @@ impl WorkflowDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self))]
+    pub async fn retry_jobs(&self, ids: Vec<WorkflowJobId>) -> Result<(), Error> {
+        self.queues.retry_jobs(ids).await?;
+        Ok(())
+    }
+
     #[tracing::instrument(skip(self, job_id, workflow_ids, delay_until))]
     pub async fn enqueue_job_child_workflows(
         &self,
@@ -1508,14 +1514,21 @@ impl WorkflowDataStore {
         self.queues.get_plan(id).await
     }
 
+    #[tracing::instrument(skip(self))]
+    pub async fn get_queues(&self) -> Result<Vec<String>, Error> {
+        self.queues.get_queues().await
+    }
+
     #[tracing::instrument(skip(self, queue, offset, limit))]
     pub async fn get_execution_plans(
         &self,
-        queue: &str,
+        queue: Option<String>,
         offset: i64,
         limit: i64,
+        active: Option<bool>,
+        failures: Option<bool>,
     ) -> Result<Vec<WorkflowExecutionPlan>, Error> {
-        self.queues.get_all_plans(queue, offset, limit).await
+        self.queues.get_all_plans(queue, offset, limit, active, failures).await
     }
 
     #[tracing::instrument(skip(self, request))]
@@ -1709,16 +1722,17 @@ impl WorkflowDataStore {
         }
     }
 
-    #[tracing::instrument(skip(self, workflow_id, metadata_id, metadata_version, collection_id))]
+    #[tracing::instrument(skip(self, id, workflow_id, metadata_id, metadata_version, collection_id))]
     pub async fn cancel_workflows(
         &self,
-        workflow_id: &str,
+        id: &Option<Uuid>,
+        workflow_id: &Option<String>,
         metadata_id: &Option<Uuid>,
         metadata_version: &Option<i32>,
         collection_id: &Option<Uuid>,
     ) -> Result<(), Error> {
         self.queues
-            .cancel_workflows(workflow_id, metadata_id, metadata_version, collection_id)
+            .cancel_workflows(id, workflow_id, metadata_id, metadata_version, collection_id)
             .await?;
         Ok(())
     }

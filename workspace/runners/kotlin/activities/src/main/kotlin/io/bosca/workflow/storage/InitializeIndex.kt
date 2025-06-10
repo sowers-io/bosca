@@ -11,6 +11,12 @@ import io.bosca.workflow.ActivityContext
 import io.bosca.workflow.search.IndexConfiguration
 import io.bosca.workflow.search.newMeilisearchConfig
 import io.bosca.workflow.search.suspendWaitForTask
+import kotlinx.serialization.Serializable
+
+@Serializable
+class InitializeIndexConfiguration(
+    val id: String? = null
+)
 
 class InitializeIndex(client: Client) : Activity(client) {
     override val id = ID
@@ -26,10 +32,18 @@ class InitializeIndex(client: Client) : Activity(client) {
     }
 
     override suspend fun execute(context: ActivityContext, job: WorkflowJob) {
+        val configuration = getConfiguration<InitializeIndexConfiguration>(job)
+        val systems = if (configuration.id != null) {
+            val system = client.workflows.getStorageSystem(configuration.id)
+            system?.let { listOf(it) } ?: emptyList()
+        } else {
+            job.storageSystems.filter { it.system.storageSystem.type == StorageSystemType.SEARCH }
+                .map { it.system.storageSystem }
+        }
         val meilisearchConfig = newMeilisearchConfig()
         val client = com.meilisearch.sdk.Client(meilisearchConfig)
-        for (system in job.storageSystems.filter { it.system.storageSystem.type == StorageSystemType.SEARCH }) {
-            val cfg = system.system.storageSystem.configuration.decode<IndexConfiguration>() ?: error("index configuration missing")
+        for (system in systems) {
+            val cfg = system.configuration.decode<IndexConfiguration>() ?: error("index configuration missing")
             val index = try {
                 client.getIndex(cfg.name)
             } catch (_: MeilisearchApiException) {

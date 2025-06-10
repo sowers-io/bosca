@@ -42,8 +42,8 @@ suspend fun WorkflowDefinition.toInput(client: Client): WorkflowInput {
                     WorkflowActivityStorageSystemInput(
                         configuration = Optional.Absent,
                         systemId = client.workflows.getStorageSystems().first {
-                            it.storageSystem.name == storage.name
-                        }.storageSystem.id
+                            it.name == storage.name
+                        }.id
                     )
                 }
             )

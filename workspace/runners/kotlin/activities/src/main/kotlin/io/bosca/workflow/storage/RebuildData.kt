@@ -2,6 +2,7 @@ package io.bosca.workflow.storage
 
 import com.meilisearch.sdk.Client
 import io.bosca.graphql.GetStorageSystemsQuery
+import io.bosca.graphql.fragment.StorageSystem
 import io.bosca.graphql.fragment.WorkflowJob
 import io.bosca.graphql.type.ActivityInput
 import io.bosca.graphql.type.StorageSystemType
@@ -13,6 +14,12 @@ import io.bosca.workflow.search.newMeilisearchConfig
 import io.bosca.workflow.search.suspendWaitForTask
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.serialization.Serializable
+
+@Serializable
+class RebuildDataConfiguration(
+    val id: String? = null
+)
 
 class RebuildData(client: io.bosca.api.Client) : Activity(client) {
 
@@ -28,12 +35,12 @@ class RebuildData(client: io.bosca.api.Client) : Activity(client) {
         )
     }
 
-    private suspend fun deleteAll(system: GetStorageSystemsQuery.All) {
-        when (system.storageSystem.type) {
+    private suspend fun deleteAll(system: StorageSystem) {
+        when (system.type) {
             StorageSystemType.SEARCH -> {
                 val meilisearchConfig = newMeilisearchConfig()
                 val client = Client(meilisearchConfig)
-                val cfg = system.storageSystem.configuration.decode<IndexConfiguration>()
+                val cfg = system.configuration.decode<IndexConfiguration>()
                     ?: error("index configuration missing")
                 val index = client.index(cfg.name)
                 val taskId = index.deleteAllDocuments().taskUid
@@ -50,7 +57,12 @@ class RebuildData(client: io.bosca.api.Client) : Activity(client) {
     }
 
     override suspend fun execute(context: ActivityContext, job: WorkflowJob) = coroutineScope {
-        val storageSystems = client.workflows.getStorageSystems()
+        val configuration = getConfiguration<RebuildDataConfiguration>(job)
+        val storageSystems = if (configuration.id != null) {
+            client.workflows.getStorageSystem(configuration.id)?.let { listOf(it) } ?: emptyList()
+        } else {
+            client.workflows.getStorageSystems()
+        }
 
         for (system in storageSystems) {
             deleteAll(system)

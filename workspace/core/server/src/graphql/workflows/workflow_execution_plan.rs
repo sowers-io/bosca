@@ -6,6 +6,7 @@ use crate::graphql::workflows::workflow_job_id::WorkflowJobIdObject;
 use crate::models::security::permission::PermissionAction;
 use crate::models::workflow::execution_plan::WorkflowExecutionPlan;
 use async_graphql::{Context, Error, Object};
+use chrono::{DateTime, Utc};
 use serde_json::Value;
 use crate::context::BoscaContext;
 
@@ -56,6 +57,18 @@ impl WorkflowExecutionPlanObject {
     async fn collection_id(&self) -> Option<String> {
         self.plan.collection_id.as_ref().map(|id| id.to_string())
     }
+    async fn enqueued(&self) -> &DateTime<Utc> {
+        &self.plan.enqueued
+    }
+    async fn delayed_until(&self) -> &Option<DateTime<Utc>> {
+        &self.plan.delay_until
+    }
+    async fn finished(&self) -> &Option<DateTime<Utc>> {
+        &self.plan.finished
+    }
+    async fn failure(&self) -> bool {
+        self.plan.failure
+    }
     async fn supplementary_id(&self) -> &Option<String> {
         &self.plan.supplementary_id
     }
@@ -76,6 +89,9 @@ impl WorkflowExecutionPlanObject {
     }
     async fn error(&self) -> &Option<String> {
         &self.plan.error
+    }
+    async fn max_failures(&self) -> i32 {
+        self.plan.max_failures
     }
 }
 

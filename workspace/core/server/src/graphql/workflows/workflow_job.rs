@@ -139,6 +139,10 @@ impl WorkflowJobObject {
             .collect()
     }
 
+    async fn failures(&self) -> i32 {
+        self.job.failures
+    }
+
     async fn models(&self) -> Vec<WorkflowActivityModelObject> {
         self.job.models.iter().map(|p| p.clone().into()).collect()
     }

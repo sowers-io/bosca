@@ -35,10 +35,10 @@ class AddToIndex(client: io.bosca.api.Client) : Activity(client) {
     override suspend fun execute(context: ActivityContext, job: WorkflowJob) {
         val meilisearchConfig = newMeilisearchConfig()
         val configuration = getConfiguration<AddToIndexConfiguration>(job)
-        val storageSystem = client.workflows.getStorageSystems().firstOrNull { it.storageSystem.name == configuration.storageSystem } ?: error("storage system missing")
+        val storageSystem = client.workflows.getStorageSystems().firstOrNull { it.name == configuration.storageSystem } ?: error("storage system missing")
         val client = Client(meilisearchConfig)
         val document = getInputSupplementaryText(context, job, INPUT_NAME)
-        val cfg = storageSystem.storageSystem.configuration.decode<IndexConfiguration>() ?: error("index configuration missing")
+        val cfg = storageSystem.configuration.decode<IndexConfiguration>() ?: error("index configuration missing")
         val index = client.index(cfg.name)
         val taskId = index.addDocuments(document).taskUid
         index.suspendWaitForTask(taskId)

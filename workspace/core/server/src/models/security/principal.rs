@@ -1,8 +1,6 @@
-use crate::models::security::group::Group;
-use serde_json::Value;
-use std::collections::HashSet;
-use std::fmt::{Debug, Formatter};
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use std::fmt::{Debug, Formatter};
 use tokio_postgres::Row;
 use uuid::Uuid;
 
@@ -31,12 +29,7 @@ impl Principal {
         verified: bool,
         anonymous: bool,
         attributes: Value,
-        groups: Vec<Group>,
     ) -> Self {
-        let mut group_ids = HashSet::<Uuid>::new();
-        for group in groups.iter() {
-            group_ids.insert(group.id);
-        }
         Self {
             id,
             verified,

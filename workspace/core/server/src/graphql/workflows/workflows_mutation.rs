@@ -14,7 +14,7 @@ use crate::graphql::workflows::workflow_schedules_mutation::WorkflowSchedulesMut
 use crate::models::content::find_query::FindQueryInput;
 use crate::models::security::permission::PermissionAction;
 use crate::models::workflow::enqueue_request::EnqueueRequest;
-use crate::models::workflow::execution_plan::{WorkflowExecutionIdInput, WorkflowJobIdInput};
+use crate::models::workflow::execution_plan::{WorkflowExecutionIdInput, WorkflowJobId, WorkflowJobIdInput};
 use crate::models::workflow::transitions::BeginTransitionInput;
 use crate::models::workflow::workflows::WorkflowInput;
 use crate::security::util::check_has_group;
@@ -123,6 +123,20 @@ impl WorkflowsMutationObject {
         Ok(true)
     }
 
+    async fn retry_jobs(&self, ctx: &Context<'_>, id: Vec<WorkflowJobIdInput>) -> Result<bool, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        ctx.check_has_service_account().await?;
+        let ids = id.iter().map(
+            |id| WorkflowJobId {
+                queue: id.queue.clone(),
+                id: Uuid::parse_str(&id.id).expect("invalid id"),
+                index: id.index,
+            }
+        ).collect();
+        ctx.workflow.retry_jobs(ids).await?;
+        Ok(true)
+    }
+
     async fn begin_transition(
         &self,
         ctx: &Context<'_>,
@@ -156,7 +170,8 @@ impl WorkflowsMutationObject {
                 }
                 ctx.workflow
                     .cancel_workflows(
-                        METADATA_DELAYED_TRANSITION,
+                        &None,
+                        &Some(METADATA_DELAYED_TRANSITION.to_string()),
                         &Some(id),
                         &metadata_version,
                         &None,
@@ -183,7 +198,8 @@ impl WorkflowsMutationObject {
                 .await?;
             ctx.workflow
                 .cancel_workflows(
-                    COLLECTION_DELAYED_TRANSITION,
+                    &None,
+                    &Some(COLLECTION_DELAYED_TRANSITION.to_string()),
                     &Some(id),
                     &metadata_version,
                     &None,
@@ -209,17 +225,20 @@ impl WorkflowsMutationObject {
     async fn cancel_workflows(
         &self,
         ctx: &Context<'_>,
-        workflow_id: String,
+        id: Option<String>,
+        workflow_id: Option<String>,
         metadata_id: Option<String>,
         metadata_version: Option<i32>,
         collection_id: Option<String>,
     ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         ctx.check_has_service_account().await?;
+        let id = id.map(|id| Uuid::parse_str(id.as_str()).unwrap());
         let metadata_id = metadata_id.map(|id| Uuid::parse_str(id.as_str()).unwrap());
         let collection_id = collection_id.map(|id| Uuid::parse_str(id.as_str()).unwrap());
         ctx.workflow
             .cancel_workflows(
+                &id,
                 &workflow_id,
                 &metadata_id,
                 &metadata_version,

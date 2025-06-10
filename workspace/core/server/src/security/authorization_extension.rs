@@ -27,7 +27,7 @@ impl ExtensionFactory for Authorization {
 struct AuthorizationExtension {}
 
 pub fn get_anonymous_principal() -> Principal {
-    Principal::new(Uuid::nil(), false, true, Value::Null, vec![])
+    Principal::new(Uuid::nil(), false, true, Value::Null)
 }
 
 pub fn get_auth_header(headers: &HeaderMap) -> Option<AuthorizationData> {

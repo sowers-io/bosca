@@ -36,8 +36,8 @@ class AddToIndexes(client: io.bosca.api.Client) : Activity(client) {
         val client = Client(meilisearchConfig)
         val document = getInputSupplementaryText(context, job, INPUT_NAME)
         val taskIds = mutableListOf<Pair<Index, Int>>()
-        for (system in storageSystems.filter { it.storageSystem.type == StorageSystemType.SEARCH }) {
-            val cfg = system.storageSystem.configuration.decode<IndexConfiguration>() ?: error("index configuration missing")
+        for (system in storageSystems.filter { it.type == StorageSystemType.SEARCH }) {
+            val cfg = system.configuration.decode<IndexConfiguration>() ?: error("index configuration missing")
             val index = client.index(cfg.name)
             val taskId = index.addDocuments(document).taskUid
             taskIds.add(index to taskId)

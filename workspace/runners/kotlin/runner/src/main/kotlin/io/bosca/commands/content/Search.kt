@@ -16,8 +16,8 @@ class Search(private val client: Client = ClientProvider.client) : SuspendingCli
         val storageSystem = client
             .workflows
             .getStorageSystems()
-            .firstOrNull { it.storageSystem.name == "Default Search" }
-            ?.storageSystem ?: error("missing storage system")
+            .firstOrNull { it.name == "Default Search" }
+            ?: error("missing storage system")
         val results = client.search.search(
             query = query,
             filter = filter,

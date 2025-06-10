@@ -12,7 +12,7 @@ import java.io.File
 class StorageSystemsInstaller: Installer {
     override suspend fun install(client: Client, directory: File) {
         val currentSystems = client.workflows.getStorageSystems().associate {
-            it.storageSystem.name to it.storageSystem.id
+            it.name to it.id
         }
 
         val modelIdsByName = client.workflows.getModels().associate { it.name to it.id }
