@@ -1,12 +1,15 @@
 package io.bosca.api
 
 import io.bosca.graphql.AddProfileAttributeTypeMutation
+import io.bosca.graphql.AddProfileAttributesMutation
 import io.bosca.graphql.EditProfileAttributeTypeMutation
 import io.bosca.graphql.GetProfileAttributeTypesQuery
 import io.bosca.graphql.GetProfilesQuery
 import io.bosca.graphql.fragment.Principal
 import io.bosca.graphql.fragment.Profile
 import io.bosca.graphql.fragment.ProfileAttributeType
+import io.bosca.graphql.type.ProfileAttribute
+import io.bosca.graphql.type.ProfileAttributeInput
 import io.bosca.graphql.type.ProfileAttributeTypeInput
 
 class Profiles(network: NetworkClient) : Api(network) {
@@ -30,6 +33,11 @@ class Profiles(network: NetworkClient) : Api(network) {
 
     suspend fun editAttributeType(type: ProfileAttributeTypeInput) {
         val response = network.graphql.mutation(EditProfileAttributeTypeMutation(type)).execute()
+        response.validate()
+    }
+
+    suspend fun addAttributes(id: String, attributes: List<ProfileAttributeInput>) {
+        val response = network.graphql.mutation(AddProfileAttributesMutation(id, attributes)).execute()
         response.validate()
     }
 }

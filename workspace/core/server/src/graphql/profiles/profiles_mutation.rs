@@ -5,6 +5,7 @@ use crate::models::profiles::profile_attribute_type::ProfileAttributeTypeInput;
 use async_graphql::*;
 use uuid::Uuid;
 use crate::graphql::profiles::profile_mutation::ProfileMutationObject;
+use crate::models::profiles::profile_attribute::ProfileAttributeInput;
 use crate::models::workflow::enqueue_request::EnqueueRequest;
 use crate::workflow::core_workflow_ids::PROFILE_ADDED;
 
@@ -60,6 +61,19 @@ impl ProfilesMutationObject {
                 .await?
                 .map(ProfileObject::new))
         }
+    }
+
+    async fn add_attributes(
+        &self,
+        ctx: &Context<'_>,
+        id: String,
+        attributes: Vec<ProfileAttributeInput>,
+    ) -> Result<bool, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        ctx.check_has_service_account().await?;
+        let id = Uuid::parse_str(&id)?;
+        ctx.profile.add_attributes(ctx, &id, attributes).await?;
+        Ok(true)
     }
 
     async fn delete_attribute(

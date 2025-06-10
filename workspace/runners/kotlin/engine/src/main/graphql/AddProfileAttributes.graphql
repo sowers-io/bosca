@@ -1,0 +1,5 @@
+mutation AddProfileAttributes($id: String! $attributes: [ProfileAttributeInput!]!) {
+    profiles {
+        addAttributes(id: $id, attributes: $attributes)
+    }
+}

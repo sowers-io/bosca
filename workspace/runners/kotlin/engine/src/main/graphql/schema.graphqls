@@ -6,11 +6,7 @@ schema {
     subscription: Subscription
 }
 
-"""
-
-Indicates that an Input Object is a OneOf Input Object (and thus requires
-exactly one of its field be provided)
-"""
+"Indicates that an Input Object is a OneOf Input Object (and thus requires exactly one of its field be provided)"
 directive @oneOf on INPUT_OBJECT
 
 union CollectionItem = Collection | Metadata
@@ -804,6 +800,7 @@ type Profiles {
 type ProfilesMutation {
     add(profile: ProfileInput!): Profile
     addAttributeType(attribute: ProfileAttributeTypeInput!): Boolean!
+    addAttributes(attributes: [ProfileAttributeInput!]!, id: String!): Boolean!
     deleteAttribute(attributeId: String!, id: String): Boolean!
     deleteAttributeType(attributeId: String!): Boolean!
     edit(id: String, profile: ProfileInput!): Profile
@@ -1097,10 +1094,15 @@ type WorkflowExecutionPlan {
     collectionId: String
     complete: [Int!]!
     context: JSON
+    delayedUntil: DateTime
+    enqueued: DateTime!
     error: String
     failed: [Int!]!
+    failure: Boolean!
+    finished: DateTime
     id: WorkflowExecutionId!
     jobs: [WorkflowJob!]!
+    maxFailures: Int!
     metadata: Metadata
     metadataId: String
     metadataVersion: Int
@@ -1118,6 +1120,7 @@ type WorkflowJob {
     context: JSON
     error: String
     failedChildren: [WorkflowExecutionId!]!
+    failures: Int!
     id: WorkflowJobId!
     metadata: Metadata
     metadataVersion: Int
@@ -1189,10 +1192,11 @@ type Workflows {
     activities: Activities!
     all: [Workflow!]!
     executionPlan(id: String!, queue: String!): WorkflowExecutionPlan
-    executions(limit: Int!, offset: Int!, queue: String!): [WorkflowExecution!]!
+    executions(active: Boolean, failures: Boolean, limit: Int!, offset: Int!, queue: String): [WorkflowExecution!]!
     models: Models!
     nextJob(queue: String!): WorkflowJob
     prompts: Prompts!
+    queues: [String!]!
     schedules: WorkflowSchedules!
     states: WorkflowStates!
     storageSystems: StorageSystems!
@@ -1208,7 +1212,7 @@ type WorkflowsMutation {
     add(workflow: WorkflowInput!): Workflow!
     beginTransition(configurations: [WorkflowConfigurationInput!], request: BeginTransitionInput!): Boolean!
     cancelTransition(collectionId: String, metadataId: String, metadataVersion: Int): Boolean!
-    cancelWorkflows(collectionId: String, metadataId: String, metadataVersion: Int, workflowId: String!): Boolean!
+    cancelWorkflows(collectionId: String, id: String, metadataId: String, metadataVersion: Int, workflowId: String): Boolean!
     delete(id: String!): Boolean!
     edit(workflow: WorkflowInput!): Workflow!
     enqueueChildWorkflow(configurations: [WorkflowConfigurationInput!], delayUntil: DateTime, jobId: WorkflowJobIdInput!, workflowId: String!): WorkflowExecutionId!
@@ -1219,6 +1223,7 @@ type WorkflowsMutation {
     models: ModelsMutation!
     prompts: PromptsMutation!
     retryAllFailed: Boolean!
+    retryJobs(id: [WorkflowJobIdInput!]!): Boolean!
     schedules: WorkflowSchedulesMutation!
     setExecutionPlanContext(context: JSON!, planId: WorkflowExecutionIdInput!): Boolean!
     setExecutionPlanJobCheckin(jobId: WorkflowJobIdInput!): Boolean!

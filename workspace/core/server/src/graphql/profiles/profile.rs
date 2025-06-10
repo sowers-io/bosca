@@ -93,10 +93,15 @@ impl ProfileObject {
     async fn attributes(&self, ctx: &Context<'_>) -> Result<Vec<ProfileAttributeObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let attributes = ctx.profile.get_attributes(&self.profile.id).await?;
-        if self.profile.principal == Some(ctx.principal.id) || ctx.has_admin_account().await? {
+        if self.profile.principal == Some(ctx.principal.id) {
             Ok(attributes
                 .into_iter()
                 .filter(|a| a.visibility != ProfileVisibility::System)
+                .map(ProfileAttributeObject::new)
+                .collect())
+        } else if ctx.has_service_account().await? || ctx.has_admin_account().await? {
+            Ok(attributes
+                .into_iter()
                 .map(ProfileAttributeObject::new)
                 .collect())
         } else {

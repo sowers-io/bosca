@@ -2,7 +2,7 @@ use crate::context::BoscaContext;
 use crate::models::content::guide_history::GuideHistory;
 use crate::models::content::guide_progress::GuideProgress;
 use crate::models::profiles::profile::{Profile, ProfileInput};
-use crate::models::profiles::profile_attribute::ProfileAttribute;
+use crate::models::profiles::profile_attribute::{ProfileAttribute, ProfileAttributeInput};
 use crate::models::profiles::profile_attribute_type::{
     ProfileAttributeType, ProfileAttributeTypeInput,
 };
@@ -206,6 +206,36 @@ impl ProfileDataStore {
             self.update_storage(ctx, &id).await?;
         }
         Ok(id)
+    }
+
+    #[tracing::instrument(skip(self, ctx, id, attributes))]
+    pub async fn add_attributes(&self, ctx: &BoscaContext, id: &Uuid, attributes: Vec<ProfileAttributeInput>) -> Result<(), Error> {
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        let stmt = txn.prepare_cached("insert into profile_attributes (profile, type_id, visibility, confidence, priority, source, attributes, metadata_id) values ($1, $2, $3, $4, $5, $6, $7, $8)").await?;
+        for attribute in attributes.iter() {
+            let metadata_id = attribute
+                .metadata_id
+                .as_ref()
+                .map(|id| Uuid::parse_str(id).unwrap());
+            txn.execute(
+                &stmt,
+                &[
+                    &id,
+                    &attribute.type_id,
+                    &attribute.visibility,
+                    &attribute.confidence,
+                    &attribute.priority,
+                    &attribute.source,
+                    &attribute.attributes,
+                    &metadata_id,
+                ],
+            )
+                .await?;
+        }
+        txn.commit().await?;
+        self.update_storage(ctx, id).await?;
+        Ok(())
     }
 
     #[tracing::instrument(skip(self, txn,  principal, profile, collection_id))]
