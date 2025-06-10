@@ -172,24 +172,24 @@ impl SecurityDataStore {
         Ok(group)
     }
 
-    #[tracing::instrument(skip(self, txn, name, description, group_type))]
-    pub async fn add_group_txn(
-        &self,
-        txn: &Transaction<'_>,
-        name: &String,
-        description: &String,
-        group_type: GroupType,
-    ) -> Result<Group, Error> {
-        let stmt = txn
-            .prepare_cached("insert into groups (name, description, type) values ($1, $2, $3::group_type) returning id")
-            .await?;
-        let results = txn
-            .query(&stmt, &[name, description, &group_type])
-            .await?;
-        let id: Uuid = results.first().unwrap().get(0);
-        let group = Group::new(id, name.clone(), group_type);
-        Ok(group)
-    }
+    // #[tracing::instrument(skip(self, txn, name, description, group_type))]
+    // pub async fn add_group_txn(
+    //     &self,
+    //     txn: &Transaction<'_>,
+    //     name: &String,
+    //     description: &String,
+    //     group_type: GroupType,
+    // ) -> Result<Group, Error> {
+    //     let stmt = txn
+    //         .prepare_cached("insert into groups (name, description, type) values ($1, $2, $3::group_type) returning id")
+    //         .await?;
+    //     let results = txn
+    //         .query(&stmt, &[name, description, &group_type])
+    //         .await?;
+    //     let id: Uuid = results.first().unwrap().get(0);
+    //     let group = Group::new(id, name.clone(), group_type);
+    //     Ok(group)
+    // }
 
     #[tracing::instrument(skip(self, offset, limit))]
     pub async fn get_groups(&self, offset: i64, limit: i64) -> Result<Vec<Group>, Error> {
@@ -324,20 +324,20 @@ impl SecurityDataStore {
         Ok(())
     }
 
-    #[tracing::instrument(skip(self, verified, attributes, credential, groups))]
-    pub async fn add_principal(
-        &self,
-        verified: Option<bool>,
-        attributes: Value,
-        credential: &Credential,
-        groups: &Vec<&Uuid>,
-    ) -> Result<Uuid, Error> {
-        let mut connection = self.pool.get().await?;
-        let txn = connection.transaction().await?;
-        let id = self.add_principal_txn(&txn, verified, attributes, credential, groups).await?;
-        txn.commit().await?;
-        Ok(id)
-    }
+    // #[tracing::instrument(skip(self, verified, attributes, credential, groups))]
+    // pub async fn add_principal(
+    //     &self,
+    //     verified: Option<bool>,
+    //     attributes: Value,
+    //     credential: &Credential,
+    //     groups: &Vec<&Uuid>,
+    // ) -> Result<Uuid, Error> {
+    //     let mut connection = self.pool.get().await?;
+    //     let txn = connection.transaction().await?;
+    //     let id = self.add_principal_txn(&txn, verified, attributes, credential, groups).await?;
+    //     txn.commit().await?;
+    //     Ok(id)
+    // }
 
     #[tracing::instrument(skip(self, txn, verified, attributes, credential, groups))]
     pub async fn add_principal_txn(
@@ -482,15 +482,15 @@ impl SecurityDataStore {
         Ok(())
     }
 
-    #[tracing::instrument(skip(self, txn, principal, group))]
-    pub async fn add_principal_group_txn(&self, txn: &Transaction<'_>, principal: &Uuid, group: &Uuid) -> Result<(), Error> {
-        let stmt = txn
-            .prepare_cached("insert into principal_groups (principal, group_id) values ($1, $2)")
-            .await?;
-        txn.execute(&stmt, &[principal, group]).await?;
-        self.cache.evict_principal(principal).await;
-        Ok(())
-    }
+    // #[tracing::instrument(skip(self, txn, principal, group))]
+    // pub async fn add_principal_group_txn(&self, txn: &Transaction<'_>, principal: &Uuid, group: &Uuid) -> Result<(), Error> {
+    //     let stmt = txn
+    //         .prepare_cached("insert into principal_groups (principal, group_id) values ($1, $2)")
+    //         .await?;
+    //     txn.execute(&stmt, &[principal, group]).await?;
+    //     self.cache.evict_principal(principal).await;
+    //     Ok(())
+    // }
 
     #[tracing::instrument(skip(self, principal, group))]
     pub async fn remove_principal_group(

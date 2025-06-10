@@ -21,7 +21,6 @@ use crate::datastores::notifier::Notifier;
 use crate::models::content::slug::{Slug, SlugType};
 use async_graphql::Error;
 use bosca_database::TracingPool;
-use bosca_dc_client::client::Client;
 use std::sync::Arc;
 use uuid::Uuid;
 use crate::redis::RedisClient;
@@ -49,12 +48,12 @@ pub struct ContentDataStore {
 
 impl ContentDataStore {
 
-    pub async fn new(pool: TracingPool, cache: &mut BoscaCacheManager, notifier: Arc<Notifier>, client: Client, redis: RedisClient) -> Result<Self, Error> {
+    pub async fn new(pool: TracingPool, cache: &mut BoscaCacheManager, notifier: Arc<Notifier>, redis: RedisClient) -> Result<Self, Error> {
         let collections_cache = CollectionCache::new(cache).await?;
         let metadata_cache = MetadataCache::new(cache).await?;
         let guide_cache = GuideCache::new(cache).await?;
         Ok(Self {
-            slug_cache: cache.new_string_tiered_cache("slugs", 20000).await?,
+            slug_cache: cache.new_string_tiered_cache("slugs").await?,
             categories: CategoriesDataStore::new(pool.clone(), Arc::clone(&notifier)),
             collections: CollectionsDataStore::new(pool.clone(), collections_cache.clone(), Arc::clone(&notifier)).await?,
             collection_supplementary: CollectionSupplementaryDataStore::new(pool.clone(), Arc::clone(&notifier)),
@@ -69,7 +68,7 @@ impl ContentDataStore {
             collection_templates: CollectionTemplatesDataStore::new(
                 pool.clone(),
             ),
-            metadata: MetadataDataStore::new(pool.clone(), metadata_cache.clone(), guide_cache.clone(), Arc::clone(&notifier), client, redis).await?,
+            metadata: MetadataDataStore::new(pool.clone(), metadata_cache.clone(), guide_cache.clone(), Arc::clone(&notifier), redis).await?,
             metadata_supplementary: MetadataSupplementaryDataStore::new(pool.clone(), metadata_cache.clone(), Arc::clone(&notifier)),
             metadata_permissions: MetadataPermissionsDataStore::new(
                 pool.clone(),
