@@ -311,12 +311,14 @@ impl JobQueues {
         let mut query = "select configuration from workflow_plans".to_string();
         let mut filter = "".to_string();
         let mut ix = 1;
-        if queue.is_some() {
-            if !filter.is_empty() {
-                filter.push_str(" and ");
+        if let Some(queue) = &queue {
+            if !queue.is_empty() {
+                if !filter.is_empty() {
+                    filter.push_str(" and ");
+                }
+                filter.push_str("configuration->'id'->>'queue' = $1");
+                ix += 1;
             }
-            filter.push_str("configuration->'id'->>'queue' = $1");
-            ix += 1;
         }
         if failures.unwrap_or(false) {
             if !filter.is_empty() {
@@ -335,8 +337,13 @@ impl JobQueues {
         }
         query.push_str(&format!(" order by created desc offset ${} limit ${}", ix, ix + 1));
         let result = if let Some(queue) = queue {
-            let stmt = connection.prepare(&query).await?;
-            connection.query(&stmt, &[&queue, &offset, &limit]).await?
+            if queue.is_empty() {
+                let stmt = connection.prepare(&query).await?;
+                connection.query(&stmt, &[&offset, &limit]).await?
+            } else {
+                let stmt = connection.prepare(&query).await?;
+                connection.query(&stmt, &[&queue, &offset, &limit]).await?
+            }
         } else {
             let stmt = connection.prepare(&query).await?;
             connection.query(&stmt, &[&offset, &limit]).await?
@@ -418,7 +425,6 @@ impl JobQueues {
             return #expired_items
         ",
         );
-
         let queues: Vec<String> = connection.keys("queue::running::*").await?;
         for queue_parts in queues {
             let queue = queue_parts.split("::").last().unwrap();
