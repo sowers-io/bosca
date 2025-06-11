@@ -22,6 +22,10 @@ class JobRunner(
     private val active = AtomicLong(0)
     private val jobs = AtomicLong(0)
 
+    init {
+        ActivityRegistry.instance = registry
+    }
+
     fun isShutdown(): Boolean = !scope.isActive
 
     fun shutdown() {

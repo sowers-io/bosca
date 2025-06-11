@@ -34,6 +34,7 @@ import io.bosca.workflow.collection.DeleteAllPlanSupplementary as CollectionDele
 
 import io.bosca.workflow.ai.embeddings.GenerateEmbeddings
 import io.bosca.workflow.email.EmailActivity
+import io.bosca.workflow.general.ActivityInstaller
 import io.bosca.workflow.general.Delay
 import io.bosca.workflow.general.If
 import io.bosca.workflow.json.JSONata
@@ -67,6 +68,8 @@ class ActivitiesInstaller(client: Client) : Installer, ActivityRegistry {
         DeleteFromIndex(client),
         DeleteFromIndexes(client),
         RebuildData(client),
+
+        ActivityInstaller(client),
 
         MetadataTraits(client),
         MetadataTransitionTo(client),
@@ -121,6 +124,10 @@ class ActivitiesInstaller(client: Client) : Installer, ActivityRegistry {
     ).associateBy { it.id }
 
     override suspend fun install(client: Client, directory: File) {
+        install(client)
+    }
+
+    override suspend fun install(client: Client) {
         val currentActivities = client.workflows.getActivities().associateBy { it.id }
         for (activity in activities.values) {
             if (currentActivities.containsKey(activity.id)) {

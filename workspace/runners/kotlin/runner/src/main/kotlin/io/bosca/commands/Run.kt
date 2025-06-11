@@ -50,7 +50,12 @@ class Run(
             val runner = EnterpriseActivityRegistryFactory.createRegistry(client)?.let { enterpriseRegistry ->
                 JobRunner(client, queue, max, object : ActivityRegistry {
                     override fun getActivity(id: String): Activity? {
-                        return registry.getActivity(id) ?: enterpriseRegistry.getActivity(id)
+                        return enterpriseRegistry.getActivity(id) ?: registry.getActivity(id)
+                    }
+
+                    override suspend fun install(client: Client) {
+                        enterpriseRegistry.install(client)
+                        registry.install(client)
                     }
                 })
             } ?: JobRunner(client, queue, max, registry)

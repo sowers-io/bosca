@@ -3,6 +3,8 @@ package io.bosca.workflow.metadata
 import io.bosca.api.Client
 import io.bosca.graphql.fragment.WorkflowJob
 import io.bosca.graphql.type.ActivityInput
+import io.bosca.graphql.type.ActivityParameterInput
+import io.bosca.graphql.type.ActivityParameterType
 import io.bosca.workflow.Activity
 import io.bosca.workflow.ActivityContext
 
@@ -16,7 +18,9 @@ class DocumentToText(client: Client) : Activity(client) {
             name = "Document to Text",
             description = "Document to Text",
             inputs = emptyList(),
-            outputs = emptyList(),
+            outputs = listOf(
+                ActivityParameterInput(name = OUTPUT_NAME, type = ActivityParameterType.SUPPLEMENTARY)
+            ),
         )
     }
 
