@@ -261,7 +261,7 @@ impl WorkflowDataStore {
     #[tracing::instrument(skip(self))]
     pub async fn get_workflows(&self) -> Result<Vec<Workflow>, Error> {
         let connection = self.pool.get().await?;
-        let stmt = connection.prepare_cached("select * from workflows").await?;
+        let stmt = connection.prepare_cached("select * from workflows order by id asc").await?;
         let rows = connection.query(&stmt, &[]).await?;
         Ok(rows.into_iter().map(Workflow::from).collect())
     }

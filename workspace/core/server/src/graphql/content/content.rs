@@ -243,4 +243,32 @@ impl ContentObject {
     async fn sources(&self) -> SourcesObject {
         SourcesObject {}
     }
+
+    async fn check_metadata_actions(&self, ctx: &Context<'_>, ids: Vec<String>, actions: Vec<PermissionAction>) -> Result<Vec<String>, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let mut passed = Vec::new();
+        for id in ids {
+            let id = Uuid::from_str(id.as_str())?;
+            for action in &actions {
+                if ctx.check_metadata_action(&id, *action).await.is_ok() {
+                    passed.push(id.to_string());
+                }
+            }
+        }
+        Ok(passed)
+    }
+
+    async fn check_collection_actions(&self, ctx: &Context<'_>, ids: Vec<String>, actions: Vec<PermissionAction>) -> Result<Vec<String>, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let mut passed = Vec::new();
+        for id in ids {
+            let id = Uuid::from_str(id.as_str())?;
+            for action in &actions {
+                if ctx.check_collection_action(&id, *action).await.is_ok() {
+                    passed.push(id.to_string());
+                }
+            }
+        }
+        Ok(passed)
+    }
 }

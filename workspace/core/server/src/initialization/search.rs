@@ -1,9 +1,9 @@
 use async_graphql::Error;
-use meilisearch_sdk::client::Client;
 use std::env;
 use std::sync::Arc;
+use crate::search::search::SearchClient;
 
-pub fn new_search_client() -> Result<Arc<Client>, Error> {
+pub fn new_search_client() -> Result<Arc<SearchClient>, Error> {
     let url = match env::var("SEARCH_URL") {
         Ok(url) => url,
         _ => {
@@ -20,5 +20,5 @@ pub fn new_search_client() -> Result<Arc<Client>, Error> {
             ))
         }
     };
-    Ok(Arc::new(Client::new(url, Some(key))?))
+    Ok(Arc::new(SearchClient::new(url, key)?))
 }

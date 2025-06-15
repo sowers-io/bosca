@@ -18,6 +18,7 @@ mod slugs;
 mod util;
 mod workflow;
 mod document_collaboration;
+mod search;
 
 use crate::metadata_files::{metadata_download, metadata_upload};
 use async_graphql::extensions::apollo_persisted_queries::ApolloPersistedQueries;

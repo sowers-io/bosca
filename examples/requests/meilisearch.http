@@ -1,0 +1,37 @@
+GET http://localhost:7701/experimental-features
+Authorization: Bearer p8JcB_HuMHRxN7uVXfrG2wU06b5k7oTvaAAYo6nsi9M
+
+###
+GET http://localhost:7701/chats
+Authorization: Bearer p8JcB_HuMHRxN7uVXfrG2wU06b5k7oTvaAAYo6nsi9M
+
+###
+GET http://localhost:7701/chats/ai/settings
+Authorization: Bearer p8JcB_HuMHRxN7uVXfrG2wU06b5k7oTvaAAYo6nsi9M
+
+###
+DELETE http://localhost:7701/indexes/ai
+Authorization: Bearer p8JcB_HuMHRxN7uVXfrG2wU06b5k7oTvaAAYo6nsi9M
+
+###
+POST http://localhost:7701/chats/openai/chat/completions
+Authorization: Bearer p8JcB_HuMHRxN7uVXfrG2wU06b5k7oTvaAAYo6nsi9M
+Content-Type: application/json
+
+{
+  "model": "gpt-4o",
+  "messages": [{"role": "user", "content": "Hello", "parts": [{"type": "text", "text": "Hello"}]}],
+  "stream": true
+}
+
+###
+POST http://localhost:7701/indexes/ai/search
+Authorization: Bearer p8JcB_HuMHRxN7uVXfrG2wU06b5k7oTvaAAYo6nsi9M
+Content-Type: application/json
+
+{
+  "q": "Test Topics",
+  "hybrid": {
+    "embedder": "default"
+  }
+}

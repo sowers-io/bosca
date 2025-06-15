@@ -28,10 +28,10 @@ use async_graphql::{Context, Error};
 use bosca_database::build_pool;
 use deadpool_postgres::Transaction;
 use log::info;
-use meilisearch_sdk::client::Client;
 use std::env;
 use std::sync::Arc;
 use uuid::Uuid;
+use crate::search::search::SearchClient;
 
 #[derive(Clone)]
 pub struct BoscaContext {
@@ -45,7 +45,7 @@ pub struct BoscaContext {
     pub queries: PersistedQueriesDataStore,
     pub configuration: ConfigurationDataStore,
     pub notifier: Arc<Notifier>,
-    pub search: Arc<Client>,
+    pub search: Arc<SearchClient>,
     pub principal: Principal,
     pub principal_groups: Vec<Uuid>,
     pub cache: BoscaCacheManager,

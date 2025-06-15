@@ -39,7 +39,7 @@ services:
       - boscanet
 
   meilisearch:
-    image: getmeili/meilisearch:v1.9.0
+    image: getmeili/meilisearch:v1.15.1
     restart: always
     ports:
       - 7701:7700

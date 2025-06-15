@@ -10,6 +10,7 @@ import io.bosca.graphql.type.ActivityParameterType
 import io.bosca.util.parseToJsonElement
 import io.bosca.workflow.Activity
 import io.bosca.workflow.ActivityContext
+import io.bosca.workflow.FullFailureException
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
@@ -35,6 +36,7 @@ class ProfileToJson(client: Client) : Activity(client) {
 
     override suspend fun execute(context: ActivityContext, job: WorkflowJob) {
         val profile = job.profile?.profile ?: error("No Profile Found")
+        if (profile.collection == null) throw FullFailureException("profile missing collection")
         val ow = ObjectMapper().registerModules(JavaTimeModule()).writer().withDefaultPrettyPrinter()
         val json = ow.writeValueAsString(profile)
         val documentObject = JsonObject(

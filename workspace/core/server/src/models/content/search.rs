@@ -35,7 +35,8 @@ pub struct SearchQuery {
     pub sort: Option<Vec<String>>,
     pub facets: Option<Vec<String>>,
     pub offset: Option<i64>,
-    pub limit: Option<i64>
+    pub limit: Option<i64>,
+    pub embedder: Option<String>,
 }
 
 #[derive(InputObject)]

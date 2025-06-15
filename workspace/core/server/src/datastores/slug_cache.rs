@@ -34,7 +34,7 @@ impl SlugCache {
     pub async fn set_metadata_slug(&self, id: &Uuid, slug: &String) {
         let s = Slug {
             slug_type: SlugType::Metadata,
-            id: id.clone()
+            id: *id
         };
         self.metadata_slug_cache.set(id, slug).await;
         self.set_slug(slug, &s).await;
@@ -44,14 +44,14 @@ impl SlugCache {
     pub async fn set_collection_slug(&self, id: &Uuid, slug: &String) {
         let s = Slug {
             slug_type: SlugType::Collection,
-            id: id.clone()
+            id: *id
         };
         self.collection_slug_cache.set(id, slug).await;
         self.set_slug(slug, &s).await;
     }
 
-    #[tracing::instrument(skip(self, slug))]
-    pub async fn evict_slug(&self, slug: &String) {
-        self.slug_cache.remove(slug).await;
-    }
+    // #[tracing::instrument(skip(self, slug))]
+    // pub async fn evict_slug(&self, slug: &String) {
+    //     self.slug_cache.remove(slug).await;
+    // }
 }
