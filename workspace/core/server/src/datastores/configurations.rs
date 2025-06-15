@@ -98,7 +98,8 @@ impl ConfigurationDataStore {
         txn.execute(&stmt, &[&id]).await?;
         let stmt = txn.prepare_cached("insert into configuration_permissions (entity_id, group_id, action) values ($1, $2, $3)").await?;
         for permission in configuration.permissions.iter() {
-            txn.execute(&stmt, &[&id, &permission.group_id, &permission.action]).await?;
+            let group_id = Uuid::parse_str(&permission.group_id)?;
+            txn.execute(&stmt, &[&id, &group_id, &permission.action]).await?;
         }
         let stmt = txn.prepare_cached("insert into configuration_values (configuration_id, value, nonce) values ($1, $2, $3)").await?;
         txn.execute(&stmt, &[&id, &value, &nonce]).await?;
