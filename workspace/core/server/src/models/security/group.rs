@@ -7,13 +7,14 @@ use crate::models::security::group_type::GroupType;
 pub struct Group {
     pub id: Uuid,
     pub name: String,
+    pub description: String,
     pub group_type: GroupType,
 }
 
 impl Group {
     #[allow(dead_code)]
-    pub fn new(id: Uuid, name: String, group_type: GroupType) -> Self {
-        Self { id, name, group_type }
+    pub fn new(id: Uuid, name: String, description: String, group_type: GroupType) -> Self {
+        Self { id, name, description, group_type }
     }
 }
 
@@ -22,6 +23,7 @@ impl From<&Row> for Group {
         Self {
             id: row.get("id"),
             name: row.get("name"),
+            description: row.get("description"),
             group_type: row.get("type"),
         }
     }

@@ -6,7 +6,6 @@ use std::hash::Hash;
 use std::marker::PhantomData;
 use bytes::Bytes;
 use redis::{AsyncCommands, ToRedisArgs};
-use serde_json::Value;
 
 #[derive(Clone)]
 pub struct BoscaCache<V>
@@ -64,9 +63,11 @@ where
         if let Ok(mut conn) = self.redis.get_manager().await {
             if let Ok(result) = redis::cmd("HGET").arg(hkey).arg(key).query_async(&mut conn).await {
                 let bytes: Bytes = result;
-                let result: Value = serde_json::from_slice(bytes.as_ref()).expect("failed to deserialize value");
-                let value: V = serde_json::from_value(result).expect("failed to deserialize value");
-                return Some(value);
+                if let Ok(result) = serde_json::from_slice(bytes.as_ref()) {
+                    if let Ok(value) = serde_json::from_value(result) {
+                        return Some(value);
+                    }
+                }
             }
         }
         None

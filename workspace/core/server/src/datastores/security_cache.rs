@@ -72,12 +72,12 @@ impl SecurityCache {
         self.group_name.set(&name_lower, group).await;
     }
 
-    // pub async fn evict_group(&self, group_id: &Uuid) {
-    //     let Some(group): Option<Group> = self.group_id.get(group_id).await else {
-    //         return;
-    //     };
-    //     let lower_name = group.name.to_lowercase();
-    //     self.group_id.remove(group_id).await;
-    //     self.group_name.remove(&lower_name).await;
-    // }
+    pub async fn evict_group(&self, group_id: &Uuid) {
+        let Some(group): Option<Group> = self.group_id.get(group_id).await else {
+            return;
+        };
+        let lower_name = group.name.to_lowercase();
+        self.group_id.remove(group_id).await;
+        self.group_name.remove(&lower_name).await;
+    }
 }

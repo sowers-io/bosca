@@ -167,9 +167,46 @@ impl SecurityDataStore {
             .query(&stmt, &[name, description, &group_type])
             .await?;
         let id: Uuid = results.first().unwrap().get(0);
-        let group = Group::new(id, name.clone(), group_type);
+        let group = Group::new(id, name.clone(), description.clone(), group_type);
         self.cache.cache_group(&group).await;
         Ok(group)
+    }
+
+    #[tracing::instrument(skip(self, id, name, description, group_type))]
+    pub async fn edit_group(
+        &self,
+        id: &Uuid,
+        name: &String,
+        description: &String,
+        group_type: GroupType,
+    ) -> Result<Group, Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("update groups set name = $1, description = $2, type = $3::group_type where id = $4")
+            .await?;
+        let results = connection
+            .query(&stmt, &[name, description, &group_type, id])
+            .await?;
+        let id: Uuid = results.first().unwrap().get(0);
+        let group = Group::new(id, name.clone(), description.clone(), group_type);
+        self.cache.cache_group(&group).await;
+        Ok(group)
+    }
+
+    #[tracing::instrument(skip(self, id))]
+    pub async fn delete_group(
+        &self,
+        id: &Uuid,
+    ) -> Result<(), Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("delete from groups where id = $4")
+            .await?;
+        connection
+            .execute(&stmt, &[id])
+            .await?;
+        self.cache.evict_group(id).await;
+        Ok(())
     }
 
     // #[tracing::instrument(skip(self, txn, name, description, group_type))]

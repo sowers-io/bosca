@@ -22,6 +22,10 @@ impl GroupObject {
         &self.group.name
     }
 
+    async fn description(&self) -> &String {
+        &self.group.description
+    }
+
     #[graphql(name = "type")]
     async fn group_type(&self) -> &GroupType {
         &self.group.group_type
