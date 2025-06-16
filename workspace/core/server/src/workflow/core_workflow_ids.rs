@@ -1,5 +1,6 @@
 pub const PROFILE_UPDATE_STORAGE: &str = "profile.update.storage";
 pub const PROFILE_SIGNUP: &str = "profile.signup";
+pub const PROFILE_FORGOTPASSWORD: &str = "profile.forgot.password";
 pub const PROFILE_ADDED: &str = "profile.added";
 pub const SEND_EMAIL: &str = "email.send";
 

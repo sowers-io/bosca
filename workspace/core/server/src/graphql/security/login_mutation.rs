@@ -2,7 +2,7 @@ use crate::context::BoscaContext;
 use crate::graphql::content::metadata_mutation::WorkflowConfigurationInput;
 use crate::graphql::security::login::LoginResponse;
 use crate::models::workflow::enqueue_request::EnqueueRequest;
-use crate::workflow::core_workflow_ids::{PROFILE_SIGNUP, SEND_EMAIL};
+use crate::workflow::core_workflow_ids::{PROFILE_FORGOTPASSWORD, SEND_EMAIL};
 use async_graphql::*;
 use serde_json::json;
 
@@ -84,7 +84,7 @@ impl LoginMutationObject {
             .create_verification_token(&principal.id)
             .await?;
         let mut request = EnqueueRequest {
-            workflow_id: Some(PROFILE_SIGNUP.to_string()),
+            workflow_id: Some(PROFILE_FORGOTPASSWORD.to_string()),
             profile_id: Some(profile.id),
             configurations: Some(vec![WorkflowConfigurationInput {
                 activity_id: SEND_EMAIL.to_string(),
