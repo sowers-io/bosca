@@ -1,0 +1,61 @@
+#!/bin/sh
+
+set -e
+
+echo "**** Starting Services ****"
+
+./scripts/start-services
+
+### bosca server
+
+echo "**** Starting Core Server ****"
+
+export AWS_ACCESS_KEY_ID="67fO5gFs6BuksBrh6rMp"
+export AWS_ALLOW_HTTP="true"
+export AWS_BUCKET="bosca"
+export AWS_ENDPOINT="http://127.0.0.1:9010"
+export AWS_SECRET_ACCESS_KEY="eV4rlwomvXsM19CXorOTb5uYaFLeNXsPLKx5Uxdm"
+export BOSCA_URL_PREFIX="http://127.0.0.1:8000"
+export CONFIGURATION_SECRET_KEY="changeme"
+export DATABASE_JOBS_URL="postgres://boscajobs:boscajobs@127.0.0.1:5434/boscajobs"
+export DATABASE_URL="postgres://bosca:bosca@127.0.0.1:5433/bosca"
+export JWT_AUDIENCE="bosca.io"
+export JWT_ISSUER="bosca-graphql"
+export JWT_SECRET="bosca1234*"
+export SEARCH_KEY="p8JcB_HuMHRxN7uVXfrG2wU06b5k7oTvaAAYo6nsi9M"
+export SEARCH_URL="http://127.0.0.1:7701"
+export STORAGE="/tmp/bosca/fs"
+export AUTO_VERIFY_SIGNUP="true"
+
+cargo run --bin bosca-server &
+
+sleep 3
+
+### bosca server
+
+### bosca imageprocessor
+
+echo "**** Starting Image Processor ****"
+
+cd workspace/core/imageprocessor
+
+npm i
+npm run dev &
+
+sleep 3
+
+cd ../../..
+
+### bosca imageprocessor
+
+### bosca runner
+
+echo "**** Starting Runners ****"
+
+cd workspace/runners/kotlin
+
+./scripts/run &
+
+sleep 3
+
+### bosca runner

@@ -1,0 +1,21 @@
+#!/bin/sh
+
+set -e
+
+### bosca administration
+
+echo "**** Starting Administration Server ****"
+
+cd workspace/web/administration
+
+pnpm i
+pnpm run install-queries
+pnpm run dev &
+
+sleep 3
+
+cd ../../..
+
+echo "NOTE: If you haven't already, you can run ./scripts/install-blog to install some default templates."
+
+### bosca administration

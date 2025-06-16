@@ -1,0 +1,13 @@
+#!/bin/sh
+
+set -e
+
+cd services
+docker compose down
+
+cd ..
+
+killall -9 bosca-server || echo "..."
+killall -9 java || echo "..."
+killall -9 node || echo "..."
+killall -9 npm || echo "..."
