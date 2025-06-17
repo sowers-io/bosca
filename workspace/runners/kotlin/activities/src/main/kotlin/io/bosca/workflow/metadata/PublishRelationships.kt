@@ -6,6 +6,7 @@ import io.bosca.graphql.type.ActivityInput
 import io.bosca.graphql.type.WorkflowStateType
 import io.bosca.workflow.Activity
 import io.bosca.workflow.ActivityContext
+import kotlinx.coroutines.delay
 
 class PublishRelationships(client: Client) : Activity(client) {
 
@@ -22,33 +23,75 @@ class PublishRelationships(client: Client) : Activity(client) {
     }
 
     override suspend fun execute(context: ActivityContext, job: WorkflowJob) {
-        val published = client.workflows.getStates().first { it.type == WorkflowStateType.PUBLISHED }
-        job.metadata?.metadata?.let { metadata ->
-            val relationships = client.metadata.getRelationships(metadata.id)
-            for (relationship in relationships) {
-                if (relationship.metadata.metadataRelationshipMetadata.workflow.pending == null &&
-                    relationship.metadata.metadataRelationshipMetadata.workflow.state != published.id
-                ) {
+        val states = client.workflows.getStates()
+        val state = states.first { it.type == WorkflowStateType.PUBLISHED }
+        val draft = states.first { it.type == WorkflowStateType.DRAFT }
+        job.metadata?.metadata?.let {
+            for (relationship in client.metadata.getRelationships(it.id)) {
+                val m = relationship.metadata.metadataRelationshipMetadata
+                if (m.ready == null) {
+                    client.metadata.setReady(m.id)
+                    var tries = 100
+                    while (tries-- > 0) {
+                        val updated = client.metadata.get(m.id)
+                        if (updated == null) throw Exception("metadata not found while trying to update workflow state")
+                        if (updated.workflow.metadataWorkflow.state == draft.id) break
+                        delay(1000)
+                    }
+                }
+                if (!m.public) {
+                    client.metadata.setPublic(m.id, true)
+                }
+                if (!m.publicContent) {
+                    client.metadata.setPublicContent(m.id, true)
+                }
+                if (!m.publicSupplementary && m.content.type.startsWith("image/")) {
+                    client.metadata.setPublicSupplementary(m.id, true)
+                }
+                if (m.workflow.state != state.id) {
+                    if (m.workflow.pending != null) {
+                        client.workflows.cancelMetadataTransition(m.id, m.version)
+                    }
                     client.workflows.beginMetadataTransition(
-                        relationship.metadata.metadataRelationshipMetadata.id,
-                        relationship.metadata.metadataRelationshipMetadata.version,
-                        published.id,
-                        "Publishing Relationship for ${metadata.id}",
+                        m.id,
+                        m.version,
+                        state.id,
+                        "Published with Metadata"
                     )
                 }
             }
         }
-        job.collection?.collection?.let { collection ->
-            val relationships = client.collections.getRelationships(collection.id)
-            for (relationship in relationships) {
-                if (relationship.metadata.metadataRelationshipMetadata.workflow.pending == null &&
-                    relationship.metadata.metadataRelationshipMetadata.workflow.state != published.id
-                ) {
+        job.collection?.collection?.let {
+            for (relationship in client.collections.getRelationships(it.id)) {
+                val m = relationship.metadata.metadataRelationshipMetadata
+                if (m.ready == null) {
+                    client.metadata.setReady(m.id)
+                    var tries = 100
+                    while (tries-- > 0) {
+                        val updated = client.metadata.get(m.id)
+                        if (updated == null) throw Exception("metadata not found while trying to update workflow state")
+                        if (updated.workflow.metadataWorkflow.state == draft.id) break
+                        delay(1000)
+                    }
+                }
+                if (!m.public) {
+                    client.metadata.setPublic(m.id, true)
+                }
+                if (!m.publicContent) {
+                    client.metadata.setPublicContent(m.id, true)
+                }
+                if (!m.publicSupplementary && m.content.type.startsWith("image/")) {
+                    client.metadata.setPublicSupplementary(m.id, true)
+                }
+                if (m.workflow.state != state.id) {
+                    if (m.workflow.pending != null) {
+                        client.workflows.cancelMetadataTransition(m.id, m.version)
+                    }
                     client.workflows.beginMetadataTransition(
-                        relationship.metadata.metadataRelationshipMetadata.id,
-                        relationship.metadata.metadataRelationshipMetadata.version,
-                        published.id,
-                        "Publishing Relationship for ${collection.id}",
+                        m.id,
+                        m.version,
+                        state.id,
+                        "Published with Collection"
                     )
                 }
             }
@@ -56,7 +99,6 @@ class PublishRelationships(client: Client) : Activity(client) {
     }
 
     companion object {
-
         const val ID = "content.publish.relationships"
     }
 }

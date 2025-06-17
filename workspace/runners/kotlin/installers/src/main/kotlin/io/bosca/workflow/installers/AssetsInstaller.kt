@@ -92,7 +92,7 @@ suspend fun AssetDefinition.install(client: Client, parentCollectionId: String, 
             } else if (status.state == "draft") {
                 try {
                     if (m.workflow.metadataWorkflow.pending != null) {
-                        client.workflows.cancelTransition(m.id, m.version)
+                        client.workflows.cancelMetadataTransition(m.id, m.version)
                     }
                     client.workflows.beginMetadataTransition(
                         m.id,

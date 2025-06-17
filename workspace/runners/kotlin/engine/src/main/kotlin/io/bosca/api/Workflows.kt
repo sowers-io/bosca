@@ -357,7 +357,7 @@ class Workflows(network: NetworkClient) : Api(network) {
         response.validate()
     }
 
-    suspend fun cancelTransition(id: String, version: Int) {
+    suspend fun cancelMetadataTransition(id: String, version: Int) {
         val response = network.graphql.mutation(CancelMetadataTransitionMutation(id, version)).execute()
         response.validate()
     }
