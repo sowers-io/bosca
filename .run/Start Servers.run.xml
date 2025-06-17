@@ -3,6 +3,7 @@
     <toRun name="Run bosca" targetId="RsBuildProfile:dev" type="CargoCommandRunConfiguration" />
     <toRun name="Runner" type="JetRunConfigurationType" />
     <toRun name="Administration UI" type="js.build_tools.npm" />
+    <toRun name="Image Processor" type="js.build_tools.npm" />
     <method v="2" />
   </configuration>
 </component>
