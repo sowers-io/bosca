@@ -6,6 +6,7 @@ use axum::extract::{Query, State};
 use axum_extra::extract::cookie::Cookie;
 use axum_extra::extract::CookieJar;
 use http::{HeaderMap, StatusCode};
+use log::error;
 use oauth2::TokenResponse;
 use serde::{Deserialize, Serialize};
 
@@ -196,7 +197,7 @@ pub async fn oauth2_callback(
                 )
             })?;
             let credential = Credential::Oauth2(credential);
-            let (principal, _) = ctx.security.add_principal_with_credential(&ctx, &credential, &profile, Some(account.verified()), true, true)
+            let (principal, profile_id) = ctx.security.add_principal_with_credential(&ctx, &credential, &profile, Some(account.verified()), true, true)
                 .await
                 .map_err(|_| {
                     (
@@ -211,6 +212,9 @@ pub async fn oauth2_callback(
                         "Failed to create Principal".to_string(),
                     )
                 })?;
+            if let Err(e) = ctx.profile.update_storage(&ctx, &profile_id).await {
+                error!("Failed to update profile storage: {:?}", e);
+            }
             principal
         };
         let token = ctx.security.new_token(&principal).map_err(|_| {
