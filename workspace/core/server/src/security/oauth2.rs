@@ -1,6 +1,8 @@
 use crate::context::BoscaContext;
 use crate::models::security::credentials::{Credential, CredentialType};
 use crate::models::security::credentials_oauth2::Oauth2Credential;
+use crate::security::token::Token;
+use async_graphql::Error;
 use axum::body::Body;
 use axum::extract::{Query, State};
 use axum_extra::extract::cookie::Cookie;
@@ -20,7 +22,7 @@ pub struct RedirectParams {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct CallbackParams {
     state: String,
-    code: String,
+    code: Option<String>,
     scope: Option<String>,
     authuser: Option<String>,
     hd: Option<String>,
@@ -81,6 +83,84 @@ pub async fn oauth2_redirect(
     ))
 }
 
+pub async fn oauth2_callback_internal(
+    ctx: &BoscaContext,
+    params: &CallbackParams,
+    verifier: &str,
+    oauth2_type: &str,
+) -> Result<Token, Error> {
+    let Some(code) = &params.code else {
+      // TODO: redirect somewhere?
+      return Err(Error::new("Missing code"));
+    };
+    let response = ctx
+        .security_oauth2
+        .exchange_authorization_code(oauth2_type, verifier, code)
+        .await?;
+    let access_token = response.access_token().clone().into_secret();
+    let account = ctx
+        .security_oauth2
+        .get_account(oauth2_type, &access_token)
+        .await?;
+    if let Some(id) = account.id() {
+        let principal = if let Ok(principal) = ctx
+            .security
+            .get_principal_by_identifier_oauth2(id, oauth2_type)
+            .await
+        {
+            let credentials = ctx
+                .security
+                .get_principal_credentials(&principal.id)
+                .await?;
+            let mut credentials = credentials
+                .into_iter()
+                .filter(|c| {
+                    c.get_type() == CredentialType::Oauth2
+                        && c.identifier_type().unwrap_or_default() == oauth2_type
+                })
+                .collect::<Vec<_>>();
+            let credential = credentials.first_mut().unwrap();
+            credential.set_tokens(response)?;
+            ctx.security
+                .set_principal_credential(&principal.id, credential)
+                .await?;
+            let attributes = serde_json::to_value(&account)?;
+            ctx.security
+                .merge_principal_attributes(&principal.id, attributes)
+                .await?;
+            principal
+        } else {
+            let profile = account.new_profile()?;
+            let Some(profile) = profile else {
+                return Err(Error::new("Failed to create Profile"));
+            };
+            let credential = Oauth2Credential::new(&account, Some(&response))?;
+            let credential = Credential::Oauth2(credential);
+            let (principal, profile_id) = ctx
+                .security
+                .add_principal_with_credential(
+                    &ctx,
+                    &credential,
+                    &profile,
+                    Some(account.verified()),
+                    true,
+                    true,
+                )
+                .await?;
+            let principal = ctx.security.get_principal_by_id(&principal).await?;
+            if let Err(e) = ctx.profile.update_storage(&ctx, &profile_id).await {
+                error!("Failed to update profile storage: {:?}", e);
+            }
+            principal
+        };
+        Ok(ctx.security.new_token(&principal)?)
+    } else {
+        Err(Error::new(
+            "Failed to get Oauth2 Account, missing account id",
+        ))
+    }
+}
+
 #[tracing::instrument(skip(ctx, params, jar))]
 pub async fn oauth2_callback(
     State(ctx): State<BoscaContext>,
@@ -106,141 +186,43 @@ pub async fn oauth2_callback(
     } else {
         ""
     };
-    let response = ctx
-        .security_oauth2
-        .exchange_authorization_code(oauth2_type, verifier, &params.code)
-        .await
-        .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, e.message))?;
-    let access_token = response.access_token().clone().into_secret();
-    let account = ctx
-        .security_oauth2
-        .get_account(oauth2_type, &access_token)
-        .await
-        .map_err(|e| {
-            (
-                StatusCode::UNAUTHORIZED,
-                format!("Failed to get Oauth2 Account ({oauth2_type}): {:?}", e),
-            )
-        })?;
-    let jar = if let Some(id) = account.id() {
-        let principal = if let Ok(principal) = ctx
-            .security
-            .get_principal_by_identifier_oauth2(id, oauth2_type)
-            .await
-        {
-            let credentials = ctx
-                .security
-                .get_principal_credentials(&principal.id)
-                .await
-                .map_err(|_| {
-                    (
-                        StatusCode::UNAUTHORIZED,
-                        "Failed to create Principal".to_string(),
-                    )
-                })?;
-            let mut credentials = credentials
-                .into_iter()
-                .filter(|c| {
-                    c.get_type() == CredentialType::Oauth2
-                        && c.identifier_type().unwrap_or_default() == oauth2_type
-                })
-                .collect::<Vec<_>>();
-            let credential = credentials.first_mut().unwrap();
-            credential.set_tokens(response).map_err(|_| {
-                (
-                    StatusCode::UNAUTHORIZED,
-                    "Failed to update Principal tokens".to_string(),
-                )
-            })?;
-            ctx.security
-                .set_principal_credential(&principal.id, credential)
-                .await
-                .map_err(|_| {
-                    (
-                        StatusCode::UNAUTHORIZED,
-                        "Failed to create Principal".to_string(),
-                    )
-                })?;
-            let attributes = serde_json::to_value(&account).map_err(|_| {
-                (
-                    StatusCode::UNAUTHORIZED,
-                    "Failed to create Principal".to_string(),
-                )
-            })?;
-            ctx.security
-                .merge_principal_attributes(&principal.id, attributes)
-                .await
-                .map_err(|_| {
-                    (
-                        StatusCode::UNAUTHORIZED,
-                        "Failed to update Principal".to_string(),
-                    )
-                })?;
-            principal
-        } else {
-            let profile = account.new_profile().map_err(|_| {
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "Failed to process account".to_string(),
-                )
-            })?;
-            let Some(profile) = profile else {
-                return Err((
-                    StatusCode::UNAUTHORIZED,
-                    "Failed to create Profile".to_string(),
-                ))
-            };
-            let credential = Oauth2Credential::new(&account, Some(&response)).map_err(|_| {
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "Failed to process credentials".to_string(),
-                )
-            })?;
-            let credential = Credential::Oauth2(credential);
-            let (principal, profile_id) = ctx.security.add_principal_with_credential(&ctx, &credential, &profile, Some(account.verified()), true, true)
-                .await
-                .map_err(|_| {
-                    (
-                        StatusCode::UNAUTHORIZED,
-                        "Failed to create Principal".to_string(),
-                    )
-                })?;
-            let principal = ctx.security.get_principal_by_id(&principal).await
-                .map_err(|_| {
-                    (
-                        StatusCode::UNAUTHORIZED,
-                        "Failed to create Principal".to_string(),
-                    )
-                })?;
-            if let Err(e) = ctx.profile.update_storage(&ctx, &profile_id).await {
-                error!("Failed to update profile storage: {:?}", e);
+    let token = match oauth2_callback_internal(&ctx, &params, &verifier, &oauth2_type).await {
+        Ok(token) => token,
+        Err(e) => {
+            error!("Failed to exchange authorization code: {:?}", e);
+            let mut hdrs = HeaderMap::new();
+            if to.contains('?') {
+                hdrs.insert(
+                    "Location",
+                    format!("{}&error={}", to, e.message).parse().unwrap(),
+                );
+            } else {
+                hdrs.insert(
+                    "Location",
+                    format!("{}?error={}", to, e.message).parse().unwrap(),
+                );
             }
-            principal
-        };
-        let token = ctx.security.new_token(&principal).map_err(|_| {
-            (
-                StatusCode::UNAUTHORIZED,
-                "Failed to create Principal Token".to_string(),
-            )
-        })?;
-        CookieJar::new().add(
-            Cookie::build(("_bat", token.token))
-                .http_only(false)
-                .domain(ctx.security_oauth2.domain.clone())
-                .path("/")
-                .max_age(time::Duration::seconds(
-                    (token.expires_at - token.issued_at) as i64,
-                ))
-                .build(),
-        )
-    } else {
-        return Err((
-            StatusCode::UNAUTHORIZED,
-            "Failed to get Oauth2 Account, missing account id".to_string(),
-        ));
+            hdrs.insert("Cache-Control", "private".parse().unwrap());
+            return Ok((StatusCode::FOUND, hdrs, jar, Body::from("Redirecting...")));
+        }
     };
+    let new_jar = CookieJar::new().add(
+        Cookie::build(("_bat", token.token))
+            .http_only(false)
+            .domain(ctx.security_oauth2.domain.clone())
+            .path("/")
+            .max_age(time::Duration::seconds(
+                (token.expires_at - token.issued_at) as i64,
+            ))
+            .build(),
+    );
     let mut hdrs = HeaderMap::new();
     hdrs.insert("Location", to.to_string().parse().unwrap());
     hdrs.insert("Cache-Control", "private".parse().unwrap());
-    Ok((StatusCode::FOUND, hdrs, jar, Body::from("Redirecting...")))
+    Ok((
+        StatusCode::FOUND,
+        hdrs,
+        new_jar,
+        Body::from("Redirecting..."),
+    ))
 }

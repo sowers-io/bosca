@@ -959,47 +959,51 @@ impl SecurityDataStore {
         set_ready: bool,
         add_collection: bool,
     ) -> std::result::Result<(Uuid, Uuid), Error> {
-        let mut connection = self.pool.get().await?;
-        let txn = connection.transaction().await?;
+        let (principal_id, profile_id, collection_id) = {
+            let mut connection = self.pool.get().await?;
+            let txn = connection.transaction().await?;
 
-        let groups = vec![];
-        let principal_id = ctx
-            .security
-            .add_principal_txn(
-                &txn,
-                verified,
-                Value::Null,
-                credential,
-                &groups,
-            )
-            .await?;
-
-        let collection_id = if add_collection {
-            let collection_name = format!("Collection for {}", principal_id);
-            Some(ctx
-                .content
-                .collections
-                .add_txn(
+            let groups = vec![];
+            let principal_id = ctx
+                .security
+                .add_principal_txn(
                     &txn,
-                    &CollectionInput {
-                        name: collection_name,
-                        collection_type: Some(CollectionType::System),
-                        trait_ids: Some(vec!["profile".to_string()]),
-                        ..Default::default()
-                    },
-                    false,
+                    verified,
+                    Value::Null,
+                    credential,
+                    &groups,
                 )
-                .await?.0)
-        } else {
-            None
+                .await?;
+
+            let collection_id = if add_collection {
+                let collection_name = format!("Collection for {}", principal_id);
+                Some(ctx
+                    .content
+                    .collections
+                    .add_txn(
+                        &txn,
+                        &CollectionInput {
+                            name: collection_name,
+                            collection_type: Some(CollectionType::System),
+                            trait_ids: Some(vec!["profile".to_string()]),
+                            ..Default::default()
+                        },
+                        false,
+                    )
+                    .await?.0)
+            } else {
+                None
+            };
+
+            let profile_id = ctx
+                .profile
+                .add_txn(&txn, Some(principal_id), profile, collection_id)
+                .await?;
+
+            txn.commit().await?;
+
+            (principal_id, profile_id, collection_id)
         };
-
-        let profile = ctx
-            .profile
-            .add_txn(&txn, Some(principal_id), profile, collection_id)
-            .await?;
-
-        txn.commit().await?;
 
         if let Some(collection_id) = collection_id {
             let group_name = format!("principal.{}", principal_id);
@@ -1038,7 +1042,7 @@ impl SecurityDataStore {
             }
         }
 
-        Ok((principal_id, profile))
+        Ok((principal_id, profile_id))
     }
 
     #[tracing::instrument(skip(self, txn, ctx, credential, profile, verified))]
