@@ -21,6 +21,9 @@ val DocumentSerializers = SerializersModule {
         subclass(ListItemNode::class, ListItemNode.serializer())
         subclass(HorizontalRuleNode::class, HorizontalRuleNode.serializer())
         subclass(ContainerNode::class, ContainerNode.serializer())
+        subclass(TableNode::class, TableNode.serializer())
+        subclass(TableRowNode::class, TableRowNode.serializer())
+        subclass(TableCellNode::class, TableCellNode.serializer())
     }
     polymorphic(Mark::class) {
         subclass(Bold::class, Bold.serializer())
