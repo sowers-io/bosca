@@ -4,6 +4,7 @@ use crate::models::profiles::profile::ProfileInput;
 use crate::models::profiles::profile_attribute_type::ProfileAttributeTypeInput;
 use async_graphql::*;
 use uuid::Uuid;
+use crate::graphql::content::collection::CollectionObject;
 use crate::graphql::profiles::profile_mutation::ProfileMutationObject;
 use crate::models::profiles::profile_attribute::ProfileAttributeInput;
 use crate::models::workflow::enqueue_request::EnqueueRequest;
@@ -31,6 +32,19 @@ impl ProfilesMutationObject {
             .get_by_id(&id)
             .await?
             .map(ProfileObject::new))
+    }
+
+    async fn add_collection(
+        &self,
+        ctx: &Context<'_>,
+        profile_id: String,
+    ) -> Result<Option<CollectionObject>, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        ctx.check_has_service_account().await?;
+        let id = Uuid::parse_str(&profile_id)?;
+        let collection_id = ctx.profile.add_profile_collection(ctx, &id).await?;
+        let collection = ctx.content.collections.get(&collection_id).await?;
+        Ok(collection.map(CollectionObject::new))
     }
 
     async fn edit(

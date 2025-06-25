@@ -1,4 +1,5 @@
 use crate::context::BoscaContext;
+use crate::models::content::collection::{CollectionInput, CollectionType};
 use crate::models::content::guide_history::GuideHistory;
 use crate::models::content::guide_progress::GuideProgress;
 use crate::models::profiles::profile::{Profile, ProfileInput};
@@ -7,6 +8,8 @@ use crate::models::profiles::profile_attribute_type::{
     ProfileAttributeType, ProfileAttributeTypeInput,
 };
 use crate::models::profiles::profile_bookmark::ProfileBookmark;
+use crate::models::security::group_type::GroupType;
+use crate::models::security::permission::{Permission, PermissionAction};
 use crate::models::workflow::enqueue_request::EnqueueRequest;
 use crate::workflow::core_workflow_ids::PROFILE_UPDATE_STORAGE;
 use async_graphql::Error;
@@ -209,7 +212,12 @@ impl ProfileDataStore {
     }
 
     #[tracing::instrument(skip(self, ctx, id, attributes))]
-    pub async fn add_attributes(&self, ctx: &BoscaContext, id: &Uuid, attributes: Vec<ProfileAttributeInput>) -> Result<(), Error> {
+    pub async fn add_attributes(
+        &self,
+        ctx: &BoscaContext,
+        id: &Uuid,
+        attributes: Vec<ProfileAttributeInput>,
+    ) -> Result<(), Error> {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
         let stmt = txn.prepare_cached("insert into profile_attributes (profile, type_id, visibility, confidence, priority, source, attributes, metadata_id) values ($1, $2, $3, $4, $5, $6, $7, $8)").await?;
@@ -231,14 +239,14 @@ impl ProfileDataStore {
                     &metadata_id,
                 ],
             )
-                .await?;
+            .await?;
         }
         txn.commit().await?;
         self.update_storage(ctx, id).await?;
         Ok(())
     }
 
-    #[tracing::instrument(skip(self, txn,  principal, profile, collection_id))]
+    #[tracing::instrument(skip(self, txn, principal, profile, collection_id))]
     pub async fn add_txn(
         &self,
         txn: &Transaction<'_>,
@@ -284,7 +292,7 @@ impl ProfileDataStore {
                     &metadata_id,
                 ],
             )
-                .await?;
+            .await?;
         }
         Ok(id)
     }
@@ -745,5 +753,87 @@ impl ProfileDataStore {
         txn.commit().await?;
         // TODO: fire workflow
         Ok(true)
+    }
+
+    pub async fn add_profile_collection(
+        &self,
+        ctx: &BoscaContext,
+        profile_id: &Uuid,
+    ) -> Result<Uuid, Error> {
+        let Some(profile) = self.get_by_id(profile_id).await? else {
+            return Err(Error::new("profile not found"));
+        };
+        let Some(principal_id) = profile.principal else {
+            return Err(Error::new("principal not found"));
+        };
+        if let Some(collection_id) = profile.collection_id {
+            return Ok(collection_id);
+        }
+        let collection_id = {
+            let mut connection = self.pool.get().await?;
+            let txn = connection.transaction().await?;
+            let collection_name = format!("Collection for {}", principal_id);
+            let (collection_id, _) = ctx
+                .content
+                .collections
+                .add_txn(
+                    &txn,
+                    &CollectionInput {
+                        name: collection_name,
+                        collection_type: Some(CollectionType::System),
+                        trait_ids: Some(vec!["profile".to_string()]),
+                        ..Default::default()
+                    },
+                    false,
+                )
+                .await?;
+
+            let stmt = txn
+                .prepare_cached("update profiles set collection_id = $1 where id = $2")
+                .await?;
+            txn.execute(&stmt, &[&collection_id, &profile_id]).await?;
+            txn.commit().await?;
+            collection_id
+        };
+
+        let group_name = format!("principal.{}", principal_id);
+        let description = format!("Group for {}", principal_id);
+        let group = ctx
+            .security
+            .add_group(&group_name, &description, GroupType::Principal)
+            .await?;
+        ctx.security
+            .add_principal_group(&principal_id, &group.id)
+            .await?;
+
+        for action in [
+            PermissionAction::View,
+            PermissionAction::List,
+            PermissionAction::Edit,
+        ] {
+            let permission = Permission {
+                entity_id: collection_id,
+                group_id: group.id,
+                action,
+            };
+            ctx.content
+                .collection_permissions
+                .add(ctx, &permission)
+                .await?;
+        }
+
+        let collection = ctx
+            .content
+            .collections
+            .get(&collection_id)
+            .await?
+            .expect("Collection not found");
+        let principal = ctx.security.get_principal_by_id(&principal_id).await?;
+        ctx.content
+            .collection_workflows
+            .set_ready_and_enqueue(ctx, &principal, &collection, None)
+            .await?;
+
+        Ok(collection_id)
     }
 }

@@ -295,6 +295,8 @@ type ConfigurationsMutation {
 
 type Content {
     categories: Categories!
+    checkCollectionActions(actions: [PermissionAction!]!, ids: [String!]!): [String!]!
+    checkMetadataActions(actions: [PermissionAction!]!, ids: [String!]!): [String!]!
     collection(id: String): Collection
     collectionSupplementary(supplementaryId: String!): CollectionSupplementary
     collectionTemplates: CollectionTemplates!
@@ -369,6 +371,7 @@ type FindBibleResult {
 }
 
 type Group {
+    description: String!
     id: String!
     name: String!
     type: GroupType!
@@ -380,6 +383,8 @@ type Groups {
 
 type GroupsMutation {
     addGroup(description: String!, groupType: GroupType!, name: String!): Group!
+    deleteGroup(id: String!): Boolean!
+    editGroup(description: String!, groupType: GroupType!, id: String!, name: String!): Group!
 }
 
 type Guide {
@@ -801,6 +806,7 @@ type ProfilesMutation {
     add(profile: ProfileInput!): Profile
     addAttributeType(attribute: ProfileAttributeTypeInput!): Boolean!
     addAttributes(attributes: [ProfileAttributeInput!]!, id: String!): Boolean!
+    addCollection(profileId: String!): Collection
     deleteAttribute(attributeId: String!, id: String): Boolean!
     deleteAttributeType(attributeId: String!): Boolean!
     edit(id: String, profile: ProfileInput!): Profile
@@ -1779,6 +1785,7 @@ input ReferenceInput {
 }
 
 input SearchQuery {
+    embedder: String
     facets: [String!]
     filter: String
     limit: Int
