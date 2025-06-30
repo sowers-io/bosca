@@ -471,10 +471,24 @@ impl SecurityDataStore {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
         let stmt = txn
-            .prepare_cached("update principal_credentials set attributes = $1 where principal = $2")
+            .prepare_cached("update principal_credentials set attributes = $1 where principal = $2 and type = $3 and attributes->>'identifier' = $4")
             .await?;
         let attributes = credential.get_attributes();
-        txn.execute(&stmt, &[&attributes, id]).await?;
+        txn.execute(&stmt, &[&attributes, id, &credential.get_type(), &credential.identifier()]).await?;
+        txn.commit().await?;
+        Ok(())
+    }
+
+    pub async fn add_principal_credential(
+        &self,
+        id: &Uuid,
+        credential: &Credential,
+    ) -> Result<(), Error> {
+        let attributes = credential.get_attributes();
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        let stmt = txn.prepare_cached("insert into principal_credentials (principal, type, attributes) values ($1, $2, $3)").await?;
+        txn.execute(&stmt, &[&id, &credential.get_type(), &attributes]).await?;
         txn.commit().await?;
         Ok(())
     }
@@ -742,7 +756,7 @@ impl SecurityDataStore {
                 let ix = ix;
                 set.spawn(async move {
                     if let Err(e) = ctx.security.import_firebase_users_batch(ix, &ctx, &firebase_scrypt, u).await {
-                        error!("failed to import firebase users: {:?}", e);
+                        error!("failed to import firebase users: {e:?}");
                     }
                 });
                 u = Vec::new();
@@ -754,7 +768,7 @@ impl SecurityDataStore {
             ix += 1;
             set.spawn(async move {
                 if let Err(e) = ctx.security.import_firebase_users_batch(ix, &ctx, &firebase_scrypt, u).await {
-                    error!("failed to import firebase users: {:?}", e);
+                    error!("failed to import firebase users: {e:?}");
                 }
             });
         }
@@ -763,7 +777,7 @@ impl SecurityDataStore {
     }
 
     async fn import_firebase_users_batch(&self, ix: i32, ctx: &BoscaContext, firebase_scrypt: &FirebaseScrypt, users: Vec<FirebaseImportUser>) -> Result<(), Error> {
-        info!("importing firebase users batch {}...", ix);
+        info!("importing firebase users batch {ix}...");
         let mut connection = self.pool.get().await?;
         let mut txn = connection.transaction().await?;
         let mut ids = Vec::<Uuid>::new();
@@ -792,13 +806,13 @@ impl SecurityDataStore {
                 }
                 Ok(None) => {}
                 Err(e) => {
-                    error!("failed to import firebase user: {:?}", e);
+                    error!("failed to import firebase user: {e:?}");
                 }
             }
             count += 1;
             if  count > 1 {
                 if count % 50 == 0 {
-                    info!("processed {ix} {} users", count);
+                    info!("processed {ix} {count} users");
                 }
                 if count % 500 == 0 {
                     txn.commit().await?;
@@ -976,7 +990,7 @@ impl SecurityDataStore {
                 .await?;
 
             let collection_id = if add_collection {
-                let collection_name = format!("Collection for {}", principal_id);
+                let collection_name = format!("Collection for {principal_id}");
                 Some(ctx
                     .content
                     .collections
@@ -1006,8 +1020,8 @@ impl SecurityDataStore {
         };
 
         if let Some(collection_id) = collection_id {
-            let group_name = format!("principal.{}", principal_id);
-            let description = format!("Group for {}", principal_id);
+            let group_name = format!("principal.{principal_id}");
+            let description = format!("Group for {principal_id}");
             let group = ctx
                 .security
                 .add_group(&group_name, &description, GroupType::Principal)

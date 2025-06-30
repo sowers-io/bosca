@@ -119,7 +119,7 @@ impl ConfigurationDataStore {
             return;
         };
         if let Err(e) = mgr.set::<&str, i64, ()>("bosca:configuration:cache", Utc::now().timestamp()).await {
-            error!("Failed to update cache time: {}", e);
+            error!("Failed to update cache time: {e}");
         }
     }
 
@@ -203,7 +203,7 @@ impl ConfigurationDataStore {
         let nonce = Nonce::from_slice(&binding);
         let ciphertext = cipher
             .encrypt(nonce, plaintext.as_bytes())
-            .map_err(|err| Error::new(format!("Encryption failed: {}", err)))?;
+            .map_err(|err| Error::new(format!("Encryption failed: {err}")))?;
         Ok((ciphertext, nonce.to_vec()))
     }
 
@@ -214,7 +214,7 @@ impl ConfigurationDataStore {
         let nonce = Nonce::from_slice(nonce);
         let plaintext = cipher
             .decrypt(nonce, ciphertext)
-            .map_err(|err| Error::new(format!("Decryption failed: {}", err)))?;
-        String::from_utf8(plaintext).map_err(|err| Error::new(format!("Invalid UTF-8: {}", err)))
+            .map_err(|err| Error::new(format!("Decryption failed: {err}")))?;
+        String::from_utf8(plaintext).map_err(|err| Error::new(format!("Invalid UTF-8: {err}")))
     }
 }

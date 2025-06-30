@@ -32,9 +32,9 @@ fn node_id() -> &'static u16 {
         let node_id: u16 = ip.octets()[3] as u16;
         let max_node_id: u16 = (1 << NODE_BITS) - 1;
         if node_id > max_node_id {
-            panic!("node_id is too large for the specified number of bits: {}, {}", node_id, max_node_id);
+            panic!("node_id is too large for the specified number of bits: {node_id}, {max_node_id}");
         } else {
-            info!(target: "bosca", "node_id: {}", node_id);
+            info!(target: "bosca", "node_id: {node_id}");
         }
         node_id
     })

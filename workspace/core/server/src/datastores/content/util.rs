@@ -54,7 +54,7 @@ pub fn build_ordering<'a>(
                 let name = names.get(n).unwrap();
                 n += 1;
                 values.push(name as &(dyn ToSql + Sync));
-                buf.push_str(format!("->>${}", index).as_str());
+                buf.push_str(format!("->>${index}").as_str());
                 index += 1;
             }
             buf.push_str(")::");
@@ -106,7 +106,7 @@ pub fn build_find_args<'a>(
     if let Some(category_ids) = category_ids {
         if !category_ids.is_empty() {
             for category_id in category_ids {
-                q.push_str(format!(" inner join {}_categories as cid on (cid.{}_id = {}.id and cid.category_id = ${}) ", base_type, base_type, table_alias, pos).as_str());
+                q.push_str(format!(" inner join {base_type}_categories as cid on (cid.{base_type}_id = {table_alias}.id and cid.category_id = ${pos}) ").as_str());
                 pos += 1;
                 values.push(category_id as &(dyn ToSql + Sync));
             }
@@ -116,7 +116,7 @@ pub fn build_find_args<'a>(
     if let Some(trait_ids) = trait_ids {
         if !trait_ids.is_empty() {
             for trait_id in trait_ids {
-                q.push_str(format!(" inner join {}_traits as tid on (tid.{}_id = {}.id and tid.trait_id = ${}) ", base_type, base_type, table_alias, pos).as_str());
+                q.push_str(format!(" inner join {base_type}_traits as tid on (tid.{base_type}_id = {table_alias}.id and tid.trait_id = ${pos}) ").as_str());
                 pos += 1;
                 values.push(trait_id as &(dyn ToSql + Sync));
             }
@@ -125,34 +125,33 @@ pub fn build_find_args<'a>(
 
     match find_query.extension_filter {
         Some(ExtensionFilterType::Document) => {
-            q.push_str(format!(" inner join documents d on ({}.id = d.metadata_id and {}.version = d.version) ", table_alias, table_alias).as_str());
+            q.push_str(format!(" inner join documents d on ({table_alias}.id = d.metadata_id and {table_alias}.version = d.version) ").as_str());
         }
         Some(ExtensionFilterType::DocumentTemplate) => {
-            q.push_str(format!(" inner join document_templates dt on ({}.id = dt.metadata_id and {}.version = dt.version) ", table_alias, table_alias).as_str());
+            q.push_str(format!(" inner join document_templates dt on ({table_alias}.id = dt.metadata_id and {table_alias}.version = dt.version) ").as_str());
         }
         Some(ExtensionFilterType::Guide) => {
             q.push_str(
                 format!(
-                    " inner join guides g on ({}.id = g.metadata_id and {}.version = g.version) ",
-                    table_alias, table_alias
+                    " inner join guides g on ({table_alias}.id = g.metadata_id and {table_alias}.version = g.version) "
                 )
                 .as_str(),
             );
         }
         Some(ExtensionFilterType::GuideTemplate) => {
-            q.push_str(format!(" inner join guide_templates gt on ({}.id = gt.metadata_id and {}.version = gt.version) ", table_alias, table_alias).as_str());
+            q.push_str(format!(" inner join guide_templates gt on ({table_alias}.id = gt.metadata_id and {table_alias}.version = gt.version) ").as_str());
         }
         Some(ExtensionFilterType::CollectionTemplate) => {
-            q.push_str(format!(" inner join collection_templates ct on ({}.id = ct.metadata_id and {}.version = ct.version) ", table_alias, table_alias).as_str());
+            q.push_str(format!(" inner join collection_templates ct on ({table_alias}.id = ct.metadata_id and {table_alias}.version = ct.version) ").as_str());
         }
         _ => {}
     }
 
-    q.push_str(format!(" where {}.deleted = false ", table_alias).as_str());
+    q.push_str(format!(" where {table_alias}.deleted = false ").as_str());
 
     if base_type == "collection" {
         if let Some(collection_type) = &find_query.collection_type {
-            q.push_str(format!(" and {}.type = ${} ", table_alias, pos).as_str());
+            q.push_str(format!(" and {table_alias}.type = ${pos} ").as_str());
             pos += 1;
             values.push(collection_type as &(dyn ToSql + Sync));
         }
@@ -199,12 +198,12 @@ pub fn build_find_args<'a>(
 
     if let Some(content_types) = &find_query.content_types {
         if !content_types.is_empty() {
-            q.push_str(format!(" and {}.content_type in (", table_alias).as_str());
+            q.push_str(format!(" and {table_alias}.content_type in (").as_str());
             for (ix, content_type) in content_types.iter().enumerate() {
                 if ix > 0 {
                     q.push_str(", ");
                 }
-                q.push_str(format!("${}", pos).as_str());
+                q.push_str(format!("${pos}").as_str());
                 pos += 1;
                 values.push(content_type as &(dyn ToSql + Sync));
             }
@@ -223,15 +222,15 @@ pub fn build_find_args<'a>(
                 q.push_str(ordering_sql.as_str());
             }
         } else {
-            q.push_str(format!(" order by lower({}.name) asc ", table_alias).as_str()); // TODO: when adding MetadataIndex & CollectionIndex, make this configurable so it is based on an index
+            q.push_str(format!(" order by lower({table_alias}.name) asc ").as_str()); // TODO: when adding MetadataIndex & CollectionIndex, make this configurable so it is based on an index
         }
         if find_query.offset.is_some() {
-            q.push_str(format!(" offset ${}", pos).as_str());
+            q.push_str(format!(" offset ${pos}").as_str());
             values.push(find_query.offset.as_ref().unwrap() as &(dyn ToSql + Sync));
             pos += 1;
         }
         if find_query.limit.is_some() {
-            q.push_str(format!(" limit ${}", pos).as_str());
+            q.push_str(format!(" limit ${pos}").as_str());
             values.push(find_query.limit.as_ref().unwrap() as &(dyn ToSql + Sync));
         }
     }

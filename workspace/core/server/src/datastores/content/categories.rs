@@ -21,7 +21,7 @@ impl CategoriesDataStore {
     #[tracing::instrument(skip(self, id))]
     async fn on_category_changed(&self, id: &Uuid) -> Result<(), Error> {
         if let Err(e) = self.notifier.category_changed(id).await {
-            error!("Failed to notify category changes: {:?}", e);
+            error!("Failed to notify category changes: {e:?}");
         }
         Ok(())
     }

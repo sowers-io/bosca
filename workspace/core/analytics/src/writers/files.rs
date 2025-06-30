@@ -102,10 +102,10 @@ pub async fn watch_files(
             }
         }
         if let Err(err) = watch_json(&writer, &schema, &config, false).await {
-            error!("error watching json: {:?}", err);
+            error!("error watching json: {err:?}");
         }
         if let Err(err) = watch_objects(&config).await {
-            error!("error watching objects: {:?}", err);
+            error!("error watching objects: {err:?}");
         }
         watching.store(false, Relaxed);
         tokio::time::sleep(Duration::from_secs(15)).await;
@@ -131,10 +131,10 @@ pub async fn watch_files_hourly(
             // TODO: Store on disk
             watching.store(true, Relaxed);
             if let Err(err) = watch_json(&writer, &schema, &config, true).await {
-                error!("hourly error watching json: {:?}", err);
+                error!("hourly error watching json: {err:?}");
             }
             if let Err(err) = watch_objects(&config).await {
-                error!("hourly error watching objects: {:?}", err);
+                error!("hourly error watching objects: {err:?}");
             }
             watching.store(false, Relaxed);
         }
@@ -192,7 +192,7 @@ async fn watch_objects(config: &Config) -> Result<(), Box<dyn Error>> {
                             upload.complete().await?;
                             if let Err(err) = tokio::fs::remove_file(&file_name).await {
                                 return Err(
-                                    format!("error deleting file: {} {:?}", file_name, err).into()
+                                    format!("error deleting file: {file_name} {err:?}").into()
                                 );
                             }
                         }
@@ -251,7 +251,7 @@ async fn watch_json(
             for file in &files {
                 if let Ok(file_name) = file.file_name().into_string() {
                     if file_name.starts_with("events-") && file_name.ends_with(".json") {
-                        info!("adding json file to parquet: {}", file_name);
+                        info!("adding json file to parquet: {file_name}");
                         let spawn_file = format!("{}/{}", &config.temp_dir, file_name);
                         let spawn_writer = Arc::clone(&writer);
                         let spawn_writer_schema = Arc::clone(schema);
@@ -263,12 +263,12 @@ async fn watch_json(
                                             return has_records
                                         }
                                         Err(err) => {
-                                            error!("error copying file to parquet: {:?}", err);
+                                            error!("error copying file to parquet: {err:?}");
                                         }
                                     }
                                 }
                                 Err(e) => {
-                                    error!("error opening file for parquet copy: {:?}", e);
+                                    error!("error opening file for parquet copy: {e:?}");
                                     return false;
                                 }
                             }
@@ -276,7 +276,7 @@ async fn watch_json(
                         })
                         .await
                         .unwrap_or_else(|e| {
-                            error!("error copying file: {:?}", e);
+                            error!("error copying file: {e:?}");
                             false
                         }) || success;
                     }
@@ -285,10 +285,10 @@ async fn watch_json(
             if success {
                 let mut writer = writer.lock().unwrap();
                 if let Err(e) = writer.flush() {
-                    error!("error flushing parquet records: {:?}", e);
+                    error!("error flushing parquet records: {e:?}");
                     success = false;
                 } else if let Err(e) = writer.finish() {
-                    error!("error finishing parquet: {:?}", e);
+                    error!("error finishing parquet: {e:?}");
                     success = false;
                 }
             }
@@ -302,16 +302,16 @@ async fn watch_json(
                             ))
                             .await
                             {
-                                return Err(format!("error deleting file: {:?}", err).into());
+                                return Err(format!("error deleting file: {err:?}").into());
                             }
                         }
                     }
                 }
                 if let Err(err) = tokio::fs::rename(parquet_file, finished_parquet_file).await {
-                    return Err(format!("error deleting file: {:?}", err).into());
+                    return Err(format!("error deleting file: {err:?}").into());
                 }
             } else if let Err(err) = tokio::fs::remove_file(parquet_file).await {
-                return Err(format!("error deleting file: {:?}", err).into());
+                return Err(format!("error deleting file: {err:?}").into());
             }
         }
     } else {

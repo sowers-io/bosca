@@ -21,7 +21,7 @@ impl WorkflowScheduleDataStore {
     #[tracing::instrument(skip(self, id))]
     async fn on_schedule_changed(&self, id: &Uuid) -> Result<(), Error> {
         if let Err(e) = self.notifier.workflow_schedule_changed(id).await {
-            error!("Failed to notify workflow schedule changes: {:?}", e);
+            error!("Failed to notify workflow schedule changes: {e:?}");
         }
         Ok(())
     }

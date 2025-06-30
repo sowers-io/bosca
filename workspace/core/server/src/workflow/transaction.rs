@@ -160,7 +160,7 @@ impl RedisTransaction {
                 Ok(())
             }
             Err(e) => {
-                error!(target: "workflow", "{:?}", e);
+                error!(target: "workflow", "{e:?}");
                 Err(e.into())
             }
         }

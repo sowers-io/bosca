@@ -194,7 +194,7 @@ impl ObjectStorage {
             url,
             headers: vec![SignedUrlHeader {
                 name: "Authorization".to_string(),
-                value: format!("Bearer {}", token),
+                value: format!("Bearer {token}"),
             }],
         })
     }
@@ -277,7 +277,7 @@ impl ObjectStorage {
             url: datasource.sign_url(&url),
             headers: vec![SignedUrlHeader {
                 name: "Authorization".to_string(),
-                value: format!("Bearer {}", token),
+                value: format!("Bearer {token}"),
             }],
         })
     }
@@ -352,7 +352,7 @@ impl ObjectStorage {
             url,
             headers: vec![SignedUrlHeader {
                 name: "Authorization".to_string(),
-                value: format!("Bearer {}", token),
+                value: format!("Bearer {token}"),
             }],
         })
     }
@@ -427,7 +427,7 @@ impl ObjectStorage {
             url: datasource.sign_url(&url),
             headers: vec![SignedUrlHeader {
                 name: "Authorization".to_string(),
-                value: format!("Bearer {}", token),
+                value: format!("Bearer {token}"),
             }],
         })
     }

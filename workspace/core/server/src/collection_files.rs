@@ -88,7 +88,7 @@ pub async fn collection_download(
             )
         })?;
     let buf = ctx.storage.get_buffer(&path).await.map_err(|e| {
-        error!("Error getting buffer: {}", e);
+        error!("Error getting buffer: {e}");
         (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
     })?;
     let body = Body::from_stream(buf);
@@ -139,7 +139,7 @@ pub async fn collection_upload(
             .await
             .map_err(|err| (StatusCode::BAD_REQUEST, err.to_string()))?;
         let len = upload_field(&ctx, path, &mut field).await
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Server Error: {:?}", e).to_owned()))?;
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Server Error: {e:?}").to_owned()))?;
         let content_type = field.content_type().unwrap_or("");
         ctx.content
             .metadata_supplementary

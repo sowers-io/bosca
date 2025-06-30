@@ -114,7 +114,7 @@ pub async fn slug(
             )
         })?;
     let buf = ctx.storage.get_buffer(&path).await.map_err(|e| {
-        error!("Error getting buffer: {}", e);
+        error!("Error getting buffer: {e}");
         (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
     })?;
     let body = Body::from_stream(buf);

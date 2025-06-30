@@ -28,8 +28,7 @@ pub async fn verify_transition_exists(
         Ok(())
     } else {
         Err(Error::new(format!(
-            "transition doesn't exist: {} -> {}",
-            state_id, next_state_id
+            "transition doesn't exist: {state_id} -> {next_state_id}"
         )))
     }
 }
@@ -274,7 +273,7 @@ pub async fn transition(
                 TransitionType::Default => state.workflow_id,
             } {
                 let Some(workflow) = ctx.workflow.get_workflow(&workflow_id).await? else {
-                    return Err(Error::new(format!("missing workflow: {}", workflow_id)))
+                    return Err(Error::new(format!("missing workflow: {workflow_id}")))
                 };
                 if delay {
                     return Ok(None);

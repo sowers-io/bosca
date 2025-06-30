@@ -26,7 +26,7 @@ impl BiblesDataStore {
 
     async fn on_metadata_changed(&self, id: &Uuid) -> async_graphql::Result<(), Error> {
         if let Err(e) = self.notifier.metadata_changed(id).await {
-            error!("Failed to notify metadata changes: {:?}", e);
+            error!("Failed to notify metadata changes: {e:?}");
         }
         Ok(())
     }

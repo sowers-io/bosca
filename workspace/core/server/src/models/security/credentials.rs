@@ -20,6 +20,7 @@ pub trait CredentialInterface {
     fn set_identifier(&mut self, identifier: String);
 }
 
+#[derive(Clone)]
 pub enum Credential {
     Password(PasswordCredential),
     PasswordScrypt(PasswordScryptCredential),

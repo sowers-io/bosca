@@ -23,7 +23,7 @@ impl CollectionSupplementaryDataStore {
     async fn on_collection_changed(&self, ctx: &BoscaContext, id: &Uuid) -> Result<(), Error> {
         ctx.content.collections.update_storage(ctx, id).await?;
         if let Err(e) = self.notifier.collection_changed(id).await {
-            error!("Failed to notify collection changes: {:?}", e);
+            error!("Failed to notify collection changes: {e:?}");
         }
         Ok(())
     }
@@ -31,7 +31,7 @@ impl CollectionSupplementaryDataStore {
     #[tracing::instrument(skip(self, supplementary_id, collection_id, key, plan_id))]
     async fn on_collection_supplementary_changed(&self, _: &BoscaContext, supplementary_id: &Uuid, collection_id: &Uuid, key: &str, plan_id: Option<Uuid>) -> Result<(), Error> {
         if let Err(e) = self.notifier.collection_supplementary_changed(supplementary_id, collection_id, key, plan_id).await {
-            error!("Failed to notify collection supplementary changes: {:?}", e);
+            error!("Failed to notify collection supplementary changes: {e:?}");
         }
         Ok(())
     }
