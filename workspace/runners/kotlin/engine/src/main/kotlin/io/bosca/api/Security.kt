@@ -62,6 +62,11 @@ class Security(network: NetworkClient) : Api(network) {
         keepTokenUpdated(identifier, password)
     }
 
+    suspend fun addPrincipalGroup(principalId: String, groupId: String) {
+        val response = network.graphql.mutation(AddPrincipalGroupMutation(groupId, principalId)).execute()
+        response.validate()
+    }
+
     suspend fun addGroup(name: String, description: String) {
         val response = network.graphql.mutation(AddGroupMutation(name, description)).execute()
         response.validate()

@@ -5,6 +5,10 @@ fragment ProfileIdName on Profile {
 
 fragment Profile on Profile {
     id
+    principal {
+        id
+        verified
+    }
     slug
     name
     visibility

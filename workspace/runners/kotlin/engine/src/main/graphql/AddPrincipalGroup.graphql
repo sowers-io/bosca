@@ -1,0 +1,5 @@
+mutation AddPrincipalGroup($groupId: String!, $principalId: String!) {
+    security {
+        addPrincipalGroup(groupId: $groupId, principalId: $principalId)
+    }
+}
