@@ -65,7 +65,7 @@ pub async fn oauth2_facebook_deauthorize(
                 let response = DeletionResponse {
                     url: "".to_string(),
                     confirmation_code: "".to_string(),
-                    error: Some(format!("Error deleting attributes: {:?}", e).to_string()),
+                    error: Some(format!("Error deleting attributes: {e:?}").to_string()),
                 };
                 return (StatusCode::INTERNAL_SERVER_ERROR, Json(response));
             }
@@ -83,11 +83,11 @@ pub async fn oauth2_facebook_deauthorize(
             (StatusCode::OK, Json(response))
         }
         Err(e) => {
-            error!("Error parsing signed request: {:?}", e);
+            error!("Error parsing signed request: {e:?}");
             let response = DeletionResponse {
                 url: "".to_string(),
                 confirmation_code: "".to_string(),
-                error: Some(format!("Error parsing signed request: {:?}", e).to_string()),
+                error: Some(format!("Error parsing signed request: {e:?}").to_string()),
             };
             (StatusCode::BAD_REQUEST, Json(response))
         }
@@ -118,7 +118,7 @@ fn parse_signed_request(
     let payload_str =
         String::from_utf8(payload_json).map_err(|_| "Invalid UTF-8 in payload".to_string())?;
     let data: SignedRequestData =
-        serde_json::from_str(&payload_str).map_err(|e| format!("JSON parsing error: {}", e))?;
+        serde_json::from_str(&payload_str).map_err(|e| format!("JSON parsing error: {e}"))?;
     Ok(data)
 }
 
@@ -126,11 +126,11 @@ fn base64_url_decode(input: &str) -> Result<Vec<u8>, String> {
     let standard_base64 = input.replace('-', "+").replace('_', "/");
     let padded = match standard_base64.len() % 4 {
         0 => standard_base64,
-        2 => format!("{}==", standard_base64),
-        3 => format!("{}=", standard_base64),
+        2 => format!("{standard_base64}=="),
+        3 => format!("{standard_base64}="),
         _ => return Err("Invalid base64 length".to_string()),
     };
     general_purpose::STANDARD
         .decode(padded)
-        .map_err(|e| format!("Base64 decoding error: {}", e))
+        .map_err(|e| format!("Base64 decoding error: {e}"))
 }

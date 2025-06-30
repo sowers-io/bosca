@@ -41,13 +41,13 @@ pub fn build_pool(key: &str) -> Result<TracingPool, CreatePoolError> {
             exit(1);
         }
     }
-    let max_connections_key = format!("{}_MAX_CONNECTIONS", key);
+    let max_connections_key = format!("{key}_MAX_CONNECTIONS");
     let max_connections = if let Ok(max_connections) = env::var(max_connections_key.as_str()) {
         max_connections.parse::<u32>().unwrap_or(200)
     } else {
         200
     };
-    info!("Database Max Connections: {}", max_connections);
+    info!("Database Max Connections: {max_connections}");
     let mut pool_config = PoolConfig::new(max_connections as usize);
     pool_config.timeouts = Timeouts::wait_millis(10000);
     pool_config.timeouts.create = Some(Duration::from_secs(10));
@@ -56,7 +56,7 @@ pub fn build_pool(key: &str) -> Result<TracingPool, CreatePoolError> {
     config.manager = Some(ManagerConfig {
         recycling_method: RecyclingMethod::Fast,
     });
-    let cert_file_key = format!("{}_CERT_FILE", key);
+    let cert_file_key = format!("{key}_CERT_FILE");
     if let Ok(cert_file) = env::var(cert_file_key.as_str()) {
         let mut store = RootCertStore {
             roots: webpki_roots::TLS_SERVER_ROOTS.into(),
@@ -71,7 +71,7 @@ pub fn build_pool(key: &str) -> Result<TracingPool, CreatePoolError> {
         let tls = MakeRustlsConnect::new(tls_config);
         return Ok(TracingPool::new(Arc::new(config.create_pool(Some(Runtime::Tokio1), tls)?)));
     }
-    let cert_b64_key = format!("{}_CERT_B64", key);
+    let cert_b64_key = format!("{key}_CERT_B64");
     if let Ok(cert) = env::var(cert_b64_key.as_str()) {
         let mut store = RootCertStore {
             roots: webpki_roots::TLS_SERVER_ROOTS.into(),

@@ -72,7 +72,7 @@ impl WorkflowDataStore {
                 RUNNING_BACKGROUND.fetch_add(1, Relaxed);
                 let now = Utc::now().timestamp();
                 if let Err(e) = jobs_expiration.check_for_expiration(now).await {
-                    error!(target: "workflow", "failed to check for expiration: {:?}", e);
+                    error!(target: "workflow", "failed to check for expiration: {e:?}");
                 }
                 RUNNING_BACKGROUND.fetch_add(-1, Relaxed);
                 sleep(Duration::from_secs(3)).await;
@@ -952,7 +952,7 @@ impl WorkflowDataStore {
             ..Default::default()
         };
         if let Err(e) = ctx.workflow.enqueue_workflow(ctx, &mut request).await {
-            log::error!("Failed to initialize storage system: {:?}", e);
+            log::error!("Failed to initialize storage system: {e:?}");
         }
 
         let id_str = id.to_string();
@@ -1000,7 +1000,7 @@ impl WorkflowDataStore {
             ..Default::default()
         };
         if let Err(e) = ctx.workflow.enqueue_workflow(ctx, &mut request).await {
-            log::error!("Failed to initialize storage system: {:?}", e);
+            log::error!("Failed to initialize storage system: {e:?}");
         }
 
         let id_str = id.to_string();
@@ -1542,7 +1542,7 @@ impl WorkflowDataStore {
             if let Some(workflow) = self.get_workflow(workflow_id).await? {
                 workflow
             } else {
-                return Err(Error::new(format!("missing workflow: {}", workflow_id)));
+                return Err(Error::new(format!("missing workflow: {workflow_id}")));
             }
         } else {
             return Err(Error::new("workflow or workflow_id is required"));

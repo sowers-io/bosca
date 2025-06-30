@@ -52,10 +52,9 @@ pub async fn upload_field(
         len += chunk_len;
         let write_len = writer.write(chunk.as_ref())?;
         if write_len != chunk_len {
-            error!("Error validating write {}, {}", write_len, chunk_len);
+            error!("Error validating write {write_len}, {chunk_len}");
             return Err(Error::new(format!(
-                "invalid length: {} != {}",
-                write_len, chunk_len
+                "invalid length: {write_len} != {chunk_len}"
             )));
         }
         let buf_len = writer.get_ref().len();

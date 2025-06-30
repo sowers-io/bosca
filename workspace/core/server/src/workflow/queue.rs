@@ -40,23 +40,23 @@ impl JobQueues {
     }
 
     pub fn queue_plan_key(queue: &str, id: &Uuid) -> String {
-        format!("{}::{}::{}", QUEUE_PLAN_PREFIX, queue, id)
+        format!("{QUEUE_PLAN_PREFIX}::{queue}::{id}")
     }
 
     pub fn queue_job_key(queue: &str, id: &Uuid, index: i32) -> String {
-        format!("{}::{}::{}::{}", QUEUE_JOB_PREFIX, queue, id, index)
+        format!("{QUEUE_JOB_PREFIX}::{queue}::{id}::{index}")
     }
 
     pub fn pending_job_queue_key(queue: &str) -> String {
-        format!("queue::pending::job::{}", queue)
+        format!("queue::pending::job::{queue}")
     }
 
     pub fn running_plan_queue_key(queue: &str) -> String {
-        format!("queue::running::plan::{}", queue)
+        format!("queue::running::plan::{queue}")
     }
 
     pub fn running_job_queue_key(queue: &str) -> String {
-        format!("queue::running::job::{}", queue)
+        format!("queue::running::job::{queue}")
     }
 
     async fn incr(&self, key: &str) -> Result<(), Error> {
@@ -276,7 +276,7 @@ impl JobQueues {
                     .execute(&stmt, &[metadata_id, &plan_id.id, &plan_id.queue])
                     .await
                 {
-                    error!("failed to register metadata workflow plan: {}", e);
+                    error!("failed to register metadata workflow plan: {e}");
                 }
             }
             if let Some(collection_id) = &plan.collection_id {
@@ -290,7 +290,7 @@ impl JobQueues {
                     .execute(&stmt, &[collection_id, &plan_id.id, &plan_id.queue])
                     .await
                 {
-                    error!("failed to register collection workflow plan: {}", e);
+                    error!("failed to register collection workflow plan: {e}");
                 }
             }
         }
@@ -333,7 +333,7 @@ impl JobQueues {
             filter.push_str("jsonb_array_length(configuration->'active') > 0");
         }
         if !filter.is_empty() {
-            query.push_str(&format!(" where {}", filter));
+            query.push_str(&format!(" where {filter}"));
         }
         query.push_str(&format!(" order by created desc offset ${} limit ${}", ix, ix + 1));
         let result = if let Some(queue) = queue {
@@ -437,7 +437,7 @@ impl JobQueues {
                 .invoke_async(&mut connection)
                 .await?;
             if result > 0 {
-                info!("found expired jobs: {}", result);
+                info!("found expired jobs: {result}");
             }
         }
 
@@ -650,7 +650,7 @@ impl JobQueues {
             Ok(None) => Ok(None),
             Err(e) => {
                 if e.message == "plan not found" {
-                    error!("plan not found: {}", job_id);
+                    error!("plan not found: {job_id}");
                     let plan = WorkflowExecutionId {
                         id: job_id.id,
                         queue: job_id.queue.clone(),

@@ -60,7 +60,7 @@ impl WriterWorker {
             match timeout(Duration::from_millis(3000), recv.recv()).await {
                 Ok(Some(mut payload)) => {
                     if let Err(error) = sink.add(&mut payload.context, &payload.events).await {
-                        error!("error adding events to sink: {:?}", error);
+                        error!("error adding events to sink: {error:?}");
                     }
                 }
                 Ok(None) => {
@@ -69,7 +69,7 @@ impl WriterWorker {
                 }
                 Err(_) => {
                     if let Err(error) = sink.flush().await {
-                        error!("error finishing adding events to sink: {:?}", error);
+                        error!("error finishing adding events to sink: {error:?}");
                     }
                     if recv.is_closed() {
                         done = true;
@@ -78,7 +78,7 @@ impl WriterWorker {
             }
         }
         if let Err(e) = sink.finish().await {
-            error!("error finishing sink: {:?}", e);
+            error!("error finishing sink: {e:?}");
         }
         active.fetch_add(-1, Relaxed);
     }

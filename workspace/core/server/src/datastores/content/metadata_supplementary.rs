@@ -53,7 +53,7 @@ impl MetadataSupplementaryDataStore {
             )
             .await
         {
-            error!("Failed to notify metadata supplementary changes: {:?}", e);
+            error!("Failed to notify metadata supplementary changes: {e:?}");
         }
         Ok(())
     }

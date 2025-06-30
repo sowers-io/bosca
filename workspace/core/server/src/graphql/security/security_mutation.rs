@@ -4,7 +4,8 @@ use crate::graphql::security::login_mutation::LoginMutationObject;
 use crate::graphql::security::principal_mutation::PrincipalMutation;
 use crate::graphql::security::security_firebase_mutation::SecurityFirebaseMutationObject;
 use crate::graphql::security::signup_mutation::SignupMutationObject;
-use crate::models::security::credentials::CredentialType;
+use crate::models::security::credentials::{Credential, CredentialType};
+use crate::models::security::credentials_password::PasswordCredential;
 use async_graphql::*;
 use uuid::Uuid;
 
@@ -12,7 +13,6 @@ pub struct SecurityMutationObject {}
 
 #[Object(name = "SecurityMutation")]
 impl SecurityMutationObject {
-
     async fn login(&self) -> LoginMutationObject {
         LoginMutationObject {}
     }
@@ -25,7 +25,11 @@ impl SecurityMutationObject {
         GroupsMutation {}
     }
 
-    async fn principal(&self, ctx: &Context<'_>, id: Option<String>) -> Result<PrincipalMutation, Error> {
+    async fn principal(
+        &self,
+        ctx: &Context<'_>,
+        id: Option<String>,
+    ) -> Result<PrincipalMutation, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         if ctx.principal.anonymous {
             return Err(Error::new("unauthenticated"));
@@ -58,16 +62,41 @@ impl SecurityMutationObject {
             .security
             .get_principal_credentials(&principal.id)
             .await?;
-        let Some(mut credential) = credentials
-            .into_iter()
+        if let Some(credential) = credentials
+            .iter()
             .find(|c| c.get_type() == CredentialType::Password)
-        else {
-            return Err(Error::new("invalid principal"));
-        };
-        credential.set_password(new_password)?;
-        ctx.security
-            .set_principal_credential(&principal.id, &credential)
-            .await?;
+        {
+            let mut credential = credential.clone();
+            credential.set_password(new_password)?;
+            ctx.security
+                .set_principal_credential(&principal.id, &credential)
+                .await?;
+        } else {
+            let Some(profile) = ctx.profile.get_by_principal(&principal.id).await? else {
+                return Err(Error::new("missing profile"));
+            };
+            let attributes = ctx.profile.get_attributes(&profile.id).await?;
+            let Some(email_attr) = attributes
+                .iter()
+                .find(|a| a.type_id == "bosca.profiles.email")
+            else {
+                return Err(Error::new("missing email"));
+            };
+            let email = email_attr
+                .attributes
+                .as_ref()
+                .expect("missing email attributes")
+                .get("email")
+                .expect("missing email value")
+                .as_str()
+                .expect("failed to get email value")
+                .to_string();
+            let credential = Credential::Password(PasswordCredential::new(email, new_password)?);
+            ctx.security
+                .add_principal_credential(&principal.id, &credential)
+                .await?;
+        }
+
         ctx.security
             .set_principal_verified(&verification_token)
             .await?;

@@ -174,7 +174,7 @@ impl BoscaContext {
                 }
                 Ok(metadata)
             }
-            None => Err(Error::new(format!("metadata not found: {}", id))),
+            None => Err(Error::new(format!("metadata not found: {id}"))),
         }
     }
 
@@ -201,7 +201,7 @@ impl BoscaContext {
                 }
                 Ok(metadata)
             }
-            None => Err(Error::new(format!("metadata not found: {}", id))),
+            None => Err(Error::new(format!("metadata not found: {id}"))),
         }
     }
 
@@ -257,8 +257,7 @@ impl BoscaContext {
                 Ok((metadata, supplementary))
             }
             None => Err(Error::new(format!(
-                "supplementary not found: {}",
-                supplementary_id
+                "supplementary not found: {supplementary_id}"
             ))),
         }
     }
@@ -278,8 +277,7 @@ impl BoscaContext {
             .await?
         else {
             return Err(Error::new(format!(
-                "collection supplementary not found: {}",
-                supplementary_id
+                "collection supplementary not found: {supplementary_id}"
             )));
         };
         let Some(collection) = self
@@ -289,8 +287,7 @@ impl BoscaContext {
             .await?
         else {
             return Err(Error::new(format!(
-                "collection not found: {}",
-                supplementary_id
+                "collection not found: {supplementary_id}"
             )));
         };
         if !self
@@ -353,7 +350,7 @@ impl BoscaContext {
                 }
                 Ok(metadata)
             }
-            None => Err(Error::new(format!("metadata not found: {}", id))),
+            None => Err(Error::new(format!("metadata not found: {id}"))),
         }
     }
 
@@ -389,8 +386,7 @@ impl BoscaContext {
                 Ok(metadata)
             }
             None => Err(Error::new(format!(
-                "metadata not found: {} / {}",
-                id, version
+                "metadata not found: {id} / {version}"
             ))),
         }
     }
@@ -429,8 +425,7 @@ impl BoscaContext {
                 Ok(metadata)
             }
             None => Err(Error::new(format!(
-                "metadata not found: {} / {}",
-                id, version
+                "metadata not found: {id} / {version}"
             ))),
         }
     }
@@ -463,7 +458,7 @@ impl BoscaContext {
                 }
                 Ok(collection)
             }
-            None => Err(Error::new(format!("collection not found: {}", id))),
+            None => Err(Error::new(format!("collection not found: {id}"))),
         }
     }
 
@@ -488,7 +483,7 @@ impl BoscaContext {
                 }
                 Ok(collection)
             }
-            None => Err(Error::new(format!("collection not found: {}", id))),
+            None => Err(Error::new(format!("collection not found: {id}"))),
         }
     }
 
@@ -513,7 +508,7 @@ impl BoscaContext {
                 }
                 Ok(profile)
             }
-            None => Err(Error::new(format!("profile not found: {}", id))),
+            None => Err(Error::new(format!("profile not found: {id}"))),
         }
     }
 

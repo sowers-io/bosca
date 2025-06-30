@@ -191,7 +191,7 @@ pub async fn metadata_upload(
             .await
             .map_err(|err| (StatusCode::BAD_REQUEST, err.to_string()))?;
         let len = upload_field(&ctx, path, &mut field).await
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Server Error: {:?}", e).to_owned()))?;
+            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Server Error: {e:?}").to_owned()))?;
         if let Some(supplementary) = &supplementary {
             let content_type = field.content_type().unwrap_or("");
             ctx.content

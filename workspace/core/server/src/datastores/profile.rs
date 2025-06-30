@@ -772,7 +772,7 @@ impl ProfileDataStore {
         let collection_id = {
             let mut connection = self.pool.get().await?;
             let txn = connection.transaction().await?;
-            let collection_name = format!("Collection for {}", principal_id);
+            let collection_name = format!("Collection for {principal_id}");
             let (collection_id, _) = ctx
                 .content
                 .collections
@@ -796,8 +796,8 @@ impl ProfileDataStore {
             collection_id
         };
 
-        let group_name = format!("principal.{}", principal_id);
-        let description = format!("Group for {}", principal_id);
+        let group_name = format!("principal.{principal_id}");
+        let description = format!("Group for {principal_id}");
         let group = ctx
             .security
             .add_group(&group_name, &description, GroupType::Principal)

@@ -271,7 +271,7 @@ impl SecurityOAuth2 {
                 let status = response.status();
                 let account: FacebookUser = response.json().await?;
                 if account.id.is_empty() {
-                    info!("facebook user: {:?} -> {} -> {}", account, status, token);
+                    info!("facebook user: {account:?} -> {status} -> {token}");
                     return Err(Error::from("invalid facebook account"));
                 }
                 if account.email.is_empty() {

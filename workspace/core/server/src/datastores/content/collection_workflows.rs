@@ -28,7 +28,7 @@ impl CollectionWorkflowsDataStore {
     async fn on_collection_changed(&self, ctx: &BoscaContext, id: &Uuid) -> Result<(), Error> {
         ctx.content.collections.update_storage(ctx, id).await?;
         if let Err(e) = self.notifier.collection_changed(id).await {
-            error!("Failed to notify collection changes: {:?}", e);
+            error!("Failed to notify collection changes: {e:?}");
         }
         Ok(())
     }

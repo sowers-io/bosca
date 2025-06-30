@@ -4,6 +4,7 @@ use async_graphql::Error;
 use serde_json::{Map, Value};
 use std::fmt::{Debug, Formatter};
 
+#[derive(Clone)]
 pub struct PasswordCredential {
     pub credential_type: CredentialType,
     pub attributes: Value,

@@ -82,7 +82,7 @@ where
         if let Ok(mut conn) = self.redis.get_manager().await {
             let value = serde_json::to_vec(value).expect("failed to serialize value");
             if let Err(e) = conn.hset::<String, &K, Vec<u8>, i32>(hkey, key, value).await {
-                error!("error setting in cache: {:?}", e);
+                error!("error setting in cache: {e:?}");
             }
         }
     }
@@ -95,7 +95,7 @@ where
         let hkey = format!("bosca:cache:{}", &self.name);
         if let Ok(mut conn) = self.redis.get_manager().await {
             if let Err(e) = conn.hdel::<String, &K, i32>(hkey, key).await {
-                error!("error removing from cache: {:?}", e);
+                error!("error removing from cache: {e:?}");
             }
         }
     }

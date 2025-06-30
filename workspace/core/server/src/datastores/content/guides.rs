@@ -37,7 +37,7 @@ impl GuidesDataStore {
     async fn on_metadata_changed(&self, ctx: &BoscaContext, id: &Uuid) -> Result<(), Error> {
         ctx.content.metadata.update_storage(ctx, id).await?;
         if let Err(e) = self.notifier.metadata_changed(id).await {
-            error!("Failed to notify metadata changes: {:?}", e);
+            error!("Failed to notify metadata changes: {e:?}");
         }
         Ok(())
     }

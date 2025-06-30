@@ -27,7 +27,7 @@ impl SecurityObject {
             PermissionAction::List,
             PermissionAction::Execute]
         .iter()
-        .map(|id| format!("{:?}", id))
+        .map(|id| format!("{id:?}"))
         .collect())
     }
 

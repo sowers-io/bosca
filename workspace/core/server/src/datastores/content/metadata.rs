@@ -81,17 +81,17 @@ impl MetadataDataStore {
                                 for id in ids {
                                     if let Ok(id) = Uuid::parse_str(&id) {
                                         if let Err(e) = ds.update_metadata_storage_immediately(&ctx, id).await {
-                                            error!("failed to update metadata storage immediately: {:?}", e);
+                                            error!("failed to update metadata storage immediately: {e:?}");
                                         }
                                     }
                                 }
                             }
                             Err(e) => {
-                                error!("failed to get expired metadata from redis: {:?}", e);
+                                error!("failed to get expired metadata from redis: {e:?}");
                             }
                         }
                         if let Err(e) = conn.zrembyscore::<&str, i64, i64, i32>("metadata::storage::updates", 0, now).await {
-                            error!("failed to remove expired metadata from redis: {:?}", e);
+                            error!("failed to remove expired metadata from redis: {e:?}");
                         }
                     } else {
                         error!("failed to get redis connection");
@@ -124,7 +124,7 @@ impl MetadataDataStore {
     pub async fn on_metadata_changed(&self, ctx: &BoscaContext, id: &Uuid) -> Result<(), Error> {
         self.update_storage(ctx, id).await?;
         if let Err(e) = self.notifier.metadata_changed(id).await {
-            error!("Failed to notify metadata changes: {:?}", e);
+            error!("Failed to notify metadata changes: {e:?}");
         }
         Ok(())
     }

@@ -149,7 +149,7 @@ async fn main() {
     );
 
     if let Ok(endpoint) = env::var("OTLP_TRACE_ENDPOINT") {
-        info!(target: "bosca", "sending traces to: {}", endpoint);
+        info!(target: "bosca", "sending traces to: {endpoint}");
 
         let exporter = opentelemetry_otlp::new_exporter()
             .http()

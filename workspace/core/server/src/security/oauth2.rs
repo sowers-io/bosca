@@ -139,7 +139,7 @@ pub async fn oauth2_callback_internal(
             let (principal, profile_id) = ctx
                 .security
                 .add_principal_with_credential(
-                    &ctx,
+                    ctx,
                     &credential,
                     &profile,
                     Some(account.verified()),
@@ -148,8 +148,8 @@ pub async fn oauth2_callback_internal(
                 )
                 .await?;
             let principal = ctx.security.get_principal_by_id(&principal).await?;
-            if let Err(e) = ctx.profile.update_storage(&ctx, &profile_id).await {
-                error!("Failed to update profile storage: {:?}", e);
+            if let Err(e) = ctx.profile.update_storage(ctx, &profile_id).await {
+                error!("Failed to update profile storage: {e:?}");
             }
             principal
         };
@@ -186,10 +186,10 @@ pub async fn oauth2_callback(
     } else {
         ""
     };
-    let token = match oauth2_callback_internal(&ctx, &params, &verifier, &oauth2_type).await {
+    let token = match oauth2_callback_internal(&ctx, &params, verifier, oauth2_type).await {
         Ok(token) => token,
         Err(e) => {
-            error!("Failed to exchange authorization code: {:?}", e);
+            error!("Failed to exchange authorization code: {e:?}");
             let mut hdrs = HeaderMap::new();
             if to.contains('?') {
                 hdrs.insert(

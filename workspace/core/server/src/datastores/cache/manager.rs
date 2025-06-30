@@ -77,7 +77,7 @@ impl BoscaCacheManager {
         let caches = self.caches.lock().await;
         for cache in caches.values() {
             if let Err(e) = cache.clear().await {
-                error!("error clearing cache: {:?}", e);
+                error!("error clearing cache: {e:?}");
             }
         }
     }

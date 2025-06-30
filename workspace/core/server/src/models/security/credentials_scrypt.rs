@@ -6,6 +6,7 @@ use firebase_scrypt::FirebaseScrypt;
 use serde_json::Value;
 use std::fmt::{Debug, Formatter};
 
+#[derive(Clone)]
 pub struct PasswordScryptCredential {
     pub credential_type: CredentialType,
     pub firebase_scrypt: FirebaseScrypt,
@@ -63,7 +64,7 @@ impl PasswordScryptCredential {
     pub fn set_password(&mut self, password: String) -> Result<(), Error> {
         let mut map = self.attributes.as_object_mut().unwrap().clone();
         let salt = SaltString::generate(&mut OsRng);
-        let hash = self.firebase_scrypt.generate_base64_hash(&password, salt.as_str()).map_err(|e| format!("{:?}", e))?;
+        let hash = self.firebase_scrypt.generate_base64_hash(&password, salt.as_str()).map_err(|e| format!("{e:?}"))?;
         map.insert("passwordHash".to_string(), Value::String(hash));
         map.insert("salt".to_string(), Value::String(salt.as_str().to_string()));
         self.attributes = Value::Object(map);
@@ -73,7 +74,7 @@ impl PasswordScryptCredential {
     pub fn verify(&self, password: &str) -> Result<bool, Error> {
         let salt = self.attributes.get("salt").unwrap().as_str().unwrap();
         let hash = self.attributes.get("passwordHash").unwrap().as_str().unwrap();
-        Ok(self.firebase_scrypt.verify_password(password, salt, hash).map_err(|e| format!("{:?}", e))?)
+        Ok(self.firebase_scrypt.verify_password(password, salt, hash).map_err(|e| format!("{e:?}"))?)
     }
 }
 

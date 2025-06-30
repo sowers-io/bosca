@@ -68,7 +68,7 @@ impl WorkflowCache {
 
     #[tracing::instrument(skip(self, from_state_id, to_state_id))]
     pub async fn get_transition(&self, from_state_id: &String, to_state_id: &String) -> Option<Transition> {
-        let key = format!("{}-{}", from_state_id, to_state_id);
+        let key = format!("{from_state_id}-{to_state_id}");
         self.transition_cache.get(&key).await
     }
 
@@ -80,7 +80,7 @@ impl WorkflowCache {
 
     #[tracing::instrument(skip(self, from_state_id, to_state_id))]
     pub async fn evict_transition(&self, from_state_id: &String, to_state_id: &String) {
-        let key = format!("{}-{}", from_state_id, to_state_id);
+        let key = format!("{from_state_id}-{to_state_id}");
         self.transition_cache.remove(&key).await;
     }
 

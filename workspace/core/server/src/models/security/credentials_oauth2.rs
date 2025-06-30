@@ -6,6 +6,7 @@ use oauth2::TokenResponse;
 use serde_json::{Map, Value};
 use std::fmt::{Debug, Formatter};
 
+#[derive(Clone)]
 pub struct Oauth2Credential {
     pub credential_type: CredentialType,
     pub attributes: Value,

@@ -103,7 +103,7 @@ impl SearchClient {
             };
             let id = id.as_str().unwrap();
             let Ok(id) = Uuid::parse_str(id) else {
-                error!("failed to parse id: {}", id);
+                error!("failed to parse id: {id}");
                 continue;
             };
             let hit_type = obj.get("_type").unwrap().as_str().unwrap();
