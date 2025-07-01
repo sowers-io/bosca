@@ -64,7 +64,7 @@ impl SecurityMutationObject {
             .await?;
         if let Some(credential) = credentials
             .iter()
-            .find(|c| c.get_type() == CredentialType::Password)
+            .find(|c| c.get_type() == CredentialType::Password || c.get_type() == CredentialType::PasswordScrypt)
         {
             let mut credential = credential.clone();
             credential.set_password(new_password)?;

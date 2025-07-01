@@ -118,6 +118,13 @@ impl CollectionPermissionsDataStore {
 
     #[tracing::instrument(skip(self, permission))]
     pub async fn add(&self, _: &BoscaContext, permission: &Permission) -> Result<(), Error> {
+        let permissions = self.get(&permission.entity_id).await?;
+        if permissions
+            .iter()
+            .any(|p| p.group_id == permission.group_id && p.action == permission.action)
+        {
+            return Ok(());
+        }
         let connection = self.pool.get().await?;
         let stmt = connection.prepare_cached("insert into collection_permissions (collection_id, group_id, action) values ($1, $2, $3) on conflict do nothing").await?;
         connection

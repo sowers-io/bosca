@@ -16,14 +16,8 @@ pub struct MetadataPermissionsDataStore {
 }
 
 impl MetadataPermissionsDataStore {
-    pub async fn new(
-        pool: TracingPool,
-        cache: MetadataCache,
-    ) -> Result<Self, Error> {
-        Ok(Self {
-            pool,
-            cache,
-        })
+    pub async fn new(pool: TracingPool, cache: MetadataCache) -> Result<Self, Error> {
+        Ok(Self { pool, cache })
     }
 
     #[tracing::instrument(skip(self, ctx, id))]
@@ -139,7 +133,18 @@ impl MetadataPermissionsDataStore {
     }
 
     #[tracing::instrument(skip(self, ctx, permission))]
-    pub async fn add_metadata_permission(&self, ctx: &BoscaContext, permission: &Permission) -> Result<(), Error> {
+    pub async fn add_metadata_permission(
+        &self,
+        ctx: &BoscaContext,
+        permission: &Permission,
+    ) -> Result<(), Error> {
+        let permissions = self.get_metadata_permissions(&permission.entity_id).await?;
+        if permissions
+            .iter()
+            .any(|p| p.group_id == permission.group_id && p.action == permission.action)
+        {
+            return Ok(());
+        }
         let connection = self.pool.get().await?;
         let stmt = connection.prepare_cached("insert into metadata_permissions (metadata_id, group_id, action) values ($1, $2, $3) on conflict do nothing").await?;
         connection
@@ -199,6 +204,13 @@ impl MetadataPermissionsDataStore {
         txn: &Transaction<'_>,
         permission: &Permission,
     ) -> Result<(), Error> {
+        let permissions = self.get_metadata_permissions(&permission.entity_id).await?;
+        if permissions
+            .iter()
+            .any(|p| p.group_id == permission.group_id && p.action == permission.action)
+        {
+            return Ok(());
+        }
         let stmt = txn.prepare_cached("insert into metadata_permissions (metadata_id, group_id, action) values ($1, $2, $3) on conflict do nothing").await?;
         txn.execute(
             &stmt,
@@ -213,7 +225,18 @@ impl MetadataPermissionsDataStore {
     }
 
     #[tracing::instrument(skip(self, ctx, permission))]
-    pub async fn delete_metadata_permission(&self, ctx: &BoscaContext, permission: &Permission) -> Result<(), Error> {
+    pub async fn delete_metadata_permission(
+        &self,
+        ctx: &BoscaContext,
+        permission: &Permission,
+    ) -> Result<(), Error> {
+        let permissions = self.get_metadata_permissions(&permission.entity_id).await?;
+        if !permissions
+            .iter()
+            .any(|p| p.group_id == permission.group_id && p.action == permission.action)
+        {
+            return Ok(());
+        }
         let connection = self.pool.get().await?;
         let stmt = connection.prepare_cached("delete from metadata_permissions where metadata_id = $1 and group_id = $2 and action = $3").await?;
         connection
