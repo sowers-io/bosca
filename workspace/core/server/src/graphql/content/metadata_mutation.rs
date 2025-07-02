@@ -1,6 +1,7 @@
 use crate::context::BoscaContext;
 use crate::graphql::content::guide_step::GuideStepObject;
 use crate::graphql::content::guide_step_module::GuideStepModuleObject;
+use crate::graphql::content::guide_template_mutation::GuideTemplateMutationObject;
 use crate::graphql::content::metadata::MetadataObject;
 use crate::graphql::content::metadata_relationship::MetadataRelationshipObject;
 use crate::graphql::content::metadata_supplementary::MetadataSupplementaryObject;
@@ -76,6 +77,15 @@ impl MetadataMutationObject {
             .check_metadata_version_action(&id, metadata_version, PermissionAction::Edit)
             .await?;
         Ok(MetadataTemplateMutationObject::new(metadata))
+    }
+
+    async fn guide_template(&self, ctx: &Context<'_>, metadata_id: String, metadata_version: i32) -> Result<GuideTemplateMutationObject, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let id = Uuid::parse_str(&metadata_id)?;
+        let metadata = ctx
+            .check_metadata_version_action(&id, metadata_version, PermissionAction::Edit)
+            .await?;
+        Ok(GuideTemplateMutationObject::new(metadata))
     }
 
     async fn add_document(
