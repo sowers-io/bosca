@@ -5,6 +5,7 @@ use tokio_postgres::Row;
 use uuid::Uuid;
 use crate::models::content::guide_step::GuideStepInput;
 use crate::models::content::guide_type::GuideType;
+use chrono::{self, Timelike};
 
 #[derive(Clone)]
 pub struct Guide {
@@ -33,7 +34,23 @@ impl From<&Row> for Guide {
             version: row.get("version"),
             template_metadata_id: row.get("template_metadata_id"),
             template_metadata_version: row.get("template_metadata_version"),
-            rrule: rrule.filter(|r| !r.is_empty()).map(|r| r.parse().unwrap()),
+            rrule: rrule.filter(|r| !r.is_empty()).map(|r| {
+                // For guides, RRULE strings may not include DTSTART
+                // Add a default start date if missing to make it parseable
+                if r.contains("DTSTART") {
+                    r.parse().unwrap()
+                } else {
+                    // Add a default DTSTART to make the RRULE parseable
+                    let dtstart = chrono::Utc::now()
+                        .with_hour(0).unwrap()
+                        .with_minute(0).unwrap()
+                        .with_second(0).unwrap()
+                        .with_nanosecond(0).unwrap();
+                    let rrule_with_dtstart = format!("DTSTART:{}\n{}", 
+                        dtstart.format("%Y%m%dT%H%M%SZ"), r);
+                    rrule_with_dtstart.parse().unwrap()
+                }
+            }),
             guide_type: row.get("type"),
         }
     }
