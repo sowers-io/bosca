@@ -1348,7 +1348,7 @@ impl GuidesDataStore {
         &self,
         metadata_id: &Uuid,
         version: i32,
-        step_id: i32,
+        step_id: i64,
     ) -> Result<(), Error> {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
@@ -1364,7 +1364,7 @@ impl GuidesDataStore {
         &self,
         metadata_id: &Uuid,
         version: i32,
-        step_ids: &[i32],
+        step_ids: &[i64],
     ) -> Result<(), Error> {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;

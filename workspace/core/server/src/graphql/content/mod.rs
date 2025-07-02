@@ -36,6 +36,7 @@ pub mod collection_supplementary;
 pub mod collection_workflow;
 pub mod collection_template_mutation;
 pub mod guide_template;
+pub mod guide_template_mutation;
 pub mod guide_template_step;
 pub mod guide_template_step_module;
 pub mod guide;
