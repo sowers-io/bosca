@@ -45,6 +45,8 @@ impl GuidesDataStore {
     /// Validates template attributes for consistency and correctness
     fn validate_template_attributes(
         &self,
+        metadata_id: &Uuid,
+        version: i32,
         attributes: &[crate::models::content::template_attribute::TemplateAttributeInput],
     ) -> Result<(), Error> {
         let mut seen_keys = std::collections::HashSet::new();
@@ -52,26 +54,41 @@ impl GuidesDataStore {
         for attr in attributes {
             // Validate required fields are not empty
             if attr.key.trim().is_empty() {
-                return Err(Error::new("Template attribute key cannot be empty"));
+                return Err(Error::new(format!(
+                    "Template attribute key cannot be empty (template: {}, version: {})",
+                    metadata_id, version
+                )));
             }
             if attr.name.trim().is_empty() {
-                return Err(Error::new("Template attribute name cannot be empty"));
+                return Err(Error::new(format!(
+                    "Template attribute name cannot be empty for key '{}' (template: {}, version: {})",
+                    attr.key, metadata_id, version
+                )));
             }
             
             // Check for duplicate keys
             if !seen_keys.insert(attr.key.clone()) {
-                return Err(Error::new(format!("Duplicate template attribute key: '{}'", attr.key)));
+                return Err(Error::new(format!(
+                    "Duplicate template attribute key: '{}' (template: {}, version: {})",
+                    attr.key, metadata_id, version
+                )));
             }
             
             // Validate key format (should be valid identifier)
             if !attr.key.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '.' || c == '-') {
-                return Err(Error::new(format!("Invalid template attribute key format: '{}'. Only alphanumeric characters, underscores, dots, and hyphens are allowed", attr.key)));
+                return Err(Error::new(format!(
+                    "Invalid template attribute key format: '{}'. Only alphanumeric characters, underscores, dots, and hyphens are allowed (template: {}, version: {})",
+                    attr.key, metadata_id, version
+                )));
             }
             
             // Validate supplementary key if present
             if let Some(ref supplementary_key) = attr.supplementary_key {
                 if supplementary_key.trim().is_empty() {
-                    return Err(Error::new("Template attribute supplementary_key cannot be empty when provided"));
+                    return Err(Error::new(format!(
+                        "Template attribute supplementary_key cannot be empty when provided for key '{}' (template: {}, version: {})",
+                        attr.key, metadata_id, version
+                    )));
                 }
             }
         }
@@ -1121,7 +1138,10 @@ impl GuidesDataStore {
         step_id: i64,
     ) -> Result<(), Error> {
         let Some(step) = self.get_guide_step(metadata_id, version, step_id).await? else {
-            return Err(Error::new("missing step"));
+            return Err(Error::new(format!(
+                "Guide step not found (guide: {}, version: {}, step_id: {})",
+                metadata_id, version, step_id
+            )));
         };
         let modules = self
             .get_guide_step_modules(metadata_id, version, step_id)
@@ -1270,7 +1290,7 @@ impl GuidesDataStore {
         attributes: &[crate::models::content::template_attribute::TemplateAttributeInput],
     ) -> Result<(), Error> {
         // Validate attributes before proceeding
-        self.validate_template_attributes(attributes)?;
+        self.validate_template_attributes(metadata_id, version, attributes)?;
         
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
@@ -1317,12 +1337,15 @@ impl GuidesDataStore {
         attr: &crate::models::content::template_attribute::TemplateAttributeInput,
     ) -> Result<(), Error> {
         // Validate single attribute
-        self.validate_template_attributes(&[attr.clone()])?;
+        self.validate_template_attributes(metadata_id, version, &[attr.clone()])?;
         
         // Check for duplicate key in existing attributes
         let existing_attrs = self.get_template_attributes(metadata_id, version).await?;
         if existing_attrs.iter().any(|existing| existing.key == attr.key) {
-            return Err(Error::new(format!("Template attribute with key '{}' already exists", attr.key)));
+            return Err(Error::new(format!(
+                "Template attribute with key '{}' already exists (template: {}, version: {})",
+                attr.key, metadata_id, version
+            )));
         }
         
         let mut connection = self.pool.get().await?;
