@@ -67,6 +67,18 @@ impl GuidesDataStore {
     }
 
     #[tracing::instrument(skip(self, metadata_id, version))]
+    pub async fn get_template_attributes(
+        &self,
+        metadata_id: &Uuid,
+        version: i32,
+    ) -> Result<Vec<crate::models::content::template_attribute::TemplateAttribute>, Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection.prepare_cached("select * from guide_template_attributes where metadata_id = $1 and version = $2 order by sort asc").await?;
+        let results = connection.query(&stmt, &[metadata_id, &version]).await?;
+        Ok(results.iter().map(|r| r.into()).collect())
+    }
+
+    #[tracing::instrument(skip(self, metadata_id, version))]
     pub async fn get_template_steps(
         &self,
         metadata_id: &Uuid,
@@ -133,6 +145,88 @@ impl GuidesDataStore {
         Ok(rows.first().map(|r| r.into()))
     }
 
+    #[tracing::instrument(skip(self, ctx, metadata_id, version, step_id, template_metadata_id, template_metadata_version))]
+    pub async fn add_template_step_module(
+        &self,
+        ctx: &BoscaContext,
+        metadata_id: &Uuid,
+        version: i32,
+        step_id: i64,
+        template_metadata_id: &Uuid,
+        template_metadata_version: i32,
+    ) -> Result<i64, Error> {
+        let connection = self.pool.get().await?;
+        
+        // Get current max sort order for this step
+        let stmt_max_sort = connection
+            .prepare_cached("select coalesce(max(sort), -1) + 1 as next_sort from guide_template_step_modules where metadata_id = $1 and version = $2 and step = $3")
+            .await?;
+        let row = connection
+            .query_one(&stmt_max_sort, &[metadata_id, &version, &step_id])
+            .await?;
+        let sort: i32 = row.get("next_sort");
+        
+        // Insert the new module
+        let stmt = connection
+            .prepare_cached("insert into guide_template_step_modules (metadata_id, version, step, template_metadata_id, template_metadata_version, sort) values ($1, $2, $3, $4, $5, $6) returning id")
+            .await?;
+        let result = connection
+            .query_one(&stmt, &[metadata_id, &version, &step_id, template_metadata_id, &template_metadata_version, &sort])
+            .await?;
+        let module_id: i64 = result.get("id");
+        
+        self.on_metadata_changed(ctx, metadata_id).await?;
+        Ok(module_id)
+    }
+
+    #[tracing::instrument(skip(self, ctx, metadata_id, version, step_id, module_id))]
+    pub async fn remove_template_step_module(
+        &self,
+        ctx: &BoscaContext,
+        metadata_id: &Uuid,
+        version: i32,
+        step_id: i64,
+        module_id: i64,
+    ) -> Result<(), Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("delete from guide_template_step_modules where metadata_id = $1 and version = $2 and step = $3 and id = $4")
+            .await?;
+        connection
+            .execute(&stmt, &[metadata_id, &version, &step_id, &module_id])
+            .await?;
+        
+        self.on_metadata_changed(ctx, metadata_id).await?;
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self, ctx, metadata_id, version, step_id, module_ids))]
+    pub async fn reorder_template_step_modules(
+        &self,
+        ctx: &BoscaContext,
+        metadata_id: &Uuid,
+        version: i32,
+        step_id: i64,
+        module_ids: &[i64],
+    ) -> Result<(), Error> {
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        
+        let stmt = txn
+            .prepare_cached("update guide_template_step_modules set sort = $1 where metadata_id = $2 and version = $3 and step = $4 and id = $5")
+            .await?;
+        
+        for (index, module_id) in module_ids.iter().enumerate() {
+            let sort = index as i32;
+            txn.execute(&stmt, &[&sort, metadata_id, &version, &step_id, module_id])
+                .await?;
+        }
+        
+        txn.commit().await?;
+        self.on_metadata_changed(ctx, metadata_id).await?;
+        Ok(())
+    }
+
     #[tracing::instrument(skip(self, txn, metadata_id, version, template))]
     pub async fn add_template_txn(
         &self,
@@ -141,10 +235,17 @@ impl GuidesDataStore {
         version: i32,
         template: &GuideTemplateInput,
     ) -> Result<(), Error> {
-        let stmt = txn.prepare_cached("insert into guide_templates (metadata_id, version, rrule, type) values ($1, $2, $3, $4)").await?;
+        let stmt = txn.prepare_cached("insert into guide_templates (metadata_id, version, rrule, type, default_attributes, configuration) values ($1, $2, $3, $4, $5, $6)").await?;
         txn.execute(
             &stmt,
-            &[metadata_id, &version, &template.rrule, &template.guide_type],
+            &[
+                metadata_id, 
+                &version, 
+                &template.rrule, 
+                &template.guide_type,
+                &template.default_attributes,
+                &template.configuration,
+            ],
         )
         .await?;
         self.add_template_steps_txn(txn, metadata_id, version, template)
@@ -160,7 +261,7 @@ impl GuidesDataStore {
         version: i32,
         template: &GuideTemplateInput,
     ) -> Result<(), Error> {
-        let stmt = txn.prepare_cached("insert into guide_templates (metadata_id, version, rrule, type) values ($1, $2, $3, $4) on conflict (metadata_id, version) do update set rrule = $3, type = $4").await?;
+        let stmt = txn.prepare_cached("insert into guide_templates (metadata_id, version, rrule, type, default_attributes, configuration) values ($1, $2, $3, $4, $5, $6) on conflict (metadata_id, version) do update set rrule = $3, type = $4, default_attributes = $5, configuration = $6").await?;
         txn.execute(
             &stmt,
             &[
@@ -168,6 +269,8 @@ impl GuidesDataStore {
                 &version,
                 &template.rrule,
                 &template.guide_type,
+                &template.default_attributes,
+                &template.configuration,
             ],
         )
         .await?;
@@ -653,7 +756,7 @@ impl GuidesDataStore {
         let mut attrs = json!({
             "editor.type": "Guide",
         });
-        if let Some(default_attributes) = &template_document.default_attributes {
+        if let Some(default_attributes) = &template_guide.default_attributes {
             if let serde_json::Value::Object(ref mut attrs_obj) = attrs {
                 if let serde_json::Value::Object(default_obj) = default_attributes.clone() {
                     attrs_obj.extend(default_obj.into_iter());
@@ -1029,6 +1132,252 @@ impl GuidesDataStore {
         }
         ctx.content.metadata.mark_deleted(ctx, metadata_id).await?;
         self.on_metadata_changed(ctx, metadata_id).await?;
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self, ctx, metadata_id, version, template))]
+    pub async fn edit_template(
+        &self,
+        ctx: &BoscaContext,
+        metadata_id: &Uuid,
+        version: i32,
+        template: &GuideTemplateInput,
+    ) -> Result<(), Error> {
+        let mut conn = self.pool.get().await?;
+        let txn = conn.transaction().await?;
+        self.edit_template_txn(&txn, metadata_id, version, template).await?;
+        txn.commit().await?;
+        self.on_metadata_changed(ctx, metadata_id).await?;
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self, metadata_id, version, default_attributes))]
+    pub async fn set_default_attributes(
+        &self,
+        metadata_id: &Uuid,
+        version: i32,
+        default_attributes: &serde_json::Value,
+    ) -> Result<(), Error> {
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        let stmt = txn.prepare_cached("update guide_templates set default_attributes = $1 where metadata_id = $2 and version = $3").await?;
+        txn.execute(&stmt, &[default_attributes, metadata_id, &version])
+            .await?;
+        txn.commit().await?;
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self, metadata_id, version, configuration))]
+    pub async fn set_configuration(
+        &self,
+        metadata_id: &Uuid,
+        version: i32,
+        configuration: &serde_json::Value,
+    ) -> Result<(), Error> {
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        let stmt = txn.prepare_cached("update guide_templates set configuration = $1 where metadata_id = $2 and version = $3").await?;
+        txn.execute(&stmt, &[configuration, metadata_id, &version])
+            .await?;
+        txn.commit().await?;
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self, metadata_id, version, guide_type))]
+    pub async fn set_template_type(
+        &self,
+        metadata_id: &Uuid,
+        version: i32,
+        guide_type: &str,
+    ) -> Result<(), Error> {
+        // Convert the string to GuideType enum
+        let guide_type_enum = match guide_type.to_uppercase().as_str() {
+            "LINEAR" => crate::models::content::guide_type::GuideType::Linear,
+            "LINEAR_PROGRESS" => crate::models::content::guide_type::GuideType::LinearProgress,
+            "CALENDAR" => crate::models::content::guide_type::GuideType::Calendar,
+            "CALENDAR_PROGRESS" => crate::models::content::guide_type::GuideType::CalendarProgress,
+            _ => return Err(Error::new(format!("Invalid guide type: {}", guide_type))),
+        };
+
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        let stmt = txn.prepare_cached("update guide_templates set type = $1 where metadata_id = $2 and version = $3").await?;
+        txn.execute(&stmt, &[&guide_type_enum, metadata_id, &version])
+            .await?;
+        txn.commit().await?;
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self, metadata_id, version, rrule))]
+    pub async fn set_template_rrule(
+        &self,
+        metadata_id: &Uuid,
+        version: i32,
+        rrule: &str,
+    ) -> Result<(), Error> {
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        let stmt = txn.prepare_cached("update guide_templates set rrule = $1 where metadata_id = $2 and version = $3").await?;
+        txn.execute(&stmt, &[&rrule, metadata_id, &version])
+            .await?;
+        txn.commit().await?;
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self, ctx, metadata_id, version, attributes))]
+    pub async fn set_template_attributes(
+        &self,
+        ctx: &BoscaContext,
+        metadata_id: &Uuid,
+        version: i32,
+        attributes: &[crate::models::content::template_attribute::TemplateAttributeInput],
+    ) -> Result<(), Error> {
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        txn.execute(
+            "delete from guide_template_attributes where metadata_id = $1 and version = $2",
+            &[metadata_id, &version],
+        )
+        .await?;
+        
+        let stmt_attr = txn.prepare_cached("insert into guide_template_attributes (metadata_id, version, key, name, description, supplementary_key, configuration, type, ui, list, sort) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)").await?;
+        
+        for (index, attr) in attributes.iter().enumerate() {
+            let sort = index as i32;
+            txn.execute(
+                &stmt_attr,
+                &[
+                    metadata_id,
+                    &version,
+                    &attr.key,
+                    &attr.name,
+                    &attr.description,
+                    &attr.supplementary_key,
+                    &attr.configuration,
+                    &attr.attribute_type,
+                    &attr.ui,
+                    &attr.list,
+                    &sort,
+                ],
+            )
+            .await?;
+        }
+        
+        txn.commit().await?;
+        self.on_metadata_changed(ctx, metadata_id).await?;
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self, metadata_id, version, sort, attr))]
+    pub async fn add_template_attribute(
+        &self,
+        metadata_id: &Uuid,
+        version: i32,
+        sort: i32,
+        attr: &crate::models::content::template_attribute::TemplateAttributeInput,
+    ) -> Result<(), Error> {
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        
+        let stmt_attr = txn.prepare_cached("insert into guide_template_attributes (metadata_id, version, key, name, description, supplementary_key, configuration, type, ui, list, sort) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)").await?;
+        
+        txn.execute(
+            &stmt_attr,
+            &[
+                metadata_id,
+                &version,
+                &attr.key,
+                &attr.name,
+                &attr.description,
+                &attr.supplementary_key,
+                &attr.configuration,
+                &attr.attribute_type,
+                &attr.ui,
+                &attr.list,
+                &sort,
+            ],
+        )
+        .await?;
+        
+        txn.commit().await?;
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self, metadata_id, version, key))]
+    pub async fn delete_template_attribute(
+        &self,
+        metadata_id: &Uuid,
+        version: i32,
+        key: &str,
+    ) -> Result<(), Error> {
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        let stmt = txn.prepare_cached("delete from guide_template_attributes where metadata_id = $1 and version = $2 and key = $3").await?;
+        txn.execute(&stmt, &[metadata_id, &version, &key])
+            .await?;
+        txn.commit().await?;
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self, metadata_id, version, step_metadata_id, step_metadata_version))]
+    pub async fn add_template_step(
+        &self,
+        metadata_id: &Uuid,
+        version: i32,
+        step_metadata_id: &str,
+        step_metadata_version: Option<i32>,
+    ) -> Result<(), Error> {
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        let step_metadata_id = Uuid::parse_str(step_metadata_id)?;
+        
+        // Get the current highest sort value
+        let stmt_max_sort = txn.prepare_cached("select coalesce(max(sort), -1) + 1 as next_sort from guide_template_steps where metadata_id = $1 and version = $2").await?;
+        let row = txn.query_one(&stmt_max_sort, &[metadata_id, &version]).await?;
+        let sort: i32 = row.get("next_sort");
+        
+        let stmt = txn.prepare_cached("insert into guide_template_steps (metadata_id, version, template_metadata_id, template_metadata_version, sort) values ($1, $2, $3, $4, $5)").await?;
+        txn.execute(&stmt, &[metadata_id, &version, &step_metadata_id, &step_metadata_version, &sort])
+            .await?;
+        txn.commit().await?;
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self, metadata_id, version, step_id))]
+    pub async fn remove_template_step(
+        &self,
+        metadata_id: &Uuid,
+        version: i32,
+        step_id: i32,
+    ) -> Result<(), Error> {
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        let stmt = txn.prepare_cached("delete from guide_template_steps where metadata_id = $1 and version = $2 and id = $3").await?;
+        txn.execute(&stmt, &[metadata_id, &version, &step_id])
+            .await?;
+        txn.commit().await?;
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self, metadata_id, version, step_ids))]
+    pub async fn reorder_template_steps(
+        &self,
+        metadata_id: &Uuid,
+        version: i32,
+        step_ids: &[i32],
+    ) -> Result<(), Error> {
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        
+        let stmt = txn.prepare_cached("update guide_template_steps set sort = $1 where metadata_id = $2 and version = $3 and id = $4").await?;
+        
+        for (index, step_id) in step_ids.iter().enumerate() {
+            let sort = index as i32;
+            txn.execute(&stmt, &[&sort, metadata_id, &version, step_id])
+                .await?;
+        }
+        
+        txn.commit().await?;
         Ok(())
     }
 }
