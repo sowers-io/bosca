@@ -32,7 +32,7 @@ jsonwebtoken = "9.3.0"
 tokio-stream = "0.1.16"
 async-stream = "0.3.5"
 structured-logger = "1.0.3"
-object_store = { version = "0.11.0", features = ["aws"] }
+object_store = { version = "0.12.2", features = ["aws", "gcp"] }
 
 reqwest = { version = "0.12.8", features = ["default", "json"] }
 opentelemetry = { version = "0.26.0", features = ["trace"] }

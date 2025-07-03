@@ -6,6 +6,8 @@ use std::env;
 use std::fs::create_dir_all;
 use std::path::Path;
 use std::sync::Arc;
+use object_store::gcp::GoogleCloudStorageBuilder;
+use object_store::ObjectStoreScheme::GoogleCloudStorage;
 
 fn new_filesystem_object_storage() -> ObjectStorage {
     let current_dir = match env::var("STORAGE") {
@@ -29,10 +31,18 @@ fn new_s3_object_storage() -> ObjectStorage {
     )))
 }
 
+fn new_gcp_object_storage() -> ObjectStorage {
+    info!("Using gcp object storage");
+    ObjectStorage::new(ObjectStorageInterface::GCP(Arc::new(
+        GoogleCloudStorageBuilder::from_env().build().unwrap(),
+    )))
+}
+
 pub fn new_object_storage() -> ObjectStorage {
     match env::var("STORAGE") {
         Ok(name) => match name.as_str() {
             "s3" => new_s3_object_storage(),
+            "gcp" => new_gcp_object_storage(),
             _ => new_filesystem_object_storage(),
         },
         _ => new_filesystem_object_storage(),

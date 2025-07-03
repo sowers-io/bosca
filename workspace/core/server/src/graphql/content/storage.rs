@@ -6,6 +6,7 @@ use crate::models::security::principal::Principal;
 use bytes::Bytes;
 use futures_util::stream::BoxStream;
 use object_store::aws::AmazonS3;
+use object_store::gcp::GoogleCloudStorage;
 use object_store::local::LocalFileSystem;
 use object_store::path::Path;
 use object_store::{Error, MultipartUpload, ObjectStore, PutPayload};
@@ -22,8 +23,8 @@ pub struct ObjectStorage {
 
 pub enum ObjectStorageInterface {
     FileSystem(Arc<LocalFileSystem>),
-    #[allow(dead_code)]
     S3(Arc<AmazonS3>),
+    GCP(Arc<GoogleCloudStorage>),
 }
 
 impl ObjectStorage {
@@ -69,7 +70,8 @@ impl ObjectStorage {
     pub async fn get(&self, location: &Path) -> Result<String, Error> {
         let result = match &self.interface.as_ref() {
             ObjectStorageInterface::FileSystem(fs) => fs.get(location),
-            ObjectStorageInterface::S3(s3) => s3.get(location),
+            ObjectStorageInterface::S3(fs) => fs.get(location),
+            ObjectStorageInterface::GCP(fs) => fs.get(location),
         }
         .await?;
         let bytes = result.bytes().await?;
@@ -82,7 +84,8 @@ impl ObjectStorage {
     ) -> Result<BoxStream<'static, object_store::Result<Bytes>>, Error> {
         let result = match &self.interface.as_ref() {
             ObjectStorageInterface::FileSystem(fs) => fs.get(location),
-            ObjectStorageInterface::S3(s3) => s3.get(location),
+            ObjectStorageInterface::S3(fs) => fs.get(location),
+            ObjectStorageInterface::GCP(fs) => fs.get(location),
         }
         .await?;
         let stream = result.into_stream();
@@ -93,6 +96,7 @@ impl ObjectStorage {
         match &self.interface.as_ref() {
             ObjectStorageInterface::FileSystem(fs) => fs.delete(location),
             ObjectStorageInterface::S3(s3) => s3.delete(location),
+            ObjectStorageInterface::GCP(fs) => fs.delete(location),
         }
         .await?;
         Ok(())
@@ -101,7 +105,8 @@ impl ObjectStorage {
     pub async fn put_multipart(&self, location: &Path) -> Result<Box<dyn MultipartUpload>, Error> {
         match &self.interface.as_ref() {
             ObjectStorageInterface::FileSystem(fs) => fs.put_multipart(location),
-            ObjectStorageInterface::S3(s3) => s3.put_multipart(location),
+            ObjectStorageInterface::S3(fs) => fs.put_multipart(location),
+            ObjectStorageInterface::GCP(fs) => fs.put_multipart(location),
         }
         .await
     }
@@ -110,7 +115,8 @@ impl ObjectStorage {
         let payload = PutPayload::from(bytes);
         match &self.interface.as_ref() {
             ObjectStorageInterface::FileSystem(fs) => fs.put(location, payload),
-            ObjectStorageInterface::S3(s3) => s3.put(location, payload),
+            ObjectStorageInterface::S3(fs) => fs.put(location, payload),
+            ObjectStorageInterface::GCP(fs) => fs.put(location, payload),
         }
         .await?;
         Ok(())

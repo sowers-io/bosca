@@ -2,14 +2,14 @@ use crate::writers::arrow::copy::copy_to_parquet;
 use crate::writers::arrow::parquet::writer::new_arrow_writer;
 use crate::writers::arrow::schema::SchemaDefinition;
 use crate::writers::writer::EventsWriter;
-use bytes::{Buf, BytesMut};
+use bytes::{Buf, Bytes, BytesMut};
 use chrono::Utc;
 use log::{error, info};
-use object_store::aws::AmazonS3Builder;
+use object_store::aws::{AmazonS3, AmazonS3Builder};
 use object_store::path::Path;
-use object_store::{MultipartUpload, ObjectStore};
+use object_store::{MultipartUpload, ObjectStore, PutPayload};
 use std::error::Error;
-use std::fs;
+use std::{env, fs};
 use std::fs::{create_dir_all, File};
 #[cfg(target_os = "linux")]
 use std::os::linux::fs::MetadataExt;
@@ -18,10 +18,15 @@ use std::os::macos::fs::MetadataExt;
 #[cfg(windows)]
 use std::os::windows::fs::MetadataExt;
 use std::path::PathBuf;
+use std::str::from_utf8;
 use std::sync::atomic::Ordering::Relaxed;
 use std::sync::atomic::{AtomicBool, AtomicI64};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
+use arrow::array::Datum;
+use futures_util::stream::BoxStream;
+use object_store::gcp::{GoogleCloudStorage, GoogleCloudStorageBuilder};
+use object_store::local::LocalFileSystem;
 use tokio::io::AsyncReadExt;
 use tokio::task;
 use ulid::Ulid;
@@ -319,3 +324,119 @@ async fn watch_json(
     }
     Ok(())
 }
+
+fn new_filesystem_object_storage() -> ObjectStorage {
+    let current_dir = match env::var("STORAGE") {
+        Ok(dir) => std::path::Path::new(dir.as_str()).to_path_buf(),
+        _ => env::current_dir().unwrap().join(std::path::Path::new("files")),
+    };
+    let path = current_dir.as_path();
+    if !path.exists() {
+        create_dir_all(path).unwrap();
+    }
+    info!("Using file object storage at path: {path:?}");
+    ObjectStorage::new(ObjectStorageInterface::FileSystem(Arc::new(
+        LocalFileSystem::new_with_prefix(path).unwrap(),
+    )))
+}
+
+fn new_s3_object_storage() -> ObjectStorage {
+    info!("Using s3 object storage");
+    ObjectStorage::new(ObjectStorageInterface::S3(Arc::new(
+        AmazonS3Builder::from_env().build().unwrap(),
+    )))
+}
+
+fn new_gcp_object_storage() -> ObjectStorage {
+    info!("Using gcp object storage");
+    ObjectStorage::new(ObjectStorageInterface::GCP(Arc::new(
+        GoogleCloudStorageBuilder::from_env().build().unwrap(),
+    )))
+}
+
+pub fn new_object_storage() -> ObjectStorage {
+    match env::var("STORAGE") {
+        Ok(name) => match name.as_str() {
+            "s3" => new_s3_object_storage(),
+            "gcp" => new_gcp_object_storage(),
+            _ => new_filesystem_object_storage(),
+        },
+        _ => new_filesystem_object_storage(),
+    }
+}
+
+
+#[derive(Clone)]
+pub struct ObjectStorage {
+    interface: Arc<ObjectStorageInterface>,
+}
+
+pub enum ObjectStorageInterface {
+    FileSystem(Arc<LocalFileSystem>),
+    S3(Arc<AmazonS3>),
+    GCP(Arc<GoogleCloudStorage>),
+}
+
+impl ObjectStorage {
+    pub fn new(interface: ObjectStorageInterface) -> Self {
+        Self {
+            interface: Arc::new(interface),
+        }
+    }
+
+    pub async fn get(&self, location: &Path) -> Result<String, object_store::Error> {
+        let result = match &self.interface.as_ref() {
+            ObjectStorageInterface::FileSystem(fs) => fs.get(location),
+            ObjectStorageInterface::S3(fs) => fs.get(location),
+            ObjectStorageInterface::GCP(fs) => fs.get(location),
+        }
+            .await?;
+        let bytes = result.bytes().await?;
+        Ok(from_utf8(&bytes).unwrap().to_string())
+    }
+
+    pub async fn get_buffer(
+        &self,
+        location: &Path,
+    ) -> Result<BoxStream<'static, object_store::Result<Bytes>>, object_store::Error> {
+        let result = match &self.interface.as_ref() {
+            ObjectStorageInterface::FileSystem(fs) => fs.get(location),
+            ObjectStorageInterface::S3(fs) => fs.get(location),
+            ObjectStorageInterface::GCP(fs) => fs.get(location),
+        }
+            .await?;
+        let stream = result.into_stream();
+        Ok(stream)
+    }
+
+    pub async fn delete(&self, location: &Path) -> Result<(), object_store::Error> {
+        match &self.interface.as_ref() {
+            ObjectStorageInterface::FileSystem(fs) => fs.delete(location),
+            ObjectStorageInterface::S3(s3) => s3.delete(location),
+            ObjectStorageInterface::GCP(fs) => fs.delete(location),
+        }
+            .await?;
+        Ok(())
+    }
+
+    pub async fn put_multipart(&self, location: &Path) -> Result<Box<dyn MultipartUpload>, object_store::Error> {
+        match &self.interface.as_ref() {
+            ObjectStorageInterface::FileSystem(fs) => fs.put_multipart(location),
+            ObjectStorageInterface::S3(fs) => fs.put_multipart(location),
+            ObjectStorageInterface::GCP(fs) => fs.put_multipart(location),
+        }
+            .await
+    }
+
+    pub async fn put(&self, location: &Path, bytes: Bytes) -> Result<(), object_store::Error> {
+        let payload = PutPayload::from(bytes);
+        match &self.interface.as_ref() {
+            ObjectStorageInterface::FileSystem(fs) => fs.put(location, payload),
+            ObjectStorageInterface::S3(fs) => fs.put(location, payload),
+            ObjectStorageInterface::GCP(fs) => fs.put(location, payload),
+        }
+            .await?;
+        Ok(())
+    }
+}
+

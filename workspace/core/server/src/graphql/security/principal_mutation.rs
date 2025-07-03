@@ -31,7 +31,7 @@ impl PrincipalMutation {
                 .await?;
             let Some(credential) = credentials
                 .into_iter()
-                .find(|c| c.get_type() == CredentialType::Password)
+                .find(|c| c.get_type() == CredentialType::Password || c.get_type() == CredentialType::PasswordScrypt)
             else {
                 return Ok(false)
             };
@@ -60,7 +60,7 @@ impl PrincipalMutation {
             .get_principal_credentials(&self.principal.id)
             .await?;
         let Some(mut credential) = credentials
-            .into_iter().find(|c| c.get_type() == CredentialType::Password)
+            .into_iter().find(|c| c.get_type() == CredentialType::Password || c.get_type() == CredentialType::PasswordScrypt)
         else {
             return Err(Error::new("invalid principal"));
         };
