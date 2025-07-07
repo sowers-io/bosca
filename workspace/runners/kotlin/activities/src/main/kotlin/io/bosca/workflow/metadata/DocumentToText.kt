@@ -7,6 +7,12 @@ import io.bosca.graphql.type.ActivityParameterInput
 import io.bosca.graphql.type.ActivityParameterType
 import io.bosca.workflow.Activity
 import io.bosca.workflow.ActivityContext
+import kotlinx.serialization.Serializable
+
+@Serializable
+data class DocumentToTextConfiguration(
+    val excludeContainers: Set<String> = emptySet()
+)
 
 class DocumentToText(client: Client) : Activity(client) {
 
@@ -25,11 +31,12 @@ class DocumentToText(client: Client) : Activity(client) {
     }
 
     override suspend fun execute(context: ActivityContext, job: WorkflowJob) {
+        val configuration = getConfiguration<DocumentToTextConfiguration>(job)
         val document = client.metadata.getDocument(
             job.metadata?.metadata?.id ?: error("metadata id is missing"),
             job.metadata?.metadata?.version ?: error("metadata version is missing")
         ) ?: error("missing document")
-        val content = document.asText(client)
+        val content = document.asText(client, configuration.excludeContainers)
         setSupplementaryContents(job, OUTPUT_NAME, "Document Text", content.trim(), "text/plain")
     }
 
