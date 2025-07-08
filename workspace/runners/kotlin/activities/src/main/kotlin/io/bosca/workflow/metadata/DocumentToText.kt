@@ -11,6 +11,7 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 data class DocumentToTextConfiguration(
+    val includeTitle: Boolean = true,
     val excludeContainers: Set<String> = emptySet()
 )
 
@@ -36,7 +37,7 @@ class DocumentToText(client: Client) : Activity(client) {
             job.metadata?.metadata?.id ?: error("metadata id is missing"),
             job.metadata?.metadata?.version ?: error("metadata version is missing")
         ) ?: error("missing document")
-        val content = document.asText(client, configuration.excludeContainers)
+        val content = document.asText(client, configuration)
         setSupplementaryContents(job, OUTPUT_NAME, "Document Text", content.trim(), "text/plain")
     }
 

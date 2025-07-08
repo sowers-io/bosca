@@ -7,7 +7,6 @@ use std::fs::create_dir_all;
 use std::path::Path;
 use std::sync::Arc;
 use object_store::gcp::GoogleCloudStorageBuilder;
-use object_store::ObjectStoreScheme::GoogleCloudStorage;
 
 fn new_filesystem_object_storage() -> ObjectStorage {
     let current_dir = match env::var("STORAGE") {
