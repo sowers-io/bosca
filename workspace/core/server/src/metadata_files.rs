@@ -220,7 +220,6 @@ pub async fn metadata_download(
                         )
                     })?,
             );
-            headers.insert(header::ACCEPT_RANGES, HeaderValue::from_static("bytes"));
             let body = Body::from_stream(buf);
             return Ok((headers, body));
         }

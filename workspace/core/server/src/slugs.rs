@@ -117,6 +117,8 @@ pub async fn slug(
             )
         })?;
 
+    let mut headers = HeaderMap::new();
+    headers.insert(header::ACCEPT_RANGES, HeaderValue::from_static("bytes"));
     if let Some(range_header) = headers.get(header::RANGE) {
         if let Ok(range) = crate::metadata_files::get_range_header(range_header) {
             let (buf, size, range) = ctx
@@ -125,7 +127,6 @@ pub async fn slug(
                 .await
                 .map_err(|_| (StatusCode::BAD_REQUEST, "Invalid Range".to_string()))?;
             let content_length = range.end - range.start + 1;
-            let mut headers = HeaderMap::new();
             headers.insert(header::CONTENT_LENGTH, HeaderValue::from(content_length));
             headers.insert(
                 header::CONTENT_RANGE,
@@ -137,7 +138,6 @@ pub async fn slug(
                         )
                     })?,
             );
-            headers.insert(header::ACCEPT_RANGES, HeaderValue::from_static("bytes"));
             let body = Body::from_stream(buf);
             return Ok((headers, body));
         }
@@ -148,7 +148,6 @@ pub async fn slug(
         (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
     })?;
     let body = Body::from_stream(buf);
-    let mut headers = HeaderMap::new();
 
     if params.download.unwrap_or(false) {
         let mut filename = metadata.name.to_string();
