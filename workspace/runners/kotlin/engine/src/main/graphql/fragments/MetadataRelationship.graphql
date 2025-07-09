@@ -3,6 +3,7 @@ fragment MetadataRelationshipMetadata on Metadata {
     version
     name
     ready
+    created
     public
     publicContent
     publicSupplementary
