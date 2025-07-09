@@ -3,9 +3,11 @@ package io.bosca.workflow.ext
 import dev.langchain4j.model.chat.ChatLanguageModel
 import dev.langchain4j.model.embedding.EmbeddingModel
 import dev.langchain4j.model.embedding.onnx.allminilml6v2.AllMiniLmL6V2EmbeddingModel
+import dev.langchain4j.model.googleai.GoogleAiGeminiChatModel
 import dev.langchain4j.model.openai.OpenAiChatModel
 import io.bosca.api.Client
 import io.bosca.graphql.fragment.Model
+import io.bosca.models.GoogleConfiguration
 import io.bosca.models.OllamaConfiguration
 import io.bosca.models.OpenAIConfiguration
 import io.bosca.util.ModelTypes
@@ -43,6 +45,18 @@ suspend fun Model.toChatLanguageModel(client: Client): ChatLanguageModel {
                 .timeout(Duration.ofMinutes(30))
                 .logRequests(true)
                 .logResponses(true)
+                .build()
+        }
+
+        ModelTypes.Google -> {
+            val key = configuration?.apiKey
+                ?: client.configurations.get<GoogleConfiguration>(GoogleConfiguration.KEY)?.apiKey
+                ?: error("apiKey missing")
+            GoogleAiGeminiChatModel.builder()
+                .apiKey(key)
+                .modelName(configuration?.modelName ?: name)
+                .timeout(Duration.ofMinutes(30))
+                .logRequestsAndResponses(true)
                 .build()
         }
 

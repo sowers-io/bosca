@@ -17,9 +17,14 @@ dependencies {
 
     api("dev.langchain4j:langchain4j:1.0.0-beta1")
     api("dev.langchain4j:langchain4j-open-ai:1.0.0-beta1")
+    api("dev.langchain4j:langchain4j-google-ai-gemini:1.0.0-beta1")
     api("dev.langchain4j:langchain4j-ollama:1.0.0-beta1")
     api("dev.langchain4j:langchain4j-qdrant:1.0.0-beta1")
     api("dev.langchain4j:langchain4j-embeddings-all-minilm-l6-v2:1.0.0-beta1")
+
+    api("io.github.smiley4:schema-kenerator-core:2.2.0")
+    api("io.github.smiley4:schema-kenerator-serialization:2.2.0")
+    api("io.github.smiley4:schema-kenerator-jsonschema:2.2.0")
 
     api("com.charleskorn.kaml:kaml:0.55.0")
 
