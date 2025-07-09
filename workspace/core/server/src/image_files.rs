@@ -15,6 +15,7 @@ pub struct Params {
     id: Option<String>,
     slug: Option<String>,
     key: Option<String>,
+    download: Option<bool>,
 }
 
 async fn get_image(
@@ -23,6 +24,7 @@ async fn get_image(
     groups: &Vec<Uuid>,
     metadata: Metadata,
     key: Option<String>,
+    download: Option<bool>,
 ) -> Result<(HeaderMap, Body), (StatusCode, String)> {
     let (path, content_type) = if let Some(key) = key {
         if let Some(resized) = ctx
@@ -56,10 +58,7 @@ async fn get_image(
                     )
                 })?;
                 if !groups.contains(&admin.id) {
-                    return Err((
-                        StatusCode::UNAUTHORIZED,
-                        "Invalid Permissions".to_owned(),
-                    ));
+                    return Err((StatusCode::UNAUTHORIZED, "Invalid Permissions".to_owned()));
                 }
             }
             let path = ctx
@@ -116,6 +115,28 @@ async fn get_image(
     };
     let body = Body::from_stream(buf);
     let mut headers = HeaderMap::new();
+
+    if download.unwrap_or(false) {
+        let mut filename = metadata.name;
+        if content_type.starts_with("image/")
+            || content_type.starts_with("video/")
+            || content_type.starts_with("audio/")
+        {
+            let parts = content_type.split("/");
+            filename = format!("{filename}.{}", parts.last().unwrap_or(""));
+        }
+        let disposition = format!("attachment; filename=\"{}\"", filename);
+        headers.insert(
+            header::CONTENT_DISPOSITION,
+            disposition.parse().map_err(|_| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Internal Server Error".to_owned(),
+                )
+            })?,
+        );
+    }
+
     headers.insert(header::CONTENT_LENGTH, HeaderValue::from(size));
     headers.insert(
         header::CONTENT_TYPE,
@@ -126,6 +147,7 @@ async fn get_image(
             )
         })?,
     );
+
     Ok((headers, body))
 }
 
@@ -190,5 +212,13 @@ pub async fn image(
     {
         return Err((StatusCode::NOT_FOUND, "Not Found".to_owned()))?;
     }
-    get_image(&ctx, &principal, &principal_groups, metadata, params.key).await
+    get_image(
+        &ctx,
+        &principal,
+        &principal_groups,
+        metadata,
+        params.key,
+        params.download,
+    )
+    .await
 }

@@ -20,6 +20,7 @@ pub struct Params {
     supplementary_id: Option<String>,
     ready: Option<bool>,
     redirect: Option<String>,
+    download: Option<bool>,
 }
 
 #[tracing::instrument(skip(ctx, params))]
@@ -147,21 +148,11 @@ pub async fn metadata_download(
             )
         })?;
     let content_type = if let Some(supplementary) = &supplementary {
-        supplementary.content_type.parse().map_err(|_| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Internal Server Error".to_owned(),
-            )
-        })?
+        supplementary.content_type.to_string()
     } else {
-        let content_type = metadata.content_type.parse().map_err(|_| {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Internal Server Error".to_owned(),
-            )
-        })?;
+        let content_type = metadata.content_type;
         if content_type == "audio/mpeg" && metadata.name.ends_with(".mp3") {
-            "audio/mp3".parse().unwrap()
+            "audio/mp3".to_string()
         } else {
             content_type
         }
@@ -181,8 +172,34 @@ pub async fn metadata_download(
     };
 
     let mut headers = HeaderMap::new();
-    headers.insert(header::CONTENT_TYPE, content_type);
+    headers.insert(header::CONTENT_TYPE, content_type.parse().map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Internal Server Error".to_owned(),
+        )
+    })?);
     headers.insert(header::ACCEPT_RANGES, HeaderValue::from_static("bytes"));
+
+    if params.download.unwrap_or(false) {
+        let mut filename = metadata.name;
+        if content_type.starts_with("image/")
+            || content_type.starts_with("video/")
+            || content_type.starts_with("audio/")
+        {
+            let parts = content_type.split("/");
+            filename = format!("{filename}.{}", parts.last().unwrap_or(""));
+        }
+        let disposition = format!("attachment; filename=\"{}\"", filename);
+        headers.insert(
+            header::CONTENT_DISPOSITION,
+            disposition.parse().map_err(|_| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Internal Server Error".to_owned(),
+                )
+            })?,
+        );
+    }
 
     if let Some(range_header) = headers.get(header::RANGE) {
         let range = get_range_header(range_header)?;
