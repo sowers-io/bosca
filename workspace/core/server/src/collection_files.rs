@@ -4,7 +4,7 @@ use crate::util::security::get_principal_from_headers;
 use axum::body::Body;
 use axum::extract::{Multipart, Query};
 use axum::extract::{Request, State};
-use http::{HeaderMap, HeaderValue, StatusCode};
+use http::{header, HeaderMap, HeaderValue, StatusCode};
 use log::error;
 use serde::Deserialize;
 use uuid::Uuid;
@@ -87,14 +87,15 @@ pub async fn collection_download(
                 "Internal Server Error".to_owned(),
             )
         })?;
-    let buf = ctx.storage.get_buffer(&path).await.map_err(|e| {
+    let (buf, size) = ctx.storage.get_buffer(&path).await.map_err(|e| {
         error!("Error getting buffer: {e}");
         (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
     })?;
     let body = Body::from_stream(buf);
     let mut headers = HeaderMap::new();
+    headers.insert(header::CONTENT_LENGTH, HeaderValue::from(size));
     headers.insert(
-        "Content-Type",
+        header::CONTENT_TYPE,
         supplementary.content_type.parse().map_err(|_| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,

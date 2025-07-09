@@ -152,7 +152,7 @@ impl BoscaContext {
     }
 
     #[tracing::instrument(skip(self, groups))]
-    async fn check_principal_groups(&self, groups: &Vec<Uuid>) -> Result<(), Error> {
+    async fn check_principal_groups(&self, groups: &[Uuid]) -> Result<(), Error> {
         let sa = self.security.get_service_account_group().await?;
         if !groups.contains(&sa.id) {
             let admin = self.security.get_administrators_group().await?;

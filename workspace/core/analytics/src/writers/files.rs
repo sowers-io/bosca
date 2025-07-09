@@ -23,7 +23,6 @@ use std::sync::atomic::Ordering::Relaxed;
 use std::sync::atomic::{AtomicBool, AtomicI64};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
-use arrow::array::Datum;
 use futures_util::stream::BoxStream;
 use object_store::gcp::{GoogleCloudStorage, GoogleCloudStorageBuilder};
 use object_store::local::LocalFileSystem;
@@ -374,6 +373,7 @@ pub struct ObjectStorage {
 pub enum ObjectStorageInterface {
     FileSystem(Arc<LocalFileSystem>),
     S3(Arc<AmazonS3>),
+    #[allow(clippy::upper_case_acronyms)]
     GCP(Arc<GoogleCloudStorage>),
 }
 

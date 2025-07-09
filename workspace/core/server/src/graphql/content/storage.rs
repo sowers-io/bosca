@@ -9,8 +9,9 @@ use object_store::aws::AmazonS3;
 use object_store::gcp::GoogleCloudStorage;
 use object_store::local::LocalFileSystem;
 use object_store::path::Path;
-use object_store::{Error, MultipartUpload, ObjectStore, PutPayload};
+use object_store::{Error, GetOptions, MultipartUpload, ObjectStore, PutPayload};
 use std::env;
+use std::ops::Range;
 use std::str::from_utf8;
 use std::string::ToString;
 use std::sync::Arc;
@@ -24,6 +25,7 @@ pub struct ObjectStorage {
 pub enum ObjectStorageInterface {
     FileSystem(Arc<LocalFileSystem>),
     S3(Arc<AmazonS3>),
+    #[allow(clippy::upper_case_acronyms)]
     GCP(Arc<GoogleCloudStorage>),
 }
 
@@ -81,15 +83,35 @@ impl ObjectStorage {
     pub async fn get_buffer(
         &self,
         location: &Path,
-    ) -> Result<BoxStream<'static, object_store::Result<Bytes>>, Error> {
+    ) -> Result<(BoxStream<'static, object_store::Result<Bytes>>, u64), Error> {
         let result = match &self.interface.as_ref() {
             ObjectStorageInterface::FileSystem(fs) => fs.get(location),
             ObjectStorageInterface::S3(fs) => fs.get(location),
             ObjectStorageInterface::GCP(fs) => fs.get(location),
-        }
-        .await?;
+        }.await?;
+        let size = result.meta.size;
         let stream = result.into_stream();
-        Ok(stream)
+        Ok((stream, size))
+    }
+
+    pub async fn get_buffer_range(
+        &self,
+        location: &Path,
+        range: Range<u64>,
+    ) -> Result<(BoxStream<'static, object_store::Result<Bytes>>, u64, Range<u64>), Error> {
+        let options = GetOptions {
+            range: Some(range.into()),
+            ..Default::default()
+        };
+        let result = match &self.interface.as_ref() {
+            ObjectStorageInterface::FileSystem(fs) => fs.get_opts(location, options),
+            ObjectStorageInterface::S3(fs) => fs.get_opts(location, options),
+            ObjectStorageInterface::GCP(fs) => fs.get_opts(location, options),
+        }.await?;
+        let size = result.meta.size;
+        let range = result.range.clone();
+        let stream = result.into_stream();
+        Ok((stream, size, range))
     }
 
     pub async fn delete(&self, location: &Path) -> Result<(), Error> {

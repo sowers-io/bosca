@@ -9,8 +9,9 @@ use async_graphql::Error;
 use axum::body::Body;
 use axum::extract::{Multipart, Query};
 use axum::extract::{Request, State};
-use http::{HeaderMap, HeaderValue, StatusCode};
+use http::{header, HeaderMap, HeaderValue, StatusCode};
 use serde::Deserialize;
+use std::ops::Range;
 use uuid::Uuid;
 
 #[derive(Debug, Deserialize)]
@@ -37,6 +38,27 @@ async fn get_supplementary(
     Ok(None)
 }
 
+fn get_range_header(range_header: &HeaderValue) -> Result<Range<u64>, (StatusCode, String)> {
+    let range_str = range_header
+        .to_str()
+        .map_err(|_| (StatusCode::BAD_REQUEST, "Invalid Range header".to_string()))?;
+    if !range_str.starts_with("bytes=") {
+        return Err((StatusCode::BAD_REQUEST, "Invalid Range format".to_string()));
+    }
+    let ranges_str = &range_str["bytes=".len()..];
+    let range_parts: Vec<&str> = ranges_str.split('-').collect();
+    if range_parts.len() != 2 {
+        return Err((StatusCode::BAD_REQUEST, "Invalid Range format".to_string()));
+    }
+    let start = range_parts[0]
+        .parse::<u64>()
+        .map_err(|_| (StatusCode::BAD_REQUEST, "Invalid Range start".to_string()))?;
+    let end = range_parts[1]
+        .parse::<u64>()
+        .map_err(|_| (StatusCode::BAD_REQUEST, "Invalid Range end".to_string()))?;
+    Ok(Range { start, end })
+}
+
 #[tracing::instrument(skip(ctx, params, headers, request))]
 pub async fn metadata_download(
     State(ctx): State<BoscaContext>,
@@ -47,7 +69,10 @@ pub async fn metadata_download(
     let principal = get_principal_from_headers(&ctx, &headers)
         .await
         .map_err(|_| (StatusCode::UNAUTHORIZED, "Unauthorized".to_owned()))?;
-    let principal_groups = ctx.security.get_principal_groups(&principal.id).await
+    let principal_groups = ctx
+        .security
+        .get_principal_groups(&principal.id)
+        .await
         .map_err(|_| (StatusCode::UNAUTHORIZED, "Unauthorized".to_owned()))?;
     let id = params
         .id
@@ -121,41 +146,70 @@ pub async fn metadata_download(
                 "Internal Server Error".to_owned(),
             )
         })?;
-    let buf = ctx.storage.get_buffer(&path).await;
-    let buf = match buf {
+    let content_type = if let Some(supplementary) = &supplementary {
+        supplementary.content_type.parse().map_err(|_| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Internal Server Error".to_owned(),
+            )
+        })?
+    } else {
+        let content_type = metadata.content_type.parse().map_err(|_| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Internal Server Error".to_owned(),
+            )
+        })?;
+        if content_type == "audio/mpeg" && metadata.name.ends_with(".mp3") {
+            "audio/mp3".parse().unwrap()
+        } else {
+            content_type
+        }
+    };
+
+    let result = ctx.storage.get_buffer(&path).await;
+    let (buf, size) = match result {
         Ok(buf) => buf,
         Err(e) => {
             return match e {
-                object_store::Error::NotFound { path: _, source: _ } => Err((StatusCode::NOT_FOUND, "Not Found".to_owned())),
-                _ => Err((StatusCode::INTERNAL_SERVER_ERROR, e.to_string()))
+                object_store::Error::NotFound { path: _, source: _ } => {
+                    Err((StatusCode::NOT_FOUND, "Not Found".to_owned()))
+                }
+                _ => Err((StatusCode::INTERNAL_SERVER_ERROR, e.to_string())),
             }
         }
     };
-    let body = Body::from_stream(buf);
+
     let mut headers = HeaderMap::new();
-    headers.insert(
-        "Content-Type",
-        if let Some(supplementary) = &supplementary {
-            supplementary.content_type.parse().map_err(|_| {
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "Internal Server Error".to_owned(),
-                )
-            })?
-        } else {
-            let content_type = metadata.content_type.parse().map_err(|_| {
-                (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "Internal Server Error".to_owned(),
-                )
-            })?;
-            if content_type == "audio/mpeg" && metadata.name.ends_with(".mp3") {
-                "audio/mp3".parse().unwrap()
-            } else {
-                content_type
-            }
-        },
-    );
+    headers.insert(header::CONTENT_TYPE, content_type);
+    headers.insert(header::ACCEPT_RANGES, HeaderValue::from_static("bytes"));
+
+    if let Some(range_header) = headers.get(header::RANGE) {
+        let range = get_range_header(range_header)?;
+        let (buf, size, range) = ctx
+            .storage
+            .get_buffer_range(&path, range)
+            .await
+            .map_err(|_| (StatusCode::BAD_REQUEST, "Invalid Range".to_string()))?;
+        let content_length = range.end - range.start + 1;
+        headers.insert(header::CONTENT_LENGTH, HeaderValue::from(content_length));
+        headers.insert(
+            header::CONTENT_RANGE,
+            HeaderValue::from_str(&format!("bytes {}-{}/{}", range.start, range.end, size))
+                .map_err(|_| {
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        "Failed to create Content-Range header".to_string(),
+                    )
+                })?,
+        );
+        headers.insert(header::ACCEPT_RANGES, HeaderValue::from_static("bytes"));
+        let body = Body::from_stream(buf);
+        return Ok((headers, body));
+    }
+
+    headers.insert(header::CONTENT_LENGTH, HeaderValue::from(size));
+    let body = Body::from_stream(buf);
     Ok((headers, body))
 }
 
@@ -169,7 +223,10 @@ pub async fn metadata_upload(
     let principal = get_principal_from_headers(&ctx, &headers)
         .await
         .map_err(|_| (StatusCode::UNAUTHORIZED, "Unauthorized".to_owned()))?;
-    let principal_groups = ctx.security.get_principal_groups(&principal.id).await
+    let principal_groups = ctx
+        .security
+        .get_principal_groups(&principal.id)
+        .await
         .map_err(|_| (StatusCode::UNAUTHORIZED, "Unauthorized".to_owned()))?;
     let id = Uuid::parse_str(params.id.as_ref().unwrap().as_str())
         .map_err(|_| (StatusCode::BAD_REQUEST, "Bad Request".to_owned()))?;
@@ -190,8 +247,12 @@ pub async fn metadata_upload(
             .get_metadata_path(&metadata, supplementary.as_ref().map(|s| s.id))
             .await
             .map_err(|err| (StatusCode::BAD_REQUEST, err.to_string()))?;
-        let len = upload_field(&ctx, path, &mut field).await
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Server Error: {e:?}").to_owned()))?;
+        let len = upload_field(&ctx, path, &mut field).await.map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Server Error: {e:?}").to_owned(),
+            )
+        })?;
         if let Some(supplementary) = &supplementary {
             let content_type = field.content_type().unwrap_or("");
             ctx.content

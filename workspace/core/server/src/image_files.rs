@@ -6,7 +6,7 @@ use crate::models::security::principal::Principal;
 use crate::util::security::get_principal_from_headers;
 use axum::body::Body;
 use axum::extract::{Query, State};
-use http::{HeaderMap, StatusCode};
+use http::{header, HeaderMap, HeaderValue, StatusCode};
 use serde::Deserialize;
 use uuid::Uuid;
 
@@ -103,7 +103,7 @@ async fn get_image(
         return Err((StatusCode::NOT_FOUND, "Not Found".to_owned()))?;
     }
     let buf = ctx.storage.get_buffer(&path).await;
-    let buf = match buf {
+    let (buf, size) = match buf {
         Ok(buf) => buf,
         Err(e) => {
             return match e {
@@ -116,8 +116,9 @@ async fn get_image(
     };
     let body = Body::from_stream(buf);
     let mut headers = HeaderMap::new();
+    headers.insert(header::CONTENT_LENGTH, HeaderValue::from(size));
     headers.insert(
-        "Content-Type",
+        header::CONTENT_TYPE,
         content_type.parse().map_err(|_| {
             (
                 StatusCode::INTERNAL_SERVER_ERROR,
