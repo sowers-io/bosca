@@ -39,7 +39,7 @@ async fn get_supplementary(
     Ok(None)
 }
 
-fn get_range_header(range_header: &HeaderValue) -> Result<Range<u64>, (StatusCode, String)> {
+pub fn get_range_header(range_header: &HeaderValue) -> Result<Range<u64>, (StatusCode, String)> {
     let range_str = range_header
         .to_str()
         .map_err(|_| (StatusCode::BAD_REQUEST, "Invalid Range header".to_string()))?;

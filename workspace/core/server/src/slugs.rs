@@ -7,7 +7,7 @@ use async_graphql::Error;
 use axum::body::Body;
 use axum::extract::State;
 use axum::extract::{Path, Query};
-use http::{header, HeaderMap, StatusCode};
+use http::{header, HeaderMap, HeaderValue, StatusCode};
 use log::error;
 use serde::Deserialize;
 use uuid::Uuid;
@@ -21,6 +21,7 @@ pub struct PathParams {
 pub struct Params {
     supplementary_id: Option<String>,
     key: Option<String>,
+    download: Option<bool>,
 }
 
 #[tracing::instrument(skip(ctx, params))]
@@ -115,12 +116,60 @@ pub async fn slug(
                 "Internal Server Error".to_owned(),
             )
         })?;
+
+    if let Some(range_header) = headers.get(header::RANGE) {
+        let range = crate::metadata_files::get_range_header(range_header)?;
+        let (buf, size, range) = ctx
+            .storage
+            .get_buffer_range(&path, range)
+            .await
+            .map_err(|_| (StatusCode::BAD_REQUEST, "Invalid Range".to_string()))?;
+        let content_length = range.end - range.start + 1;
+        let mut headers = HeaderMap::new();
+        headers.insert(header::CONTENT_LENGTH, HeaderValue::from(content_length));
+        headers.insert(
+            header::CONTENT_RANGE,
+            HeaderValue::from_str(&format!("bytes {}-{}/{}", range.start, range.end, size))
+                .map_err(|_| {
+                    (
+                        StatusCode::INTERNAL_SERVER_ERROR,
+                        "Failed to create Content-Range header".to_string(),
+                    )
+                })?,
+        );
+        headers.insert(header::ACCEPT_RANGES, HeaderValue::from_static("bytes"));
+        let body = Body::from_stream(buf);
+        return Ok((headers, body));
+    }
+
     let (buf, size) = ctx.storage.get_buffer(&path).await.map_err(|e| {
         error!("Error getting buffer: {e}");
         (StatusCode::INTERNAL_SERVER_ERROR, e.to_string())
     })?;
     let body = Body::from_stream(buf);
     let mut headers = HeaderMap::new();
+
+    if params.download.unwrap_or(false) {
+        let mut filename = metadata.name.to_string();
+        if metadata.content_type.starts_with("image/")
+            || metadata.content_type.starts_with("video/")
+            || metadata.content_type.starts_with("audio/")
+        {
+            let parts = metadata.content_type.split("/");
+            filename = format!("{filename}.{}", parts.last().unwrap_or(""));
+        }
+        let disposition = format!("attachment; filename=\"{}\"", filename);
+        headers.insert(
+            header::CONTENT_DISPOSITION,
+            disposition.parse().map_err(|_| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Internal Server Error".to_owned(),
+                )
+            })?,
+        );
+    }
+
     headers.insert(header::CONTENT_LENGTH, size.into());
     headers.insert(
         header::CONTENT_TYPE,
