@@ -118,28 +118,29 @@ pub async fn slug(
         })?;
 
     if let Some(range_header) = headers.get(header::RANGE) {
-        let range = crate::metadata_files::get_range_header(range_header)?;
-        let (buf, size, range) = ctx
-            .storage
-            .get_buffer_range(&path, range)
-            .await
-            .map_err(|_| (StatusCode::BAD_REQUEST, "Invalid Range".to_string()))?;
-        let content_length = range.end - range.start + 1;
-        let mut headers = HeaderMap::new();
-        headers.insert(header::CONTENT_LENGTH, HeaderValue::from(content_length));
-        headers.insert(
-            header::CONTENT_RANGE,
-            HeaderValue::from_str(&format!("bytes {}-{}/{}", range.start, range.end, size))
-                .map_err(|_| {
-                    (
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                        "Failed to create Content-Range header".to_string(),
-                    )
-                })?,
-        );
-        headers.insert(header::ACCEPT_RANGES, HeaderValue::from_static("bytes"));
-        let body = Body::from_stream(buf);
-        return Ok((headers, body));
+        if let Ok(range) = crate::metadata_files::get_range_header(range_header) {
+            let (buf, size, range) = ctx
+                .storage
+                .get_buffer_range(&path, range)
+                .await
+                .map_err(|_| (StatusCode::BAD_REQUEST, "Invalid Range".to_string()))?;
+            let content_length = range.end - range.start + 1;
+            let mut headers = HeaderMap::new();
+            headers.insert(header::CONTENT_LENGTH, HeaderValue::from(content_length));
+            headers.insert(
+                header::CONTENT_RANGE,
+                HeaderValue::from_str(&format!("bytes {}-{}/{}", range.start, range.end, size))
+                    .map_err(|_| {
+                        (
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            "Failed to create Content-Range header".to_string(),
+                        )
+                    })?,
+            );
+            headers.insert(header::ACCEPT_RANGES, HeaderValue::from_static("bytes"));
+            let body = Body::from_stream(buf);
+            return Ok((headers, body));
+        }
     }
 
     let (buf, size) = ctx.storage.get_buffer(&path).await.map_err(|e| {
