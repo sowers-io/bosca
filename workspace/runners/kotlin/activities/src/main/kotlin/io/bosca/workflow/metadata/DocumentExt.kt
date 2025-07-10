@@ -1,10 +1,14 @@
 package io.bosca.workflow.metadata
 
 import io.bosca.api.Client
+import io.bosca.documents.BulletListNode
 import io.bosca.documents.ContainerNode
 import io.bosca.documents.Content
 import io.bosca.documents.DocumentNode
 import io.bosca.documents.HeadingNode
+import io.bosca.documents.ListItemNode
+import io.bosca.documents.OrderedListNode
+import io.bosca.documents.ParagraphNode
 import io.bosca.documents.TextNode
 import io.bosca.graphql.fragment.Document
 import io.bosca.util.decode
@@ -29,6 +33,7 @@ suspend fun Document.asText(client: Client, configuration: DocumentToTextConfigu
         } else {
             append(it, client, string, configuration)
         }
+        string.append("\n\n")
     }
     return string.toString().trim()
 }
@@ -47,9 +52,14 @@ private fun append(component: Any, key: String?, builder: StringBuilder) {
 }
 
 private suspend fun append(node: DocumentNode, client: Client, builder: StringBuilder, configuration: DocumentToTextConfiguration) {
+    if (node is ParagraphNode) {
+        builder.append("\n")
+    }
+    if (node is OrderedListNode || node is BulletListNode || node is ListItemNode) {
+        builder.append("\n")
+    }
     if (node is TextNode) {
-        builder.append(node.text)
-        builder.append(" ")
+        builder.append(node.text.replace("’", "'"))
     }
     try {
         if (node is ContainerNode) {
@@ -60,12 +70,12 @@ private suspend fun append(node: DocumentNode, client: Client, builder: StringBu
                         node.attributes.metadataId ?: error("missing bible metadata id"), null, reference
                     )
                     if (content == null) continue
-                    builder.append("\r\n------------------\r\n")
+                    builder.append("\n------------------\n")
                     builder.append(content.reference.human)
-                    builder.append("\r\n\r\n")
+                    builder.append("\n\n")
                     @Suppress("UNCHECKED_CAST")
                     append(content.component as Map<String, Any>, null, builder)
-                    builder.append("\r\n------------------\r\n")
+                    builder.append("\n------------------\n")
                 }
             }
         }
@@ -74,5 +84,14 @@ private suspend fun append(node: DocumentNode, client: Client, builder: StringBu
     }
     for (child in node.content) {
         append(child, client, builder, configuration)
+    }
+    if (node is OrderedListNode || node is BulletListNode) {
+        builder.append("\n")
+    }
+    if (node is ParagraphNode) {
+        builder.append("\n\n")
+    }
+    if (node is HeadingNode) {
+        builder.append("\n\n\n")
     }
 }
