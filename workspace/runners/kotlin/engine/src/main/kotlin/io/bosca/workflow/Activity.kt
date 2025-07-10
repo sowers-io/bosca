@@ -213,20 +213,23 @@ abstract class Activity(protected val client: Client) {
         sourceIdentifier: String? = null
     ): MetadataSupplementary {
         val output = getOutputParameter(job, parameter) ?: error("get output parameter missing: missing supplementary (${job.workflowActivity.workflowActivity.activityId}): $parameter")
-        return job.metadata?.metadata?.supplementary?.firstOrNull {
+        val current = job.metadata?.metadata?.supplementary?.firstOrNull {
             it.metadataSupplementary.key == output.value && (it.metadataSupplementary.planId == job.planId.id || it.metadataSupplementary.planId == null)
         }?.metadataSupplementary
-            ?: client.metadata.addSupplementary(
-                MetadataSupplementaryInput(
-                    planId = job.planId.id,
-                    name = name,
-                    contentType = contentType,
-                    key = output.value,
-                    metadataId = job.metadata?.metadata?.id ?: error("missing metadata id"),
-                    sourceId = sourceId.toOptional(),
-                    sourceIdentifier = sourceIdentifier.toOptional()
-                )
-            ) ?: error("add metadata supplementary failed: missing supplementary: $parameter")
+        if (current != null) return current
+        val supplementary = client.metadata.addSupplementary(
+            MetadataSupplementaryInput(
+                planId = job.planId.id,
+                name = name,
+                contentType = contentType,
+                key = output.value,
+                metadataId = job.metadata?.metadata?.id ?: error("missing metadata id"),
+                sourceId = sourceId.toOptional(),
+                sourceIdentifier = sourceIdentifier.toOptional()
+            )
+        )
+        if (supplementary == null) error("add metadata supplementary failed: missing supplementary: $parameter")
+        return supplementary
     }
 
     protected suspend fun getOrAddCollectionSupplementary(
