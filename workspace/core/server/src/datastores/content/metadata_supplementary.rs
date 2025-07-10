@@ -6,8 +6,9 @@ use crate::models::content::metadata_supplementary::{
 };
 use async_graphql::*;
 use bosca_database::TracingPool;
-use log::error;
+use log::{error, warn};
 use std::sync::Arc;
+use deadpool_postgres::GenericClient;
 use uuid::Uuid;
 
 #[derive(Clone)]
@@ -207,9 +208,14 @@ impl MetadataSupplementaryDataStore {
         let stmt = connection.prepare_cached("update metadata_supplementary set uploaded = now(), content_type = $1, content_length = $2 where id = $3 returning metadata_id, key, plan_id").await?;
         let len: i64 = len as i64;
         let content_type = content_type.to_owned();
-        let result = connection
-            .query_one(&stmt, &[&content_type, &len, supplementary_id])
+        let results = connection
+            .query(&stmt, &[&content_type, &len, supplementary_id])
             .await?;
+        if results.is_empty() {
+            warn!("Supplementary not found");
+            return Err(Error::from("Supplementary not found"));
+        }
+        let result = results.first().unwrap();
         let metadata_id: Uuid = result.get("metadata_id");
         let key: String = result.get("key");
         let plan_id: Option<Uuid> = result.get("plan_id");
@@ -226,7 +232,12 @@ impl MetadataSupplementaryDataStore {
                 "delete from metadata_supplementary where id = $1 returning metadata_id, key, plan_id",
             )
             .await?;
-        let result = connection.query_one(&stmt, &[id]).await?;
+        let results = connection.query(&stmt, &[id]).await?;
+        if results.is_empty() {
+            warn!("Supplementary not found");
+            return Ok(());
+        }
+        let result = results.first().unwrap();
         let metadata_id: Uuid = result.get("metadata_id");
         let key: String = result.get("key");
         let plan_id: Option<Uuid> = result.get("plan_id");

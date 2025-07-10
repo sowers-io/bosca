@@ -213,9 +213,7 @@ abstract class Activity(protected val client: Client) {
         sourceIdentifier: String? = null
     ): MetadataSupplementary {
         val output = getOutputParameter(job, parameter) ?: error("get output parameter missing: missing supplementary (${job.workflowActivity.workflowActivity.activityId}): $parameter")
-        val current = job.metadata?.metadata?.supplementary?.firstOrNull {
-            it.metadataSupplementary.key == output.value && (it.metadataSupplementary.planId == job.planId.id || it.metadataSupplementary.planId == null)
-        }?.metadataSupplementary
+        val current = job.getMetadataSupplementary(output)
         if (current != null) return current
         val supplementary = client.metadata.addSupplementary(
             MetadataSupplementaryInput(
@@ -242,9 +240,7 @@ abstract class Activity(protected val client: Client) {
     ): CollectionSupplementary {
         val output = getOutputParameter(job, parameter) ?: error("missing supplementary: $parameter")
         val collection = job.collection?.collection ?: job.profile?.profile?.collection?.collection ?: error("missing collection or profile")
-        return collection.supplementary.firstOrNull {
-            it.collectionSupplementary.key == output.value && (it.collectionSupplementary.planId == job.planId.id || it.collectionSupplementary.planId == null)
-        }?.collectionSupplementary
+        return job.getCollectionSupplementary(output)
             ?: client.collections.addSupplementary(
                 CollectionSupplementaryInput(
                     planId = job.planId.id,
