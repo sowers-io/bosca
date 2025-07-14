@@ -12,6 +12,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class DocumentToTextConfiguration(
     val includeTitle: Boolean = true,
+    val includeTtsMarkup: Boolean = false,
     val excludeContainers: Set<String> = emptySet()
 )
 

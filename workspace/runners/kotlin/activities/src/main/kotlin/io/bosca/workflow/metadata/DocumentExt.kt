@@ -13,20 +13,36 @@ import io.bosca.documents.TextNode
 import io.bosca.graphql.fragment.Document
 import io.bosca.util.decode
 
+fun DocumentNode.filterTitle(title: Boolean): List<DocumentNode> {
+    var first = true
+    return content.filter {
+        if (it is HeadingNode && it.attributes.level == 1 && first) {
+            first = false
+            title
+        } else {
+            !title
+        }
+    }
+}
+
 suspend fun Document.asText(client: Client, configuration: DocumentToTextConfiguration = DocumentToTextConfiguration()): String {
     val content = content.decode<Content>()
     val string = StringBuilder()
     content?.document?.let {
         if (!configuration.includeTitle) {
-            var first = true
-            val nodes = it.content.filter {
-                if (it is HeadingNode && it.attributes.level == 1 && first) {
-                    first = false
-                    false
-                } else {
-                    true
-                }
+            val nodes = it.filterTitle(false)
+            for (node in nodes) {
+                append(node, client, string, configuration)
             }
+        } else if(configuration.includeTtsMarkup) {
+            val title = it.filterTitle(true).firstOrNull()
+            title?.let {
+                append(it, client, string, configuration)
+                string.append("\n")
+                string.append("[pause long]")
+                string.append("\n")
+            }
+            val nodes = it.filterTitle(false)
             for (node in nodes) {
                 append(node, client, string, configuration)
             }
@@ -70,12 +86,16 @@ private suspend fun append(node: DocumentNode, client: Client, builder: StringBu
                         node.attributes.metadataId ?: error("missing bible metadata id"), null, reference
                     )
                     if (content == null) continue
-                    builder.append("\n------------------\n")
                     builder.append(content.reference.human)
+                    if (configuration.includeTtsMarkup) {
+                        builder.append("[pause short]")
+                    }
                     builder.append("\n\n")
                     @Suppress("UNCHECKED_CAST")
                     append(content.component as Map<String, Any>, null, builder)
-                    builder.append("\n------------------\n")
+                    if (configuration.includeTtsMarkup) {
+                        builder.append("[pause]")
+                    }
                 }
             }
         }
@@ -90,6 +110,7 @@ private suspend fun append(node: DocumentNode, client: Client, builder: StringBu
     }
     if (node is ParagraphNode) {
         builder.append("\n\n")
+        builder.append("[pause]")
     }
     if (node is HeadingNode) {
         builder.append("\n\n\n")
