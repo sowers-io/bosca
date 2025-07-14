@@ -31,6 +31,10 @@ impl BibleChapterObject {
         format!("{} {}", self.book.name_long, self.chapter.reference.chapter().unwrap_or_default())
     }
 
+    async fn human_short(&self) -> String {
+        format!("{} {}", self.book.name_short, self.chapter.reference.chapter().unwrap_or_default())
+    }
+
     async fn reference(&self) -> BibleReferenceObject {
         if let Some(ref r) = self.reference {
             BibleReferenceObject::new(r.clone(), self.book.clone())
