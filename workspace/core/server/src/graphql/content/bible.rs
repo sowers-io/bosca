@@ -22,6 +22,7 @@ impl BibleObject {
 pub struct FindBibleResult {
     pub usfm: String,
     pub human: String,
+    pub human_short: String,
     pub book: BibleBookObject,
     pub chapter: Option<BibleChapterObject>,
     pub component: Option<FilteredComponent>,
@@ -125,7 +126,8 @@ impl BibleObject {
                         None
                     };
                     items.push(FindBibleResult {
-                        human: result.format(&book),
+                        human: result.format(&book, true),
+                        human_short: result.format(&book, false),
                         usfm: result.usfm().clone(),
                         book: BibleBookObject::new(book.clone()),
                         chapter: chapter.map(|c| {

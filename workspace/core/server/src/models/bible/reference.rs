@@ -1,11 +1,11 @@
+use crate::models::bible::book::Book;
 use async_graphql::{InputObject, SimpleObject};
 use serde::{Deserialize, Serialize};
-use crate::models::bible::book::Book;
 
 #[derive(SimpleObject, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Reference {
     #[serde(rename = "usfm")]
-    usfm_: String
+    usfm_: String,
 }
 
 #[derive(InputObject)]
@@ -22,11 +22,8 @@ impl From<&ReferenceInput> for Reference {
 }
 
 impl Reference {
-
     pub fn new(usfm: String) -> Self {
-        Self {
-            usfm_: usfm,
-        }
+        Self { usfm_: usfm }
     }
 
     pub fn is_usfm(&self, usfm: &str) -> bool {
@@ -37,8 +34,12 @@ impl Reference {
         &self.usfm_
     }
 
-    pub fn format(&self, book: &Book) -> String {
-        let mut human = book.name_long.clone();
+    pub fn format(&self, book: &Book, name_long: bool) -> String {
+        let mut human = if name_long {
+            book.name_long.clone()
+        } else {
+            book.name_short.clone()
+        };
         if let Some(chapter) = self.chapter() {
             human.push(' ');
             human.push_str(&chapter);
@@ -89,11 +90,13 @@ impl Reference {
     }
 
     pub fn chapter(&self) -> Option<String> {
-        self.chapter_usfm().map(|s| s.split('.').nth(1).unwrap_or_default().to_string())
+        self.chapter_usfm()
+            .map(|s| s.split('.').nth(1).unwrap_or_default().to_string())
     }
 
     pub fn verse(&self) -> Option<String> {
-        self.verse_usfm().map(|s| s.split('.').nth(2).unwrap_or_default().to_string())
+        self.verse_usfm()
+            .map(|s| s.split('.').nth(2).unwrap_or_default().to_string())
     }
 
     pub fn references(&self) -> Vec<Reference> {

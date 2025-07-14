@@ -21,6 +21,10 @@ impl BibleReferenceObject {
     }
 
     async fn human(&self) -> String {
-        self.reference.format(&self.book)
+        self.reference.format(&self.book, true)
+    }
+
+    async fn human_short(&self) -> String {
+        self.reference.format(&self.book, false)
     }
 }
