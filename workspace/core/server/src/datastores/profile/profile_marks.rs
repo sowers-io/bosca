@@ -24,7 +24,7 @@ impl ProfileMarksDataStore {
     }
 
     #[tracing::instrument(skip(self, profile_id))]
-    pub async fn get_count(
+    pub async fn get_all_count(
         &self,
         profile_id: &Uuid,
     ) -> async_graphql::Result<i64, Error> {
@@ -54,25 +54,50 @@ impl ProfileMarksDataStore {
     }
 
     #[tracing::instrument(skip(self, profile_id))]
-    pub async fn get(
+    pub async fn get_count(
         &self,
         profile_id: &Uuid,
         metadata_id: Option<Uuid>,
         metadata_version: Option<i32>,
         collection_id: Option<Uuid>,
-    ) -> async_graphql::Result<Option<ProfileMark>, Error> {
+    ) -> async_graphql::Result<i64, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
-            .prepare_cached(
-                "select * from profile_marks where profile_id = $1 and ((metadata_id = $2 and metadata_version = $3) or (collection_id = $4))",
-            ).await?;
+            .prepare_cached("select * from profile_marks where profile_id = $1 and ((metadata_id = $2 and metadata_version = $3) or (collection_id = $4))")
+            .await?;
         let rows = connection
             .query(
                 &stmt,
                 &[&profile_id, &metadata_id, &metadata_version, &collection_id],
             )
             .await?;
-        Ok(rows.first().map(|r| r.into()))
+        let row = rows.first().unwrap();
+        let c = row.get("c");
+        Ok(c)
+    }
+
+    #[tracing::instrument(skip(self, profile_id, metadata_id, metadata_version, collection_id))]
+    pub async fn get(
+        &self,
+        profile_id: &Uuid,
+        metadata_id: Option<Uuid>,
+        metadata_version: Option<i32>,
+        collection_id: Option<Uuid>,
+        offset: i64,
+        limit: i64,
+    ) -> async_graphql::Result<Vec<ProfileMark>, Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached(
+                "select * from profile_marks where profile_id = $1 and ((metadata_id = $2 and metadata_version = $3) or (collection_id = $4)) order by created desc offset $5 limit $6",
+            ).await?;
+        let rows = connection
+            .query(
+                &stmt,
+                &[&profile_id, &metadata_id, &metadata_version, &collection_id, &offset, &limit],
+            )
+            .await?;
+        Ok(rows.iter().map(|r| r.into()).collect())
     }
 
     #[tracing::instrument(skip(self, profile_id, metadata_id, metadata_version, collection_id, attributes))]
@@ -90,7 +115,7 @@ impl ProfileMarksDataStore {
         if metadata_id.is_some() && metadata_version.is_some() {
             let stmt = txn
                 .prepare_cached(
-                    "insert into profile_bookmarks (profile_id, metadata_id, metadata_version, attributes) values ($1, $2, $3, $4) on conflict (profile_id, metadata_id, metadata_version, collection_id) do nothing",
+                    "insert into profile_marks (profile_id, metadata_id, metadata_version, attributes) values ($1, $2, $3, $4) on conflict (profile_id, metadata_id, metadata_version, collection_id) do nothing",
                 )
                 .await?;
             txn.execute(&stmt, &[&profile_id, &metadata_id, &metadata_version, &attributes])
@@ -98,7 +123,7 @@ impl ProfileMarksDataStore {
         } else {
             let stmt = txn
                 .prepare_cached(
-                    "insert into profile_bookmarks (profile_id, collection_id, attributes) values ($1, $2, $3) on conflict (profile_id, metadata_id, metadata_version, collection_id) do nothing",
+                    "insert into profile_marks (profile_id, collection_id, attributes) values ($1, $2, $3) on conflict (profile_id, metadata_id, metadata_version, collection_id) do nothing",
                 ).await?;
             txn.execute(&stmt, &[&profile_id, &collection_id, &attributes]).await?;
         }
@@ -107,33 +132,21 @@ impl ProfileMarksDataStore {
         Ok(())
     }
 
-    #[tracing::instrument(skip(self, profile_id, metadata_id, metadata_version, collection_id))]
+    #[tracing::instrument(skip(self, profile_id, id))]
     pub async fn delete(
         &self,
         _: &BoscaContext,
         profile_id: &Uuid,
-        metadata_id: Option<Uuid>,
-        metadata_version: Option<i32>,
-        collection_id: Option<Uuid>,
+        id: i64
     ) -> async_graphql::Result<(), Error> {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
-        if metadata_id.is_some() && metadata_version.is_some() {
-            let stmt = txn
-                .prepare_cached(
-                    "delete from profile_bookmarks where profile_id = $1 and metadata_id = $2 and metadata_version = $3",
-                )
-                .await?;
-            txn.execute(&stmt, &[&profile_id, &metadata_id, &metadata_version])
-                .await?;
-        } else {
-            let stmt = txn
-                .prepare_cached(
-                    "delete from profile_bookmarks where profile_id = $1 and collection_id = $2",
-                )
-                .await?;
-            txn.execute(&stmt, &[&profile_id, &collection_id]).await?;
-        }
+        let stmt = txn
+            .prepare_cached(
+                "delete from profile_marks where profile_id = $1 and id = $2",
+            )
+            .await?;
+        txn.execute(&stmt, &[&profile_id, &id]).await?;
         txn.commit().await?;
         // TODO: fire workflow
         Ok(())

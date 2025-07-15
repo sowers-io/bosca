@@ -135,29 +135,16 @@ impl ProfileMutationObject {
     async fn delete_mark(
         &self,
         ctx: &Context<'_>,
-        metadata_id: Option<String>,
-        version: Option<i32>,
-        collection_id: Option<String>,
+        id: i64
     ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         if self.profile.principal.is_none() || self.profile.principal != Some(ctx.principal.id) {
             return Err(Error::new("Unauthorized"));
         }
-        if let Some(metadata_id) = metadata_id {
-            let metadata_id = Uuid::parse_str(&metadata_id)?;
-            ctx.profile_marks
-                .delete(ctx, &self.profile.id, Some(metadata_id), version, None)
-                .await?;
-            Ok(true)
-        } else if let Some(collection_id) = collection_id {
-            let collection_id = Uuid::parse_str(&collection_id)?;
-            ctx.profile_marks
-                .delete(ctx, &self.profile.id, None, None, Some(collection_id))
-                .await?;
-            Ok(true)
-        } else {
-            Ok(false)
-        }
+        ctx.profile_marks
+            .delete(ctx, &self.profile.id, id)
+            .await?;
+        Ok(true)
     }
 
     async fn delete_attribute(
