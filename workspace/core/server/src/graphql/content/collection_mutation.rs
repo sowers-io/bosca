@@ -686,7 +686,7 @@ impl CollectionMutationObject {
     ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::parse_str(id.as_str())?;
-        let c = ctx.check_metadata_action(&id, PermissionAction::Edit)
+        let c = ctx.check_collection_action(&id, PermissionAction::Edit)
             .await?;
         if c.locked && !ctx.has_service_account().await? {
             return Err(Error::new("locked"))
