@@ -13,3 +13,5 @@ pub mod profile_guide_histories;
 pub mod profile_progressions;
 pub mod profile_bookmark;
 pub mod profile_bookmarks;
+pub mod profile_mark;
+pub mod profile_marks;

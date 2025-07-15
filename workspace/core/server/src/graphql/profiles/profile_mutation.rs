@@ -52,6 +52,7 @@ impl ProfileMutationObject {
         metadata_id: Option<String>,
         version: Option<i32>,
         collection_id: Option<String>,
+        attributes: Option<serde_json::Value>,
     ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         if self.profile.principal.is_none() || self.profile.principal != Some(ctx.principal.id) {
@@ -59,14 +60,14 @@ impl ProfileMutationObject {
         }
         if let Some(metadata_id) = metadata_id {
             let metadata_id = Uuid::parse_str(&metadata_id)?;
-            ctx.profile
-                .add_bookmark(ctx, &self.profile.id, Some(metadata_id), version, None)
+            ctx.profile_bookmarks
+                .add(ctx, &self.profile.id, Some(metadata_id), version, None, attributes)
                 .await?;
             Ok(true)
         } else if let Some(collection_id) = collection_id {
             let collection_id = Uuid::parse_str(&collection_id)?;
-            ctx.profile
-                .add_bookmark(ctx, &self.profile.id, None, None, Some(collection_id))
+            ctx.profile_bookmarks
+                .add(ctx, &self.profile.id, None, None, Some(collection_id), attributes)
                 .await?;
             Ok(true)
         } else {
@@ -87,14 +88,71 @@ impl ProfileMutationObject {
         }
         if let Some(metadata_id) = metadata_id {
             let metadata_id = Uuid::parse_str(&metadata_id)?;
-            ctx.profile
-                .delete_bookmark(ctx, &self.profile.id, Some(metadata_id), version, None)
+            ctx.profile_bookmarks
+                .delete(ctx, &self.profile.id, Some(metadata_id), version, None)
                 .await?;
             Ok(true)
         } else if let Some(collection_id) = collection_id {
             let collection_id = Uuid::parse_str(&collection_id)?;
-            ctx.profile
-                .delete_bookmark(ctx, &self.profile.id, None, None, Some(collection_id))
+            ctx.profile_bookmarks
+                .delete(ctx, &self.profile.id, None, None, Some(collection_id))
+                .await?;
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+
+    async fn add_mark(
+        &self,
+        ctx: &Context<'_>,
+        metadata_id: Option<String>,
+        version: Option<i32>,
+        collection_id: Option<String>,
+        attributes: Option<serde_json::Value>,
+    ) -> Result<bool, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        if self.profile.principal.is_none() || self.profile.principal != Some(ctx.principal.id) {
+            return Err(Error::new("Unauthorized"));
+        }
+        if let Some(metadata_id) = metadata_id {
+            let metadata_id = Uuid::parse_str(&metadata_id)?;
+            ctx.profile_marks
+                .add(ctx, &self.profile.id, Some(metadata_id), version, None, attributes)
+                .await?;
+            Ok(true)
+        } else if let Some(collection_id) = collection_id {
+            let collection_id = Uuid::parse_str(&collection_id)?;
+            ctx.profile_marks
+                .add(ctx, &self.profile.id, None, None, Some(collection_id), attributes)
+                .await?;
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+
+    async fn delete_mark(
+        &self,
+        ctx: &Context<'_>,
+        metadata_id: Option<String>,
+        version: Option<i32>,
+        collection_id: Option<String>,
+    ) -> Result<bool, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        if self.profile.principal.is_none() || self.profile.principal != Some(ctx.principal.id) {
+            return Err(Error::new("Unauthorized"));
+        }
+        if let Some(metadata_id) = metadata_id {
+            let metadata_id = Uuid::parse_str(&metadata_id)?;
+            ctx.profile_marks
+                .delete(ctx, &self.profile.id, Some(metadata_id), version, None)
+                .await?;
+            Ok(true)
+        } else if let Some(collection_id) = collection_id {
+            let collection_id = Uuid::parse_str(&collection_id)?;
+            ctx.profile_marks
+                .delete(ctx, &self.profile.id, None, None, Some(collection_id))
                 .await?;
             Ok(true)
         } else {

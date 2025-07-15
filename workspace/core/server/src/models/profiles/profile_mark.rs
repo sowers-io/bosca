@@ -4,7 +4,7 @@ use tokio_postgres::Row;
 use uuid::Uuid;
 
 
-pub struct ProfileBookmark {
+pub struct ProfileMark {
     pub id: i64,
     // pub profile_id: Uuid,
     pub metadata_id: Option<Uuid>,
@@ -14,7 +14,7 @@ pub struct ProfileBookmark {
     pub created: DateTime<Utc>,
 }
 
-impl From<&Row> for ProfileBookmark {
+impl From<&Row> for ProfileMark {
     fn from(row: &Row) -> Self {
         Self {
             id: row.get("id"),

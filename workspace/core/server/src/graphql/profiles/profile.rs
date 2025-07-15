@@ -8,6 +8,7 @@ use crate::models::profiles::profile::Profile;
 use crate::models::profiles::profile_visibility::ProfileVisibility;
 use crate::models::security::permission::PermissionAction;
 use async_graphql::{Context, Error, Object};
+use crate::graphql::profiles::profile_marks::ProfileMarksObject;
 
 pub struct ProfileObject {
     profile: Profile,
@@ -127,6 +128,10 @@ impl ProfileObject {
 
     async fn bookmarks(&self) -> ProfileBookmarksObject {
         ProfileBookmarksObject::new(self.profile.clone())
+    }
+
+    async fn marks(&self) -> ProfileMarksObject {
+        ProfileMarksObject::new(self.profile.clone())
     }
 }
 

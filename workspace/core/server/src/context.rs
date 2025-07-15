@@ -4,7 +4,6 @@ use crate::datastores::content::content::ContentDataStore;
 use crate::datastores::content::workflow_schedules::WorkflowScheduleDataStore;
 use crate::datastores::notifier::Notifier;
 use crate::datastores::persisted_queries::PersistedQueriesDataStore;
-use crate::datastores::profile::ProfileDataStore;
 use crate::datastores::security::SecurityDataStore;
 use crate::datastores::security_oauth2::SecurityOAuth2;
 use crate::datastores::workflow::workflow::WorkflowDataStore;
@@ -25,6 +24,8 @@ use crate::models::security::principal::Principal;
 use crate::search::search::SearchClient;
 use crate::security::authorization_extension::get_anonymous_principal;
 use crate::workflow::queue::JobQueues;
+use crate::datastores::profile::profile::ProfileDataStore;
+use crate::datastores::profile::profile_bookmarks::ProfileBookmarksDataStore;
 use async_graphql::{Context, Error};
 use bosca_database::build_pool;
 use deadpool_postgres::Transaction;
@@ -32,11 +33,14 @@ use log::info;
 use std::env;
 use std::sync::Arc;
 use uuid::Uuid;
+use crate::datastores::profile::profile_marks::ProfileMarksDataStore;
 
 #[derive(Clone)]
 pub struct BoscaContext {
     pub content: ContentDataStore,
     pub profile: ProfileDataStore,
+    pub profile_bookmarks: ProfileBookmarksDataStore,
+    pub profile_marks: ProfileMarksDataStore,
     pub security: SecurityDataStore,
     pub security_oauth2: SecurityOAuth2,
     pub storage: ObjectStorage,
@@ -132,6 +136,8 @@ impl BoscaContext {
             ),
             configuration,
             profile: ProfileDataStore::new(bosca_pool.clone()),
+            profile_bookmarks: ProfileBookmarksDataStore::new(bosca_pool.clone()),
+            profile_marks: ProfileMarksDataStore::new(bosca_pool.clone()),
             queries: PersistedQueriesDataStore::new(bosca_pool.clone()).await,
             content: ContentDataStore::new(
                 bosca_pool,

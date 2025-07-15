@@ -158,7 +158,7 @@ pub async fn slug(
             let parts = metadata.content_type.split("/");
             filename = format!("{filename}.{}", parts.last().unwrap_or(""));
         }
-        let disposition = format!("attachment; filename=\"{}\"", filename);
+        let disposition = format!("attachment; filename=\"{filename}\"");
         headers.insert(
             header::CONTENT_DISPOSITION,
             disposition.parse().map_err(|_| {

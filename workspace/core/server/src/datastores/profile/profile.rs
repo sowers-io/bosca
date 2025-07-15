@@ -7,7 +7,6 @@ use crate::models::profiles::profile_attribute::{ProfileAttribute, ProfileAttrib
 use crate::models::profiles::profile_attribute_type::{
     ProfileAttributeType, ProfileAttributeTypeInput,
 };
-use crate::models::profiles::profile_bookmark::ProfileBookmark;
 use crate::models::security::group_type::GroupType;
 use crate::models::security::permission::{Permission, PermissionAction};
 use crate::models::workflow::enqueue_request::EnqueueRequest;
@@ -562,119 +561,6 @@ impl ProfileDataStore {
             ..Default::default()
         };
         ctx.workflow.enqueue_workflow(ctx, &mut request).await?;
-        Ok(())
-    }
-
-    #[tracing::instrument(skip(self, profile_id))]
-    pub async fn get_bookmarks_count(
-        &self,
-        profile_id: &Uuid,
-    ) -> async_graphql::Result<i64, Error> {
-        let connection = self.pool.get().await?;
-        let stmt = connection
-            .prepare_cached("select count(*) as c from profile_bookmarks where profile_id = $1")
-            .await?;
-        let rows = connection.query(&stmt, &[profile_id]).await?;
-        let row = rows.first().unwrap();
-        let c = row.get("c");
-        Ok(c)
-    }
-
-    #[tracing::instrument(skip(self, profile_id))]
-    pub async fn get_bookmarks(
-        &self,
-        profile_id: &Uuid,
-    ) -> async_graphql::Result<Vec<ProfileBookmark>, Error> {
-        let connection = self.pool.get().await?;
-        let stmt = connection
-            .prepare_cached("select * from profile_bookmarks where profile_id = $1")
-            .await?;
-        let rows = connection.query(&stmt, &[profile_id]).await?;
-        Ok(rows.iter().map(|r| r.into()).collect())
-    }
-
-    #[tracing::instrument(skip(self, profile_id))]
-    pub async fn get_bookmark(
-        &self,
-        profile_id: &Uuid,
-        metadata_id: Option<Uuid>,
-        metadata_version: Option<i32>,
-        collection_id: Option<Uuid>,
-    ) -> async_graphql::Result<Option<ProfileBookmark>, Error> {
-        let connection = self.pool.get().await?;
-        let stmt = connection
-            .prepare_cached(
-                "select * from profile_bookmarks where profile_id = $1 and ((metadata_id = $2 and metadata_version = $3) or (collection_id = $4))",
-            ).await?;
-        let rows = connection
-            .query(
-                &stmt,
-                &[&profile_id, &metadata_id, &metadata_version, &collection_id],
-            )
-            .await?;
-        Ok(rows.first().map(|r| r.into()))
-    }
-
-    #[tracing::instrument(skip(self, profile_id, metadata_id, metadata_version, collection_id))]
-    pub async fn add_bookmark(
-        &self,
-        _: &BoscaContext,
-        profile_id: &Uuid,
-        metadata_id: Option<Uuid>,
-        metadata_version: Option<i32>,
-        collection_id: Option<Uuid>,
-    ) -> async_graphql::Result<(), Error> {
-        let mut connection = self.pool.get().await?;
-        let txn = connection.transaction().await?;
-        if metadata_id.is_some() && metadata_version.is_some() {
-            let stmt = txn
-                .prepare_cached(
-                    "insert into profile_bookmarks (profile_id, metadata_id, metadata_version) values ($1, $2, $3) on conflict (profile_id, metadata_id, metadata_version, collection_id) do nothing",
-                )
-                .await?;
-            txn.execute(&stmt, &[&profile_id, &metadata_id, &metadata_version])
-                .await?;
-        } else {
-            let stmt = txn
-                .prepare_cached(
-                    "insert into profile_bookmarks (profile_id, collection_id) values ($1, $2) on conflict (profile_id, metadata_id, metadata_version, collection_id) do nothing",
-                ).await?;
-            txn.execute(&stmt, &[&profile_id, &collection_id]).await?;
-        }
-        txn.commit().await?;
-        // TODO: fire workflow
-        Ok(())
-    }
-
-    #[tracing::instrument(skip(self, profile_id, metadata_id, metadata_version, collection_id))]
-    pub async fn delete_bookmark(
-        &self,
-        _: &BoscaContext,
-        profile_id: &Uuid,
-        metadata_id: Option<Uuid>,
-        metadata_version: Option<i32>,
-        collection_id: Option<Uuid>,
-    ) -> async_graphql::Result<(), Error> {
-        let mut connection = self.pool.get().await?;
-        let txn = connection.transaction().await?;
-        if metadata_id.is_some() && metadata_version.is_some() {
-            let stmt = txn
-                .prepare_cached(
-                    "delete from profile_bookmarks where profile_id = $1 and metadata_id = $2 and metadata_version = $3",
-                )
-                .await?;
-            txn.execute(&stmt, &[&profile_id, &metadata_id, &metadata_version])
-                .await?;
-        } else {
-            let stmt = txn
-                .prepare_cached(
-                    "delete from profile_bookmarks where profile_id = $1 and collection_id = $2",
-                )
-                .await?;
-            txn.execute(&stmt, &[&profile_id, &collection_id]).await?;
-        }
-        txn.commit().await?;
-        // TODO: fire workflow
         Ok(())
     }
 
