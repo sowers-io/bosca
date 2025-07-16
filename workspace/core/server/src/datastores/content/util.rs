@@ -1,3 +1,4 @@
+use crate::models::content::attribute_location::AttributeLocation;
 use crate::models::content::attribute_type::AttributeType;
 use crate::models::content::find_query::{ExtensionFilterType, FindQueryInput};
 use crate::models::content::ordering::Order::Ascending;
@@ -5,7 +6,6 @@ use crate::models::content::ordering::Ordering;
 use postgres_types::ToSql;
 use serde_json::json;
 use uuid::Uuid;
-use crate::models::content::attribute_location::AttributeLocation;
 
 pub fn build_ordering_names(ordering: &[Ordering], names: &mut Vec<String>) {
     for attr in ordering {
@@ -40,33 +40,45 @@ pub fn build_ordering<'a>(
             buf.push_str(", ");
         }
         if let Some(path) = &attr.path {
-            buf.push('(');
-            if attr.attribute_location.unwrap_or(AttributeLocation::Relationship) == AttributeLocation::Relationship {
-                buf.push_str(relationship_attributes_column);
-            } else if !collection_item_attributes_column.is_empty() && !metadata_item_attributes_column.is_empty() {
-                buf.push_str(format!("(case when {collection_item_attributes_column} is null then {metadata_item_attributes_column} else {collection_item_attributes_column} end)").as_str());
-            } else if !collection_item_attributes_column.is_empty() {
-                buf.push_str(collection_item_attributes_column);
-            } else if !metadata_item_attributes_column.is_empty() {
-                buf.push_str(metadata_item_attributes_column);
-            }
-            for _ in path.iter() {
-                let name = names.get(n).unwrap();
-                n += 1;
-                values.push(name as &(dyn ToSql + Sync));
-                buf.push_str(format!("->>${index}").as_str());
-                index += 1;
-            }
-            buf.push_str(")::");
-            match attr.attribute_type.unwrap_or(AttributeType::String) {
-                AttributeType::String => buf.push_str("varchar"),
-                AttributeType::Int => buf.push_str("bigint"),
-                AttributeType::Float => buf.push_str("double precision"),
-                AttributeType::Date => buf.push_str("int"),
-                AttributeType::DateTime => buf.push_str("bigint"),
-                AttributeType::Profile => buf.push_str("uuid"),
-                AttributeType::Metadata => buf.push_str("uuid"),
-                AttributeType::Collection => buf.push_str("uuid"),
+            if !path.is_empty() {
+                buf.push('(');
+                if attr
+                    .attribute_location
+                    .unwrap_or(AttributeLocation::Relationship)
+                    == AttributeLocation::Relationship
+                {
+                    buf.push_str(relationship_attributes_column);
+                } else if !collection_item_attributes_column.is_empty()
+                    && !metadata_item_attributes_column.is_empty()
+                {
+                    buf.push_str(format!("(case when {collection_item_attributes_column} is null then {metadata_item_attributes_column} else {collection_item_attributes_column} end)").as_str());
+                } else if !collection_item_attributes_column.is_empty() {
+                    buf.push_str(collection_item_attributes_column);
+                } else if !metadata_item_attributes_column.is_empty() {
+                    buf.push_str(metadata_item_attributes_column);
+                }
+                for _ in path.iter() {
+                    let name = names.get(n).unwrap();
+                    n += 1;
+                    values.push(name as &(dyn ToSql + Sync));
+                    buf.push_str(format!("->>${index}").as_str());
+                    index += 1;
+                }
+                buf.push_str(")::");
+                match attr.attribute_type.unwrap_or(AttributeType::String) {
+                    AttributeType::String => buf.push_str("varchar"),
+                    AttributeType::Int => buf.push_str("bigint"),
+                    AttributeType::Float => buf.push_str("double precision"),
+                    AttributeType::Date => buf.push_str("int"),
+                    AttributeType::DateTime => buf.push_str("bigint"),
+                    AttributeType::Profile => buf.push_str("uuid"),
+                    AttributeType::Metadata => buf.push_str("uuid"),
+                    AttributeType::Collection => buf.push_str("uuid"),
+                }
+            } else if let Some(field) = field {
+                buf.push_str(table_alias);
+                buf.push('.');
+                buf.push_str(field);
             }
         } else if let Some(field) = field {
             buf.push_str(table_alias);
@@ -216,13 +228,23 @@ pub fn build_find_args<'a>(
             let js = json!(ordering);
             let ordering: Vec<Ordering> = serde_json::from_value(js).unwrap();
             build_ordering_names(&ordering, names);
-            let (ordering_sql, index) = build_ordering(table_alias, item_attributes_column, "", relationship_attributes_column, pos, &ordering, &mut values, names);
+            let (ordering_sql, index) = build_ordering(
+                table_alias,
+                item_attributes_column,
+                "",
+                relationship_attributes_column,
+                pos,
+                &ordering,
+                &mut values,
+                names,
+            );
             pos = index;
             if !ordering_sql.is_empty() {
                 q.push_str(ordering_sql.as_str());
             }
         } else {
-            q.push_str(format!(" order by lower({table_alias}.name) asc ").as_str()); // TODO: when adding MetadataIndex & CollectionIndex, make this configurable so it is based on an index
+            q.push_str(format!(" order by lower({table_alias}.name) asc ").as_str());
+            // TODO: when adding MetadataIndex & CollectionIndex, make this configurable so it is based on an index
         }
         if find_query.offset.is_some() {
             q.push_str(format!(" offset ${pos}").as_str());
