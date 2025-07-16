@@ -3,6 +3,7 @@ use crate::datastores::collection_cache::CollectionCache;
 use crate::datastores::content::tag::{update_collection_etag, update_metadata_etag};
 use crate::datastores::content::util::{build_find_args, build_ordering, build_ordering_names};
 use crate::datastores::notifier::Notifier;
+use crate::datastores::slug_cache::SlugCache;
 use crate::models::content::category::Category;
 use crate::models::content::collection::{
     Collection, CollectionChild, CollectionChildInput, CollectionInput, CollectionType,
@@ -25,7 +26,6 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use tokio_postgres::Statement;
 use uuid::Uuid;
-use crate::datastores::slug_cache::SlugCache;
 
 #[derive(Clone)]
 pub struct CollectionsDataStore {
@@ -171,7 +171,7 @@ impl CollectionsDataStore {
             "delete from collection_categories where collection_id = $1",
             &[id],
         )
-            .await?;
+        .await?;
         for category_id in category_ids {
             let stmt = txn
                 .prepare_cached(
@@ -351,9 +351,7 @@ impl CollectionsDataStore {
         let mut connection = self.pool.get().await?;
         let txn = connection.transaction().await?;
         let stmt = txn
-            .prepare_cached(
-                "update collections set locked = $1, modified = now() where id = $2",
-            )
+            .prepare_cached("update collections set locked = $1, modified = now() where id = $2")
             .await?;
         txn.execute(&stmt, &[&locked, id]).await?;
         txn.commit().await?;
@@ -848,6 +846,23 @@ impl CollectionsDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, id, template_id, template_version))]
+    pub async fn set_template(
+        &self,
+        ctx: &BoscaContext,
+        id: &Uuid,
+        template_id: &Uuid,
+        template_version: i32,
+    ) -> Result<(), Error> {
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        let stmt = txn.prepare("update collections set modified = now(), template_metadata_id = $1, template_metadata_version = $2 where id = $3").await?;
+        txn.execute(&stmt, &[template_id, &template_version, id]).await?;
+        txn.commit().await?;
+        self.update_storage(ctx, id).await?;
+        Ok(())
+    }
+
     #[tracing::instrument(skip(self, txn, id, collection))]
     async fn edit_txn<'a>(
         &'a self,
@@ -1228,10 +1243,11 @@ impl CollectionsDataStore {
                 None => Uuid::parse_str("00000000-0000-0000-0000-000000000000")?,
             };
             if !ignore_permission_check {
-                let c = ctx.check_collection_action_txn(txn, &parent_collection_id, PermissionAction::Edit)
+                let c = ctx
+                    .check_collection_action_txn(txn, &parent_collection_id, PermissionAction::Edit)
                     .await?;
                 if c.items_locked && !ctx.has_service_account().await? {
-                    return Err(Error::new("locked"))
+                    return Err(Error::new("locked"));
                 }
             }
             let (id, _) = self.add_txn(txn, collection, false).await?;

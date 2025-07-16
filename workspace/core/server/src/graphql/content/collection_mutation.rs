@@ -132,6 +132,21 @@ impl CollectionMutationObject {
         }
     }
 
+    async fn set_template(
+        &self,
+        ctx: &Context<'_>,
+        collection_id: String,
+        template_id: String,
+        template_version: i32
+    ) -> Result<bool, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let id = Uuid::parse_str(collection_id.as_str())?;
+        ctx.check_collection_action(&id, PermissionAction::Manage).await?;
+        let template_id = Uuid::parse_str(template_id.as_str())?;
+        ctx.content.collections.set_template(ctx, &id, &template_id, template_version).await?;
+        Ok(true)
+    }
+
     async fn delete(
         &self,
         ctx: &Context<'_>,
