@@ -78,16 +78,15 @@ class ExecutePrompt(client: Client) : Activity(client) {
 
         if (prompt.schema != null && (prompt.schema as? Map<*, *>)?.isNotEmpty() == true) {
             prompt.schema.decode<JsonSchema>()?.let {
+                val schema = Schema.builder()
+                    .name(it.name.replace(" ", "_"))
+                    .rootElement(it.rootElement.toSchemaElement())
+                    .build()
                 chatRequestBuilder = chatRequestBuilder
                     .parameters(
                         ChatRequestParameters
                             .builder()
-                            .responseFormat(
-                                Schema.builder()
-                                    .name(it.name.replace(" ", "_"))
-                                    .rootElement(it.rootElement.toSchemaElement())
-                                    .build()
-                            )
+                            .responseFormat(schema)
                             .build()
                     )
             }

@@ -21,6 +21,5 @@ pub fn new_schema(
         .extension(CachingHeaders)
         .extension(persisted_queries)
         .extension(Logger)
-        .data(ctx.clone())
         .finish()
 }

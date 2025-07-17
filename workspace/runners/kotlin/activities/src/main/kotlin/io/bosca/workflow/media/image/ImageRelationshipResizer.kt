@@ -7,6 +7,7 @@ import io.bosca.graphql.type.ActivityInput
 import io.bosca.util.decode
 import io.bosca.workflow.ActivityContext
 import java.net.URLEncoder
+import kotlin.math.roundToInt
 import kotlin.uuid.ExperimentalUuidApi
 
 class ImageRelationshipResizer(client: Client) : AbstractImageResizer(client) {
@@ -54,8 +55,8 @@ class ImageRelationshipResizer(client: Client) : AbstractImageResizer(client) {
                         url,
                         "jpeg",
                         ImageSize(
-                            "${crop.width}x${crop.height}-${crop.top}-${crop.left}-cropped",
-                            100,
+                            "${crop.width.roundToInt()}x${crop.height.roundToInt()}-${crop.top.roundToInt()}-${crop.left.roundToInt()}-cropped",
+                            100f,
                             crop
                         )
                     )
@@ -73,8 +74,8 @@ class ImageRelationshipResizer(client: Client) : AbstractImageResizer(client) {
                         url,
                         "jpeg",
                         ImageSize(
-                            "${crop.width}x${crop.height}-${crop.top}-${crop.left}-cropped",
-                            100,
+                            "${crop.width.roundToInt()}x${crop.height.roundToInt()}-${crop.top.roundToInt()}-${crop.left.roundToInt()}-cropped",
+                            100f,
                             crop
                         )
                     )
@@ -105,8 +106,8 @@ class ImageRelationshipResizer(client: Client) : AbstractImageResizer(client) {
                         url,
                         "jpeg",
                         ImageSize(
-                            "${crop.width}x${crop.height}-${crop.top}-${crop.left}-cropped",
-                            100,
+                            "${crop.width.roundToInt()}x${crop.height.roundToInt()}-${crop.top.roundToInt()}-${crop.left.roundToInt()}-cropped",
+                            100f,
                             crop
                         )
                     )
@@ -131,15 +132,15 @@ class ImageRelationshipResizer(client: Client) : AbstractImageResizer(client) {
         val formats = mutableMapOf<String, Any>()
         ImageResizer.formats.forEach { format ->
             println("image resizer: format: $format")
-            val key = "${crop.width}x${crop.height}-${crop.top}-${crop.left}-$format"
+            val key = "${crop.width.roundToInt()}x${crop.height.roundToInt()}-${crop.top.roundToInt()}-${crop.left.roundToInt()}-$format"
             if (relationship.attributes != null && (relationship.attributes as Map<*, *>).containsKey(key)) return@forEach
             val sizes = mutableMapOf<String, String>()
             for (size in configuration.sizes) {
                 val newSize = size.copy(
                     name = if (crop.isZero) {
-                        "${size.name}-${size.ratio}-$format"
+                        "${size.name}-${size.ratio.roundToInt()}-$format"
                     } else {
-                        "${size.name}-${crop.width}x${crop.height}-${crop.top}-${crop.left}-${size.ratio}-$format"
+                        "${size.name}-${crop.width.roundToInt()}x${crop.height.roundToInt()}-${crop.top.roundToInt()}-${crop.left.roundToInt()}-${size.ratio.roundToInt()}-$format"
                     },
                     size = null
                 )
@@ -187,7 +188,7 @@ class ImageRelationshipResizer(client: Client) : AbstractImageResizer(client) {
             val sizes = mutableMapOf<String, String>()
             for (size in configuration.sizes) {
                 val newSize = size.copy(
-                    name = "${size.name}-${crop.width}x${crop.height}-${crop.top}-${crop.left}-${size.ratio}-$format",
+                    name = "${size.name}-${crop.width.roundToInt()}x${crop.height.roundToInt()}-${crop.top.roundToInt()}-${crop.left.roundToInt()}-${size.ratio.roundToInt()}-$format",
                     size = null
                 )
                 println("image resizer: new size: $newSize")

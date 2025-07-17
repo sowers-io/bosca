@@ -10,6 +10,7 @@ data class JsonObjectSchema(
     val description: String? = null,
     val required: List<String> = emptyList(),
     val additionalProperties: Boolean = false,
+    val properties: Map<String, JsonSchemaElement> = emptyMap(),
     val definitions: Map<String, JsonSchemaElement> = emptyMap()
 ) : JsonSchemaElement {
 
@@ -17,6 +18,7 @@ data class JsonObjectSchema(
         Element.builder().description(description)
             .required(required)
             .additionalProperties(additionalProperties)
+            .addProperties(properties.mapValues { it.value.toSchemaElement() })
             .definitions(definitions.mapValues { it.value.toSchemaElement() })
             .build()
 }

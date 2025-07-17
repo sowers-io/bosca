@@ -10,20 +10,21 @@ import io.bosca.workflow.ActivityContext
 import io.bosca.workflow.FullFailureException
 import kotlinx.serialization.Serializable
 import java.net.URLEncoder
+import kotlin.math.roundToInt
 import kotlin.uuid.ExperimentalUuidApi
 
 @Serializable
 data class Coordinates(
-    val top: Int = 0,
-    val left: Int = 0,
-    val width: Int = 0,
-    val height: Int = 0
+    val top: Float = 0f,
+    val left: Float = 0f,
+    val width: Float = 0f,
+    val height: Float = 0f
 ) {
     val isEmpty: Boolean
-        get() = isZero && top == 0 && left == 0
+        get() = isZero && top.roundToInt() == 0 && left.roundToInt() == 0
 
     val isZero: Boolean
-        get() = width == 0 || height == 0
+        get() = width.roundToInt() == 0 || height.roundToInt() == 0
 }
 
 @Serializable
@@ -34,7 +35,7 @@ data class ImageAttributes(
 @Serializable
 data class ImageSize(
     val name: String,
-    val ratio: Int,
+    val ratio: Float,
     val size: Coordinates? = null
 )
 
@@ -54,9 +55,9 @@ abstract class AbstractImageResizer(client: Client) : Activity(client) {
     ): String {
         val imageProcessorUrl = System.getenv("IMAGE_PROCESSOR_URL") ?: "http://localhost:8003"
         val resized = if (size.size != null && !size.size.isZero) {
-            "$imageProcessorUrl/image?u=$url&f=$format&w=${size.size.width}&h=${size.size.height}&l=${size.size.left}&t=${size.size.top}"
+            "$imageProcessorUrl/image?u=$url&f=$format&w=${size.size.width.roundToInt()}&h=${size.size.height.roundToInt()}&l=${size.size.left.roundToInt()}&t=${size.size.top.roundToInt()}"
         } else {
-            val ratio = size.ratio.toFloat() / 100f
+            val ratio = size.ratio / 100f
             "$imageProcessorUrl/image?u=$url&f=$format&pw=${ratio}&ph=${ratio}"
         }
         val contentType = if (format == "jpeg") "image/jpg" else "image/webp"
