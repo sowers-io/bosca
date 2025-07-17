@@ -951,7 +951,7 @@ impl CollectionsDataStore {
         collection_id: &Uuid,
         attributes: &Option<Value>,
     ) -> Result<(), Error> {
-        let stmt = txn.prepare_cached("insert into collection_items (collection_id, child_collection_id, attributes) values ($1, $2, $3)").await?;
+        let stmt = txn.prepare_cached("insert into collection_items (collection_id, child_collection_id, attributes) values ($1, $2, $3) on conflict(collection_id, child_collection_id) do nothing").await?;
         txn.execute(&stmt, &[id, collection_id, attributes]).await?;
         update_collection_etag(txn, id).await?;
         Ok(())
@@ -985,7 +985,7 @@ impl CollectionsDataStore {
     ) -> Result<(), Error> {
         let stmt = txn
             .prepare_cached(
-                "insert into collection_items (collection_id, child_metadata_id, attributes) values ($1, $2, $3)",
+                "insert into collection_items (collection_id, child_metadata_id, attributes) values ($1, $2, $3) on conflict(collection_id, child_metadata_id) do nothing",
             )
             .await?;
         txn.execute(&stmt, &[id, metadata_id, attributes]).await?;
