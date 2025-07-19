@@ -1192,21 +1192,22 @@ impl GuidesDataStore {
         Ok(())
     }
 
-    #[tracing::instrument(skip(self, ctx, metadata_id, version, template))]
-    pub async fn edit_template(
-        &self,
-        ctx: &BoscaContext,
-        metadata_id: &Uuid,
-        version: i32,
-        template: &GuideTemplateInput,
-    ) -> Result<(), Error> {
-        let mut conn = self.pool.get().await?;
-        let txn = conn.transaction().await?;
-        self.edit_template_txn(&txn, metadata_id, version, template).await?;
-        txn.commit().await?;
-        self.on_metadata_changed(ctx, metadata_id).await?;
-        Ok(())
-    }
+    // TODO: decide if this is needed
+    // #[tracing::instrument(skip(self, ctx, metadata_id, version, template))]
+    // pub async fn edit_template(
+    //     &self,
+    //     ctx: &BoscaContext,
+    //     metadata_id: &Uuid,
+    //     version: i32,
+    //     template: &GuideTemplateInput,
+    // ) -> Result<(), Error> {
+    //     let mut conn = self.pool.get().await?;
+    //     let txn = conn.transaction().await?;
+    //     self.edit_template_txn(&txn, metadata_id, version, template).await?;
+    //     txn.commit().await?;
+    //     self.on_metadata_changed(ctx, metadata_id).await?;
+    //     Ok(())
+    // }
 
     #[tracing::instrument(skip(self, metadata_id, version, default_attributes))]
     pub async fn set_default_attributes(
