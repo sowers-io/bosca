@@ -90,7 +90,7 @@ impl CollectionTemplateMutationObject {
     ) -> Result<Option<MetadataObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         ctx.content
-            .documents
+            .collection_templates
             .add_template_attribute(&self.metadata.id, self.metadata.version, sort, &attribute)
             .await?;
         Ok(Some(MetadataObject::new(self.metadata.clone())))
@@ -103,7 +103,7 @@ impl CollectionTemplateMutationObject {
     ) -> Result<Option<MetadataObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         ctx.content
-            .documents
+            .collection_templates
             .delete_template_attribute(&self.metadata.id, self.metadata.version, &key)
             .await?;
         Ok(Some(MetadataObject::new(self.metadata.clone())))
