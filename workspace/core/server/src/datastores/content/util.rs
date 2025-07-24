@@ -36,9 +36,10 @@ pub fn build_ordering<'a>(
         if attr.path.is_none() && field.is_none() {
             continue;
         }
-        if i > 0 {
+        if i > 0 && !buf.ends_with(", ") {
             buf.push_str(", ");
         }
+        let mut has_ordering = false;
         if let Some(path) = &attr.path {
             if !path.is_empty() {
                 buf.push('(');
@@ -75,22 +76,27 @@ pub fn build_ordering<'a>(
                     AttributeType::Metadata => buf.push_str("uuid"),
                     AttributeType::Collection => buf.push_str("uuid"),
                 }
+                has_ordering = true;
             } else if let Some(field) = field {
                 buf.push_str(table_alias);
                 buf.push('.');
                 buf.push_str(field);
+                has_ordering = true;
             }
         } else if let Some(field) = field {
             buf.push_str(table_alias);
             buf.push('.');
             buf.push_str(field);
+            has_ordering = true;
         }
-        buf.push(' ');
-        buf.push_str(if attr.order == Ascending {
-            "asc"
-        } else {
-            "desc"
-        });
+        if has_ordering {
+            buf.push(' ');
+            buf.push_str(if attr.order == Ascending {
+                "asc"
+            } else {
+                "desc"
+            });
+        }
     }
     if buf == "order by " {
         return ("".to_owned(), index);
