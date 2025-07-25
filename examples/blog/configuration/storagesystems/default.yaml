@@ -27,3 +27,7 @@ configuration:
     - categories.name
     - _content
     - _parents.name
+    - email
+    - displayName
+    - firstName
+    - lastName
