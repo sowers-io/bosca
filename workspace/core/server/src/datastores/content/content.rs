@@ -24,6 +24,7 @@ use async_graphql::Error;
 use bosca_database::TracingPool;
 use std::sync::Arc;
 use uuid::Uuid;
+use crate::datastores::bible_cache::BibleCache;
 
 #[derive(Clone)]
 pub struct ContentDataStore {
@@ -53,6 +54,7 @@ impl ContentDataStore {
         let metadata_cache = MetadataCache::new(cache).await?;
         let guide_cache = GuideCache::new(cache).await?;
         let slug_cache = SlugCache::new(cache).await?;
+        let bible_cache = BibleCache::new(cache).await?;
         Ok(Self {
             slug_cache: slug_cache.clone(),
             categories: CategoriesDataStore::new(pool.clone(), Arc::clone(&notifier)),
@@ -82,7 +84,7 @@ impl ContentDataStore {
             documents: DocumentsDataStore::new(pool.clone(), Arc::clone(&notifier)),
             guides: GuidesDataStore::new(pool.clone(), guide_cache.clone(), Arc::clone(&notifier)),
             sources: SourcesDataStore::new(pool.clone()),
-            bibles: BiblesDataStore::new(pool.clone(), Arc::clone(&notifier)),
+            bibles: BiblesDataStore::new(pool.clone(), Arc::clone(&notifier), bible_cache),
             pool,
         })
     }

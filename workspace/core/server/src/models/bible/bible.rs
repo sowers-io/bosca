@@ -1,11 +1,13 @@
 use crate::models::bible::bible_language::BibleLanguageInput;
 use crate::models::bible::book::BookInput;
 use async_graphql::InputObject;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tokio_postgres::Row;
 use uuid::Uuid;
 use crate::models::bible::components::style::{Style, StyleInput};
 
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Bible {
     pub metadata_id: Uuid,
     pub version: i32,

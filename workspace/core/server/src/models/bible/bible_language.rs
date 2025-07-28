@@ -1,6 +1,8 @@
 use async_graphql::InputObject;
+use serde::{Deserialize, Serialize};
 use tokio_postgres::Row;
 
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct BibleLanguage {
     pub iso: String,
     pub name: String,
