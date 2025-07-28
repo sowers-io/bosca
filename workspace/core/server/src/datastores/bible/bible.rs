@@ -212,10 +212,9 @@ impl BiblesDataStore {
         variant: &str,
         usfm: &String,
     ) -> Result<Option<Book>, Error> {
-        if let Some(books) = self.get_books(metadata_id, version, variant).await? {
-            if let Some(book) = books.iter().find(|b| b.reference.is_usfm(usfm)) {
-                return Ok(Some(book.clone()));
-            }
+        let books = self.get_books(metadata_id, version, variant).await?;
+        if let Some(book) = books.iter().find(|b| b.reference.is_usfm(usfm)) {
+            return Ok(Some(book.clone()));
         }
         Ok(None)
     }
