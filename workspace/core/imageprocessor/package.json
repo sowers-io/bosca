@@ -11,14 +11,14 @@
   },
   "dependencies": {
     "blurhash": "^2.0.5",
-    "fastify": "^4.28.1",
-    "sharp": "^0.33.4"
+    "fastify": "^4.29.1",
+    "sharp": "^0.33.5"
   },
   "devDependencies": {
     "@tsconfig/node18": "^18.2.4",
-    "@types/node": "^20.16.1",
-    "globals": "^15.9.0",
+    "@types/node": "^20.19.9",
+    "globals": "^15.15.0",
     "ts-node": "^10.9.2",
-    "typescript": "^5.5.4"
+    "typescript": "^5.8.3"
   }
 }
