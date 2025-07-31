@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+use std::string::ToString;
 use crate::caching_headers::CachingHeaderManager;
 use crate::context::BoscaContext;
 use crate::graphql::content::bible::BibleObject;
@@ -23,6 +25,7 @@ use chrono::{DateTime, Utc};
 use serde_json::Value;
 use uuid::Uuid;
 use crate::graphql::content::document_collaboration::DocumentCollaborationObject;
+use crate::models::workflow::states::ADVERTISED;
 
 pub struct MetadataObject {
     metadata: Metadata,
@@ -62,6 +65,7 @@ impl MetadataObject {
 
     async fn trait_ids(&self, ctx: &Context<'_>) -> Result<Vec<String>, Error> {
         let ctx = BoscaContext::get(ctx)?;
+        ctx.check_metadata_action_2(&self.metadata, PermissionAction::View).await?;
         ctx.content.metadata.get_trait_ids(&self.metadata.id).await
     }
 
@@ -79,34 +83,49 @@ impl MetadataObject {
         &self.metadata.name
     }
 
-    async fn content(&self) -> MetadataContentObject {
-        MetadataContentObject {
+    async fn content(&self, ctx: &Context<'_>) -> Result<MetadataContentObject, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        ctx.check_metadata_action_2(&self.metadata, PermissionAction::View).await?;
+        Ok(MetadataContentObject {
             metadata: self.metadata.clone(),
-        }
+        })
     }
 
     async fn language_tag(&self) -> &String {
         &self.metadata.language_tag
     }
 
-    async fn labels(&self) -> &Vec<String> {
-        &self.metadata.labels
+    async fn labels(&self, ctx: &Context<'_>) -> Result<Vec<String>, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        ctx.check_metadata_action_2(&self.metadata, PermissionAction::View).await?;
+        Ok(self.metadata.labels.clone())
     }
 
-    async fn attributes(&self, filter: Option<AttributesFilterInput>) -> Option<Value> {
-        let mut value = self.metadata.attributes.clone();
+    async fn attributes(&self, filter: Option<AttributesFilterInput>) -> Result<Option<Value>, Error> {
+        if self.metadata.attributes.is_null() {
+            return Ok(None);
+        }
+        let value = self.metadata.attributes.clone();
+        if self.metadata.workflow_state_id == ADVERTISED {
+            let mut attrs = HashSet::new();
+            attrs.insert("type".to_string());
+            attrs.insert("description".to_string());
+            attrs.insert("published".to_string());
+            let filter = AttributesFilterInput {
+                attributes: attrs,
+                child_attributes: None,
+            };
+            return Ok(Some(filter.filter(&value)));
+        }
         if let Some(filter) = filter {
-            value = filter.filter(&value);
+            return Ok(Some(filter.filter(&value)));
         }
-        if value.is_null() {
-            None
-        } else {
-            Some(value)
-        }
+        Ok(Some(value))
     }
 
     async fn categories(&self, ctx: &Context<'_>) -> Result<Vec<CategoryObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
+        ctx.check_metadata_action_2(&self.metadata, PermissionAction::View).await?;
         Ok(ctx
             .content
             .metadata
@@ -117,14 +136,16 @@ impl MetadataObject {
             .collect())
     }
 
-    async fn item_attributes(&self) -> &Option<Value> {
-        &self.metadata.item_attributes
+    async fn item_attributes(&self, ctx: &Context<'_>) -> Result<&Option<Value>, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        ctx.check_metadata_action_2(&self.metadata, PermissionAction::View).await?;
+        Ok(&self.metadata.item_attributes)
     }
 
     async fn system_attributes(&self, ctx: &Context<'_>) -> Result<&Option<Value>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         match ctx
-            .check_metadata_action(&self.metadata.id, PermissionAction::Manage)
+            .check_metadata_action_2(&self.metadata, PermissionAction::Manage)
             .await
         {
             Ok(_) => Ok(&self.metadata.system_attributes),
@@ -136,32 +157,38 @@ impl MetadataObject {
         &self.metadata.created
     }
 
-    async fn modified(&self) -> &DateTime<Utc> {
-        &self.metadata.modified
+    async fn modified(&self, ctx: &Context<'_>) -> Result<&DateTime<Utc>, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        ctx.check_metadata_action_2(&self.metadata, PermissionAction::View).await?;
+        Ok(&self.metadata.modified)
     }
 
-    async fn uploaded(&self) -> &Option<DateTime<Utc>> {
-        &self.metadata.uploaded
+    async fn uploaded(&self, ctx: &Context<'_>) -> Result<&Option<DateTime<Utc>>, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        ctx.check_metadata_action_2(&self.metadata, PermissionAction::Edit).await?;
+        Ok(&self.metadata.uploaded)
     }
 
-    async fn ready(&self) -> &Option<DateTime<Utc>> {
-        &self.metadata.ready
+    async fn ready(&self, ctx: &Context<'_>) -> Result<&Option<DateTime<Utc>>, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        ctx.check_metadata_action_2(&self.metadata, PermissionAction::View).await?;
+        Ok(&self.metadata.ready)
     }
 
     async fn deleted(&self) -> bool {
         self.metadata.deleted
     }
 
-    async fn workflow(&self) -> MetadataWorkflowObject {
-        MetadataWorkflowObject {
-            metadata: self.metadata.clone(),
-        }
+    async fn workflow(&self, ctx: &Context<'_>) -> Result<MetadataWorkflowObject, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        ctx.check_metadata_action_2(&self.metadata, PermissionAction::Edit).await?;
+        Ok(MetadataWorkflowObject { metadata: self.metadata.clone() })
     }
 
-    async fn source(&self) -> MetadataSourceObject {
-        MetadataSourceObject {
-            metadata: self.metadata.clone(),
-        }
+    async fn source(&self, ctx: &Context<'_>) -> Result<MetadataSourceObject, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        ctx.check_metadata_content_action_2(&self.metadata, PermissionAction::View).await?;
+        Ok(MetadataSourceObject { metadata: self.metadata.clone() })
     }
 
     async fn public(&self) -> bool {
@@ -178,6 +205,7 @@ impl MetadataObject {
 
     async fn permissions(&self, ctx: &Context<'_>) -> Result<Vec<PermissionObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
+        ctx.check_metadata_content_action_2(&self.metadata, PermissionAction::Manage).await?;
         Ok(ctx
             .content
             .metadata_permissions
@@ -190,6 +218,7 @@ impl MetadataObject {
 
     async fn bible(&self, ctx: &Context<'_>, variant: Option<String>) -> Result<Option<BibleObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
+        ctx.check_metadata_content_action_2(&self.metadata, PermissionAction::View).await?;
         let bible = ctx
             .content
             .bibles
@@ -200,6 +229,7 @@ impl MetadataObject {
 
     async fn document(&self, ctx: &Context<'_>) -> Result<Option<DocumentObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
+        ctx.check_metadata_content_action_2(&self.metadata, PermissionAction::View).await?;
         let document = ctx
             .content
             .documents
@@ -210,6 +240,7 @@ impl MetadataObject {
 
     async fn document_collaboration(&self, ctx: &Context<'_>) -> Result<Option<DocumentCollaborationObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
+        ctx.check_metadata_content_action_2(&self.metadata, PermissionAction::Edit).await?;
         let document = ctx
             .content
             .documents
@@ -223,6 +254,7 @@ impl MetadataObject {
         ctx: &Context<'_>,
     ) -> Result<Option<DocumentTemplateObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
+        ctx.check_metadata_content_action_2(&self.metadata, PermissionAction::Edit).await?;
         let document = ctx
             .content
             .documents
@@ -233,6 +265,7 @@ impl MetadataObject {
 
     async fn guide(&self, ctx: &Context<'_>) -> Result<Option<GuideObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
+        ctx.check_metadata_content_action_2(&self.metadata, PermissionAction::View).await?;
         let guide = ctx
             .content
             .guides
@@ -246,6 +279,7 @@ impl MetadataObject {
         ctx: &Context<'_>,
     ) -> Result<Option<GuideTemplateObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
+        ctx.check_metadata_content_action_2(&self.metadata, PermissionAction::Edit).await?;
         let guide = ctx
             .content
             .guides
@@ -259,6 +293,7 @@ impl MetadataObject {
         ctx: &Context<'_>,
     ) -> Result<Option<CollectionTemplateObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
+        ctx.check_metadata_content_action_2(&self.metadata, PermissionAction::Edit).await?;
         let document = ctx
             .content
             .collection_templates
@@ -269,6 +304,7 @@ impl MetadataObject {
 
     async fn profiles(&self, ctx: &Context<'_>) -> Result<Vec<MetadataProfileObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
+        ctx.check_metadata_content_action_2(&self.metadata, PermissionAction::View).await?;
         Ok(ctx
             .content
             .metadata
@@ -317,7 +353,6 @@ impl MetadataObject {
         plan_id: Option<String>,
     ) -> Result<Vec<MetadataSupplementaryObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-
         if let Some(key) = key {
             if ctx
                 .check_metadata_supplementary_action(&self.metadata, PermissionAction::View)
@@ -349,10 +384,8 @@ impl MetadataObject {
                     supplementary,
                 )]);
             }
-
             return Ok(vec![]);
         }
-
         if ctx
             .check_metadata_supplementary_action(&self.metadata, PermissionAction::List)
             .await
@@ -360,7 +393,6 @@ impl MetadataObject {
         {
             return Ok(vec![]);
         }
-
         Ok(ctx
             .content
             .metadata_supplementary

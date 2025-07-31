@@ -193,6 +193,23 @@ impl BoscaContext {
         }
     }
 
+    #[tracing::instrument(skip(self, metadata, action))]
+    pub async fn check_metadata_content_action_2(
+        &self,
+        metadata: &Metadata,
+        action: PermissionAction,
+    ) -> Result<(), Error> {
+        if !self
+            .content
+            .metadata_permissions
+            .has_metadata_content_permission(&metadata, &self.principal, &self.principal_groups, action)
+            .await?
+        {
+            self.check_principal_groups(&self.principal_groups).await?;
+        }
+        Ok(())
+    }
+
     #[tracing::instrument(skip(self, principal, id, action))]
     pub async fn check_metadata_content_action_principal(
         &self,
@@ -349,6 +366,23 @@ impl BoscaContext {
             }
             None => Err(Error::new(format!("metadata not found: {id}"))),
         }
+    }
+
+    #[tracing::instrument(skip(self, metadata, action))]
+    pub async fn check_metadata_action_2(
+        &self,
+        metadata: &Metadata,
+        action: PermissionAction,
+    ) -> Result<(), Error> {
+        if !self
+            .content
+            .metadata_permissions
+            .has(&metadata, &self.principal, &self.principal_groups, action)
+            .await?
+        {
+            self.check_principal_groups(&self.principal_groups).await?;
+        }
+        Ok(())
     }
 
     #[tracing::instrument(skip(self, id, version, action))]

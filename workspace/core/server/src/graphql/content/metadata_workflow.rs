@@ -4,6 +4,7 @@ use crate::models::content::metadata::Metadata;
 use crate::models::workflow::execution_plan::WorkflowExecutionId;
 use async_graphql::{Context, Error, Object};
 use chrono::{DateTime, Utc};
+use crate::models::security::permission::PermissionAction;
 
 pub struct MetadataWorkflowObject {
     pub metadata: Metadata,
@@ -29,12 +30,14 @@ impl MetadataWorkflowObject {
 
     async fn running(&self, ctx: &Context<'_>) -> Result<i64, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
+        ctx.check_metadata_action(&self.metadata.id, PermissionAction::Edit).await?;
         let running = ctx.workflow.get_metadata_count(&self.metadata.id).await?;
         Ok(running)
     }
 
     async fn plans(&self, ctx: &Context<'_>) -> Result<Vec<WorkflowExecutionPlanObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
+        ctx.check_metadata_action(&self.metadata.id, PermissionAction::Edit).await?;
         let plans_ids = ctx
             .content
             .metadata_workflows

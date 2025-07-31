@@ -9,6 +9,7 @@ use uuid::Uuid;
 use bosca_database::TracingPool;
 use crate::context::BoscaContext;
 use crate::datastores::collection_cache::CollectionCache;
+use crate::models::workflow::states::PUBLISHED;
 
 #[derive(Clone)]
 pub struct CollectionPermissionsDataStore {
@@ -43,13 +44,13 @@ impl CollectionPermissionsDataStore {
         }
         if action == PermissionAction::View
             && collection.public
-            && collection.workflow_state_id == "published"
+            && collection.workflow_state_id == PUBLISHED
         {
             return Ok(true);
         }
         if action == PermissionAction::List
             && collection.public_list
-            && collection.workflow_state_id == "published"
+            && collection.workflow_state_id == PUBLISHED
         {
             return Ok(true);
         }
@@ -71,13 +72,13 @@ impl CollectionPermissionsDataStore {
         }
         if action == PermissionAction::View
             && collection.public
-            && collection.workflow_state_id == "published"
+            && collection.workflow_state_id == PUBLISHED
         {
             return Ok(true);
         }
         if action == PermissionAction::List
             && collection.public_list
-            && collection.workflow_state_id == "published"
+            && collection.workflow_state_id == PUBLISHED
         {
             return Ok(true);
         }
@@ -191,7 +192,7 @@ impl CollectionPermissionsDataStore {
         }
         if (action == PermissionAction::List || action == PermissionAction::View)
             && collection.public_supplementary
-            && collection.workflow_state_id == "published"
+            && collection.workflow_state_id == PUBLISHED
             && !collection.deleted
         {
             return Ok(true);

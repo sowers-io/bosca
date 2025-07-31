@@ -345,13 +345,13 @@ class Workflows(network: NetworkClient) : Api(network) {
     ) {
         val response = network.graphql.mutation(
             BeginMetadataTransitionMutation(
-                id,
-                version,
-                state,
-                stateValid.toOptional(),
-                status,
-                restart,
-                waitForCompletion
+                id = id,
+                version = version,
+                state = state,
+                stateValid = stateValid.toOptional(),
+                status = status,
+                restart = restart,
+                waitForCompletion = waitForCompletion
             )
         ).execute()
         response.validate()

@@ -12,9 +12,13 @@ pub enum WorkflowStateType {
     Pending,
     Approval,
     Approved,
+    Advertised,
     Published,
     Failure,
 }
+
+pub const PUBLISHED: &str = "published";
+pub const ADVERTISED: &str = "advertised";
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct WorkflowState {
@@ -70,6 +74,7 @@ impl<'a> FromSql<'a> for WorkflowStateType {
             "pending" => Ok(WorkflowStateType::Pending),
             "approval" => Ok(WorkflowStateType::Approval),
             "approved" => Ok(WorkflowStateType::Approved),
+            "advertised" => Ok(WorkflowStateType::Advertised),
             "published" => Ok(WorkflowStateType::Published),
             "failure" => Ok(WorkflowStateType::Failure),
             _ => Ok(WorkflowStateType::Draft),
@@ -93,6 +98,7 @@ impl ToSql for WorkflowStateType {
             WorkflowStateType::Pending => w.put_slice("pending".as_ref()),
             WorkflowStateType::Approval => w.put_slice("approval".as_ref()),
             WorkflowStateType::Approved => w.put_slice("approved".as_ref()),
+            WorkflowStateType::Advertised => w.put_slice("advertised".as_ref()),
             WorkflowStateType::Published => w.put_slice("published".as_ref()),
             WorkflowStateType::Failure => w.put_slice("failure".as_ref()),
         }

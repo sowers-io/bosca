@@ -5,6 +5,7 @@ use async_graphql::Error;
 use log::info;
 use serde_json::Value;
 use uuid::Uuid;
+use crate::models::workflow::states::PUBLISHED;
 
 pub async fn initialize_content(ctx: &BoscaContext) -> Result<(), Error> {
     info!("Initialize Content");
@@ -51,7 +52,7 @@ async fn initialize_collection(
             ctx,
             &principal,
             &collection,
-            "published",
+            PUBLISHED,
             None,
             "initializing collections",
             true,
