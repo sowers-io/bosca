@@ -182,7 +182,7 @@ impl BoscaContext {
                 if !self
                     .content
                     .metadata_permissions
-                    .has(&metadata, principal, groups, action)
+                    .has(&metadata, principal, groups, action, true)
                     .await?
                 {
                     self.check_principal_groups(groups).await?;
@@ -357,7 +357,7 @@ impl BoscaContext {
                 if !self
                     .content
                     .metadata_permissions
-                    .has(&metadata, &self.principal, &self.principal_groups, action)
+                    .has(&metadata, &self.principal, &self.principal_groups, action, true)
                     .await?
                 {
                     self.check_principal_groups(&self.principal_groups).await?;
@@ -373,11 +373,12 @@ impl BoscaContext {
         &self,
         metadata: &Metadata,
         action: PermissionAction,
+        enable_advertised: bool
     ) -> Result<(), Error> {
         if !self
             .content
             .metadata_permissions
-            .has(&metadata, &self.principal, &self.principal_groups, action)
+            .has(&metadata, &self.principal, &self.principal_groups, action, enable_advertised)
             .await?
         {
             self.check_principal_groups(&self.principal_groups).await?;

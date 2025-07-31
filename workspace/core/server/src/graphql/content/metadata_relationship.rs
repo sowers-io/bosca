@@ -23,7 +23,7 @@ impl MetadataRelationshipObject {
     async fn metadata(&self, ctx: &Context<'_>) -> Result<MetadataObject, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let metadata = ctx.check_metadata_action(&self.relationship.id2, PermissionAction::View).await?;
-        ctx.check_metadata_action_2(&metadata, PermissionAction::View).await?;
+        ctx.check_metadata_action_2(&metadata, PermissionAction::View, true).await?;
         Ok(MetadataObject::new(metadata))
     }
     async fn relationship(&self) -> &String {

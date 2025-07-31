@@ -8,7 +8,7 @@ use async_graphql::*;
 use bosca_database::TracingPool;
 use deadpool_postgres::{GenericClient, Transaction};
 use uuid::Uuid;
-use crate::models::workflow::states::PUBLISHED;
+use crate::models::workflow::states::{ADVERTISED, PUBLISHED};
 
 #[derive(Clone)]
 pub struct MetadataPermissionsDataStore {
@@ -47,13 +47,14 @@ impl MetadataPermissionsDataStore {
         principal: &Principal,
         groups: &Vec<Uuid>,
         action: PermissionAction,
+        enable_advertised: bool
     ) -> Result<bool, Error> {
         if metadata.deleted {
             return Ok(false);
         }
         if action == PermissionAction::View
             && metadata.public
-            && metadata.workflow_state_id == PUBLISHED
+            && (metadata.workflow_state_id == PUBLISHED || (enable_advertised && metadata.workflow_state_id == ADVERTISED))
             && !metadata.deleted
         {
             return Ok(true);
