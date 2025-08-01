@@ -781,13 +781,13 @@ impl MetadataMutationObject {
         }
         let id2 = Uuid::parse_str(relationship.id2.as_str())?;
         let check = PermissionCheck::new_with_metadata_id(id2, PermissionAction::Edit);
-        ctx.metadata_permission_check(check).await?;
+        let metadata = ctx.metadata_permission_check(check).await?;
         ctx.content
             .metadata
             .add_relationship(ctx, &relationship)
             .await?;
         match ctx.content.metadata.get_relationship(&id1, &id2).await? {
-            Some(relationship) => Ok(relationship.into()),
+            Some(relationship) => Ok(MetadataRelationshipObject::new(relationship, metadata)),
             None => Err(Error::new("error creating relationship")),
         }
     }

@@ -394,17 +394,25 @@ impl MetadataObject {
                 .get_relationships(&self.metadata.id)
                 .await?
         };
-        Ok(relationships
-            .into_iter()
-            .filter(|r| {
-                if let Some(filter) = &filter {
-                    filter.contains(&r.relationship)
-                } else {
-                    true
-                }
-            })
-            .map(|s| s.into())
-            .collect())
+        let mut rels = Vec::new();
+        for r in relationships {
+            let include = if let Some(filter) = &filter {
+                filter.contains(&r.relationship)
+            } else {
+                true
+            };
+            if !include {
+                continue;
+            }
+            let check = PermissionCheck::new_with_metadata_id_advertised(
+                r.id2,
+                PermissionAction::View,
+            );
+            if let Ok(metadata) = ctx.metadata_permission_check(check).await {
+                rels.push(MetadataRelationshipObject::new(r, metadata));
+            }
+        }
+        Ok(rels)
     }
 
     async fn supplementary(
