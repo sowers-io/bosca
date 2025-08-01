@@ -89,7 +89,9 @@ impl MetadataObject {
     }
 
     async fn content(&self) -> MetadataContentObject {
-        MetadataContentObject { metadata: self.metadata.clone() }
+        MetadataContentObject {
+            metadata: self.metadata.clone(),
+        }
     }
 
     async fn language_tag(&self) -> &String {
@@ -100,8 +102,11 @@ impl MetadataObject {
         let ctx = ctx.data::<BoscaContext>()?;
         let check =
             PermissionCheck::new_with_metadata(self.metadata.clone(), PermissionAction::View);
-        ctx.metadata_permission_check(check).await?;
-        Ok(self.metadata.labels.clone())
+        if ctx.metadata_permission_check(check).await.is_ok() {
+            Ok(self.metadata.labels.clone())
+        } else {
+            Ok(vec![])
+        }
     }
 
     async fn attributes(
@@ -133,32 +138,39 @@ impl MetadataObject {
         let ctx = ctx.data::<BoscaContext>()?;
         let check =
             PermissionCheck::new_with_metadata(self.metadata.clone(), PermissionAction::View);
-        ctx.metadata_permission_check(check).await?;
-        Ok(ctx
-            .content
-            .metadata
-            .get_categories(&self.metadata.id)
-            .await?
-            .into_iter()
-            .map(CategoryObject::new)
-            .collect())
+        if ctx.metadata_permission_check(check).await.is_ok() {
+            Ok(ctx
+                .content
+                .metadata
+                .get_categories(&self.metadata.id)
+                .await?
+                .into_iter()
+                .map(CategoryObject::new)
+                .collect())
+        } else {
+            Ok(vec![])
+        }
     }
 
     async fn item_attributes(&self, ctx: &Context<'_>) -> Result<&Option<Value>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let check =
             PermissionCheck::new_with_metadata(self.metadata.clone(), PermissionAction::View);
-        ctx.metadata_permission_check(check).await?;
-        Ok(&self.metadata.item_attributes)
+        if ctx.metadata_permission_check(check).await.is_ok() {
+            Ok(&self.metadata.item_attributes)
+        } else {
+            Ok(&None)
+        }
     }
 
     async fn system_attributes(&self, ctx: &Context<'_>) -> Result<&Option<Value>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let check =
             PermissionCheck::new_with_metadata(self.metadata.clone(), PermissionAction::Manage);
-        match ctx.metadata_permission_check(check).await {
-            Ok(_) => Ok(&self.metadata.system_attributes),
-            Err(_) => Ok(&None),
+        if ctx.metadata_permission_check(check).await.is_ok() {
+            Ok(&self.metadata.system_attributes)
+        } else {
+            Ok(&None)
         }
     }
 
@@ -166,54 +178,69 @@ impl MetadataObject {
         &self.metadata.created
     }
 
-    async fn modified(&self, ctx: &Context<'_>) -> Result<&DateTime<Utc>, Error> {
+    async fn modified(&self, ctx: &Context<'_>) -> Result<Option<&DateTime<Utc>>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let check =
             PermissionCheck::new_with_metadata(self.metadata.clone(), PermissionAction::View);
-        ctx.metadata_permission_check(check).await?;
-        Ok(&self.metadata.modified)
+        if ctx.metadata_permission_check(check).await.is_ok() {
+            Ok(Some(&self.metadata.modified))
+        } else {
+            Ok(None)
+        }
     }
 
     async fn uploaded(&self, ctx: &Context<'_>) -> Result<&Option<DateTime<Utc>>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let check =
             PermissionCheck::new_with_metadata(self.metadata.clone(), PermissionAction::Edit);
-        ctx.metadata_permission_check(check).await?;
-        Ok(&self.metadata.uploaded)
+        if ctx.metadata_permission_check(check).await.is_ok() {
+            Ok(&self.metadata.uploaded)
+        } else {
+            Ok(&None)
+        }
     }
 
     async fn ready(&self, ctx: &Context<'_>) -> Result<&Option<DateTime<Utc>>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let check =
             PermissionCheck::new_with_metadata(self.metadata.clone(), PermissionAction::View);
-        ctx.metadata_permission_check(check).await?;
-        Ok(&self.metadata.ready)
+        if ctx.metadata_permission_check(check).await.is_ok() {
+            Ok(&self.metadata.ready)
+        } else {
+            Ok(&None)
+        }
     }
 
     async fn deleted(&self) -> bool {
         self.metadata.deleted
     }
 
-    async fn workflow(&self, ctx: &Context<'_>) -> Result<MetadataWorkflowObject, Error> {
+    async fn workflow(&self, ctx: &Context<'_>) -> Result<Option<MetadataWorkflowObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let check =
             PermissionCheck::new_with_metadata(self.metadata.clone(), PermissionAction::Edit);
-        ctx.metadata_permission_check(check).await?;
-        Ok(MetadataWorkflowObject {
-            metadata: self.metadata.clone(),
-        })
+        if ctx.metadata_permission_check(check).await.is_ok() {
+            Ok(Some(MetadataWorkflowObject {
+                metadata: self.metadata.clone(),
+            }))
+        } else {
+            Ok(None)
+        }
     }
 
-    async fn source(&self, ctx: &Context<'_>) -> Result<MetadataSourceObject, Error> {
+    async fn source(&self, ctx: &Context<'_>) -> Result<Option<MetadataSourceObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let check = PermissionCheck::new_with_metadata_content(
             self.metadata.clone(),
             PermissionAction::View,
         );
-        ctx.metadata_permission_check(check).await?;
-        Ok(MetadataSourceObject {
-            metadata: self.metadata.clone(),
-        })
+        if ctx.metadata_permission_check(check).await.is_ok() {
+            Ok(Some(MetadataSourceObject {
+                metadata: self.metadata.clone(),
+            }))
+        } else {
+            Ok(None)
+        }
     }
 
     async fn public(&self) -> bool {
@@ -232,15 +259,18 @@ impl MetadataObject {
         let ctx = ctx.data::<BoscaContext>()?;
         let check =
             PermissionCheck::new_with_metadata(self.metadata.clone(), PermissionAction::Manage);
-        ctx.metadata_permission_check(check).await?;
-        Ok(ctx
-            .content
-            .metadata_permissions
-            .get_metadata_permissions(&self.metadata.id)
-            .await?
-            .into_iter()
-            .map(Permission::into)
-            .collect())
+        if ctx.metadata_permission_check(check).await.is_ok() {
+            Ok(ctx
+                .content
+                .metadata_permissions
+                .get_metadata_permissions(&self.metadata.id)
+                .await?
+                .into_iter()
+                .map(Permission::into)
+                .collect())
+        } else {
+            Ok(vec![])
+        }
     }
 
     async fn bible(
@@ -253,13 +283,16 @@ impl MetadataObject {
             self.metadata.clone(),
             PermissionAction::View,
         );
-        ctx.metadata_permission_check(check).await?;
-        let bible = ctx
-            .content
-            .bibles
-            .get_bible(&self.metadata.id, self.metadata.version, variant)
-            .await?;
-        Ok(bible.map(BibleObject::new))
+        if ctx.metadata_permission_check(check).await.is_ok() {
+            let bible = ctx
+                .content
+                .bibles
+                .get_bible(&self.metadata.id, self.metadata.version, variant)
+                .await?;
+            Ok(bible.map(BibleObject::new))
+        } else {
+            Ok(None)
+        }
     }
 
     async fn document(&self, ctx: &Context<'_>) -> Result<Option<DocumentObject>, Error> {
@@ -268,13 +301,16 @@ impl MetadataObject {
             self.metadata.clone(),
             PermissionAction::View,
         );
-        ctx.metadata_permission_check(check).await?;
-        let document = ctx
-            .content
-            .documents
-            .get_document(&self.metadata.id, self.metadata.version)
-            .await?;
-        Ok(document.map(DocumentObject::new))
+        if ctx.metadata_permission_check(check).await.is_ok() {
+            let document = ctx
+                .content
+                .documents
+                .get_document(&self.metadata.id, self.metadata.version)
+                .await?;
+            Ok(document.map(DocumentObject::new))
+        } else {
+            Ok(None)
+        }
     }
 
     async fn document_collaboration(
@@ -315,13 +351,16 @@ impl MetadataObject {
             self.metadata.clone(),
             PermissionAction::View,
         );
-        ctx.metadata_permission_check(check).await?;
-        let guide = ctx
-            .content
-            .guides
-            .get_guide(&self.metadata.id, self.metadata.version)
-            .await?;
-        Ok(guide.map(GuideObject::new))
+        if ctx.metadata_permission_check(check).await.is_ok() {
+            let guide = ctx
+                .content
+                .guides
+                .get_guide(&self.metadata.id, self.metadata.version)
+                .await?;
+            Ok(guide.map(GuideObject::new))
+        } else {
+            Ok(None)
+        }
     }
 
     async fn guide_template(
@@ -399,10 +438,8 @@ impl MetadataObject {
             if !include {
                 continue;
             }
-            let check = PermissionCheck::new_with_metadata_id_advertised(
-                r.id2,
-                PermissionAction::View,
-            );
+            let check =
+                PermissionCheck::new_with_metadata_id_advertised(r.id2, PermissionAction::View);
             if let Ok(metadata) = ctx.metadata_permission_check(check).await {
                 rels.push(MetadataRelationshipObject::new(r, metadata));
             }
