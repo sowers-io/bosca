@@ -19,6 +19,7 @@ pub enum WorkflowStateType {
 
 pub const PUBLISHED: &str = "published";
 pub const ADVERTISED: &str = "advertised";
+pub const PENDING: &str = "pending";
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct WorkflowState {

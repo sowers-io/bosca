@@ -1,3 +1,4 @@
+use crate::context::{BoscaContext, PermissionCheck};
 use crate::graphql::content::metadata::MetadataObject;
 use crate::graphql::workflows::workflow::WorkflowObject;
 use crate::graphql::workflows::workflow_execution_id::WorkflowExecutionIdObject;
@@ -8,7 +9,6 @@ use crate::models::workflow::execution_plan::WorkflowExecutionPlan;
 use async_graphql::{Context, Error, Object};
 use chrono::{DateTime, Utc};
 use serde_json::Value;
-use crate::context::BoscaContext;
 
 pub struct WorkflowExecutionPlanObject {
     plan: WorkflowExecutionPlan,
@@ -48,7 +48,9 @@ impl WorkflowExecutionPlanObject {
         }
         let ctx = ctx.data::<BoscaContext>()?;
         let metadata_id = self.plan.metadata_id.as_ref().unwrap();
-        let metadata = ctx.check_metadata_action(metadata_id, PermissionAction::View).await?;
+        let check =
+            PermissionCheck::new_with_metadata_id(metadata_id.clone(), PermissionAction::View);
+        let metadata = ctx.metadata_permission_check(check).await?;
         Ok(Some(MetadataObject::from(metadata)))
     }
     async fn metadata_version(&self) -> Option<i32> {

@@ -1,4 +1,4 @@
-use crate::context::BoscaContext;
+use crate::context::{BoscaContext, PermissionCheck};
 use crate::graphql::content::guide_step::GuideStepObject;
 use crate::graphql::content::metadata::MetadataObject;
 use crate::models::content::guide::Guide;
@@ -41,9 +41,12 @@ impl GuideObject {
         let ctx = ctx.data::<BoscaContext>()?;
         if let Some(id) = &self.guide.template_metadata_id {
             if let Some(version) = &self.guide.template_metadata_version {
-                let metadata = ctx
-                    .check_metadata_version_action(id, *version, PermissionAction::View)
-                    .await?;
+                let check = PermissionCheck::new_with_metadata_id_with_version(
+                    id.clone(),
+                    *version,
+                    PermissionAction::View,
+                );
+                let metadata = ctx.metadata_permission_check(check).await?;
                 return Ok(Some(MetadataObject::new(metadata)));
             }
         }
@@ -137,7 +140,11 @@ impl GuideObject {
         self.get_size(ctx).await
     }
 
-    pub async fn step_by_offset(&self, ctx: &Context<'_>, offset: i64) -> Result<Option<GuideStepObject>, Error> {
+    pub async fn step_by_offset(
+        &self,
+        ctx: &Context<'_>,
+        offset: i64,
+    ) -> Result<Option<GuideStepObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let steps = get_steps(ctx, &self.guide, Some(offset), Some(1)).await?;
         Ok(steps.into_iter().next())
@@ -154,7 +161,12 @@ impl GuideObject {
     }
 }
 
-async fn get_steps(ctx: &BoscaContext, guide: &Guide, offset: Option<i64>, limit: Option<i64>) -> Result<Vec<GuideStepObject>, Error> {
+async fn get_steps(
+    ctx: &BoscaContext,
+    guide: &Guide,
+    offset: Option<i64>,
+    limit: Option<i64>,
+) -> Result<Vec<GuideStepObject>, Error> {
     let steps = ctx
         .content
         .guides

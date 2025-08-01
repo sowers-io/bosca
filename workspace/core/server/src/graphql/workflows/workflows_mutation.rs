@@ -1,4 +1,4 @@
-use crate::context::BoscaContext;
+use crate::context::{BoscaContext, PermissionCheck};
 use crate::datastores::security::WORKFLOW_MANAGERS_GROUP;
 use crate::graphql::content::metadata_mutation::WorkflowConfigurationInput;
 use crate::graphql::workflows::activities_mutation::ActivitiesMutationObject;
@@ -14,7 +14,10 @@ use crate::graphql::workflows::workflow_schedules_mutation::WorkflowSchedulesMut
 use crate::models::content::find_query::FindQueryInput;
 use crate::models::security::permission::PermissionAction;
 use crate::models::workflow::enqueue_request::EnqueueRequest;
-use crate::models::workflow::execution_plan::{WorkflowExecutionIdInput, WorkflowJobId, WorkflowJobIdInput};
+use crate::models::workflow::execution_plan::{
+    WorkflowExecutionIdInput, WorkflowJobId, WorkflowJobIdInput,
+};
+use crate::models::workflow::states::PENDING;
 use crate::models::workflow::transitions::BeginTransitionInput;
 use crate::models::workflow::workflows::WorkflowInput;
 use crate::security::util::check_has_group;
@@ -123,16 +126,21 @@ impl WorkflowsMutationObject {
         Ok(true)
     }
 
-    async fn retry_jobs(&self, ctx: &Context<'_>, id: Vec<WorkflowJobIdInput>) -> Result<bool, Error> {
+    async fn retry_jobs(
+        &self,
+        ctx: &Context<'_>,
+        id: Vec<WorkflowJobIdInput>,
+    ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         ctx.check_has_service_account().await?;
-        let ids = id.iter().map(
-            |id| WorkflowJobId {
+        let ids = id
+            .iter()
+            .map(|id| WorkflowJobId {
                 queue: id.queue.clone(),
                 id: Uuid::parse_str(&id.id).expect("invalid id"),
                 index: id.index,
-            }
-        ).collect();
+            })
+            .collect();
         ctx.workflow.retry_jobs(ids).await?;
         Ok(true)
     }
@@ -159,10 +167,13 @@ impl WorkflowsMutationObject {
         if let Some(metadata_id) = &metadata_id {
             let id = Uuid::parse_str(metadata_id.as_str())?;
             if let Some(version) = metadata_version {
-                let metadata = ctx
-                    .check_metadata_version_action(&id, version, PermissionAction::Edit)
-                    .await?;
-                if metadata.workflow_state_id == "pending" {
+                let check = PermissionCheck::new_with_metadata_id_with_version(
+                    id,
+                    version,
+                    PermissionAction::Edit,
+                );
+                let metadata = ctx.metadata_permission_check(check).await?;
+                if metadata.workflow_state_id == PENDING {
                     ctx.content
                         .metadata_workflows
                         .set_metadata_not_ready(ctx, &metadata.id)
@@ -193,9 +204,8 @@ impl WorkflowsMutationObject {
             }
         } else if let Some(collection_id) = &collection_id {
             let id = Uuid::parse_str(collection_id.as_str())?;
-            let collection = ctx
-                .check_collection_action(&id, PermissionAction::Manage)
-                .await?;
+            let check = PermissionCheck::new_with_collection_id(id, PermissionAction::Manage);
+            let collection = ctx.collection_permission_check(check).await?;
             ctx.workflow
                 .cancel_workflows(
                     &None,
@@ -342,12 +352,16 @@ impl WorkflowsMutationObject {
         let collection_id = collection_id.map(|id| Uuid::parse_str(&id).unwrap());
         let profile_id = profile_id.map(|id| Uuid::parse_str(&id).unwrap());
         if let Some(metadata_id) = &metadata_id {
-            ctx.check_metadata_action(metadata_id, PermissionAction::Edit)
-                .await?;
+            let check =
+                PermissionCheck::new_with_metadata_id(metadata_id.clone(), PermissionAction::Edit);
+            ctx.metadata_permission_check(check).await?;
         }
         if let Some(collection_id) = &collection_id {
-            ctx.check_collection_action(collection_id, PermissionAction::Edit)
-                .await?;
+            let check = PermissionCheck::new_with_collection_id(
+                collection_id.clone(),
+                PermissionAction::Edit,
+            );
+            ctx.collection_permission_check(check).await?;
         }
         if profile_id.is_some() {
             ctx.check_has_service_account().await?;

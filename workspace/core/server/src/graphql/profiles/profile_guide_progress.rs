@@ -1,4 +1,4 @@
-use crate::context::BoscaContext;
+use crate::context::{BoscaContext, PermissionCheck};
 use crate::graphql::content::metadata::MetadataObject;
 use crate::models::content::guide_progress::GuideProgress;
 use crate::models::security::permission::PermissionAction;
@@ -21,13 +21,22 @@ impl ProfileGuideProgressObject {
 impl ProfileGuideProgressObject {
     async fn metadata(&self, ctx: &Context<'_>) -> Result<MetadataObject, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        let metadata = ctx.check_metadata_version_action(&self.progress.metadata_id, self.progress.version, PermissionAction::View).await?;
+        let check = PermissionCheck::new_with_metadata_id_with_version(
+            self.progress.metadata_id,
+            self.progress.version,
+            PermissionAction::View,
+        );
+        let metadata = ctx.metadata_permission_check(check).await?;
         Ok(MetadataObject::new(metadata))
     }
 
     async fn percentage(&self, ctx: &Context<'_>) -> Result<f64, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        let count = ctx.content.guides.get_guide_step_count(&self.progress.metadata_id, self.progress.version).await?;
+        let count = ctx
+            .content
+            .guides
+            .get_guide_step_count(&self.progress.metadata_id, self.progress.version)
+            .await?;
         if count == 0 {
             return Ok(0.0);
         }
@@ -53,7 +62,11 @@ impl ProfileGuideProgressObject {
 
     async fn next_step_id(&self, ctx: &Context<'_>) -> Result<Option<i64>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        let all_step_ids = ctx.content.guides.get_guide_step_ids(&self.progress.metadata_id, self.progress.version).await?;
+        let all_step_ids = ctx
+            .content
+            .guides
+            .get_guide_step_ids(&self.progress.metadata_id, self.progress.version)
+            .await?;
         let mut completions = HashMap::new();
         for id in &self.progress.completed_step_ids {
             completions.insert(id, true);

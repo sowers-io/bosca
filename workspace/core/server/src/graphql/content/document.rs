@@ -1,9 +1,9 @@
+use crate::context::{BoscaContext, PermissionCheck};
+use crate::graphql::content::metadata::MetadataObject;
 use crate::models::content::document::Document;
+use crate::models::security::permission::PermissionAction;
 use async_graphql::{Context, Error, Object};
 use serde_json::Value;
-use crate::context::BoscaContext;
-use crate::graphql::content::metadata::MetadataObject;
-use crate::models::security::permission::PermissionAction;
 
 pub struct DocumentObject {
     pub document: Document,
@@ -21,12 +21,12 @@ impl DocumentObject {
         let ctx = ctx.data::<BoscaContext>()?;
         if let Some(id) = &self.document.template_metadata_id {
             if let Some(version) = &self.document.template_metadata_version {
-                let metadata = ctx.check_metadata_version_action(
-                    id,
+                let check = PermissionCheck::new_with_metadata_id_with_version(
+                    id.clone(),
                     *version,
                     PermissionAction::View,
-                )
-                .await?;
+                );
+                let metadata = ctx.metadata_permission_check(check).await?;
                 return Ok(Some(MetadataObject::new(metadata)));
             }
         }

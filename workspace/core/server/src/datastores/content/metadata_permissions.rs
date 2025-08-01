@@ -116,24 +116,6 @@ impl MetadataPermissionsDataStore {
         Ok(eval.evaluate(principal, groups, &action))
     }
 
-    #[tracing::instrument(skip(self, metadata, principal, action))]
-    pub async fn has_metadata_version_permission(
-        &self,
-        metadata: &Metadata,
-        principal: &Principal,
-        groups: &Vec<Uuid>,
-        action: PermissionAction,
-    ) -> Result<bool, Error> {
-        if metadata.deleted {
-            return Ok(false);
-        }
-        let eval = Evaluator::new(
-            metadata.id,
-            self.get_metadata_permissions(&metadata.id).await?,
-        );
-        Ok(eval.evaluate(principal, groups, &action))
-    }
-
     #[tracing::instrument(skip(self, ctx, permission))]
     pub async fn add_metadata_permission(
         &self,

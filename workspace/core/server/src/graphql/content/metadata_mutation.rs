@@ -1,4 +1,4 @@
-use crate::context::BoscaContext;
+use crate::context::{BoscaContext, PermissionCheck};
 use crate::graphql::content::guide_step::GuideStepObject;
 use crate::graphql::content::guide_step_module::GuideStepModuleObject;
 use crate::graphql::content::guide_template_mutation::GuideTemplateMutationObject;
@@ -48,10 +48,11 @@ impl MetadataMutationObject {
             Some(id) => Uuid::parse_str(id),
             None => Uuid::parse_str("00000000-0000-0000-0000-000000000000"),
         }?;
-        let collection = ctx.check_collection_action(&parent_collection_id, PermissionAction::Edit)
-            .await?;
+        let check =
+            PermissionCheck::new_with_collection_id(parent_collection_id, PermissionAction::Edit);
+        let collection = ctx.collection_permission_check(check).await?;
         if collection.items_locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         let (metadata_id, version, active_version) = ctx
             .content
@@ -70,21 +71,37 @@ impl MetadataMutationObject {
         Ok(new_metadata.into())
     }
 
-    async fn template(&self, ctx: &Context<'_>, metadata_id: String, metadata_version: i32) -> Result<MetadataTemplateMutationObject, Error> {
+    async fn template(
+        &self,
+        ctx: &Context<'_>,
+        metadata_id: String,
+        metadata_version: i32,
+    ) -> Result<MetadataTemplateMutationObject, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::parse_str(&metadata_id)?;
-        let metadata = ctx
-            .check_metadata_version_action(&id, metadata_version, PermissionAction::Edit)
-            .await?;
+        let check = PermissionCheck::new_with_metadata_id_with_version(
+            id,
+            metadata_version,
+            PermissionAction::Edit,
+        );
+        let metadata = ctx.metadata_permission_check(check).await?;
         Ok(MetadataTemplateMutationObject::new(metadata))
     }
 
-    async fn guide_template(&self, ctx: &Context<'_>, metadata_id: String, metadata_version: i32) -> Result<GuideTemplateMutationObject, Error> {
+    async fn guide_template(
+        &self,
+        ctx: &Context<'_>,
+        metadata_id: String,
+        metadata_version: i32,
+    ) -> Result<GuideTemplateMutationObject, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::parse_str(&metadata_id)?;
-        let metadata = ctx
-            .check_metadata_version_action(&id, metadata_version, PermissionAction::Edit)
-            .await?;
+        let check = PermissionCheck::new_with_metadata_id_with_version(
+            id,
+            metadata_version,
+            PermissionAction::Edit,
+        );
+        let metadata = ctx.metadata_permission_check(check).await?;
         Ok(GuideTemplateMutationObject::new(metadata))
     }
 
@@ -97,10 +114,11 @@ impl MetadataMutationObject {
     ) -> Result<Option<MetadataObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let parent_collection_id = Uuid::parse_str(parent_collection_id.as_str())?;
-        let collection = ctx.check_collection_action(&parent_collection_id, PermissionAction::Edit)
-            .await?;
+        let check =
+            PermissionCheck::new_with_collection_id(parent_collection_id, PermissionAction::Edit);
+        let collection = ctx.collection_permission_check(check).await?;
         if collection.items_locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         let template_id = Uuid::parse_str(template_id.as_str())?;
         let permissions = ctx
@@ -134,10 +152,11 @@ impl MetadataMutationObject {
     ) -> Result<Option<MetadataObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let parent_collection_id = Uuid::parse_str(&parent_collection_id)?;
-        let collection = ctx.check_collection_action(&parent_collection_id, PermissionAction::Edit)
-            .await?;
+        let check =
+            PermissionCheck::new_with_collection_id(parent_collection_id, PermissionAction::Edit);
+        let collection = ctx.collection_permission_check(check).await?;
         if collection.items_locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         let permissions = ctx
             .content
@@ -169,11 +188,14 @@ impl MetadataMutationObject {
     ) -> Result<Option<MetadataObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let metadata_id = Uuid::parse_str(&metadata_id)?;
-        let metadata = ctx
-            .check_metadata_version_action(&metadata_id, metadata_version, PermissionAction::Edit)
-            .await?;
+        let check = PermissionCheck::new_with_metadata_id_with_version(
+            metadata_id,
+            metadata_version,
+            PermissionAction::Edit,
+        );
+        let metadata = ctx.metadata_permission_check(check).await?;
         if metadata.locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         if let Some(guide) = ctx
             .content
@@ -227,10 +249,14 @@ impl MetadataMutationObject {
     ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let metadata_id = Uuid::parse_str(&metadata_id)?;
-        let metadata = ctx.check_metadata_version_action(&metadata_id, metadata_version, PermissionAction::Delete)
-            .await?;
+        let check = PermissionCheck::new_with_metadata_id_with_version(
+            metadata_id,
+            metadata_version,
+            PermissionAction::Delete,
+        );
+        let metadata = ctx.metadata_permission_check(check).await?;
         if metadata.locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         ctx.content
             .guides
@@ -247,10 +273,14 @@ impl MetadataMutationObject {
     ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let metadata_id = Uuid::parse_str(&metadata_id)?;
-        let metadata = ctx.check_metadata_version_action(&metadata_id, metadata_version, PermissionAction::Delete)
-            .await?;
+        let check = PermissionCheck::new_with_metadata_id_with_version(
+            metadata_id,
+            metadata_version,
+            PermissionAction::Delete,
+        );
+        let metadata = ctx.metadata_permission_check(check).await?;
         if metadata.locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         ctx.content
             .guides
@@ -273,19 +303,26 @@ impl MetadataMutationObject {
         let ctx = ctx.data::<BoscaContext>()?;
         let template_id = Uuid::parse_str(template_id.as_str())?;
         let metadata_id = Uuid::parse_str(&metadata_id)?;
-        let metadata = ctx.check_metadata_version_action(&metadata_id, metadata_version, PermissionAction::Edit)
-            .await?;
+        let check = PermissionCheck::new_with_metadata_id_with_version(
+            metadata_id,
+            metadata_version,
+            PermissionAction::Edit,
+        );
+        let metadata = ctx.metadata_permission_check(check).await?;
         if metadata.locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         let permissions = ctx
             .content
             .metadata_permissions
             .get_metadata_permissions(&metadata_id)
             .await?;
-        let template = ctx
-            .check_metadata_version_action(&template_id, template_version, PermissionAction::View)
-            .await?;
+        let check = PermissionCheck::new_with_metadata_id_with_version(
+            template_id,
+            template_version,
+            PermissionAction::View,
+        );
+        let template = ctx.metadata_permission_check(check).await?;
         if template.content_type != "bosca/v-document-template" {
             return Err(Error::new("invalid template"));
         }
@@ -347,19 +384,26 @@ impl MetadataMutationObject {
         let ctx = ctx.data::<BoscaContext>()?;
         let template_id = Uuid::parse_str(template_id.as_str())?;
         let metadata_id = Uuid::parse_str(&metadata_id)?;
-        let metadata = ctx.check_metadata_version_action(&metadata_id, metadata_version, PermissionAction::Edit)
-            .await?;
+        let check = PermissionCheck::new_with_metadata_id_with_version(
+            metadata_id,
+            metadata_version,
+            PermissionAction::Edit,
+        );
+        let metadata = ctx.metadata_permission_check(check).await?;
         if metadata.locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         let permissions = ctx
             .content
             .metadata_permissions
             .get_metadata_permissions(&metadata_id)
             .await?;
-        let template = ctx
-            .check_metadata_version_action(&template_id, template_version, PermissionAction::View)
-            .await?;
+        let check = PermissionCheck::new_with_metadata_id_with_version(
+            template_id,
+            template_version,
+            PermissionAction::View,
+        );
+        let template = ctx.metadata_permission_check(check).await?;
         if template.content_type != "bosca/v-guide-module-template" {
             return Err(Error::new("invalid template"));
         }
@@ -400,11 +444,10 @@ impl MetadataMutationObject {
     ) -> Result<MetadataObject, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::parse_str(id.as_str())?;
-        let current = ctx
-            .check_metadata_action(&id, PermissionAction::Edit)
-            .await?;
+        let check = PermissionCheck::new_with_metadata_id(id, PermissionAction::Edit);
+        let current = ctx.metadata_permission_check(check).await?;
         if current.locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         ctx.content.metadata.edit(ctx, &id, &metadata).await?;
         match ctx.content.metadata.get(&id).await? {
@@ -427,10 +470,13 @@ impl MetadataMutationObject {
                 Some(id) => Uuid::parse_str(id)?,
                 None => root_collection_id,
             };
-            let collection = ctx.check_collection_action(&parent_collection_id, PermissionAction::Edit)
-                .await?;
+            let check = PermissionCheck::new_with_collection_id(
+                parent_collection_id,
+                PermissionAction::Edit,
+            );
+            let collection = ctx.collection_permission_check(check).await?;
             if collection.items_locked && !ctx.has_service_account().await? {
-                return Err(Error::new("locked"))
+                return Err(Error::new("locked"));
             }
         }
 
@@ -459,9 +505,8 @@ impl MetadataMutationObject {
     async fn delete(&self, ctx: &Context<'_>, metadata_id: String) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::parse_str(metadata_id.as_str())?;
-        let metadata = ctx
-            .check_metadata_action(&id, PermissionAction::Delete)
-            .await?;
+        let check = PermissionCheck::new_with_metadata_id(id, PermissionAction::Delete);
+        let metadata = ctx.metadata_permission_check(check).await?;
         ctx.content.metadata.mark_deleted(ctx, &metadata.id).await?;
         Ok(true)
     }
@@ -481,11 +526,10 @@ impl MetadataMutationObject {
     async fn delete_content(&self, ctx: &Context<'_>, metadata_id: String) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::parse_str(metadata_id.as_str())?;
-        let metadata = ctx
-            .check_metadata_action(&id, PermissionAction::Delete)
-            .await?;
+        let check = PermissionCheck::new_with_metadata_id(id, PermissionAction::Delete);
+        let metadata = ctx.metadata_permission_check(check).await?;
         if metadata.locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         if metadata.uploaded.is_some() {
             ctx.content.metadata.set_upload_removed(ctx, &id).await?;
@@ -502,20 +546,17 @@ impl MetadataMutationObject {
     ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::parse_str(metadata_id.as_str())?;
-        let metadata = ctx.check_metadata_action(&id, PermissionAction::Edit)
-            .await?;
+        let check = PermissionCheck::new_with_metadata_id(id, PermissionAction::Edit);
+        let metadata = ctx.metadata_permission_check(check).await?;
         if metadata.locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         let mut ids = Vec::new();
         for category_id in category_ids {
             let id = Uuid::parse_str(&category_id)?;
             ids.push(id);
         }
-        ctx.content
-            .metadata
-            .set_categories(ctx, &id, &ids)
-            .await?;
+        ctx.content.metadata.set_categories(ctx, &id, &ids).await?;
         Ok(true)
     }
 
@@ -527,10 +568,10 @@ impl MetadataMutationObject {
     ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::parse_str(metadata_id.as_str())?;
-        let metadata = ctx.check_metadata_action(&id, PermissionAction::Edit)
-            .await?;
+        let check = PermissionCheck::new_with_metadata_id(id, PermissionAction::Edit);
+        let metadata = ctx.metadata_permission_check(check).await?;
         if metadata.locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         let category_id = Uuid::parse_str(category_id.as_str())?;
         ctx.content
@@ -548,10 +589,10 @@ impl MetadataMutationObject {
     ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::parse_str(metadata_id.as_str())?;
-        let metadata = ctx.check_metadata_action(&id, PermissionAction::Edit)
-            .await?;
+        let check = PermissionCheck::new_with_metadata_id(id, PermissionAction::Edit);
+        let metadata = ctx.metadata_permission_check(check).await?;
         if metadata.locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         let category_id = Uuid::parse_str(category_id.as_str())?;
         ctx.content
@@ -569,11 +610,10 @@ impl MetadataMutationObject {
     ) -> Result<Vec<WorkflowExecutionPlanObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::parse_str(metadata_id.as_str())?;
-        let metadata = ctx
-            .check_metadata_action(&id, PermissionAction::Manage)
-            .await?;
+        let check = PermissionCheck::new_with_metadata_id(id, PermissionAction::Manage);
+        let metadata = ctx.metadata_permission_check(check).await?;
         if metadata.locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         ctx.content.metadata.add_trait(ctx, &id, &trait_id).await?;
         if metadata.ready.is_some() {
@@ -602,11 +642,10 @@ impl MetadataMutationObject {
         if t.is_none() {
             return Ok(Vec::new());
         }
-        let metadata = ctx
-            .check_metadata_action(&id, PermissionAction::Manage)
-            .await?;
+        let check = PermissionCheck::new_with_metadata_id(id, PermissionAction::Manage);
+        let metadata = ctx.metadata_permission_check(check).await?;
         if metadata.locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         ctx.content
             .metadata
@@ -636,11 +675,10 @@ impl MetadataMutationObject {
     ) -> Result<MetadataObject, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::parse_str(id.as_str())?;
-        let mut metadata = ctx
-            .check_metadata_action(&id, PermissionAction::Edit)
-            .await?;
+        let check = PermissionCheck::new_with_metadata_id(id, PermissionAction::Edit);
+        let mut metadata = ctx.metadata_permission_check(check).await?;
         if metadata.locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         ctx.content.metadata.set_public(ctx, &id, public).await?;
         metadata.public = public;
@@ -655,11 +693,10 @@ impl MetadataMutationObject {
     ) -> Result<MetadataObject, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::parse_str(id.as_str())?;
-        let mut metadata = ctx
-            .check_metadata_action(&id, PermissionAction::Edit)
-            .await?;
+        let check = PermissionCheck::new_with_metadata_id(id, PermissionAction::Edit);
+        let mut metadata = ctx.metadata_permission_check(check).await?;
         if metadata.locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         ctx.content
             .metadata
@@ -677,11 +714,10 @@ impl MetadataMutationObject {
     ) -> Result<MetadataObject, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::parse_str(id.as_str())?;
-        let mut metadata = ctx
-            .check_metadata_action(&id, PermissionAction::Edit)
-            .await?;
+        let check = PermissionCheck::new_with_metadata_id(id, PermissionAction::Edit);
+        let mut metadata = ctx.metadata_permission_check(check).await?;
         if metadata.locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         ctx.content
             .metadata_supplementary
@@ -698,10 +734,11 @@ impl MetadataMutationObject {
     ) -> Result<PermissionObject, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let permission: Permission = permission.into();
-        let metadata = ctx.check_metadata_action(&permission.entity_id, PermissionAction::Manage)
-            .await?;
+        let check =
+            PermissionCheck::new_with_metadata_id(permission.entity_id, PermissionAction::Manage);
+        let metadata = ctx.metadata_permission_check(check).await?;
         if metadata.locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         ctx.content
             .metadata_permissions
@@ -717,10 +754,11 @@ impl MetadataMutationObject {
     ) -> Result<PermissionObject, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let permission: Permission = permission.into();
-        let metadata = ctx.check_metadata_action(&permission.entity_id, PermissionAction::Manage)
-            .await?;
+        let check =
+            PermissionCheck::new_with_metadata_id(permission.entity_id, PermissionAction::Manage);
+        let metadata = ctx.metadata_permission_check(check).await?;
         if metadata.locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         ctx.content
             .metadata_permissions
@@ -736,14 +774,14 @@ impl MetadataMutationObject {
     ) -> Result<MetadataRelationshipObject, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let id1 = Uuid::parse_str(relationship.id1.as_str())?;
-        let metadata = ctx.check_metadata_action(&id1, PermissionAction::Edit)
-            .await?;
+        let check = PermissionCheck::new_with_metadata_id(id1, PermissionAction::Edit);
+        let metadata = ctx.metadata_permission_check(check).await?;
         if metadata.locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         let id2 = Uuid::parse_str(relationship.id2.as_str())?;
-        ctx.check_metadata_action(&id2, PermissionAction::Edit)
-            .await?;
+        let check = PermissionCheck::new_with_metadata_id(id2, PermissionAction::Edit);
+        ctx.metadata_permission_check(check).await?;
         ctx.content
             .metadata
             .add_relationship(ctx, &relationship)
@@ -761,14 +799,14 @@ impl MetadataMutationObject {
     ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let id1 = Uuid::parse_str(relationship.id1.as_str())?;
-        let metadata = ctx.check_metadata_action(&id1, PermissionAction::Edit)
-            .await?;
+        let check = PermissionCheck::new_with_metadata_id(id1, PermissionAction::Edit);
+        let metadata = ctx.metadata_permission_check(check).await?;
         if metadata.locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         let id2 = Uuid::parse_str(relationship.id2.as_str())?;
-        ctx.check_metadata_action(&id2, PermissionAction::Edit)
-            .await?;
+        let check = PermissionCheck::new_with_metadata_id(id2, PermissionAction::Manage);
+        ctx.metadata_permission_check(check).await?;
         ctx.content
             .metadata
             .edit_relationship(
@@ -791,14 +829,14 @@ impl MetadataMutationObject {
     ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let id1 = Uuid::parse_str(id1.as_str())?;
-        let metadata = ctx.check_metadata_action(&id1, PermissionAction::Edit)
-            .await?;
+        let check = PermissionCheck::new_with_metadata_id(id1, PermissionAction::Edit);
+        let metadata = ctx.metadata_permission_check(check).await?;
         if metadata.locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         let id2 = Uuid::parse_str(id2.as_str())?;
-        ctx.check_metadata_action(&id2, PermissionAction::Edit)
-            .await?;
+        let check = PermissionCheck::new_with_metadata_id(id2, PermissionAction::Edit);
+        ctx.metadata_permission_check(check).await?;
         ctx.content
             .metadata
             .delete_relationship(ctx, &id1, &id2, &relationship)
@@ -815,9 +853,16 @@ impl MetadataMutationObject {
     ) -> Result<MetadataObject, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::parse_str(&id)?;
-        ctx.check_metadata_version_action(&id, version, PermissionAction::Edit).await?;
-        ctx.content.metadata.set_locked(ctx, &id, version, locked).await?;
-        let metadata = ctx.check_metadata_version_action(&id, version, PermissionAction::Edit).await?;
+        let check =
+            PermissionCheck::new_with_metadata_id_with_version(id, version, PermissionAction::Edit);
+        ctx.metadata_permission_check(check).await?;
+        ctx.content
+            .metadata
+            .set_locked(ctx, &id, version, locked)
+            .await?;
+        let check =
+            PermissionCheck::new_with_metadata_id_with_version(id, version, PermissionAction::View);
+        let metadata = ctx.metadata_permission_check(check).await?;
         Ok(metadata.into())
     }
 
@@ -889,10 +934,10 @@ impl MetadataMutationObject {
     ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let metadata_id = Uuid::parse_str(id.as_str())?;
-        let metadata = ctx.check_metadata_action(&metadata_id, PermissionAction::Edit)
-            .await?;
+        let check = PermissionCheck::new_with_metadata_id(metadata_id, PermissionAction::Edit);
+        let metadata = ctx.metadata_permission_check(check).await?;
         if metadata.locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         ctx.content
             .metadata
@@ -909,10 +954,10 @@ impl MetadataMutationObject {
     ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let metadata_id = Uuid::parse_str(id.as_str())?;
-        let metadata = ctx.check_metadata_action(&metadata_id, PermissionAction::Edit)
-            .await?;
+        let check = PermissionCheck::new_with_metadata_id(metadata_id, PermissionAction::Edit);
+        let metadata = ctx.metadata_permission_check(check).await?;
         if metadata.locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         ctx.content
             .metadata
@@ -932,13 +977,13 @@ impl MetadataMutationObject {
         let ctx = ctx.data::<BoscaContext>()?;
         let metadata1_id = Uuid::parse_str(metadata1_id.as_str())?;
         let metadata2_id = Uuid::parse_str(metadata2_id.as_str())?;
-        let metadata = ctx.check_metadata_action(&metadata1_id, PermissionAction::Edit)
-            .await?;
+        let check = PermissionCheck::new_with_metadata_id(metadata1_id, PermissionAction::Edit);
+        let metadata = ctx.metadata_permission_check(check).await?;
         if metadata.locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
-        ctx.check_metadata_action(&metadata2_id, PermissionAction::Edit)
-            .await?;
+        let check = PermissionCheck::new_with_metadata_id(metadata2_id, PermissionAction::Edit);
+        ctx.metadata_permission_check(check).await?;
         ctx.content
             .metadata
             .merge_relationship_attributes(
@@ -960,10 +1005,10 @@ impl MetadataMutationObject {
     ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let metadata_id = Uuid::parse_str(id.as_str())?;
-        let metadata = ctx.check_metadata_action(&metadata_id, PermissionAction::Manage)
-            .await?;
+        let check = PermissionCheck::new_with_metadata_id(metadata_id, PermissionAction::Manage);
+        let metadata = ctx.metadata_permission_check(check).await?;
         if metadata.locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         ctx.content
             .metadata
@@ -982,11 +1027,10 @@ impl MetadataMutationObject {
         let octx = ctx;
         let ctx = ctx.data::<BoscaContext>()?;
         let metadata_id = Uuid::parse_str(id.as_str())?;
-        let metadata = ctx
-            .check_metadata_action(&metadata_id, PermissionAction::Edit)
-            .await?;
+        let check = PermissionCheck::new_with_metadata_id(metadata_id, PermissionAction::Edit);
+        let metadata = ctx.metadata_permission_check(check).await?;
         if metadata.locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         let path = ctx.storage.get_metadata_path(&metadata, None).await?;
         let len = upload_file(ctx, octx, path, file).await?;
@@ -1006,11 +1050,10 @@ impl MetadataMutationObject {
     ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let metadata_id = Uuid::parse_str(id.as_str())?;
-        let metadata = ctx
-            .check_metadata_action(&metadata_id, PermissionAction::Edit)
-            .await?;
+        let check = PermissionCheck::new_with_metadata_id(metadata_id, PermissionAction::Edit);
+        let metadata = ctx.metadata_permission_check(check).await?;
         if metadata.locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         let path = ctx.storage.get_metadata_path(&metadata, None).await?;
         let bytes: Bytes = content.into();
@@ -1032,11 +1075,10 @@ impl MetadataMutationObject {
     ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let metadata_id = Uuid::parse_str(id.as_str())?;
-        let metadata = ctx
-            .check_metadata_action(&metadata_id, PermissionAction::Edit)
-            .await?;
+        let check = PermissionCheck::new_with_metadata_id(metadata_id, PermissionAction::Edit);
+        let metadata = ctx.metadata_permission_check(check).await?;
         if metadata.locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         let path = ctx.storage.get_metadata_path(&metadata, None).await?;
         let content = content.to_string();
@@ -1061,11 +1103,10 @@ impl MetadataMutationObject {
     ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let metadata_id = Uuid::parse_str(id.as_str())?;
-        let metadata = ctx
-            .check_metadata_action(&metadata_id, PermissionAction::Edit)
-            .await?;
+        let check = PermissionCheck::new_with_metadata_id(metadata_id, PermissionAction::Edit);
+        let metadata = ctx.metadata_permission_check(check).await?;
         if metadata.locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         ctx.content
             .metadata
@@ -1093,14 +1134,13 @@ impl MetadataMutationObject {
     ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let metadata_id = Uuid::parse_str(id.as_str())?;
-        let metadata = ctx
-            .check_metadata_action(&metadata_id, PermissionAction::Edit)
-            .await?;
+        let check = PermissionCheck::new_with_metadata_id(metadata_id, PermissionAction::Edit);
+        let metadata = ctx.metadata_permission_check(check).await?;
         if metadata.ready.is_some() {
             return Ok(false);
         }
         if metadata.locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         ctx.content
             .metadata_workflows
@@ -1117,11 +1157,14 @@ impl MetadataMutationObject {
     ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let metadata_id = Uuid::parse_str(id.as_str())?;
-        let metadata = ctx
-            .check_metadata_version_action(&metadata_id, version, PermissionAction::Manage)
-            .await?;
+        let check = PermissionCheck::new_with_metadata_id_with_version(
+            metadata_id,
+            version,
+            PermissionAction::Manage,
+        );
+        let metadata = ctx.metadata_permission_check(check).await?;
         if metadata.locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         ctx.content
             .bibles
@@ -1139,11 +1182,14 @@ impl MetadataMutationObject {
     ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let metadata_id = Uuid::parse_str(id.as_str())?;
-        let metadata = ctx
-            .check_metadata_version_action(&metadata_id, version, PermissionAction::Edit)
-            .await?;
+        let check = PermissionCheck::new_with_metadata_id_with_version(
+            metadata_id,
+            version,
+            PermissionAction::Edit,
+        );
+        let metadata = ctx.metadata_permission_check(check).await?;
         if metadata.locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         ctx.content
             .documents
@@ -1159,11 +1205,10 @@ impl MetadataMutationObject {
     ) -> Result<MetadataSupplementaryObject, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let metadata_id = Uuid::parse_str(supplementary.metadata_id.as_str())?;
-        let metadata = ctx
-            .check_metadata_action(&metadata_id, PermissionAction::Manage)
-            .await?;
+        let check = PermissionCheck::new_with_metadata_id(metadata_id, PermissionAction::Manage);
+        let metadata = ctx.metadata_permission_check(check).await?;
         if metadata.locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         let id = ctx
             .content
@@ -1190,18 +1235,13 @@ impl MetadataMutationObject {
     ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let supplementary_id = Uuid::parse_str(supplementary_id.as_str())?;
-        let Some(supplementary) = ctx
-            .content
-            .metadata_supplementary
-            .get_supplementary(&supplementary_id)
-            .await?
-        else {
-            return Err(Error::new("Supplementary not found"));
-        };
-        let metadata = ctx.check_metadata_action(&supplementary.metadata_id, PermissionAction::Manage)
-            .await?;
+        let check = PermissionCheck::new_with_metadata_supplementary_id(
+            supplementary_id,
+            PermissionAction::Manage,
+        );
+        let (metadata, _) = ctx.metadata_supplementary_permission_check(check).await?;
         if metadata.locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         ctx.content
             .metadata_supplementary
@@ -1220,19 +1260,13 @@ impl MetadataMutationObject {
         let octx = ctx;
         let ctx = ctx.data::<BoscaContext>()?;
         let supplementary_id = Uuid::parse_str(supplementary_id.as_str())?;
-        let Some(supplementary) = ctx
-            .content
-            .metadata_supplementary
-            .get_supplementary(&supplementary_id)
-            .await?
-        else {
-            return Err(Error::new("Supplementary not found"));
-        };
-        let metadata = ctx
-            .check_metadata_action(&supplementary.metadata_id, PermissionAction::Manage)
-            .await?;
+        let check = PermissionCheck::new_with_metadata_supplementary_id(
+            supplementary_id,
+            PermissionAction::Manage,
+        );
+        let (metadata, _) = ctx.metadata_supplementary_permission_check(check).await?;
         if metadata.locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         let path = ctx
             .storage
@@ -1255,19 +1289,13 @@ impl MetadataMutationObject {
     ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let supplementary_id = Uuid::parse_str(supplementary_id.as_str())?;
-        let Some(supplementary) = ctx
-            .content
-            .metadata_supplementary
-            .get_supplementary(&supplementary_id)
-            .await?
-        else {
-            return Err(Error::new("Supplementary not found"));
-        };
-        let metadata = ctx
-            .check_metadata_action(&supplementary.metadata_id, PermissionAction::Manage)
-            .await?;
+        let check = PermissionCheck::new_with_metadata_supplementary_id(
+            supplementary_id,
+            PermissionAction::Manage,
+        );
+        let (metadata, _) = ctx.metadata_supplementary_permission_check(check).await?;
         if metadata.locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         let path = ctx
             .storage
@@ -1286,19 +1314,13 @@ impl MetadataMutationObject {
     async fn delete_supplementary(&self, ctx: &Context<'_>, id: String) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let supplementary_id = Uuid::parse_str(id.as_str())?;
-        let Some(supplementary) = ctx
-            .content
-            .metadata_supplementary
-            .get_supplementary(&supplementary_id)
-            .await?
-        else {
-            return Err(Error::new("Supplementary not found"));
-        };
-        let metadata = ctx
-            .check_metadata_action(&supplementary.metadata_id, PermissionAction::Manage)
-            .await?;
+        let check = PermissionCheck::new_with_metadata_supplementary_id(
+            supplementary_id,
+            PermissionAction::Manage,
+        );
+        let (metadata, _) = ctx.metadata_supplementary_permission_check(check).await?;
         if metadata.locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         let path = ctx
             .storage
@@ -1323,11 +1345,13 @@ impl MetadataMutationObject {
         else {
             return Err(Error::new("Supplementary not found"));
         };
-        let metadata = ctx
-            .check_metadata_action(&supplementary.metadata_id, PermissionAction::Manage)
-            .await?;
+        let check = PermissionCheck::new_with_metadata_id(
+            supplementary.metadata_id,
+            PermissionAction::Manage,
+        );
+        let metadata = ctx.metadata_permission_check(check).await?;
         if metadata.locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         ctx.content
             .metadata_supplementary

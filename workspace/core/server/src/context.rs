@@ -4,6 +4,9 @@ use crate::datastores::content::content::ContentDataStore;
 use crate::datastores::content::workflow_schedules::WorkflowScheduleDataStore;
 use crate::datastores::notifier::Notifier;
 use crate::datastores::persisted_queries::PersistedQueriesDataStore;
+use crate::datastores::profile::profile::ProfileDataStore;
+use crate::datastores::profile::profile_bookmarks::ProfileBookmarksDataStore;
+use crate::datastores::profile::profile_marks::ProfileMarksDataStore;
 use crate::datastores::security::SecurityDataStore;
 use crate::datastores::security_oauth2::SecurityOAuth2;
 use crate::datastores::workflow::workflow::WorkflowDataStore;
@@ -24,8 +27,6 @@ use crate::models::security::principal::Principal;
 use crate::search::search::SearchClient;
 use crate::security::authorization_extension::get_anonymous_principal;
 use crate::workflow::queue::JobQueues;
-use crate::datastores::profile::profile::ProfileDataStore;
-use crate::datastores::profile::profile_bookmarks::ProfileBookmarksDataStore;
 use async_graphql::{Context, Error};
 use bosca_database::build_pool;
 use deadpool_postgres::Transaction;
@@ -33,7 +34,6 @@ use log::info;
 use std::env;
 use std::sync::Arc;
 use uuid::Uuid;
-use crate::datastores::profile::profile_marks::ProfileMarksDataStore;
 
 #[derive(Clone)]
 pub struct BoscaContext {
@@ -53,6 +53,191 @@ pub struct BoscaContext {
     pub principal: Principal,
     pub principal_groups: Vec<Uuid>,
     pub cache: BoscaCacheManager,
+}
+
+#[derive(Default)]
+pub struct PermissionCheck {
+    principal: Option<Principal>,
+    groups: Option<Vec<Uuid>>,
+    collection_id: Option<Uuid>,
+    collection: Option<Collection>,
+    supplementary_id: Option<Uuid>,
+    metadata_id: Option<Uuid>,
+    version: Option<i32>,
+    metadata: Option<Metadata>,
+    action: PermissionAction,
+    supplementary: bool,
+    content: bool,
+    enable_advertised: bool,
+}
+
+impl PermissionCheck {
+    pub fn new_with_metadata(metadata: Metadata, action: PermissionAction) -> Self {
+        Self {
+            metadata: Some(metadata),
+            action,
+            ..Default::default()
+        }
+    }
+    pub fn new_with_metadata_supplementary(metadata: Metadata, action: PermissionAction) -> Self {
+        Self {
+            metadata: Some(metadata),
+            supplementary: true,
+            action,
+            ..Default::default()
+        }
+    }
+    pub fn new_with_metadata_content(metadata: Metadata, action: PermissionAction) -> Self {
+        Self {
+            metadata: Some(metadata),
+            action,
+            content: true,
+            ..Default::default()
+        }
+    }
+    pub fn new_with_metadata_id(metadata_id: Uuid, action: PermissionAction) -> Self {
+        Self {
+            metadata_id: Some(metadata_id),
+            action,
+            ..Default::default()
+        }
+    }
+    pub fn new_with_metadata_id_with_version(
+        metadata_id: Uuid,
+        version: i32,
+        action: PermissionAction,
+    ) -> Self {
+        Self {
+            metadata_id: Some(metadata_id),
+            version: Some(version),
+            action,
+            ..Default::default()
+        }
+    }
+    pub fn new_with_metadata_supplementary_id(
+        supplementary_id: Uuid,
+        action: PermissionAction,
+    ) -> Self {
+        Self {
+            supplementary_id: Some(supplementary_id),
+            action,
+            supplementary: true,
+            ..Default::default()
+        }
+    }
+    pub fn new_with_metadata_advertised(metadata: Metadata, action: PermissionAction) -> Self {
+        Self {
+            metadata: Some(metadata),
+            action,
+            enable_advertised: true,
+            ..Default::default()
+        }
+    }
+    pub fn new_with_metadata_id_advertised(metadata_id: Uuid, action: PermissionAction) -> Self {
+        Self {
+            metadata_id: Some(metadata_id),
+            action,
+            enable_advertised: true,
+            ..Default::default()
+        }
+    }
+    pub fn new_with_principal_and_metadata_id(
+        principal: Principal,
+        groups: Vec<Uuid>,
+        metadata_id: Uuid,
+        action: PermissionAction,
+    ) -> Self {
+        Self {
+            metadata_id: Some(metadata_id),
+            principal: Some(principal),
+            groups: Some(groups),
+            action,
+            ..Default::default()
+        }
+    }
+    pub fn new_with_principal_and_metadata_supplementary_id(
+        principal: Principal,
+        groups: Vec<Uuid>,
+        metadata_id: Uuid,
+        supplementary_id: Uuid,
+        action: PermissionAction,
+    ) -> Self {
+        Self {
+            metadata_id: Some(metadata_id),
+            supplementary_id: Some(supplementary_id),
+            principal: Some(principal),
+            groups: Some(groups),
+            supplementary: true,
+            action,
+            ..Default::default()
+        }
+    }
+    pub fn new_with_principal_and_metadata_id_with_version(
+        principal: Principal,
+        groups: Vec<Uuid>,
+        metadata_id: Uuid,
+        version: i32,
+        action: PermissionAction,
+    ) -> Self {
+        Self {
+            metadata_id: Some(metadata_id),
+            version: Some(version),
+            principal: Some(principal),
+            groups: Some(groups),
+            action,
+            ..Default::default()
+        }
+    }
+    pub fn new_with_principal_and_collection_supplementary_id(
+        principal: Principal,
+        groups: Vec<Uuid>,
+        supplementary_id: Uuid,
+        action: PermissionAction,
+    ) -> Self {
+        Self {
+            supplementary_id: Some(supplementary_id),
+            principal: Some(principal),
+            groups: Some(groups),
+            action,
+            ..Default::default()
+        }
+    }
+    pub fn new_with_collection(collection: Collection, action: PermissionAction) -> Self {
+        Self {
+            collection: Some(collection),
+            action,
+            ..Default::default()
+        }
+    }
+    pub fn new_with_collection_id(collection_id: Uuid, action: PermissionAction) -> Self {
+        Self {
+            collection_id: Some(collection_id),
+            action,
+            ..Default::default()
+        }
+    }
+    pub fn new_with_collection_id_supplementary(
+        collection_id: Uuid,
+        action: PermissionAction,
+    ) -> Self {
+        Self {
+            collection_id: Some(collection_id),
+            supplementary: true,
+            action,
+            ..Default::default()
+        }
+    }
+    pub fn new_with_collection_supplementary_id(
+        supplementary_id: Uuid,
+        action: PermissionAction,
+    ) -> Self {
+        Self {
+            supplementary_id: Some(supplementary_id),
+            action,
+            supplementary: true,
+            ..Default::default()
+        }
+    }
 }
 
 impl BoscaContext {
@@ -169,288 +354,245 @@ impl BoscaContext {
         Ok(())
     }
 
-    #[tracing::instrument(skip(self, principal, id, action))]
-    pub async fn check_metadata_action_principal(
+    #[tracing::instrument(skip(self, check))]
+    pub async fn metadata_permission_check(
         &self,
-        principal: &Principal,
-        groups: &Vec<Uuid>,
-        id: &Uuid,
-        action: PermissionAction,
+        check: PermissionCheck,
     ) -> Result<Metadata, Error> {
-        match self.content.metadata.get(id).await? {
-            Some(metadata) => {
-                if !self
-                    .content
-                    .metadata_permissions
-                    .has(&metadata, principal, groups, action, true)
-                    .await?
-                {
-                    self.check_principal_groups(groups).await?;
+        let metadata = if let Some(metadata) = check.metadata {
+            metadata
+        } else {
+            if let Some(metadata_id) = check.metadata_id {
+                if let Some(metadata) = self.content.metadata.get(&metadata_id).await? {
+                    if let Some(version) = check.version {
+                        if metadata.version == version {
+                            metadata
+                        } else {
+                            if let Some(metadata) = self
+                                .content
+                                .metadata
+                                .get_by_version(&metadata.id, version)
+                                .await?
+                            {
+                                metadata
+                            } else {
+                                return Err(Error::new(format!(
+                                    "metadata not found: {metadata_id}"
+                                )));
+                            }
+                        }
+                    } else {
+                        metadata
+                    }
+                } else {
+                    return Err(Error::new(format!("metadata not found: {metadata_id}")));
                 }
-                Ok(metadata)
+            } else {
+                return Err(Error::new("invalid permission check"));
             }
-            None => Err(Error::new(format!("metadata not found: {id}"))),
-        }
-    }
-
-    #[tracing::instrument(skip(self, metadata, action))]
-    pub async fn check_metadata_content_action_2(
-        &self,
-        metadata: &Metadata,
-        action: PermissionAction,
-    ) -> Result<(), Error> {
-        if !self
-            .content
-            .metadata_permissions
-            .has_metadata_content_permission(&metadata, &self.principal, &self.principal_groups, action)
-            .await?
-        {
-            self.check_principal_groups(&self.principal_groups).await?;
-        }
-        Ok(())
-    }
-
-    #[tracing::instrument(skip(self, principal, id, action))]
-    pub async fn check_metadata_content_action_principal(
-        &self,
-        principal: &Principal,
-        groups: &Vec<Uuid>,
-        id: &Uuid,
-        action: PermissionAction,
-    ) -> Result<Metadata, Error> {
-        match self.content.metadata.get(id).await? {
-            Some(metadata) => {
-                if !self
-                    .content
-                    .metadata_permissions
-                    .has_metadata_content_permission(&metadata, principal, groups, action)
-                    .await?
-                {
-                    self.check_principal_groups(groups).await?;
-                }
-                Ok(metadata)
-            }
-            None => Err(Error::new(format!("metadata not found: {id}"))),
-        }
-    }
-
-    #[tracing::instrument(skip(self, metadata, action))]
-    pub async fn check_metadata_supplementary_action(
-        &self,
-        metadata: &Metadata,
-        action: PermissionAction,
-    ) -> Result<(), Error> {
-        if !self
-            .content
-            .metadata_permissions
-            .has_supplementary_permission(metadata, &self.principal, &self.principal_groups, action)
-            .await?
-        {
-            self.check_principal_groups(&self.principal_groups).await?;
-        }
-        Ok(())
-    }
-
-    #[tracing::instrument(skip(self, principal, supplementary_id, action))]
-    pub async fn check_metadata_supplementary_action_principal(
-        &self,
-        principal: &Principal,
-        groups: &Vec<Uuid>,
-        supplementary_id: &Uuid,
-        action: PermissionAction,
-    ) -> Result<(Metadata, MetadataSupplementary), Error> {
-        match self
-            .content
-            .metadata_supplementary
-            .get_supplementary(supplementary_id)
-            .await?
-        {
-            Some(supplementary) => {
-                let metadata = self
-                    .check_metadata_action(&supplementary.metadata_id, PermissionAction::View)
-                    .await?;
-                if !self
-                    .content
-                    .metadata_permissions
-                    .has_supplementary_permission(&metadata, principal, groups, action)
-                    .await?
-                {
-                    self.check_principal_groups(groups).await?;
-                }
-                Ok((metadata, supplementary))
-            }
-            None => Err(Error::new(format!(
-                "supplementary not found: {supplementary_id}"
-            ))),
-        }
-    }
-
-    #[tracing::instrument(skip(self, principal, supplementary_id, action))]
-    pub async fn check_collection_supplementary_action_principal(
-        &self,
-        principal: &Principal,
-        groups: &Vec<Uuid>,
-        supplementary_id: &Uuid,
-        action: PermissionAction,
-    ) -> Result<(Collection, CollectionSupplementary), Error> {
-        let Some(supplementary) = self
-            .content
-            .collection_supplementary
-            .get_supplementary(supplementary_id)
-            .await?
-        else {
-            return Err(Error::new(format!(
-                "collection supplementary not found: {supplementary_id}"
-            )));
         };
-        let Some(collection) = self
+        let principal = if let Some(ref principal) = check.principal {
+            principal
+        } else {
+            &self.principal
+        };
+        let groups = if let Some(ref groups) = check.groups {
+            groups
+        } else {
+            &self.principal_groups
+        };
+        if check.supplementary {
+            if !self
+                .content
+                .metadata_permissions
+                .has_supplementary_permission(&metadata, principal, groups, check.action)
+                .await?
+            {
+                self.check_principal_groups(groups).await?;
+            }
+        } else if check.content {
+            if !self
+                .content
+                .metadata_permissions
+                .has_metadata_content_permission(&metadata, principal, groups, check.action)
+                .await?
+            {
+                self.check_principal_groups(groups).await?;
+            }
+        } else {
+            if !self
+                .content
+                .metadata_permissions
+                .has(
+                    &metadata,
+                    principal,
+                    groups,
+                    check.action,
+                    check.enable_advertised,
+                )
+                .await?
+            {
+                self.check_principal_groups(groups).await?;
+            }
+        }
+        Ok(metadata)
+    }
+
+    #[tracing::instrument(skip(self, check))]
+    pub async fn metadata_supplementary_permission_check(
+        &self,
+        check: PermissionCheck,
+    ) -> Result<(Metadata, MetadataSupplementary), Error> {
+        let supplementary = if let Some(supplementary_id) = check.supplementary_id {
+            if let Some(supplementary) = self
+                .content
+                .metadata_supplementary
+                .get_supplementary(&supplementary_id)
+                .await?
+            {
+                supplementary
+            } else {
+                return Err(Error::new(format!(
+                    "supplementary not found: {supplementary_id}"
+                )));
+            }
+        } else {
+            return Err(Error::new("invalid permission check"));
+        };
+        let principal = if let Some(ref principal) = check.principal {
+            principal
+        } else {
+            &self.principal
+        };
+        let groups = if let Some(ref groups) = check.groups {
+            groups
+        } else {
+            &self.principal_groups
+        };
+        if let Some(metadata) = self
+            .content
+            .metadata
+            .get(&supplementary.metadata_id)
+            .await?
+        {
+            if !self
+                .content
+                .metadata_permissions
+                .has_supplementary_permission(&metadata, principal, groups, check.action)
+                .await?
+            {
+                self.check_principal_groups(groups).await?;
+            }
+            Ok((metadata, supplementary))
+        } else {
+            Err(Error::new(format!(
+                "metadata not found: {}",
+                check.supplementary_id.unwrap()
+            )))
+        }
+    }
+
+    #[tracing::instrument(skip(self, check))]
+    pub async fn collection_permission_check(
+        &self,
+        check: PermissionCheck,
+    ) -> Result<Collection, Error> {
+        let collection = if let Some(collection) = check.collection {
+            collection
+        } else {
+            if let Some(collection_id) = check.collection_id {
+                if let Some(collection) = self.content.collections.get(&collection_id).await? {
+                    collection
+                } else {
+                    return Err(Error::new(format!("collection not found: {collection_id}")));
+                }
+            } else {
+                return Err(Error::new("invalid permission check"));
+            }
+        };
+        let principal = if let Some(ref principal) = check.principal {
+            principal
+        } else {
+            &self.principal
+        };
+        let groups = if let Some(ref groups) = check.groups {
+            groups
+        } else {
+            &self.principal_groups
+        };
+        if check.supplementary {
+            if !self
+                .content
+                .collection_permissions
+                .has_supplementary_permission(&collection, principal, groups, check.action)
+                .await?
+            {
+                self.check_principal_groups(groups).await?;
+            }
+        } else {
+            if !self
+                .content
+                .collection_permissions
+                .has(&collection, principal, groups, check.action)
+                .await?
+            {
+                self.check_principal_groups(groups).await?;
+            }
+        }
+        Ok(collection)
+    }
+
+    #[tracing::instrument(skip(self, check))]
+    pub async fn collection_supplementary_permission_check(
+        &self,
+        check: PermissionCheck,
+    ) -> Result<(Collection, CollectionSupplementary), Error> {
+        let supplementary = if let Some(supplementary_id) = check.supplementary_id {
+            if let Some(supplementary) = self
+                .content
+                .collection_supplementary
+                .get_supplementary(&supplementary_id)
+                .await?
+            {
+                supplementary
+            } else {
+                return Err(Error::new(format!(
+                    "supplementary not found: {supplementary_id}"
+                )));
+            }
+        } else {
+            return Err(Error::new("invalid permission check"));
+        };
+        let principal = if let Some(ref principal) = check.principal {
+            principal
+        } else {
+            &self.principal
+        };
+        let groups = if let Some(ref groups) = check.groups {
+            groups
+        } else {
+            &self.principal_groups
+        };
+        if let Some(collection) = self
             .content
             .collections
             .get(&supplementary.collection_id)
             .await?
-        else {
-            return Err(Error::new(format!(
-                "collection not found: {supplementary_id}"
-            )));
-        };
-        if !self
-            .content
-            .collection_permissions
-            .has_supplementary_permission(&collection, principal, groups, action)
-            .await?
         {
-            self.check_principal_groups(groups).await?;
-        }
-        Ok((collection, supplementary))
-    }
-
-    #[tracing::instrument(skip(self, collection, action))]
-    pub async fn check_collection_supplementary_action(
-        &self,
-        collection: &Collection,
-        action: PermissionAction,
-    ) -> Result<(), Error> {
-        if !self
-            .content
-            .collection_permissions
-            .has_supplementary_permission(
-                collection,
-                &self.principal,
-                &self.principal_groups,
-                action,
-            )
-            .await?
-        {
-            self.check_principal_groups(&self.principal_groups).await?;
-        }
-        Ok(())
-    }
-
-    #[tracing::instrument(skip(self, id, action))]
-    pub async fn check_metadata_action(
-        &self,
-        id: &Uuid,
-        action: PermissionAction,
-    ) -> Result<Metadata, Error> {
-        match self.content.metadata.get(id).await? {
-            Some(metadata) => {
-                if !self
-                    .content
-                    .metadata_permissions
-                    .has(&metadata, &self.principal, &self.principal_groups, action, true)
-                    .await?
-                {
-                    self.check_principal_groups(&self.principal_groups).await?;
-                }
-                Ok(metadata)
+            if !self
+                .content
+                .collection_permissions
+                .has_supplementary_permission(&collection, principal, groups, check.action)
+                .await?
+            {
+                self.check_principal_groups(groups).await?;
             }
-            None => Err(Error::new(format!("metadata not found: {id}"))),
-        }
-    }
-
-    #[tracing::instrument(skip(self, metadata, action))]
-    pub async fn check_metadata_action_2(
-        &self,
-        metadata: &Metadata,
-        action: PermissionAction,
-        enable_advertised: bool
-    ) -> Result<(), Error> {
-        if !self
-            .content
-            .metadata_permissions
-            .has(&metadata, &self.principal, &self.principal_groups, action, enable_advertised)
-            .await?
-        {
-            self.check_principal_groups(&self.principal_groups).await?;
-        }
-        Ok(())
-    }
-
-    #[tracing::instrument(skip(self, id, version, action))]
-    pub async fn check_metadata_version_action(
-        &self,
-        id: &Uuid,
-        version: i32,
-        action: PermissionAction,
-    ) -> Result<Metadata, Error> {
-        let metadata = self.check_metadata_action(id, action).await?;
-        if metadata.version == version {
-            return Ok(metadata);
-        }
-        match self.content.metadata.get_by_version(id, version).await? {
-            Some(metadata) => {
-                if !self
-                    .content
-                    .metadata_permissions
-                    .has_metadata_version_permission(
-                        &metadata,
-                        &self.principal,
-                        &self.principal_groups,
-                        action,
-                    )
-                    .await?
-                {
-                    self.check_principal_groups(&self.principal_groups).await?;
-                }
-                Ok(metadata)
-            }
-            None => Err(Error::new(format!("metadata not found: {id} / {version}"))),
-        }
-    }
-
-    #[tracing::instrument(skip(self, id, version, action))]
-    pub async fn check_metadata_version_principal_action(
-        &self,
-        principal: &Principal,
-        groups: &Vec<Uuid>,
-        id: &Uuid,
-        version: i32,
-        action: PermissionAction,
-    ) -> Result<Metadata, Error> {
-        let metadata = self
-            .check_metadata_action_principal(principal, groups, id, action)
-            .await?;
-        if metadata.version == version {
-            return Ok(metadata);
-        }
-        match self.content.metadata.get_by_version(id, version).await? {
-            Some(metadata) => {
-                if !self
-                    .content
-                    .metadata_permissions
-                    .has_metadata_version_permission(
-                        &metadata,
-                        principal,
-                        groups,
-                        action,
-                    )
-                    .await?
-                {
-                    self.check_principal_groups(groups).await?;
-                }
-                Ok(metadata)
-            }
-            None => Err(Error::new(format!("metadata not found: {id} / {version}"))),
+            Ok((collection, supplementary))
+        } else {
+            Err(Error::new(format!(
+                "collection not found: {}",
+                check.supplementary_id.unwrap()
+            )))
         }
     }
 
@@ -473,28 +615,6 @@ impl BoscaContext {
                         &self.principal_groups,
                         action,
                     )
-                    .await?
-                {
-                    self.check_principal_groups(&self.principal_groups).await?;
-                }
-                Ok(collection)
-            }
-            None => Err(Error::new(format!("collection not found: {id}"))),
-        }
-    }
-
-    #[tracing::instrument(skip(self, id, action))]
-    pub async fn check_collection_action(
-        &self,
-        id: &Uuid,
-        action: PermissionAction,
-    ) -> Result<Collection, Error> {
-        match self.content.collections.get(id).await? {
-            Some(collection) => {
-                if !self
-                    .content
-                    .collection_permissions
-                    .has(&collection, &self.principal, &self.principal_groups, action)
                     .await?
                 {
                     self.check_principal_groups(&self.principal_groups).await?;

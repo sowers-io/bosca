@@ -1,10 +1,10 @@
-use crate::context::BoscaContext;
+use crate::context::{BoscaContext, PermissionCheck};
 use crate::graphql::content::metadata::MetadataObject;
+use crate::models::content::guide_history::GuideHistory;
 use crate::models::security::permission::PermissionAction;
 use async_graphql::{Context, Error, Object};
 use chrono::{DateTime, Utc};
 use serde_json::Value;
-use crate::models::content::guide_history::GuideHistory;
 
 pub struct ProfileGuideHistoryObject {
     history: GuideHistory,
@@ -20,7 +20,12 @@ impl ProfileGuideHistoryObject {
 impl ProfileGuideHistoryObject {
     async fn metadata(&self, ctx: &Context<'_>) -> Result<MetadataObject, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        let metadata = ctx.check_metadata_version_action(&self.history.metadata_id, self.history.version, PermissionAction::View).await?;
+        let check = PermissionCheck::new_with_metadata_id_with_version(
+            self.history.metadata_id,
+            self.history.version,
+            PermissionAction::View,
+        );
+        let metadata = ctx.metadata_permission_check(check).await?;
         Ok(MetadataObject::new(metadata))
     }
 

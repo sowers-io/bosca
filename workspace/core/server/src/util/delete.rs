@@ -1,10 +1,10 @@
-use crate::context::BoscaContext;
+use crate::context::{BoscaContext, PermissionCheck};
 use crate::models::content::collection::CollectionType;
 use crate::models::security::permission::PermissionAction;
-use async_graphql::Error;
-use uuid::Uuid;
 use crate::models::workflow::enqueue_request::EnqueueRequest;
 use crate::workflow::core_workflow_ids::{COLLECTION_DELETE_FINALIZE, METADATA_DELETE_FINALIZE};
+use async_graphql::Error;
+use uuid::Uuid;
 
 pub async fn delete_collection(
     ctx: &BoscaContext,
@@ -12,10 +12,13 @@ pub async fn delete_collection(
     recursive: Option<bool>,
     permanently: bool,
 ) -> Result<(), Error> {
-    let collection = ctx
-        .check_collection_action(collection_id, PermissionAction::Delete)
-        .await?;
-    if (collection.collection_type == CollectionType::Root || collection.collection_type == CollectionType::System) && !ctx.has_admin_account().await? {
+    let check =
+        PermissionCheck::new_with_collection_id(collection_id.clone(), PermissionAction::Delete);
+    let collection = ctx.collection_permission_check(check).await?;
+    if (collection.collection_type == CollectionType::Root
+        || collection.collection_type == CollectionType::System)
+        && !ctx.has_admin_account().await?
+    {
         return Err(Error::new("cannot delete root or system collection"));
     }
     if recursive.unwrap_or(false) {
@@ -43,7 +46,7 @@ pub async fn delete_collection(
                             workflow_id: Some(METADATA_DELETE_FINALIZE.to_string()),
                             metadata_id: Some(item.id),
                             metadata_version: Some(item.version),
-                          ..Default::default()
+                            ..Default::default()
                         };
                         ctx.workflow.enqueue_workflow(ctx, &mut request).await?;
                     }
@@ -67,7 +70,10 @@ pub async fn delete_collection(
     if permanently {
         ctx.content.collections.delete(ctx, collection_id).await?;
     } else {
-        ctx.content.collections.mark_deleted(ctx, collection_id).await?;
+        ctx.content
+            .collections
+            .mark_deleted(ctx, collection_id)
+            .await?;
         let mut request = EnqueueRequest {
             workflow_id: Some(COLLECTION_DELETE_FINALIZE.to_string()),
             collection_id: Some(*collection_id),

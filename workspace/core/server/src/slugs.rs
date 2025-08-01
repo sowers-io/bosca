@@ -1,4 +1,4 @@
-use crate::context::BoscaContext;
+use crate::context::{BoscaContext, PermissionCheck};
 use crate::models::content::metadata_supplementary::MetadataSupplementary;
 use crate::models::content::slug::{Slug, SlugType};
 use crate::models::security::permission::PermissionAction;
@@ -81,13 +81,14 @@ pub async fn slug(
     if slug.slug_type != SlugType::Metadata {
         return Err((StatusCode::NOT_FOUND, "Not Found".to_owned()))?;
     }
+    let check = PermissionCheck::new_with_principal_and_metadata_id(
+        principal,
+        principal_groups,
+        slug.id,
+        PermissionAction::View,
+    );
     let metadata = ctx
-        .check_metadata_content_action_principal(
-            &principal,
-            &principal_groups,
-            &slug.id,
-            PermissionAction::View,
-        )
+        .metadata_permission_check(check)
         .await
         .map_err(|_| (StatusCode::FORBIDDEN, "Forbidden".to_owned()))?;
     if metadata.deleted

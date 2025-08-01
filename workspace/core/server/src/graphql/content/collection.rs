@@ -1,5 +1,5 @@
 use crate::caching_headers::CachingHeaderManager;
-use crate::context::BoscaContext;
+use crate::context::{BoscaContext, PermissionCheck};
 use crate::graphql::content::category::CategoryObject;
 use crate::graphql::content::collection_metadata_relationship::CollectionMetadataRelationshipObject;
 use crate::graphql::content::collection_supplementary::CollectionSupplementaryObject;
@@ -150,9 +150,12 @@ impl CollectionObject {
         if let Some(id) = &self.collection.template_metadata_id {
             if let Some(version) = &self.collection.template_metadata_version {
                 let ctx = ctx.data::<BoscaContext>()?;
-                let metadata = ctx
-                    .check_metadata_version_action(id, *version, PermissionAction::View)
-                    .await?;
+                let check = PermissionCheck::new_with_metadata_id_with_version(
+                    id.clone(),
+                    *version,
+                    PermissionAction::View,
+                );
+                let metadata = ctx.metadata_permission_check(check).await?;
                 return Ok(Some(metadata.into()));
             }
         }
@@ -166,8 +169,11 @@ impl CollectionObject {
         limit: i64,
     ) -> Result<Vec<CollectionObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        ctx.check_collection_action(&self.collection.id, PermissionAction::List)
-            .await?;
+        let check = PermissionCheck::new_with_collection_id(
+            self.collection.id.clone(),
+            PermissionAction::List,
+        );
+        ctx.collection_permission_check(check).await?;
         Ok(ctx
             .content
             .collections
@@ -183,11 +189,14 @@ impl CollectionObject {
         ctx: &Context<'_>,
         offset: i64,
         limit: i64,
-        state: Option<String>
+        state: Option<String>,
     ) -> Result<Vec<CollectionItem>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        ctx.check_collection_action(&self.collection.id, PermissionAction::List)
-            .await?;
+        let check = PermissionCheck::new_with_collection_id(
+            self.collection.id.clone(),
+            PermissionAction::List,
+        );
+        ctx.collection_permission_check(check).await?;
         let items = ctx
             .content
             .collections
@@ -196,17 +205,18 @@ impl CollectionObject {
         let mut content = Vec::new();
         for item in items {
             if let Some(id) = &item.collection_id {
-                if let Ok(mut collection) = ctx
-                    .check_collection_action(id, PermissionAction::View)
-                    .await
-                {
+                let check =
+                    PermissionCheck::new_with_collection_id(id.clone(), PermissionAction::View);
+                if let Ok(mut collection) = ctx.collection_permission_check(check).await {
                     collection.item_attributes = item.attributes;
                     content.push(CollectionItem::Collection(collection.into()))
                 }
             } else if let Some(id) = &item.metadata_id {
-                if let Ok(mut metadata) =
-                    ctx.check_metadata_action(id, PermissionAction::View).await
-                {
+                let check = PermissionCheck::new_with_metadata_id_advertised(
+                    id.clone(),
+                    PermissionAction::View,
+                );
+                if let Ok(mut metadata) = ctx.metadata_permission_check(check).await {
                     metadata.item_attributes = item.attributes;
                     content.push(CollectionItem::Metadata(metadata.into()))
                 }
@@ -217,8 +227,9 @@ impl CollectionObject {
 
     async fn items_count(&self, ctx: &Context<'_>, state: Option<String>) -> Result<i64, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        ctx.check_collection_action(&self.collection.id, PermissionAction::List)
-            .await?;
+        let check =
+            PermissionCheck::new_with_collection_id(self.collection.id, PermissionAction::List);
+        ctx.collection_permission_check(check).await?;
         ctx.content
             .collections
             .get_children_count(&self.collection, &state)
@@ -232,22 +243,29 @@ impl CollectionObject {
         limit: i64,
     ) -> Result<Vec<CollectionObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        ctx.check_collection_action(&self.collection.id, PermissionAction::List)
-            .await?;
-        Ok(ctx
+        let check =
+            PermissionCheck::new_with_collection_id(self.collection.id, PermissionAction::List);
+        ctx.collection_permission_check(check).await?;
+        let mut result = Vec::new();
+        let collections = ctx
             .content
             .collections
             .get_child_collections(&self.collection, offset, limit)
-            .await?
-            .into_iter()
-            .map(CollectionObject::new)
-            .collect())
+            .await?;
+        for c in collections {
+            let check = PermissionCheck::new_with_collection(c, PermissionAction::View);
+            if let Ok(collection) = ctx.collection_permission_check(check).await {
+                result.push(collection);
+            }
+        }
+        Ok(result.into_iter().map(CollectionObject::new).collect())
     }
 
     async fn collections_count(&self, ctx: &Context<'_>) -> Result<i64, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        ctx.check_collection_action(&self.collection.id, PermissionAction::List)
-            .await?;
+        let check =
+            PermissionCheck::new_with_collection_id(self.collection.id, PermissionAction::List);
+        ctx.collection_permission_check(check).await?;
         ctx.content
             .collections
             .get_child_collections_count(&self.collection)
@@ -261,22 +279,29 @@ impl CollectionObject {
         limit: i64,
     ) -> Result<Vec<MetadataObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        ctx.check_collection_action(&self.collection.id, PermissionAction::List)
-            .await?;
-        Ok(ctx
+        let check =
+            PermissionCheck::new_with_collection_id(self.collection.id, PermissionAction::List);
+        ctx.collection_permission_check(check).await?;
+        let metadata = ctx
             .content
             .collections
             .get_child_metadata(&self.collection, offset, limit)
-            .await?
-            .into_iter()
-            .map(MetadataObject::new)
-            .collect())
+            .await?;
+        let mut result = Vec::new();
+        for m in metadata {
+            let check = PermissionCheck::new_with_metadata_advertised(m, PermissionAction::View);
+            if let Ok(metadata) = ctx.metadata_permission_check(check).await {
+                result.push(metadata);
+            }
+        }
+        Ok(result.into_iter().map(MetadataObject::new).collect())
     }
 
     async fn metadata_count(&self, ctx: &Context<'_>) -> Result<i64, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        ctx.check_collection_action(&self.collection.id, PermissionAction::List)
-            .await?;
+        let check =
+            PermissionCheck::new_with_collection_id(self.collection.id, PermissionAction::List);
+        ctx.collection_permission_check(check).await?;
         ctx.content
             .collections
             .get_child_metadata_count(&self.collection)
@@ -288,11 +313,12 @@ impl CollectionObject {
         ctx: &Context<'_>,
         offset: i64,
         limit: i64,
-        state: Option<String>
+        state: Option<String>,
     ) -> Result<Vec<MetadataObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        ctx.check_collection_action(&self.collection.id, PermissionAction::List)
-            .await?;
+        let check =
+            PermissionCheck::new_with_collection_id(self.collection.id, PermissionAction::List);
+        ctx.collection_permission_check(check).await?;
         let items = ctx
             .content
             .collections
@@ -301,9 +327,11 @@ impl CollectionObject {
         let mut content = Vec::new();
         for item in items {
             if let Some(id) = &item.metadata_id {
-                if let Ok(mut metadata) =
-                    ctx.check_metadata_action(id, PermissionAction::View).await
-                {
+                let check = PermissionCheck::new_with_metadata_id_advertised(
+                    id.clone(),
+                    PermissionAction::View,
+                );
+                if let Ok(mut metadata) = ctx.metadata_permission_check(check).await {
                     metadata.item_attributes = item.attributes;
                     content.push(metadata.into())
                 }
@@ -312,16 +340,21 @@ impl CollectionObject {
         Ok(content)
     }
 
-    async fn expanded_metadata_count(&self, ctx: &Context<'_>, state: Option<String>) -> Result<i64, Error> {
+    async fn expanded_metadata_count(
+        &self,
+        ctx: &Context<'_>,
+        state: Option<String>,
+    ) -> Result<i64, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        ctx.check_collection_action(&self.collection.id, PermissionAction::List)
-            .await?;
+        let check =
+            PermissionCheck::new_with_collection_id(self.collection.id, PermissionAction::List);
+        ctx.collection_permission_check(check).await?;
         ctx.content
             .collections
             .get_expanded_metadata_count(&self.collection, &state)
             .await
     }
-    
+
     async fn workflow(&self) -> CollectionWorkflowObject {
         CollectionWorkflowObject {
             collection: &self.collection,
@@ -346,6 +379,9 @@ impl CollectionObject {
 
     async fn permissions(&self, ctx: &Context<'_>) -> Result<Vec<PermissionObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
+        let check =
+            PermissionCheck::new_with_collection(self.collection.clone(), PermissionAction::Manage);
+        ctx.metadata_permission_check(check).await?;
         Ok(ctx
             .content
             .collection_permissions
@@ -363,12 +399,14 @@ impl CollectionObject {
         plan_id: Option<String>,
     ) -> Result<Vec<CollectionSupplementaryObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-
         if let Some(key) = key {
-            if ctx.check_collection_supplementary_action(&self.collection, PermissionAction::View).await.is_err() {
-                return Ok(vec![])
+            let check = PermissionCheck::new_with_collection_id_supplementary(
+                self.collection.id,
+                PermissionAction::View,
+            );
+            if ctx.collection_permission_check(check).await.is_err() {
+                return Ok(vec![]);
             }
-
             let plan_id = plan_id.map(|p| Uuid::parse_str(&p).unwrap());
             if let Some(supplementary) = ctx
                 .content
@@ -383,11 +421,13 @@ impl CollectionObject {
             }
             return Ok(vec![]);
         }
-
-        if ctx.check_collection_supplementary_action(&self.collection, PermissionAction::List).await.is_err() {
-            return Ok(vec![])
+        let check = PermissionCheck::new_with_collection_id_supplementary(
+            self.collection.id,
+            PermissionAction::List,
+        );
+        if ctx.collection_permission_check(check).await.is_err() {
+            return Ok(vec![]);
         }
-
         Ok(ctx
             .content
             .collection_supplementary

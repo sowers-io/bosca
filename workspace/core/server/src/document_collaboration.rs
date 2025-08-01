@@ -1,4 +1,4 @@
-use crate::context::BoscaContext;
+use crate::context::{BoscaContext, PermissionCheck};
 use crate::models::security::permission::PermissionAction;
 use crate::util::security::get_principal_from_headers;
 use axum::body::{to_bytes, Body};
@@ -28,15 +28,27 @@ pub async fn get_document_collaboration(
         .map_err(|_| (StatusCode::UNAUTHORIZED, "Unauthorized".to_owned()))?;
     let metadata_id = Uuid::parse_str(params.id.as_str())
         .map_err(|_| (StatusCode::BAD_REQUEST, "Invalid id".to_owned()))?;
-    ctx.check_metadata_version_principal_action(
-        &principal,
-        &principal_groups,
-        &metadata_id,
+    let check = PermissionCheck::new_with_principal_and_metadata_id_with_version(
+        principal,
+        principal_groups,
+        metadata_id,
         params.version,
         PermissionAction::Edit,
-    ).await.map_err(|_| (StatusCode::UNAUTHORIZED, "Unauthorized".to_owned()))?;
-    let collaboration = ctx.content.documents.get_document_collaboration(&metadata_id, params.version).await
-        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Error saving document".to_owned()))?;
+    );
+    ctx.metadata_permission_check(check)
+        .await
+        .map_err(|_| (StatusCode::UNAUTHORIZED, "Unauthorized".to_owned()))?;
+    let collaboration = ctx
+        .content
+        .documents
+        .get_document_collaboration(&metadata_id, params.version)
+        .await
+        .map_err(|_| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Error saving document".to_owned(),
+            )
+        })?;
     if let Some(collaboration) = collaboration {
         let mut hdrs = HeaderMap::new();
         hdrs.insert("Cache-Control", "private".parse().unwrap());
@@ -62,17 +74,33 @@ pub async fn set_document_collaboration(
         .map_err(|_| (StatusCode::UNAUTHORIZED, "Unauthorized".to_owned()))?;
     let metadata_id = Uuid::parse_str(params.id.as_str())
         .map_err(|_| (StatusCode::BAD_REQUEST, "Invalid id".to_owned()))?;
-    ctx.check_metadata_version_principal_action(
-        &principal,
-        &principal_groups,
-        &metadata_id,
+    let check = PermissionCheck::new_with_principal_and_metadata_id_with_version(
+        principal,
+        principal_groups,
+        metadata_id,
         params.version,
         PermissionAction::Edit,
-    ).await.map_err(|_| (StatusCode::UNAUTHORIZED, "Unauthorized".to_owned()))?;
+    );
+    ctx.metadata_permission_check(check)
+        .await
+        .map_err(|_| (StatusCode::UNAUTHORIZED, "Unauthorized".to_owned()))?;
     let body = request.into_body();
-    let bytes = to_bytes(body, usize::MAX).await.map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Error ready body".to_owned()))?;
+    let bytes = to_bytes(body, usize::MAX).await.map_err(|_| {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Error ready body".to_owned(),
+        )
+    })?;
     let collaboration = bytes.to_vec();
-    ctx.content.documents.set_document_collaboration(&metadata_id, params.version, &collaboration).await
-        .map_err(|_| (StatusCode::INTERNAL_SERVER_ERROR, "Error saving document".to_owned()))?;
+    ctx.content
+        .documents
+        .set_document_collaboration(&metadata_id, params.version, &collaboration)
+        .await
+        .map_err(|_| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Error saving document".to_owned(),
+            )
+        })?;
     Ok((StatusCode::OK, "OK".to_owned()))
 }

@@ -6,8 +6,9 @@ use serde::{Deserialize, Serialize};
 use tokio_postgres::Row;
 use uuid::Uuid;
 
-#[derive(Enum, Debug, Copy, Clone, Eq, PartialEq, Hash, Serialize, Deserialize)]
+#[derive(Enum, Debug, Copy, Clone, Eq, PartialEq, Hash, Serialize, Deserialize, Default)]
 pub enum PermissionAction {
+    #[default]
     View,
     Edit,
     Delete,

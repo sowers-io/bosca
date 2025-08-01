@@ -1,4 +1,4 @@
-use crate::context::BoscaContext;
+use crate::context::{BoscaContext, PermissionCheck};
 use crate::graphql::content::collection::CollectionObject;
 use crate::graphql::content::collection_metadata_relationship::CollectionMetadataRelationshipObject;
 use crate::graphql::content::collection_supplementary::CollectionSupplementaryObject;
@@ -117,10 +117,10 @@ impl CollectionMutationObject {
             }
         }
         let collection_id = Uuid::parse_str(id.as_str())?;
-        let c = ctx.check_collection_action(&collection_id, PermissionAction::Edit)
-            .await?;
+        let check = PermissionCheck::new_with_collection_id(collection_id, PermissionAction::Edit);
+        let c = ctx.collection_permission_check(check).await?;
         if c.locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         ctx.content
             .collections
@@ -137,13 +137,17 @@ impl CollectionMutationObject {
         ctx: &Context<'_>,
         collection_id: String,
         template_id: String,
-        template_version: i32
+        template_version: i32,
     ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::parse_str(collection_id.as_str())?;
-        ctx.check_collection_action(&id, PermissionAction::Manage).await?;
+        let check = PermissionCheck::new_with_collection_id(id, PermissionAction::Manage);
+        ctx.collection_permission_check(check).await?;
         let template_id = Uuid::parse_str(template_id.as_str())?;
-        ctx.content.collections.set_template(ctx, &id, &template_id, template_version).await?;
+        ctx.content
+            .collections
+            .set_template(ctx, &id, &template_id, template_version)
+            .await?;
         Ok(true)
     }
 
@@ -179,14 +183,14 @@ impl CollectionMutationObject {
     ) -> Result<CollectionMetadataRelationshipObject, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::parse_str(relationship.id.as_str())?;
-        let c = ctx.check_collection_action(&id, PermissionAction::Edit)
-            .await?;
+        let check = PermissionCheck::new_with_collection_id(id, PermissionAction::Edit);
+        let c = ctx.collection_permission_check(check).await?;
         if c.items_locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         let metadata_id = Uuid::parse_str(relationship.metadata_id.as_str())?;
-        ctx.check_metadata_action(&metadata_id, PermissionAction::Edit)
-            .await?;
+        let check = PermissionCheck::new_with_metadata_id(metadata_id, PermissionAction::Edit);
+        ctx.metadata_permission_check(check).await?;
         ctx.content
             .collections
             .add_metadata_relationship(ctx, &relationship)
@@ -209,14 +213,14 @@ impl CollectionMutationObject {
     ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::parse_str(relationship.id.as_str())?;
-        let c = ctx.check_collection_action(&id, PermissionAction::Edit)
-            .await?;
+        let check = PermissionCheck::new_with_collection_id(id, PermissionAction::Edit);
+        let c = ctx.collection_permission_check(check).await?;
         if c.items_locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         let metadata_id = Uuid::parse_str(relationship.metadata_id.as_str())?;
-        ctx.check_metadata_action(&metadata_id, PermissionAction::Edit)
-            .await?;
+        let check = PermissionCheck::new_with_metadata_id(metadata_id, PermissionAction::Edit);
+        ctx.metadata_permission_check(check).await?;
         ctx.content
             .collections
             .edit_metadata_relationship(ctx, &relationship)
@@ -237,14 +241,14 @@ impl CollectionMutationObject {
     ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::parse_str(id.as_str())?;
-        let c = ctx.check_collection_action(&id, PermissionAction::Edit)
-            .await?;
+        let check = PermissionCheck::new_with_collection_id(id, PermissionAction::Edit);
+        let c = ctx.collection_permission_check(check).await?;
         if c.items_locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         let metadata_id = Uuid::parse_str(metadata_id.as_str())?;
-        ctx.check_metadata_action(&metadata_id, PermissionAction::Edit)
-            .await?;
+        let check = PermissionCheck::new_with_metadata_id(metadata_id, PermissionAction::Edit);
+        ctx.metadata_permission_check(check).await?;
         ctx.content
             .collections
             .delete_metadata_relationship(ctx, &id, &metadata_id, &relationship)
@@ -260,11 +264,10 @@ impl CollectionMutationObject {
     ) -> Result<CollectionObject, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::parse_str(id.as_str())?;
-        let mut collection = ctx
-            .check_collection_action(&id, PermissionAction::Edit)
-            .await?;
+        let check = PermissionCheck::new_with_collection_id(id, PermissionAction::Edit);
+        let mut collection = ctx.collection_permission_check(check).await?;
         if collection.locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         ctx.content.collections.set_public(ctx, &id, public).await?;
         collection.public = public;
@@ -279,11 +282,10 @@ impl CollectionMutationObject {
     ) -> Result<CollectionObject, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::parse_str(id.as_str())?;
-        let mut collection = ctx
-            .check_collection_action(&id, PermissionAction::Manage)
-            .await?;
+        let check = PermissionCheck::new_with_collection_id(id, PermissionAction::Edit);
+        let mut collection = ctx.collection_permission_check(check).await?;
         if collection.locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         ctx.content
             .collections
@@ -301,11 +303,10 @@ impl CollectionMutationObject {
     ) -> Result<CollectionObject, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::parse_str(id.as_str())?;
-        let mut collection = ctx
-            .check_collection_action(&id, PermissionAction::Manage)
-            .await?;
+        let check = PermissionCheck::new_with_collection_id(id, PermissionAction::Manage);
+        let mut collection = ctx.collection_permission_check(check).await?;
         if collection.locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         ctx.content
             .collection_supplementary
@@ -323,9 +324,15 @@ impl CollectionMutationObject {
     ) -> Result<Option<CollectionObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::parse_str(&id)?;
-        ctx.check_collection_action(&id, PermissionAction::Edit).await?;
+        let check = PermissionCheck::new_with_collection_id(id, PermissionAction::Edit);
+        ctx.collection_permission_check(check).await?;
         ctx.content.collections.set_locked(ctx, &id, locked).await?;
-        Ok(ctx.content.collections.get(&id).await?.map(|collection| collection.into()))
+        Ok(ctx
+            .content
+            .collections
+            .get(&id)
+            .await?
+            .map(|collection| collection.into()))
     }
 
     async fn add_permission(
@@ -335,12 +342,16 @@ impl CollectionMutationObject {
     ) -> Result<PermissionObject, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let permission: Permission = permission.into();
-        let c = ctx.check_collection_action(&permission.entity_id, PermissionAction::Manage)
-            .await?;
+        let check =
+            PermissionCheck::new_with_collection_id(permission.entity_id, PermissionAction::Manage);
+        let c = ctx.collection_permission_check(check).await?;
         if c.locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
-        ctx.content.collection_permissions.add(ctx, &permission).await?;
+        ctx.content
+            .collection_permissions
+            .add(ctx, &permission)
+            .await?;
         Ok(permission.into())
     }
 
@@ -351,10 +362,11 @@ impl CollectionMutationObject {
     ) -> Result<PermissionObject, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let permission: Permission = permission.into();
-        let c = ctx.check_collection_action(&permission.entity_id, PermissionAction::Manage)
-            .await?;
+        let check =
+            PermissionCheck::new_with_collection_id(permission.entity_id, PermissionAction::Manage);
+        let c = ctx.collection_permission_check(check).await?;
         if c.locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         ctx.content
             .collection_permissions
@@ -373,11 +385,10 @@ impl CollectionMutationObject {
     ) -> Result<CollectionObject, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::parse_str(id.as_str())?;
-        let collection = ctx
-            .check_collection_action(&id, PermissionAction::Manage)
-            .await?;
+        let check = PermissionCheck::new_with_collection_id(id, PermissionAction::Manage);
+        let collection = ctx.collection_permission_check(check).await?;
         if collection.items_locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         let child_collection_id = child_collection_id.map(|c| Uuid::parse_str(c.as_str()).unwrap());
         let child_metadata_id = child_metadata_id.map(|c| Uuid::parse_str(c.as_str()).unwrap());
@@ -398,11 +409,10 @@ impl CollectionMutationObject {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::parse_str(id.as_str())?;
         let collection_id = Uuid::parse_str(collection_id.as_str())?;
-        let collection = ctx
-            .check_collection_action(&collection_id, PermissionAction::Edit)
-            .await?;
+        let check = PermissionCheck::new_with_collection_id(id, PermissionAction::Edit);
+        let collection = ctx.collection_permission_check(check).await?;
         if collection.items_locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         ctx.content
             .collections
@@ -420,11 +430,10 @@ impl CollectionMutationObject {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::parse_str(id.as_str())?;
         let collection_id = Uuid::parse_str(collection_id.as_str())?;
-        let collection = ctx
-            .check_collection_action(&collection_id, PermissionAction::Edit)
-            .await?;
+        let check = PermissionCheck::new_with_collection_id(id, PermissionAction::Edit);
+        let collection = ctx.collection_permission_check(check).await?;
         if collection.items_locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         ctx.content
             .collections
@@ -443,11 +452,10 @@ impl CollectionMutationObject {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::parse_str(id.as_str())?;
         let metadata_id = Uuid::parse_str(metadata_id.as_str())?;
-        let collection = ctx
-            .check_collection_action(&id, PermissionAction::Edit)
-            .await?;
+        let check = PermissionCheck::new_with_collection_id(id, PermissionAction::Edit);
+        let collection = ctx.collection_permission_check(check).await?;
         if collection.items_locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         ctx.content
             .collections
@@ -465,11 +473,10 @@ impl CollectionMutationObject {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::parse_str(id.as_str())?;
         let metadata_id = Uuid::parse_str(metadata_id.as_str())?;
-        let collection = ctx
-            .check_collection_action(&id, PermissionAction::Edit)
-            .await?;
+        let check = PermissionCheck::new_with_collection_id(id, PermissionAction::Edit);
+        let collection = ctx.collection_permission_check(check).await?;
         if collection.items_locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         ctx.content
             .collections
@@ -546,10 +553,11 @@ impl CollectionMutationObject {
     ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let collection_id = Uuid::parse_str(id.as_str())?;
-        let c = ctx.check_collection_action(&collection_id, PermissionAction::Manage)
-            .await?;
+        let check =
+            PermissionCheck::new_with_collection_id(collection_id, PermissionAction::Manage);
+        let c = ctx.collection_permission_check(check).await?;
         if c.locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         ctx.content
             .collections
@@ -566,10 +574,11 @@ impl CollectionMutationObject {
     ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let collection_id = Uuid::parse_str(id.as_str())?;
-        let c = ctx.check_collection_action(&collection_id, PermissionAction::Manage)
-            .await?;
+        let check =
+            PermissionCheck::new_with_collection_id(collection_id, PermissionAction::Manage);
+        let c = ctx.collection_permission_check(check).await?;
         if c.locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         ctx.content
             .collections
@@ -586,10 +595,10 @@ impl CollectionMutationObject {
     ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let collection_id = Uuid::parse_str(id.as_str())?;
-        let c = ctx.check_collection_action(&collection_id, PermissionAction::Edit)
-            .await?;
+        let check = PermissionCheck::new_with_collection_id(collection_id, PermissionAction::Edit);
+        let c = ctx.collection_permission_check(check).await?;
         if c.locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         ctx.content
             .collections
@@ -607,10 +616,10 @@ impl CollectionMutationObject {
     ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let collection_id = Uuid::parse_str(id.as_str())?;
-        let c = ctx.check_collection_action(&collection_id, PermissionAction::Edit)
-            .await?;
+        let check = PermissionCheck::new_with_collection_id(collection_id, PermissionAction::Edit);
+        let c = ctx.collection_permission_check(check).await?;
         if c.items_locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         let collection_item_id = Uuid::parse_str(item_id.as_str())?;
         ctx.content
@@ -629,10 +638,10 @@ impl CollectionMutationObject {
     ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let collection_id = Uuid::parse_str(id.as_str())?;
-        let c = ctx.check_collection_action(&collection_id, PermissionAction::Edit)
-            .await?;
+        let check = PermissionCheck::new_with_collection_id(collection_id, PermissionAction::Edit);
+        let c = ctx.collection_permission_check(check).await?;
         if c.items_locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         let metadata_item_id = Uuid::parse_str(item_id.as_str())?;
         ctx.content
@@ -653,13 +662,13 @@ impl CollectionMutationObject {
         let ctx = ctx.data::<BoscaContext>()?;
         let collection_id = Uuid::parse_str(collection_id.as_str())?;
         let metadata_id = Uuid::parse_str(metadata_id.as_str())?;
-        let c = ctx.check_collection_action(&collection_id, PermissionAction::Edit)
-            .await?;
+        let check = PermissionCheck::new_with_collection_id(collection_id, PermissionAction::Edit);
+        let c = ctx.collection_permission_check(check).await?;
         if c.locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
-        ctx.check_metadata_action(&metadata_id, PermissionAction::Edit)
-            .await?;
+        let check = PermissionCheck::new_with_metadata_id(metadata_id, PermissionAction::Edit);
+        ctx.metadata_permission_check(check).await?;
         ctx.content
             .collections
             .merge_relationship_attributes(
@@ -681,10 +690,11 @@ impl CollectionMutationObject {
     ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let collection_id = Uuid::parse_str(id.as_str())?;
-        let c = ctx.check_collection_action(&collection_id, PermissionAction::Manage)
-            .await?;
+        let check =
+            PermissionCheck::new_with_collection_id(collection_id, PermissionAction::Manage);
+        let c = ctx.collection_permission_check(check).await?;
         if c.locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         ctx.content
             .collections
@@ -701,10 +711,10 @@ impl CollectionMutationObject {
     ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::parse_str(id.as_str())?;
-        let c = ctx.check_collection_action(&id, PermissionAction::Edit)
-            .await?;
+        let check = PermissionCheck::new_with_collection_id(id, PermissionAction::Edit);
+        let c = ctx.collection_permission_check(check).await?;
         if c.locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         let mut ids = Vec::new();
         for category_id in category_ids {
@@ -721,14 +731,13 @@ impl CollectionMutationObject {
     async fn set_ready(&self, ctx: &Context<'_>, id: String) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let collection_id = Uuid::parse_str(id.as_str())?;
-        let collection = ctx
-            .check_collection_action(&collection_id, PermissionAction::Edit)
-            .await?;
+        let check = PermissionCheck::new_with_collection_id(collection_id, PermissionAction::Edit);
+        let collection = ctx.collection_permission_check(check).await?;
         if collection.ready.is_some() {
             return Err(Error::new("collection already ready"));
         }
         if collection.locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         ctx.content
             .collection_workflows
@@ -744,11 +753,11 @@ impl CollectionMutationObject {
     ) -> Result<CollectionSupplementaryObject, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let collection_id = Uuid::parse_str(&supplementary.collection_id)?;
-        let collection = ctx
-            .check_collection_action(&collection_id, PermissionAction::Manage)
-            .await?;
+        let check =
+            PermissionCheck::new_with_collection_id(collection_id, PermissionAction::Manage);
+        let collection = ctx.collection_permission_check(check).await?;
         if collection.locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         let id = ctx
             .content
@@ -778,10 +787,10 @@ impl CollectionMutationObject {
     ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::parse_str(supplementary_id.as_str())?;
-        let c = ctx.check_collection_action(&id, PermissionAction::Manage)
-            .await?;
+        let check = PermissionCheck::new_with_collection_id(id, PermissionAction::Manage);
+        let c = ctx.collection_permission_check(check).await?;
         if c.locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         ctx.content
             .collection_supplementary
@@ -802,17 +811,19 @@ impl CollectionMutationObject {
         let supplementary_id = Uuid::parse_str(supplementary_id.as_str())?;
         let Some(supplementary) = ctx
             .content
-            .metadata_supplementary
+            .collection_supplementary
             .get_supplementary(&supplementary_id)
             .await?
         else {
             return Err(Error::new("Supplementary not found"));
         };
-        let collection = ctx
-            .check_collection_action(&supplementary.id, PermissionAction::Manage)
-            .await?;
+        let check = PermissionCheck::new_with_collection_id(
+            supplementary.collection_id,
+            PermissionAction::Manage,
+        );
+        let collection = ctx.collection_permission_check(check).await?;
         if collection.locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         let path = ctx
             .storage
@@ -843,11 +854,13 @@ impl CollectionMutationObject {
         else {
             return Err(Error::new("Supplementary not found"));
         };
-        let collection = ctx
-            .check_collection_action(&supplementary.collection_id, PermissionAction::Edit)
-            .await?;
+        let check = PermissionCheck::new_with_collection_id(
+            supplementary.collection_id,
+            PermissionAction::Manage,
+        );
+        let collection = ctx.collection_permission_check(check).await?;
         if collection.locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         let path = ctx
             .storage
@@ -870,14 +883,17 @@ impl CollectionMutationObject {
             .content
             .collection_supplementary
             .get_supplementary(&supplementary_id)
-            .await? else {
+            .await?
+        else {
             return Err(Error::new("Supplementary not found"));
         };
-        let collection = ctx
-            .check_collection_action(&supplementary.collection_id, PermissionAction::Manage)
-            .await?;
+        let check = PermissionCheck::new_with_collection_id(
+            supplementary.collection_id,
+            PermissionAction::Manage,
+        );
+        let collection = ctx.collection_permission_check(check).await?;
         if collection.locked && !ctx.has_service_account().await? {
-            return Err(Error::new("locked"))
+            return Err(Error::new("locked"));
         }
         let path = ctx
             .storage
@@ -891,12 +907,20 @@ impl CollectionMutationObject {
         Ok(true)
     }
 
-    async fn template(&self, ctx: &Context<'_>, metadata_id: String, metadata_version: i32) -> Result<CollectionTemplateMutationObject, Error> {
+    async fn template(
+        &self,
+        ctx: &Context<'_>,
+        metadata_id: String,
+        metadata_version: i32,
+    ) -> Result<CollectionTemplateMutationObject, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::parse_str(&metadata_id)?;
-        let metadata = ctx
-            .check_metadata_version_action(&id, metadata_version, PermissionAction::Edit)
-            .await?;
+        let check = PermissionCheck::new_with_metadata_id_with_version(
+            id,
+            metadata_version,
+            PermissionAction::Edit,
+        );
+        let metadata = ctx.metadata_permission_check(check).await?;
         Ok(CollectionTemplateMutationObject::new(metadata))
     }
 }

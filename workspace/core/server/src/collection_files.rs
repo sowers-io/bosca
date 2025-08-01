@@ -1,6 +1,7 @@
-use crate::context::BoscaContext;
+use crate::context::{BoscaContext, PermissionCheck};
 use crate::models::security::permission::PermissionAction;
 use crate::util::security::get_principal_from_headers;
+use crate::util::upload::upload_field;
 use axum::body::Body;
 use axum::extract::{Multipart, Query};
 use axum::extract::{Request, State};
@@ -8,7 +9,6 @@ use http::{header, HeaderMap, HeaderValue, StatusCode};
 use log::error;
 use serde::Deserialize;
 use uuid::Uuid;
-use crate::util::upload::upload_field;
 
 #[derive(Debug, Deserialize)]
 pub struct Params {
@@ -23,9 +23,13 @@ pub async fn collection_download(
     headers: HeaderMap,
     request: Request<Body>,
 ) -> Result<(HeaderMap, Body), (StatusCode, String)> {
-    let principal = get_principal_from_headers(&ctx, &headers).await
+    let principal = get_principal_from_headers(&ctx, &headers)
+        .await
         .map_err(|_| (StatusCode::UNAUTHORIZED, "Unauthorized".to_owned()))?;
-    let principal_groups = ctx.security.get_principal_groups(&principal.id).await
+    let principal_groups = ctx
+        .security
+        .get_principal_groups(&principal.id)
+        .await
         .map_err(|_| (StatusCode::UNAUTHORIZED, "Unauthorized".to_owned()))?;
     let url = format!(
         "/files/collection{}",
@@ -60,14 +64,15 @@ pub async fn collection_download(
         };
         (collection, supplementary)
     } else {
-        ctx.check_collection_supplementary_action_principal(
-            &principal,
-            &principal_groups,
-            &supplementary_id,
+        let check = PermissionCheck::new_with_principal_and_collection_supplementary_id(
+            principal.clone(),
+            principal_groups.clone(),
+            supplementary_id,
             PermissionAction::View,
-        )
-        .await
-        .map_err(|_| (StatusCode::FORBIDDEN, "Forbidden".to_owned()))?
+        );
+        ctx.collection_supplementary_permission_check(check)
+            .await
+            .map_err(|_| (StatusCode::FORBIDDEN, "Forbidden".to_owned()))?
     };
     if collection.deleted
         && !ctx
@@ -116,17 +121,21 @@ pub async fn collection_upload(
     let principal = get_principal_from_headers(&ctx, &headers)
         .await
         .map_err(|_| (StatusCode::UNAUTHORIZED, "Unauthorized".to_owned()))?;
-    let principal_groups = ctx.security.get_principal_groups(&principal.id).await
+    let principal_groups = ctx
+        .security
+        .get_principal_groups(&principal.id)
+        .await
         .map_err(|_| (StatusCode::UNAUTHORIZED, "Unauthorized".to_owned()))?;
     let supplementary_id = Uuid::parse_str(&params.supplementary_id)
         .map_err(|_| (StatusCode::BAD_REQUEST, "Bad Request".to_owned()))?;
+    let check = PermissionCheck::new_with_principal_and_collection_supplementary_id(
+        principal.clone(),
+        principal_groups.clone(),
+        supplementary_id,
+        PermissionAction::Edit,
+    );
     let (collection, supplementary) = ctx
-        .check_collection_supplementary_action_principal(
-            &principal,
-            &principal_groups,
-            &supplementary_id,
-            PermissionAction::Edit,
-        )
+        .collection_supplementary_permission_check(check)
         .await
         .map_err(|_| (StatusCode::FORBIDDEN, "Forbidden".to_owned()))?;
     if let Some(mut field) = multipart
@@ -139,8 +148,12 @@ pub async fn collection_upload(
             .get_collection_path(&collection, Some(supplementary.id))
             .await
             .map_err(|err| (StatusCode::BAD_REQUEST, err.to_string()))?;
-        let len = upload_field(&ctx, path, &mut field).await
-            .map_err(|e| (StatusCode::INTERNAL_SERVER_ERROR, format!("Server Error: {e:?}").to_owned()))?;
+        let len = upload_field(&ctx, path, &mut field).await.map_err(|e| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Server Error: {e:?}").to_owned(),
+            )
+        })?;
         let content_type = field.content_type().unwrap_or("");
         ctx.content
             .metadata_supplementary

@@ -1,4 +1,4 @@
-use crate::context::BoscaContext;
+use crate::context::{BoscaContext, PermissionCheck};
 use crate::models::content::metadata::Metadata;
 use crate::models::content::slug::SlugType;
 use crate::models::security::permission::PermissionAction;
@@ -169,14 +169,15 @@ pub async fn image(
     let metadata = if let Some(id) = params.id {
         let id = Uuid::parse_str(id.as_str())
             .map_err(|_| (StatusCode::BAD_REQUEST, "Invalid ID".to_owned()))?;
-        ctx.check_metadata_action_principal(
-            &principal,
-            &principal_groups,
-            &id,
+        let check = PermissionCheck::new_with_principal_and_metadata_id(
+            principal.clone(),
+            principal_groups.clone(),
+            id,
             PermissionAction::View,
-        )
-        .await
-        .map_err(|_| (StatusCode::FORBIDDEN, "Forbidden".to_owned()))?
+        );
+        ctx.metadata_permission_check(check)
+            .await
+            .map_err(|_| (StatusCode::FORBIDDEN, "Forbidden".to_owned()))?
     } else if let Some(slug) = params.slug {
         let Some(slug) = ctx.content.get_slug(&slug).await.map_err(|_| {
             (
