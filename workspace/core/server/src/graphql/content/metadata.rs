@@ -87,8 +87,10 @@ impl MetadataObject {
 
     async fn content(&self, ctx: &Context<'_>) -> Result<MetadataContentObject, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        let check =
-            PermissionCheck::new_with_metadata_content(self.metadata.clone(), PermissionAction::View);
+        let check = PermissionCheck::new_with_metadata_content(
+            self.metadata.clone(),
+            PermissionAction::View,
+        );
         ctx.metadata_permission_check(check).await?;
         Ok(MetadataContentObject {
             metadata: self.metadata.clone(),
@@ -209,8 +211,10 @@ impl MetadataObject {
 
     async fn source(&self, ctx: &Context<'_>) -> Result<MetadataSourceObject, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        let check =
-            PermissionCheck::new_with_metadata(self.metadata.clone(), PermissionAction::View);
+        let check = PermissionCheck::new_with_metadata_content(
+            self.metadata.clone(),
+            PermissionAction::View,
+        );
         ctx.metadata_permission_check(check).await?;
         Ok(MetadataSourceObject {
             metadata: self.metadata.clone(),
@@ -250,8 +254,10 @@ impl MetadataObject {
         variant: Option<String>,
     ) -> Result<Option<BibleObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        let check =
-            PermissionCheck::new_with_metadata_content(self.metadata.clone(), PermissionAction::View);
+        let check = PermissionCheck::new_with_metadata_content(
+            self.metadata.clone(),
+            PermissionAction::View,
+        );
         ctx.metadata_permission_check(check).await?;
         let bible = ctx
             .content
@@ -263,8 +269,10 @@ impl MetadataObject {
 
     async fn document(&self, ctx: &Context<'_>) -> Result<Option<DocumentObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        let check =
-            PermissionCheck::new_with_metadata_content(self.metadata.clone(), PermissionAction::View);
+        let check = PermissionCheck::new_with_metadata_content(
+            self.metadata.clone(),
+            PermissionAction::View,
+        );
         ctx.metadata_permission_check(check).await?;
         let document = ctx
             .content
@@ -308,8 +316,10 @@ impl MetadataObject {
 
     async fn guide(&self, ctx: &Context<'_>) -> Result<Option<GuideObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        let check =
-            PermissionCheck::new_with_metadata_content(self.metadata.clone(), PermissionAction::View);
+        let check = PermissionCheck::new_with_metadata_content(
+            self.metadata.clone(),
+            PermissionAction::View,
+        );
         ctx.metadata_permission_check(check).await?;
         let guide = ctx
             .content
@@ -405,8 +415,10 @@ impl MetadataObject {
     ) -> Result<Vec<MetadataSupplementaryObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         if let Some(key) = key {
-            let check =
-                PermissionCheck::new_with_metadata_supplementary(self.metadata.clone(), PermissionAction::View);
+            let check = PermissionCheck::new_with_metadata_supplementary(
+                self.metadata.clone(),
+                PermissionAction::View,
+            );
             if ctx.metadata_permission_check(check).await.is_err() {
                 return Ok(vec![]);
             }
