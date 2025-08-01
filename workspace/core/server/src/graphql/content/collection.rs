@@ -120,14 +120,22 @@ impl CollectionObject {
         ctx: &Context<'_>,
     ) -> Result<Vec<CollectionMetadataRelationshipObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        Ok(ctx
+        let relationships = ctx
             .content
             .collections
             .get_metadata_relationships(&self.collection.id)
-            .await?
-            .into_iter()
-            .map(|s| s.into())
-            .collect())
+            .await?;
+        let mut rels = Vec::new();
+        for r in relationships {
+            let check = PermissionCheck::new_with_metadata_id_advertised(
+                r.metadata_id,
+                PermissionAction::View,
+            );
+            if let Ok(metadata) = ctx.metadata_permission_check(check).await {
+                rels.push(CollectionMetadataRelationshipObject::new(r, metadata));
+            }
+        }
+        Ok(rels)
     }
 
     async fn ordering(&self) -> &Option<Vec<Ordering>> {

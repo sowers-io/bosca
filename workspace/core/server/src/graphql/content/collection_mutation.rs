@@ -190,7 +190,7 @@ impl CollectionMutationObject {
         }
         let metadata_id = Uuid::parse_str(relationship.metadata_id.as_str())?;
         let check = PermissionCheck::new_with_metadata_id(metadata_id, PermissionAction::Edit);
-        ctx.metadata_permission_check(check).await?;
+        let metadata = ctx.metadata_permission_check(check).await?;
         ctx.content
             .collections
             .add_metadata_relationship(ctx, &relationship)
@@ -201,7 +201,7 @@ impl CollectionMutationObject {
             .get_metadata_relationship(&id, &metadata_id)
             .await?
         {
-            Some(relationship) => Ok(relationship.into()),
+            Some(relationship) => Ok(CollectionMetadataRelationshipObject::new(relationship, metadata)),
             None => Err(Error::new("error creating relationship")),
         }
     }
