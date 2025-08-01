@@ -1,4 +1,4 @@
-use crate::context::BoscaContext;
+use crate::context::{BoscaContext, PermissionCheck};
 use crate::graphql::content::metadata_mutation::WorkflowConfigurationInput;
 use crate::models::content::item::ContentItem;
 use crate::models::security::permission::PermissionAction;
@@ -48,9 +48,12 @@ pub async fn begin_transition(
     if let Some(metadata_id) = &request.metadata_id {
         let id = Uuid::parse_str(metadata_id.as_str())?;
         if let Some(version) = request.version {
-            let metadata = ctx
-                .check_metadata_version_action(&id, version, PermissionAction::Edit)
-                .await?;
+            let check = PermissionCheck::new_with_metadata_id_with_version(
+                id,
+                version,
+                PermissionAction::Edit,
+            );
+            let metadata = ctx.metadata_permission_check(check).await?;
             if (request.restart.is_none() || !request.restart.unwrap())
                 && metadata.workflow_state_id == request.state_id
             {
@@ -63,9 +66,8 @@ pub async fn begin_transition(
         }
     } else if let Some(collection_id) = &request.collection_id {
         let id = Uuid::parse_str(collection_id.as_str())?;
-        let collection = ctx
-            .check_collection_action(&id, PermissionAction::Edit)
-            .await?;
+        let check = PermissionCheck::new_with_collection_id(id, PermissionAction::Edit);
+        let collection = ctx.collection_permission_check(check).await?;
         if (request.restart.is_none() || !request.restart.unwrap())
             && collection.workflow_state_id == request.state_id
         {
@@ -97,7 +99,7 @@ async fn do_transition(
         true,
         None,
         request.restart,
-        false
+        false,
     )
     .await?;
     // ensure we can enter our state
@@ -110,7 +112,7 @@ async fn do_transition(
         true,
         None,
         request.restart,
-        false
+        false,
     )
     .await?;
     // log what's about to happen
@@ -160,7 +162,7 @@ async fn do_transition(
         request.wait_for_completion.unwrap_or(false),
         request.state_valid,
         request.restart,
-        delay
+        delay,
     )
     .await?
     {
@@ -240,7 +242,7 @@ pub async fn transition(
     wait_for_completion: bool,
     delay_until: Option<DateTime<Utc>>,
     restart: Option<bool>,
-    delay: bool
+    delay: bool,
 ) -> Result<Option<WorkflowExecutionPlan>, Error> {
     if let Some(state) = ctx.workflow.get_state(item.workflow_state_id()).await? {
         if state.state_type == WorkflowStateType::Pending {
@@ -273,7 +275,7 @@ pub async fn transition(
                 TransitionType::Default => state.workflow_id,
             } {
                 let Some(workflow) = ctx.workflow.get_workflow(&workflow_id).await? else {
-                    return Err(Error::new(format!("missing workflow: {workflow_id}")))
+                    return Err(Error::new(format!("missing workflow: {workflow_id}")));
                 };
                 if delay {
                     return Ok(None);

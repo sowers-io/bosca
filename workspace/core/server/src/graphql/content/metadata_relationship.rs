@@ -1,8 +1,9 @@
+use crate::context::{BoscaContext, PermissionCheck};
+use crate::graphql::content::metadata::MetadataObject;
 use crate::models::content::metadata_relationship::MetadataRelationship;
+use crate::models::security::permission::PermissionAction;
 use async_graphql::{Context, Error, Object};
 use serde_json::Value;
-use crate::context::BoscaContext;
-use crate::graphql::content::metadata::MetadataObject;
 
 pub struct MetadataRelationshipObject {
     relationship: MetadataRelationship,
@@ -21,11 +22,12 @@ impl MetadataRelationshipObject {
     }
     async fn metadata(&self, ctx: &Context<'_>) -> Result<MetadataObject, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        let metadata = ctx.content.metadata.get(&self.relationship.id2).await?;
-        if metadata.is_none() {
-            return Err(Error::new("missing metadata"));
-        }
-        Ok(MetadataObject::new(metadata.unwrap()))
+        let check =
+            PermissionCheck::new_with_metadata_id(self.relationship.id2, PermissionAction::View);
+        let metadata = ctx.metadata_permission_check(check).await?;
+        let check = PermissionCheck::new_with_metadata_advertised(metadata, PermissionAction::View);
+        let metadata = ctx.metadata_permission_check(check).await?;
+        Ok(MetadataObject::new(metadata))
     }
     async fn relationship(&self) -> &String {
         &self.relationship.relationship

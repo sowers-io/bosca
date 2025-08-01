@@ -8,6 +8,7 @@ use async_graphql::*;
 use bosca_database::TracingPool;
 use deadpool_postgres::{GenericClient, Transaction};
 use uuid::Uuid;
+use crate::models::workflow::states::{ADVERTISED, PUBLISHED};
 
 #[derive(Clone)]
 pub struct MetadataPermissionsDataStore {
@@ -46,13 +47,14 @@ impl MetadataPermissionsDataStore {
         principal: &Principal,
         groups: &Vec<Uuid>,
         action: PermissionAction,
+        enable_advertised: bool
     ) -> Result<bool, Error> {
         if metadata.deleted {
             return Ok(false);
         }
         if action == PermissionAction::View
             && metadata.public
-            && metadata.workflow_state_id == "published"
+            && (metadata.workflow_state_id == PUBLISHED || (enable_advertised && metadata.workflow_state_id == ADVERTISED))
             && !metadata.deleted
         {
             return Ok(true);
@@ -77,7 +79,7 @@ impl MetadataPermissionsDataStore {
         }
         if action == PermissionAction::View
             && metadata.public_content
-            && metadata.workflow_state_id == "published"
+            && metadata.workflow_state_id == PUBLISHED
             && !metadata.deleted
         {
             return Ok(true);
@@ -102,28 +104,10 @@ impl MetadataPermissionsDataStore {
         }
         if (action == PermissionAction::View || action == PermissionAction::List)
             && metadata.public_supplementary
-            && metadata.workflow_state_id == "published"
+            && metadata.workflow_state_id == PUBLISHED
             && !metadata.deleted
         {
             return Ok(true);
-        }
-        let eval = Evaluator::new(
-            metadata.id,
-            self.get_metadata_permissions(&metadata.id).await?,
-        );
-        Ok(eval.evaluate(principal, groups, &action))
-    }
-
-    #[tracing::instrument(skip(self, metadata, principal, action))]
-    pub async fn has_metadata_version_permission(
-        &self,
-        metadata: &Metadata,
-        principal: &Principal,
-        groups: &Vec<Uuid>,
-        action: PermissionAction,
-    ) -> Result<bool, Error> {
-        if metadata.deleted {
-            return Ok(false);
         }
         let eval = Evaluator::new(
             metadata.id,

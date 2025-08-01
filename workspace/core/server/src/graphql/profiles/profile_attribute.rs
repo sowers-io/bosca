@@ -1,11 +1,11 @@
-use crate::models::profiles::profile_visibility::ProfileVisibility;
+use crate::context::{BoscaContext, PermissionCheck};
+use crate::graphql::content::metadata::MetadataObject;
 use crate::models::profiles::profile_attribute::ProfileAttribute;
+use crate::models::profiles::profile_visibility::ProfileVisibility;
+use crate::models::security::permission::PermissionAction;
 use async_graphql::{Context, Error, Object};
 use chrono::{DateTime, Utc};
 use serde_json::Value;
-use crate::context::BoscaContext;
-use crate::graphql::content::metadata::MetadataObject;
-use crate::models::security::permission::PermissionAction;
 
 pub struct ProfileAttributeObject {
     attribute: ProfileAttribute,
@@ -50,7 +50,8 @@ impl ProfileAttributeObject {
     async fn metadata(&self, ctx: &Context<'_>) -> Result<Option<MetadataObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         if let Some(metadata_id) = self.attribute.metadata_id {
-            if let Ok(metadata) = ctx.check_metadata_action(&metadata_id, PermissionAction::View).await {
+            let check = PermissionCheck::new_with_metadata_id(metadata_id, PermissionAction::View);
+            if let Ok(metadata) = ctx.metadata_permission_check(check).await {
                 Ok(Some(MetadataObject::new(metadata)))
             } else {
                 Ok(None)

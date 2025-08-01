@@ -1,5 +1,7 @@
-use crate::context::BoscaContext;
-use crate::models::content::search::{SearchDocument, SearchQuery, SearchResultFacet, SearchResultObject};
+use crate::context::{BoscaContext, PermissionCheck};
+use crate::models::content::search::{
+    SearchDocument, SearchQuery, SearchResultFacet, SearchResultObject,
+};
 use crate::models::security::permission::PermissionAction;
 use crate::search::query::{Hybrid, IndexQuery};
 use async_graphql::Error;
@@ -17,17 +19,18 @@ pub struct SearchClient {
 }
 
 impl SearchClient {
-    pub fn new(
-        url: String,
-        api_key: String,
-    ) -> Result<Self, Error> {
+    pub fn new(url: String, api_key: String) -> Result<Self, Error> {
         Ok(SearchClient {
             url,
             client: ReqwestClient::new(Some(&api_key))?,
         })
     }
 
-    pub async fn search(&self, ctx: &BoscaContext, query: &SearchQuery) -> Result<SearchResultObject, Error> {
+    pub async fn search(
+        &self,
+        ctx: &BoscaContext,
+        query: &SearchQuery,
+    ) -> Result<SearchResultObject, Error> {
         let storage_system = if let Some(storage_system_id) = query.storage_system_id.as_ref() {
             let Ok(id) = Uuid::parse_str(storage_system_id) else {
                 return Ok(SearchResultObject {
@@ -76,7 +79,9 @@ impl SearchClient {
             filter: query.filter.clone(),
             sort: query.sort.clone(),
             facets: query.facets.clone(),
-            hybrid: query.embedder.as_ref().map(|embedder| Hybrid { embedder: embedder.clone() }),
+            hybrid: query.embedder.as_ref().map(|embedder| Hybrid {
+                embedder: embedder.clone(),
+            }),
             ..Default::default()
         };
 
@@ -108,7 +113,8 @@ impl SearchClient {
             };
             let hit_type = obj.get("_type").unwrap().as_str().unwrap();
             if hit_type == "metadata" {
-                let metadata = ctx.check_metadata_action(&id, PermissionAction::View).await;
+                let check = PermissionCheck::new_with_metadata_id(id, PermissionAction::View);
+                let metadata = ctx.metadata_permission_check(check).await;
                 if metadata.is_err() {
                     continue;
                 }
@@ -119,9 +125,8 @@ impl SearchClient {
                 };
                 documents.push(document);
             } else if hit_type == "collection" {
-                let collection = ctx
-                    .check_collection_action(&id, PermissionAction::View)
-                    .await;
+                let check = PermissionCheck::new_with_collection_id(id, PermissionAction::View);
+                let collection = ctx.collection_permission_check(check).await;
                 if collection.is_err() {
                     continue;
                 }

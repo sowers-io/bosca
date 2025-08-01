@@ -1,4 +1,4 @@
-use crate::context::BoscaContext;
+use crate::context::{BoscaContext, PermissionCheck};
 use crate::datastores::content::tag::update_metadata_etag;
 use crate::datastores::notifier::Notifier;
 use crate::models::content::document::{Document, DocumentInput};
@@ -701,9 +701,12 @@ impl DocumentsDataStore {
         content_type: &str,
         permissions: &[Permission],
     ) -> Result<(Uuid, i32), Error> {
-        let template = ctx
-            .check_metadata_version_action(template_id, template_version, PermissionAction::View)
-            .await?;
+        let check = PermissionCheck::new_with_metadata_id_with_version(
+            *template_id,
+            template_version,
+            PermissionAction::View,
+        );
+        let template = ctx.metadata_permission_check(check).await?;
         if template.content_type != "bosca/v-document-template" {
             return Err(Error::new("invalid template"));
         }

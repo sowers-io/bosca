@@ -1,10 +1,10 @@
-use crate::context::BoscaContext;
+use crate::context::{BoscaContext, PermissionCheck};
 use crate::graphql::content::collection::CollectionObject;
 use crate::graphql::content::metadata::MetadataObject;
+use crate::models::profiles::profile_mark::ProfileMark;
 use crate::models::security::permission::PermissionAction;
 use async_graphql::{Context, Error, Object};
 use chrono::{DateTime, Utc};
-use crate::models::profiles::profile_mark::ProfileMark;
 
 pub struct ProfileMarkObject {
     mark: ProfileMark,
@@ -26,9 +26,12 @@ impl ProfileMarkObject {
         let ctx = ctx.data::<BoscaContext>()?;
         if let Some(metadata_id) = &self.mark.metadata_id {
             if let Some(version) = &self.mark.metadata_version {
-                let metadata = ctx
-                    .check_metadata_version_action(metadata_id, *version, PermissionAction::View)
-                    .await?;
+                let check = PermissionCheck::new_with_metadata_id_with_version(
+                    *metadata_id,
+                    *version,
+                    PermissionAction::View,
+                );
+                let metadata = ctx.metadata_permission_check(check).await?;
                 return Ok(Some(MetadataObject::new(metadata)));
             }
         }
@@ -38,9 +41,11 @@ impl ProfileMarkObject {
     async fn collection(&self, ctx: &Context<'_>) -> Result<Option<CollectionObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         if let Some(collection_id) = &self.mark.collection_id {
-            let collection = ctx
-                .check_collection_action(collection_id, PermissionAction::View)
-                .await?;
+            let check = PermissionCheck::new_with_collection_id(
+                *collection_id,
+                PermissionAction::View,
+            );
+            let collection = ctx.collection_permission_check(check).await?;
             return Ok(Some(CollectionObject::new(collection)));
         }
         Ok(None)

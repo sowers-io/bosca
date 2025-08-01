@@ -1,4 +1,4 @@
-use crate::context::BoscaContext;
+use crate::context::{BoscaContext, PermissionCheck};
 use crate::models::content::metadata_supplementary::MetadataSupplementary;
 use crate::models::security::permission::PermissionAction;
 use crate::models::workflow::enqueue_request::EnqueueRequest;
@@ -105,27 +105,36 @@ pub async fn metadata_download(
         } else {
             return Err((StatusCode::FORBIDDEN, "Forbidden".to_owned()))?;
         }
-    } else if params.supplementary_id.is_some() {
-        let (metadata, supplementary) = ctx
-            .check_metadata_supplementary_action_principal(
-                &principal,
-                &principal_groups,
-                &id,
-                PermissionAction::View,
+    } else if let Some(supplementary_id) = params.supplementary_id {
+        let supplementary_id = Uuid::parse_str(supplementary_id.as_str()).map_err(|_| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Internal Server Error".to_owned(),
             )
+        })?;
+        let check = PermissionCheck::new_with_principal_and_metadata_supplementary_id(
+            principal,
+            principal_groups,
+            id,
+            supplementary_id,
+            PermissionAction::View,
+        );
+        let (metadata, supplementary) = ctx
+            .metadata_supplementary_permission_check(check)
             .await
             .map_err(|_| (StatusCode::FORBIDDEN, "Forbidden".to_owned()))?;
         (metadata, Some(supplementary))
     } else {
+        let check = PermissionCheck::new_with_principal_and_metadata_id(
+            principal,
+            principal_groups,
+            id,
+            PermissionAction::View,
+        );
         (
-            ctx.check_metadata_content_action_principal(
-                &principal,
-                &principal_groups,
-                &id,
-                PermissionAction::View,
-            )
-            .await
-            .map_err(|_| (StatusCode::FORBIDDEN, "Forbidden".to_owned()))?,
+            ctx.metadata_permission_check(check)
+                .await
+                .map_err(|_| (StatusCode::FORBIDDEN, "Forbidden".to_owned()))?,
             None,
         )
     };
@@ -172,12 +181,15 @@ pub async fn metadata_download(
     };
 
     let mut headers = HeaderMap::new();
-    headers.insert(header::CONTENT_TYPE, content_type.parse().map_err(|_| {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            "Internal Server Error".to_owned(),
-        )
-    })?);
+    headers.insert(
+        header::CONTENT_TYPE,
+        content_type.parse().map_err(|_| {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Internal Server Error".to_owned(),
+            )
+        })?,
+    );
     headers.insert(header::ACCEPT_RANGES, HeaderValue::from_static("bytes"));
 
     if params.download.unwrap_or(false) {
@@ -247,8 +259,14 @@ pub async fn metadata_upload(
         .map_err(|_| (StatusCode::UNAUTHORIZED, "Unauthorized".to_owned()))?;
     let id = Uuid::parse_str(params.id.as_ref().unwrap().as_str())
         .map_err(|_| (StatusCode::BAD_REQUEST, "Bad Request".to_owned()))?;
+    let check = PermissionCheck::new_with_principal_and_metadata_id(
+        principal,
+        principal_groups,
+        id,
+        PermissionAction::Edit,
+    );
     let metadata = ctx
-        .check_metadata_action_principal(&principal, &principal_groups, &id, PermissionAction::Edit)
+        .metadata_permission_check(check)
         .await
         .map_err(|_| (StatusCode::FORBIDDEN, "Forbidden".to_owned()))?;
     let supplementary = get_supplementary(&ctx, &params)

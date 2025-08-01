@@ -1,4 +1,4 @@
-use crate::context::BoscaContext;
+use crate::context::{BoscaContext, PermissionCheck};
 use crate::datastores::content::tag::update_metadata_etag;
 use crate::datastores::notifier::Notifier;
 use crate::graphql::content::metadata_mutation::WorkflowConfigurationInput;
@@ -8,12 +8,12 @@ use crate::models::security::principal::Principal;
 use crate::models::workflow::enqueue_request::EnqueueRequest;
 use crate::workflow::core_workflow_ids::METADATA_PROCESS;
 use async_graphql::*;
+use bosca_database::TracingPool;
 use chrono::DateTime;
 use deadpool_postgres::GenericClient;
 use log::error;
 use std::sync::Arc;
 use uuid::Uuid;
-use bosca_database::TracingPool;
 
 #[derive(Clone)]
 pub struct MetadataWorkflowsDataStore {
@@ -52,7 +52,17 @@ impl MetadataWorkflowsDataStore {
             .collect())
     }
 
-    #[tracing::instrument(skip(self, ctx, principal, metadata, to_state_id, valid, status, success, complete))]
+    #[tracing::instrument(skip(
+        self,
+        ctx,
+        principal,
+        metadata,
+        to_state_id,
+        valid,
+        status,
+        success,
+        complete
+    ))]
     #[allow(clippy::too_many_arguments)]
     pub async fn set_state(
         &self,
@@ -209,13 +219,12 @@ impl MetadataWorkflowsDataStore {
                 .get_guide_steps(&metadata.id, metadata.version, None, None)
                 .await?;
             for step in steps {
-                let metadata = ctx
-                    .check_metadata_version_action(
-                        &step.step_metadata_id,
-                        step.step_metadata_version,
-                        PermissionAction::View,
-                    )
-                    .await?;
+                let check = PermissionCheck::new_with_metadata_id_with_version(
+                    step.step_metadata_id,
+                    step.step_metadata_version,
+                    PermissionAction::View,
+                );
+                let metadata = ctx.metadata_permission_check(check).await?;
                 Box::pin(self.set_metadata_ready_and_enqueue(ctx, &metadata, None)).await?;
             }
         }

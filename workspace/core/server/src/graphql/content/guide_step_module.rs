@@ -1,4 +1,4 @@
-use crate::context::BoscaContext;
+use crate::context::{BoscaContext, PermissionCheck};
 use crate::graphql::content::metadata::MetadataObject;
 use crate::models::content::guide_step_module::GuideStepModule;
 use crate::models::security::permission::PermissionAction;
@@ -22,13 +22,12 @@ impl GuideStepModuleObject {
 
     pub async fn metadata(&self, ctx: &Context<'_>) -> Result<Option<MetadataObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        let metadata = ctx
-            .check_metadata_version_action(
-                &self.module.module_metadata_id,
-                self.module.module_metadata_version,
-                PermissionAction::View,
-            )
-            .await?;
+        let check = PermissionCheck::new_with_metadata_id_with_version(
+            self.module.module_metadata_id,
+            self.module.module_metadata_version,
+            PermissionAction::View,
+        );
+        let metadata = ctx.metadata_permission_check(check).await?;
         Ok(Some(MetadataObject::new(metadata)))
     }
 }

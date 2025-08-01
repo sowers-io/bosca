@@ -1,14 +1,14 @@
-use crate::context::BoscaContext;
+use crate::context::{BoscaContext, PermissionCheck};
 use crate::graphql::content::collection::CollectionObject;
 use crate::graphql::profiles::profile_attribute::ProfileAttributeObject;
 use crate::graphql::profiles::profile_bookmarks::ProfileBookmarksObject;
 use crate::graphql::profiles::profile_guides::ProfileGuidesObject;
+use crate::graphql::profiles::profile_marks::ProfileMarksObject;
 use crate::graphql::security::principal::PrincipalObject;
 use crate::models::profiles::profile::Profile;
 use crate::models::profiles::profile_visibility::ProfileVisibility;
 use crate::models::security::permission::PermissionAction;
 use async_graphql::{Context, Error, Object};
-use crate::graphql::profiles::profile_marks::ProfileMarksObject;
 
 pub struct ProfileObject {
     profile: Profile,
@@ -47,10 +47,11 @@ impl ProfileObject {
     async fn collection(&self, ctx: &Context<'_>) -> Result<Option<CollectionObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         if let Some(collection_id) = &self.profile.collection_id {
-            let Ok(collection) = ctx
-                .check_collection_action(collection_id, PermissionAction::View)
-                .await
-            else {
+            let check = PermissionCheck::new_with_collection_id(
+                *collection_id,
+                PermissionAction::View,
+            );
+            let Ok(collection) = ctx.collection_permission_check(check).await else {
                 return Ok(None);
             };
             return Ok(Some(CollectionObject::new(collection)));
