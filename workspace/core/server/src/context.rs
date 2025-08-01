@@ -361,35 +361,31 @@ impl BoscaContext {
     ) -> Result<Metadata, Error> {
         let metadata = if let Some(metadata) = check.metadata {
             metadata
-        } else {
-            if let Some(metadata_id) = check.metadata_id {
-                if let Some(metadata) = self.content.metadata.get(&metadata_id).await? {
-                    if let Some(version) = check.version {
-                        if metadata.version == version {
-                            metadata
-                        } else {
-                            if let Some(metadata) = self
-                                .content
-                                .metadata
-                                .get_by_version(&metadata.id, version)
-                                .await?
-                            {
-                                metadata
-                            } else {
-                                return Err(Error::new(format!(
-                                    "metadata not found: {metadata_id}"
-                                )));
-                            }
-                        }
-                    } else {
+        } else if let Some(metadata_id) = check.metadata_id {
+            if let Some(metadata) = self.content.metadata.get(&metadata_id).await? {
+                if let Some(version) = check.version {
+                    if metadata.version == version {
                         metadata
+                    } else if let Some(metadata) = self
+                        .content
+                        .metadata
+                        .get_by_version(&metadata.id, version)
+                        .await?
+                    {
+                        metadata
+                    } else {
+                        return Err(Error::new(format!(
+                            "metadata not found: {metadata_id}"
+                        )));
                     }
                 } else {
-                    return Err(Error::new(format!("metadata not found: {metadata_id}")));
+                    metadata
                 }
             } else {
-                return Err(Error::new("invalid permission check"));
+                return Err(Error::new(format!("metadata not found: {metadata_id}")));
             }
+        } else {
+            return Err(Error::new("invalid permission check"));
         };
         let principal = if let Some(ref principal) = check.principal {
             principal
@@ -419,21 +415,19 @@ impl BoscaContext {
             {
                 self.check_principal_groups(groups).await?;
             }
-        } else {
-            if !self
-                .content
-                .metadata_permissions
-                .has(
-                    &metadata,
-                    principal,
-                    groups,
-                    check.action,
-                    check.enable_advertised,
-                )
-                .await?
-            {
-                self.check_principal_groups(groups).await?;
-            }
+        } else if !self
+            .content
+            .metadata_permissions
+            .has(
+                &metadata,
+                principal,
+                groups,
+                check.action,
+                check.enable_advertised,
+            )
+            .await?
+        {
+            self.check_principal_groups(groups).await?;
         }
         Ok(metadata)
     }
@@ -499,16 +493,14 @@ impl BoscaContext {
     ) -> Result<Collection, Error> {
         let collection = if let Some(collection) = check.collection {
             collection
-        } else {
-            if let Some(collection_id) = check.collection_id {
-                if let Some(collection) = self.content.collections.get(&collection_id).await? {
-                    collection
-                } else {
-                    return Err(Error::new(format!("collection not found: {collection_id}")));
-                }
+        } else if let Some(collection_id) = check.collection_id {
+            if let Some(collection) = self.content.collections.get(&collection_id).await? {
+                collection
             } else {
-                return Err(Error::new("invalid permission check"));
+                return Err(Error::new(format!("collection not found: {collection_id}")));
             }
+        } else {
+            return Err(Error::new("invalid permission check"));
         };
         let principal = if let Some(ref principal) = check.principal {
             principal
@@ -529,15 +521,13 @@ impl BoscaContext {
             {
                 self.check_principal_groups(groups).await?;
             }
-        } else {
-            if !self
-                .content
-                .collection_permissions
-                .has(&collection, principal, groups, check.action)
-                .await?
-            {
-                self.check_principal_groups(groups).await?;
-            }
+        } else if !self
+            .content
+            .collection_permissions
+            .has(&collection, principal, groups, check.action)
+            .await?
+        {
+            self.check_principal_groups(groups).await?;
         }
         Ok(collection)
     }

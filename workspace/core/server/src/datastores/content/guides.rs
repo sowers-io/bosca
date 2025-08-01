@@ -59,8 +59,7 @@ impl GuidesDataStore {
             // Validate required fields are not empty
             if attr.key.trim().is_empty() {
                 return Err(Error::new(format!(
-                    "Template attribute key cannot be empty (template: {}, version: {})",
-                    metadata_id, version
+                    "Template attribute key cannot be empty (template: {metadata_id}, version: {version})"
                 )));
             }
             if attr.name.trim().is_empty() {
@@ -823,7 +822,7 @@ impl GuidesDataStore {
         let mut conn = self.pool.get().await?;
         let txn = conn.transaction().await?;
         let check = PermissionCheck::new_with_metadata_id_with_version(
-            template_metadata_id.clone(),
+            *template_metadata_id,
             template_metadata_version,
             PermissionAction::View,
         );
@@ -1232,8 +1231,7 @@ impl GuidesDataStore {
     ) -> Result<(), Error> {
         let Some(step) = self.get_guide_step(metadata_id, version, step_id).await? else {
             return Err(Error::new(format!(
-                "Guide step not found (guide: {}, version: {}, step_id: {})",
-                metadata_id, version, step_id
+                "Guide step not found (guide: {metadata_id}, version: {version}, step_id: {step_id})"
             )));
         };
         let modules = self
@@ -1347,7 +1345,7 @@ impl GuidesDataStore {
             "LINEAR_PROGRESS" => crate::models::content::guide_type::GuideType::LinearProgress,
             "CALENDAR" => crate::models::content::guide_type::GuideType::Calendar,
             "CALENDAR_PROGRESS" => crate::models::content::guide_type::GuideType::CalendarProgress,
-            _ => return Err(Error::new(format!("Invalid guide type: {}", guide_type))),
+            _ => return Err(Error::new(format!("Invalid guide type: {guide_type}"))),
         };
 
         let mut connection = self.pool.get().await?;

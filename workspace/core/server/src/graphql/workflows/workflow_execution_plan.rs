@@ -49,7 +49,7 @@ impl WorkflowExecutionPlanObject {
         let ctx = ctx.data::<BoscaContext>()?;
         let metadata_id = self.plan.metadata_id.as_ref().unwrap();
         let check =
-            PermissionCheck::new_with_metadata_id(metadata_id.clone(), PermissionAction::View);
+            PermissionCheck::new_with_metadata_id(*metadata_id, PermissionAction::View);
         let metadata = ctx.metadata_permission_check(check).await?;
         Ok(Some(MetadataObject::from(metadata)))
     }

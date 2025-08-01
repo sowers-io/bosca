@@ -35,8 +35,8 @@ impl BibleCache {
         variant: &Option<String>,
     ) -> Option<Bible> {
         let variant_ref = variant.as_ref().map(|s| s.as_str());
-        let variant = variant_ref.unwrap_or_else(|| __DEFAULT);
-        let id = format!("{}::{}::{}", metadata_id, version, variant);
+        let variant = variant_ref.unwrap_or(__DEFAULT);
+        let id = format!("{metadata_id}::{version}::{variant}");
         self.bible.get(&id).await
     }
 
@@ -47,7 +47,7 @@ impl BibleCache {
         version: i32,
         variant: &str,
     ) -> Option<Vec<BibleLanguage>> {
-        let id = format!("{}::{}::{}", metadata_id, version, variant);
+        let id = format!("{metadata_id}::{version}::{variant}");
         self.languages.get(&id).await
     }
 
@@ -58,7 +58,7 @@ impl BibleCache {
         version: i32,
         variant: &str,
     ) -> Option<Vec<Book>> {
-        let id = format!("{}::{}::{}", metadata_id, version, variant);
+        let id = format!("{metadata_id}::{version}::{variant}");
         self.books.get(&id).await
     }
 
@@ -70,7 +70,7 @@ impl BibleCache {
         variant: &str,
         usfm: &str,
     ) -> Option<Chapter> {
-        let id = format!("{}::{}::{}::{}", metadata_id, version, variant, usfm);
+        let id = format!("{metadata_id}::{version}::{variant}::{usfm}");
         self.chapters.get(&id).await
     }
 
@@ -83,8 +83,8 @@ impl BibleCache {
         bible: &Bible,
     ) {
         let variant_ref = variant.as_ref().map(|s| s.as_str());
-        let variant = variant_ref.unwrap_or_else(|| __DEFAULT);
-        let id = format!("{}::{}::{}", metadata_id, version, variant);
+        let variant = variant_ref.unwrap_or(__DEFAULT);
+        let id = format!("{metadata_id}::{version}::{variant}");
         self.bible.set(&id, bible).await;
     }
 
@@ -96,7 +96,7 @@ impl BibleCache {
         variant: &String,
         bible_languages: &Vec<BibleLanguage>,
     ) {
-        let id = format!("{}::{}::{}", metadata_id, version, variant);
+        let id = format!("{metadata_id}::{version}::{variant}");
         self.languages.set(&id, bible_languages).await;
     }
 
@@ -108,7 +108,7 @@ impl BibleCache {
         variant: &String,
         books: &Vec<Book>,
     ) {
-        let id = format!("{}::{}::{}", metadata_id, version, variant);
+        let id = format!("{metadata_id}::{version}::{variant}");
         self.books.set(&id, books).await;
     }
 
@@ -121,14 +121,14 @@ impl BibleCache {
         usfm: &String,
         chapter: &Chapter,
     ) {
-        let id = format!("{}::{}::{}::{}", metadata_id, version, usfm, variant);
+        let id = format!("{metadata_id}::{version}::{usfm}::{variant}");
         self.chapters.set(&id, chapter).await;
     }
 
     #[tracing::instrument(skip(self, metadata_id, version, variant))]
     pub async fn evict_bible(&self, metadata_id: &Uuid, version: i32, variant: &String) {
-        let id = format!("{}::{}::{}", metadata_id, version, variant);
-        let id_default = format!("{}::{}::__default__", metadata_id, version);
+        let id = format!("{metadata_id}::{version}::{variant}");
+        let id_default = format!("{metadata_id}::{version}::__default__");
 
         self.bible.remove(&id).await;
         self.bible.remove(&id_default).await;

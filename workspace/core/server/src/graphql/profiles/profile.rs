@@ -48,7 +48,7 @@ impl ProfileObject {
         let ctx = ctx.data::<BoscaContext>()?;
         if let Some(collection_id) = &self.profile.collection_id {
             let check = PermissionCheck::new_with_collection_id(
-                collection_id.clone(),
+                *collection_id,
                 PermissionAction::View,
             );
             let Ok(collection) = ctx.collection_permission_check(check).await else {

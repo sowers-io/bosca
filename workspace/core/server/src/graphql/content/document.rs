@@ -22,7 +22,7 @@ impl DocumentObject {
         if let Some(id) = &self.document.template_metadata_id {
             if let Some(version) = &self.document.template_metadata_version {
                 let check = PermissionCheck::new_with_metadata_id_with_version(
-                    id.clone(),
+                    *id,
                     *version,
                     PermissionAction::View,
                 );

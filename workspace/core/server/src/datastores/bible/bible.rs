@@ -210,7 +210,7 @@ impl BiblesDataStore {
         metadata_id: &Uuid,
         version: i32,
         variant: &str,
-        usfm: &String,
+        usfm: &str,
     ) -> Result<Option<Book>, Error> {
         let books = self.get_books(metadata_id, version, variant).await?;
         if let Some(book) = books.iter().find(|b| b.reference.is_usfm(usfm)) {
@@ -269,7 +269,7 @@ impl BiblesDataStore {
         let chapter = row.first().map(|r| r.into());
         if let Some(ref chapter) = chapter {
             self.cache
-                .set_chapter(metadata_id, version, &variant, &usfm, &chapter)
+                .set_chapter(metadata_id, version, &variant, &usfm, chapter)
                 .await;
         }
         Ok(chapter)
@@ -296,7 +296,7 @@ impl BiblesDataStore {
         let mut chapters = Vec::new();
         for usfm in usfms {
             if let Some(chapter) = self
-                .get_chapter(metadata_id, version, &variant, &usfm)
+                .get_chapter(metadata_id, version, variant, &usfm)
                 .await?
             {
                 chapters.push(chapter);

@@ -27,7 +27,7 @@ impl ProfileMarkObject {
         if let Some(metadata_id) = &self.mark.metadata_id {
             if let Some(version) = &self.mark.metadata_version {
                 let check = PermissionCheck::new_with_metadata_id_with_version(
-                    metadata_id.clone(),
+                    *metadata_id,
                     *version,
                     PermissionAction::View,
                 );
@@ -42,7 +42,7 @@ impl ProfileMarkObject {
         let ctx = ctx.data::<BoscaContext>()?;
         if let Some(collection_id) = &self.mark.collection_id {
             let check = PermissionCheck::new_with_collection_id(
-                collection_id.clone(),
+                *collection_id,
                 PermissionAction::View,
             );
             let collection = ctx.collection_permission_check(check).await?;

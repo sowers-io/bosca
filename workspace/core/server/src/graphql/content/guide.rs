@@ -42,7 +42,7 @@ impl GuideObject {
         if let Some(id) = &self.guide.template_metadata_id {
             if let Some(version) = &self.guide.template_metadata_version {
                 let check = PermissionCheck::new_with_metadata_id_with_version(
-                    id.clone(),
+                    *id,
                     *version,
                     PermissionAction::View,
                 );

@@ -27,7 +27,7 @@ impl ProfileBookmarkObject {
         if let Some(metadata_id) = &self.bookmark.metadata_id {
             if let Some(version) = &self.bookmark.metadata_version {
                 let check = PermissionCheck::new_with_metadata_id_with_version(
-                    metadata_id.clone(),
+                    *metadata_id,
                     *version,
                     PermissionAction::View,
                 );
@@ -42,7 +42,7 @@ impl ProfileBookmarkObject {
         let ctx = ctx.data::<BoscaContext>()?;
         if let Some(collection_id) = &self.bookmark.collection_id {
             let check = PermissionCheck::new_with_collection_id(
-                collection_id.clone(),
+                *collection_id,
                 PermissionAction::View,
             );
             let collection = ctx.collection_permission_check(check).await?;

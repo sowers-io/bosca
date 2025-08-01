@@ -151,7 +151,7 @@ impl CollectionObject {
             if let Some(version) = &self.collection.template_metadata_version {
                 let ctx = ctx.data::<BoscaContext>()?;
                 let check = PermissionCheck::new_with_metadata_id_with_version(
-                    id.clone(),
+                    *id,
                     *version,
                     PermissionAction::View,
                 );
@@ -170,7 +170,7 @@ impl CollectionObject {
     ) -> Result<Vec<CollectionObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let check = PermissionCheck::new_with_collection_id(
-            self.collection.id.clone(),
+            self.collection.id,
             PermissionAction::List,
         );
         ctx.collection_permission_check(check).await?;
@@ -193,7 +193,7 @@ impl CollectionObject {
     ) -> Result<Vec<CollectionItem>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let check = PermissionCheck::new_with_collection_id(
-            self.collection.id.clone(),
+            self.collection.id,
             PermissionAction::List,
         );
         ctx.collection_permission_check(check).await?;
@@ -206,14 +206,14 @@ impl CollectionObject {
         for item in items {
             if let Some(id) = &item.collection_id {
                 let check =
-                    PermissionCheck::new_with_collection_id(id.clone(), PermissionAction::View);
+                    PermissionCheck::new_with_collection_id(*id, PermissionAction::View);
                 if let Ok(mut collection) = ctx.collection_permission_check(check).await {
                     collection.item_attributes = item.attributes;
                     content.push(CollectionItem::Collection(collection.into()))
                 }
             } else if let Some(id) = &item.metadata_id {
                 let check = PermissionCheck::new_with_metadata_id_advertised(
-                    id.clone(),
+                    *id,
                     PermissionAction::View,
                 );
                 if let Ok(mut metadata) = ctx.metadata_permission_check(check).await {
@@ -328,7 +328,7 @@ impl CollectionObject {
         for item in items {
             if let Some(id) = &item.metadata_id {
                 let check = PermissionCheck::new_with_metadata_id_advertised(
-                    id.clone(),
+                    *id,
                     PermissionAction::View,
                 );
                 if let Ok(mut metadata) = ctx.metadata_permission_check(check).await {

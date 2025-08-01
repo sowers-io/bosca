@@ -702,7 +702,7 @@ impl DocumentsDataStore {
         permissions: &[Permission],
     ) -> Result<(Uuid, i32), Error> {
         let check = PermissionCheck::new_with_metadata_id_with_version(
-            template_id.clone(),
+            *template_id,
             template_version,
             PermissionAction::View,
         );

@@ -13,7 +13,7 @@ pub async fn delete_collection(
     permanently: bool,
 ) -> Result<(), Error> {
     let check =
-        PermissionCheck::new_with_collection_id(collection_id.clone(), PermissionAction::Delete);
+        PermissionCheck::new_with_collection_id(*collection_id, PermissionAction::Delete);
     let collection = ctx.collection_permission_check(check).await?;
     if (collection.collection_type == CollectionType::Root
         || collection.collection_type == CollectionType::System)

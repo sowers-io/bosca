@@ -353,12 +353,12 @@ impl WorkflowsMutationObject {
         let profile_id = profile_id.map(|id| Uuid::parse_str(&id).unwrap());
         if let Some(metadata_id) = &metadata_id {
             let check =
-                PermissionCheck::new_with_metadata_id(metadata_id.clone(), PermissionAction::Edit);
+                PermissionCheck::new_with_metadata_id(*metadata_id, PermissionAction::Edit);
             ctx.metadata_permission_check(check).await?;
         }
         if let Some(collection_id) = &collection_id {
             let check = PermissionCheck::new_with_collection_id(
-                collection_id.clone(),
+                *collection_id,
                 PermissionAction::Edit,
             );
             ctx.collection_permission_check(check).await?;
