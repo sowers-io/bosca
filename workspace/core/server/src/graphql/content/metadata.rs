@@ -67,8 +67,11 @@ impl MetadataObject {
         let ctx = BoscaContext::get(ctx)?;
         let check =
             PermissionCheck::new_with_metadata(self.metadata.clone(), PermissionAction::View);
-        ctx.metadata_permission_check(check).await?;
-        ctx.content.metadata.get_trait_ids(&self.metadata.id).await
+        if ctx.metadata_permission_check(check).await.is_ok() {
+            ctx.content.metadata.get_trait_ids(&self.metadata.id).await
+        } else {
+            Ok(vec![])
+        }
     }
 
     async fn slug(&self, ctx: &Context<'_>) -> Result<Option<String>, Error> {
@@ -85,16 +88,8 @@ impl MetadataObject {
         &self.metadata.name
     }
 
-    async fn content(&self, ctx: &Context<'_>) -> Result<MetadataContentObject, Error> {
-        let ctx = ctx.data::<BoscaContext>()?;
-        let check = PermissionCheck::new_with_metadata_content(
-            self.metadata.clone(),
-            PermissionAction::View,
-        );
-        ctx.metadata_permission_check(check).await?;
-        Ok(MetadataContentObject {
-            metadata: self.metadata.clone(),
-        })
+    async fn content(&self) -> MetadataContentObject {
+        MetadataContentObject { metadata: self.metadata.clone() }
     }
 
     async fn language_tag(&self) -> &String {
