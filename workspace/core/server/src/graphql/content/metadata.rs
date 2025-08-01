@@ -88,7 +88,7 @@ impl MetadataObject {
     async fn content(&self, ctx: &Context<'_>) -> Result<MetadataContentObject, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let check =
-            PermissionCheck::new_with_metadata(self.metadata.clone(), PermissionAction::View);
+            PermissionCheck::new_with_metadata_content(self.metadata.clone(), PermissionAction::View);
         ctx.metadata_permission_check(check).await?;
         Ok(MetadataContentObject {
             metadata: self.metadata.clone(),
