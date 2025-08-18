@@ -504,7 +504,7 @@ impl CollectionsDataStore {
         } else {
             String::new()
         };
-        let mut query = "select coalesce(child.child_collection_id, parent.collection_id) as child_collection_id, coalesce(child.child_metadata_id, parent.child_metadata_id) as child_metadata_id, child.attributes as attributes from collection_items parent left join collection_items as child on (parent.child_collection_id = child.collection_id and parent.child_collection_id is not null) ".to_owned();
+        let mut query = "select distinct * from ( select coalesce(child.child_collection_id, parent.collection_id) as child_collection_id, coalesce(child.child_metadata_id, parent.child_metadata_id) as child_metadata_id, child.attributes as attributes from collection_items parent left join collection_items as child on (parent.child_collection_id = child.collection_id and parent.child_collection_id is not null) ".to_owned();
         if state.is_some() {
             query.push_str(" left join metadata on ((parent.child_metadata_id = metadata.id or child.child_metadata_id = metadata.id) and metadata.workflow_state_id = $2) ");
         } else {
@@ -517,7 +517,7 @@ impl CollectionsDataStore {
             query.push_str(" order by lower(metadata.name) asc");
         }
         query.push_str(
-            format!(" offset ${} limit ${}", values.len() + 1, values.len() + 2).as_str(),
+            format!(" ) offset ${} limit ${}", values.len() + 1, values.len() + 2).as_str(),
         );
         values.push(&offset as &(dyn ToSql + Sync));
         values.push(&limit as &(dyn ToSql + Sync));
@@ -538,7 +538,7 @@ impl CollectionsDataStore {
         if let Some(state) = state {
             values.push(state as &(dyn ToSql + Sync));
         }
-        let mut query = "select count(*) from collection_items parent inner join collection_items as child on (parent.child_collection_id = child.collection_id and parent.child_collection_id is not null) ".to_owned();
+        let mut query = "select count( distinct coalesce(child.child_collection_id, parent.collection_id)::varchar || coalesce(child.child_metadata_id, parent.child_metadata_id)::varchar ) from collection_items parent inner join collection_items as child on (parent.child_collection_id = child.collection_id and parent.child_collection_id is not null) ".to_owned();
         if state.is_some() {
             query.push_str(" left join metadata on ((parent.child_metadata_id = metadata.id or child.child_metadata_id = metadata.id) and metadata.workflow_state_id = $2) ");
         } else {
