@@ -504,7 +504,7 @@ impl CollectionsDataStore {
         } else {
             String::new()
         };
-        let mut query = "select distinct * from ( select ROW_NUMBER() over() as order_id, coalesce(child.child_collection_id, parent.collection_id) as child_collection_id, coalesce(child.child_metadata_id, parent.child_metadata_id) as child_metadata_id, child.attributes as attributes from collection_items parent left join collection_items as child on (parent.child_collection_id = child.collection_id and parent.child_collection_id is not null) ".to_owned();
+        let mut query = "with data as (select coalesce(child.child_collection_id, parent.collection_id) as child_collection_id, coalesce(child.child_metadata_id, parent.child_metadata_id) as child_metadata_id, child.attributes as attributes, row_number() over () as row_num from collection_items parent left join collection_items as child on (parent.child_collection_id = child.collection_id and parent.child_collection_id is not null) ".to_owned();
         if state.is_some() {
             query.push_str(" left join metadata on ((parent.child_metadata_id = metadata.id or child.child_metadata_id = metadata.id) and metadata.workflow_state_id = $2) ");
         } else {
@@ -514,10 +514,11 @@ impl CollectionsDataStore {
         if !ordering.is_empty() {
             query.push_str(ordering.as_str());
         } else {
-            query.push_str(" order by lower(metadata.name) asc");
+            query.push_str(" order by lower(metadata.name) asc)");
         }
+        query.push_str(" select * from (select distinct on (child_collection_id, child_metadata_id) child_collection_id, child_metadata_id, attributes, row_num from data) as a order by row_num ");
         query.push_str(
-            format!(" ) as a order by a.order_id asc offset ${} limit ${}", values.len() + 1, values.len() + 2).as_str(),
+            format!(" offset ${} limit ${}", values.len() + 1, values.len() + 2).as_str(),
         );
         values.push(&offset as &(dyn ToSql + Sync));
         values.push(&limit as &(dyn ToSql + Sync));
