@@ -514,9 +514,9 @@ impl CollectionsDataStore {
         if !ordering.is_empty() {
             query.push_str(ordering.as_str());
         } else {
-            query.push_str(" order by lower(metadata.name) asc)");
+            query.push_str(" order by lower(metadata.name) asc");
         }
-        query.push_str(" select * from (select distinct on (child_collection_id, child_metadata_id) child_collection_id, child_metadata_id, attributes, row_num from data) as a order by row_num ");
+        query.push_str(" ) select * from (select distinct on (child_collection_id, child_metadata_id) child_collection_id, child_metadata_id, attributes, row_num from data) as a order by row_num ");
         query.push_str(
             format!(" offset ${} limit ${}", values.len() + 1, values.len() + 2).as_str(),
         );
