@@ -849,7 +849,7 @@ impl GuidesDataStore {
         let mut attrs = json!({
             "editor.type": "Guide",
         });
-        if let Some(default_attributes) = &template_guide.default_attributes {
+        if let Some(default_attributes) = &template_document.default_attributes {
             if let serde_json::Value::Object(ref mut attrs_obj) = attrs {
                 if let serde_json::Value::Object(default_obj) = default_attributes.clone() {
                     attrs_obj.extend(default_obj.into_iter());
