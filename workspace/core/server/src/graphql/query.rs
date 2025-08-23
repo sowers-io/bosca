@@ -1,4 +1,5 @@
 use crate::context::BoscaContext;
+use crate::graphql::analytics::AnalyticQueriesObject;
 use crate::graphql::caches::CachesObject;
 use crate::graphql::configuration::configurations::ConfigurationsObject;
 use crate::graphql::content::content::ContentObject;
@@ -43,6 +44,10 @@ impl QueryObject {
     }
 
     async fn caches(&self) -> CachesObject { CachesObject {} }
+
+    async fn analytics(&self) -> AnalyticQueriesObject {
+        AnalyticQueriesObject::new()
+    }
 
     async fn search(
         &self,
