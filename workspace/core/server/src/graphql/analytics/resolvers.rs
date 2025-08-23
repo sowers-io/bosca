@@ -14,7 +14,7 @@ impl AnalyticQueriesResolvers {
         limit: Option<i32>,
     ) -> Result<Vec<AnalyticEvent>, Error> {
         let offset = offset.unwrap_or(0).max(0) as usize;
-        let limit = limit.unwrap_or(50).max(1).min(1000) as usize;
+        let limit = limit.unwrap_or(50).clamp(1, 1000) as usize;
 
         let mut generator = FakeDataGenerator::new();
         let mut events = generator.generate_events(offset + limit + 100, 168); // 7 days back

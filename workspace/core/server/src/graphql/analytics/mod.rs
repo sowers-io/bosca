@@ -1,3 +1,4 @@
+#[allow(clippy::module_inception)]
 pub mod analytics;
 pub mod fake_data;
 pub mod models;

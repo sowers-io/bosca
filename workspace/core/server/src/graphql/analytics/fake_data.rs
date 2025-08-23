@@ -15,6 +15,7 @@ impl FakeDataGenerator {
         }
     }
 
+    #[allow(dead_code)]
     pub fn with_seed(seed: u64) -> Self {
         Self {
             rng: StdRng::seed_from_u64(seed),
@@ -48,7 +49,7 @@ impl FakeDataGenerator {
             }));
 
             last_value = new_value;
-            current_time = current_time + interval;
+            current_time += interval;
         }
 
         data
@@ -109,14 +110,14 @@ impl FakeDataGenerator {
         let now = Utc::now();
         let start_time = now - Duration::hours(hours_back);
 
-        let event_types = vec![
+        let event_types = [
             AnalyticEventType::Session,
             AnalyticEventType::Interaction,
             AnalyticEventType::Impression,
             AnalyticEventType::Completion,
         ];
 
-        let event_names = vec![
+        let event_names = [
             "page_view",
             "button_click",
             "form_submit",
@@ -125,17 +126,17 @@ impl FakeDataGenerator {
             "search_performed",
         ];
 
-        let platforms = vec!["iOS", "Android", "Web", "Desktop"];
-        let device_types = vec!["mobile", "tablet", "desktop"];
-        let countries = vec!["US", "GB", "CA", "AU", "DE", "FR", "JP"];
-        let cities = vec!["New York", "London", "Toronto", "Sydney", "Berlin", "Paris", "Tokyo"];
+        let platforms = ["iOS", "Android", "Web", "Desktop"];
+        let device_types = ["mobile", "tablet", "desktop"];
+        let countries = ["US", "GB", "CA", "AU", "DE", "FR", "JP"];
+        let cities = ["New York", "London", "Toronto", "Sydney", "Berlin", "Paris", "Tokyo"];
 
         for i in 0..count {
             let event_time = start_time + Duration::seconds(
                 self.rng.random_range(0..=(hours_back * 3600))
             );
 
-            let event_type = event_types.choose(&mut self.rng).unwrap().clone();
+            let event_type = *event_types.choose(&mut self.rng).unwrap();
             let event_name = event_names.choose(&mut self.rng).unwrap();
             let platform = platforms.choose(&mut self.rng).unwrap();
             let device_type = device_types.choose(&mut self.rng).unwrap();
