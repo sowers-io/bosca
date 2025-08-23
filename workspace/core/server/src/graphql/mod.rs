@@ -1,3 +1,4 @@
+pub mod analytics;
 pub mod content;
 pub mod mutation;
 pub mod query;
