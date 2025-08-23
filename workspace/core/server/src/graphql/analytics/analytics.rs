@@ -1,4 +1,8 @@
 use crate::graphql::analytics::resolvers::AnalyticQueriesResolvers;
+use crate::graphql::analytics::user_analytics::UserAnalyticsObject;
+use crate::graphql::analytics::session_analytics::SessionAnalyticsObject;
+use crate::graphql::analytics::content_analytics::ContentAnalyticsObject;
+use crate::graphql::analytics::device_analytics::DeviceAnalyticsObject;
 use async_graphql::Object;
 
 pub struct AnalyticQueriesObject {}
@@ -28,5 +32,21 @@ impl AnalyticQueriesObject {
     ) -> async_graphql::Result<crate::graphql::analytics::types::AnalyticQueryResponse> {
         let resolver = AnalyticQueriesResolvers;
         resolver.execute(ctx, request).await
+    }
+
+    async fn users(&self) -> UserAnalyticsObject {
+        UserAnalyticsObject::new()
+    }
+
+    async fn sessions(&self) -> SessionAnalyticsObject {
+        SessionAnalyticsObject::new()
+    }
+
+    async fn content(&self) -> ContentAnalyticsObject {
+        ContentAnalyticsObject::new()
+    }
+
+    async fn devices(&self) -> DeviceAnalyticsObject {
+        DeviceAnalyticsObject::new()
     }
 }

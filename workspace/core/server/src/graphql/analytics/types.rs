@@ -256,3 +256,104 @@ pub struct AnalyticEvent {
     pub sent: Option<DateTime<Utc>>,
     pub received: Option<DateTime<Utc>>,
 }
+
+#[derive(InputObject, Clone)]
+pub struct DateRange {
+    pub start: DateTime<Utc>,
+    pub end: DateTime<Utc>,
+}
+
+#[derive(SimpleObject)]
+pub struct DailyActiveUserRecord {
+    pub date: DateTime<Utc>,
+    pub count: i32,
+}
+
+#[derive(SimpleObject)]
+pub struct WeeklyActiveUserRecord {
+    pub week: DateTime<Utc>,
+    pub count: i32,
+}
+
+#[derive(SimpleObject)]
+pub struct NewUserRecord {
+    pub date: DateTime<Utc>,
+    pub count: i32,
+}
+
+#[derive(SimpleObject)]
+pub struct ReturningUserRecord {
+    pub date: DateTime<Utc>,
+    pub percentage: f64,
+}
+
+#[derive(SimpleObject)]
+pub struct RetentionCohort {
+    pub cohort_date: DateTime<Utc>,
+    pub users_count: i32,
+    pub retention_periods: Vec<f64>,
+}
+
+#[derive(SimpleObject)]
+pub struct RetentionFlowResponse {
+    pub cohorts: Vec<RetentionCohort>,
+}
+
+#[derive(SimpleObject)]
+pub struct SessionTotalRecord {
+    pub date: DateTime<Utc>,
+    pub session_count: i32,
+}
+
+#[derive(SimpleObject)]
+pub struct SessionDurationRecord {
+    pub date: DateTime<Utc>,
+    pub average_duration: f64,
+}
+
+#[derive(SimpleObject)]
+pub struct SessionDeviceRecord {
+    pub device_type: String,
+    pub session_count: i32,
+    pub average_duration: f64,
+}
+
+#[derive(SimpleObject)]
+pub struct SessionMetrics {
+    pub total_sessions: i32,
+    pub average_duration: f64,
+    pub device_breakdown: Vec<SessionDeviceRecord>,
+}
+
+#[derive(SimpleObject)]
+pub struct ContentViewRecord {
+    pub content_id: String,
+    pub date: DateTime<Utc>,
+    pub view_count: i32,
+}
+
+#[derive(SimpleObject)]
+pub struct TopContentRecord {
+    pub content_id: String,
+    pub title: String,
+    pub view_count: i32,
+    pub engagement_score: f64,
+}
+
+#[derive(SimpleObject)]
+pub struct EngagementRecord {
+    pub content_id: String,
+    pub views: i32,
+    pub likes: i32,
+    pub shares: i32,
+    pub comments: i32,
+    pub time_spent: f64,
+}
+
+#[derive(SimpleObject)]
+pub struct ContentMetrics {
+    pub total_views: i32,
+    pub unique_viewers: i32,
+    pub average_engagement_time: f64,
+    pub top_content: Vec<TopContentRecord>,
+}

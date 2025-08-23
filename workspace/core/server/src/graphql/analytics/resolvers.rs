@@ -56,7 +56,26 @@ impl AnalyticQueriesResolvers {
             "device-types" => Ok(self.generate_device_types(&mut generator)),
             "browser-distribution" => Ok(self.generate_browser_distribution(&mut generator)),
             
-            _ => Err(Error::new(format!("Unknown query ID: {}. Available queries: page-views-7d, user-sessions-30d, content-created-monthly, events-by-type, content-by-category, events-by-type-stacked, users-by-country, sessions-by-region, device-types, browser-distribution", query_id))),
+            // User Behavior Analytics Queries
+            "daily-active-users-30d" => Ok(self.generate_daily_active_users(&mut generator)),
+            "weekly-active-users-12w" => Ok(self.generate_weekly_active_users(&mut generator)),
+            "new-users-growth" => Ok(self.generate_new_users_growth(&mut generator)),
+            "user-retention-analysis" => Ok(self.generate_user_retention_analysis(&mut generator)),
+            "returning-users-percentage" => Ok(self.generate_returning_users_percentage(&mut generator)),
+            
+            // Session Analytics Queries
+            "session-totals-30d" => Ok(self.generate_session_totals_chart(&mut generator)),
+            "avg-session-duration-7d" => Ok(self.generate_avg_session_duration(&mut generator)),
+            "sessions-by-device-type" => Ok(self.generate_sessions_by_device_chart(&mut generator)),
+            "session-duration-distribution" => Ok(self.generate_session_duration_distribution(&mut generator)),
+            
+            // Content Analytics Queries
+            "top-content-views-30d" => Ok(self.generate_top_content_views(&mut generator)),
+            "content-engagement-metrics" => Ok(self.generate_content_engagement_chart(&mut generator)),
+            "content-performance-by-category" => Ok(self.generate_content_performance_by_category(&mut generator)),
+            "trending-content-7d" => Ok(self.generate_trending_content(&mut generator)),
+            
+            _ => Err(Error::new(format!("Unknown query ID: {}. Available queries: page-views-7d, user-sessions-30d, content-created-monthly, events-by-type, content-by-category, events-by-type-stacked, users-by-country, sessions-by-region, device-types, browser-distribution, daily-active-users-30d, weekly-active-users-12w, new-users-growth, user-retention-analysis, returning-users-percentage, session-totals-30d, avg-session-duration-7d, sessions-by-device-type, session-duration-distribution, top-content-views-30d, content-engagement-metrics, content-performance-by-category, trending-content-7d", query_id))),
         }
     }
 }
@@ -743,6 +762,788 @@ impl AnalyticQueriesResolvers {
                     graph_type: AnalyticQueryGraphType::Donut,
                 }],
                 axis: vec![],
+                data,
+            },
+            annotations: vec![],
+        }
+    }
+
+    fn generate_daily_active_users(&self, generator: &mut FakeDataGenerator) -> AnalyticQueryResponse {
+        let now = Utc::now();
+        let data = generator.generate_time_series_data(
+            30,
+            now - Duration::days(29),
+            Duration::days(1),
+            300.0,
+            800.0,
+        );
+
+        AnalyticQueryResponse {
+            legend: None,
+            container: AnalyticDataContainer {
+                container_type: AnalyticDataContainerType::Xy,
+                scale: Some(AnalyticDataContainerScale::Time),
+                graphs: vec![AnalyticDataContainerGraph {
+                    graph_type: AnalyticQueryGraphType::Line,
+                }],
+                axis: vec![
+                    AnalyticDataAxis {
+                        axis_type: AnalyticDataAxisType::X,
+                        label: AnalyticDataAxisLabel {
+                            label: "Date".to_string(),
+                            axis_type: AnalyticDataAxisType::X,
+                            color: "#666".to_string(),
+                            margin: None,
+                            domain_line: true,
+                        },
+                        tick: AnalyticDataAxisTick {
+                            enabled: true,
+                            label_color: Some("#666".to_string()),
+                            text_align: Some(AnalyticDataAxisTickTextAlign::Center),
+                            text_angle: None,
+                            text_width: None,
+                            number: Some(10),
+                            format: Some("%m-%d".to_string()),
+                        },
+                    },
+                    AnalyticDataAxis {
+                        axis_type: AnalyticDataAxisType::Y,
+                        label: AnalyticDataAxisLabel {
+                            label: "Daily Active Users".to_string(),
+                            axis_type: AnalyticDataAxisType::Y,
+                            color: "#666".to_string(),
+                            margin: None,
+                            domain_line: true,
+                        },
+                        tick: AnalyticDataAxisTick {
+                            enabled: true,
+                            label_color: Some("#666".to_string()),
+                            text_align: Some(AnalyticDataAxisTickTextAlign::Right),
+                            text_angle: None,
+                            text_width: None,
+                            number: Some(5),
+                            format: None,
+                        },
+                    },
+                ],
+                data,
+            },
+            annotations: vec![],
+        }
+    }
+
+    fn generate_weekly_active_users(&self, generator: &mut FakeDataGenerator) -> AnalyticQueryResponse {
+        let now = Utc::now();
+        let data = generator.generate_time_series_data(
+            12,
+            now - Duration::weeks(11),
+            Duration::weeks(1),
+            1500.0,
+            3500.0,
+        );
+
+        AnalyticQueryResponse {
+            legend: None,
+            container: AnalyticDataContainer {
+                container_type: AnalyticDataContainerType::Xy,
+                scale: Some(AnalyticDataContainerScale::Time),
+                graphs: vec![AnalyticDataContainerGraph {
+                    graph_type: AnalyticQueryGraphType::Bar,
+                }],
+                axis: vec![
+                    AnalyticDataAxis {
+                        axis_type: AnalyticDataAxisType::X,
+                        label: AnalyticDataAxisLabel {
+                            label: "Week".to_string(),
+                            axis_type: AnalyticDataAxisType::X,
+                            color: "#666".to_string(),
+                            margin: None,
+                            domain_line: true,
+                        },
+                        tick: AnalyticDataAxisTick {
+                            enabled: true,
+                            label_color: Some("#666".to_string()),
+                            text_align: Some(AnalyticDataAxisTickTextAlign::Center),
+                            text_angle: None,
+                            text_width: None,
+                            number: Some(12),
+                            format: Some("%m-%d".to_string()),
+                        },
+                    },
+                    AnalyticDataAxis {
+                        axis_type: AnalyticDataAxisType::Y,
+                        label: AnalyticDataAxisLabel {
+                            label: "Weekly Active Users".to_string(),
+                            axis_type: AnalyticDataAxisType::Y,
+                            color: "#666".to_string(),
+                            margin: None,
+                            domain_line: true,
+                        },
+                        tick: AnalyticDataAxisTick {
+                            enabled: true,
+                            label_color: Some("#666".to_string()),
+                            text_align: Some(AnalyticDataAxisTickTextAlign::Right),
+                            text_angle: None,
+                            text_width: None,
+                            number: Some(5),
+                            format: None,
+                        },
+                    },
+                ],
+                data,
+            },
+            annotations: vec![],
+        }
+    }
+
+    fn generate_new_users_growth(&self, generator: &mut FakeDataGenerator) -> AnalyticQueryResponse {
+        let now = Utc::now();
+        let data = generator.generate_time_series_data(
+            30,
+            now - Duration::days(29),
+            Duration::days(1),
+            15.0,
+            45.0,
+        );
+
+        AnalyticQueryResponse {
+            legend: None,
+            container: AnalyticDataContainer {
+                container_type: AnalyticDataContainerType::Xy,
+                scale: Some(AnalyticDataContainerScale::Time),
+                graphs: vec![AnalyticDataContainerGraph {
+                    graph_type: AnalyticQueryGraphType::Area,
+                }],
+                axis: vec![
+                    AnalyticDataAxis {
+                        axis_type: AnalyticDataAxisType::X,
+                        label: AnalyticDataAxisLabel {
+                            label: "Date".to_string(),
+                            axis_type: AnalyticDataAxisType::X,
+                            color: "#666".to_string(),
+                            margin: None,
+                            domain_line: true,
+                        },
+                        tick: AnalyticDataAxisTick {
+                            enabled: true,
+                            label_color: Some("#666".to_string()),
+                            text_align: Some(AnalyticDataAxisTickTextAlign::Center),
+                            text_angle: None,
+                            text_width: None,
+                            number: Some(10),
+                            format: Some("%m-%d".to_string()),
+                        },
+                    },
+                    AnalyticDataAxis {
+                        axis_type: AnalyticDataAxisType::Y,
+                        label: AnalyticDataAxisLabel {
+                            label: "New Users".to_string(),
+                            axis_type: AnalyticDataAxisType::Y,
+                            color: "#666".to_string(),
+                            margin: None,
+                            domain_line: true,
+                        },
+                        tick: AnalyticDataAxisTick {
+                            enabled: true,
+                            label_color: Some("#666".to_string()),
+                            text_align: Some(AnalyticDataAxisTickTextAlign::Right),
+                            text_angle: None,
+                            text_width: None,
+                            number: Some(5),
+                            format: None,
+                        },
+                    },
+                ],
+                data,
+            },
+            annotations: vec![],
+        }
+    }
+
+    fn generate_user_retention_analysis(&self, generator: &mut FakeDataGenerator) -> AnalyticQueryResponse {
+        let cohort_labels = vec!["Week 1", "Week 2", "Week 3", "Week 4", "Week 5", "Week 6"]
+            .into_iter().map(|s| s.to_string()).collect();
+        let data = generator.generate_categorical_data(cohort_labels, 20.0, 100.0);
+
+        AnalyticQueryResponse {
+            legend: None,
+            container: AnalyticDataContainer {
+                container_type: AnalyticDataContainerType::Single,
+                scale: None,
+                graphs: vec![AnalyticDataContainerGraph {
+                    graph_type: AnalyticQueryGraphType::Bar,
+                }],
+                axis: vec![
+                    AnalyticDataAxis {
+                        axis_type: AnalyticDataAxisType::X,
+                        label: AnalyticDataAxisLabel {
+                            label: "Retention Period".to_string(),
+                            axis_type: AnalyticDataAxisType::X,
+                            color: "#666".to_string(),
+                            margin: None,
+                            domain_line: true,
+                        },
+                        tick: AnalyticDataAxisTick {
+                            enabled: true,
+                            label_color: Some("#666".to_string()),
+                            text_align: Some(AnalyticDataAxisTickTextAlign::Center),
+                            text_angle: None,
+                            text_width: None,
+                            number: None,
+                            format: None,
+                        },
+                    },
+                    AnalyticDataAxis {
+                        axis_type: AnalyticDataAxisType::Y,
+                        label: AnalyticDataAxisLabel {
+                            label: "Retention Rate (%)".to_string(),
+                            axis_type: AnalyticDataAxisType::Y,
+                            color: "#666".to_string(),
+                            margin: None,
+                            domain_line: true,
+                        },
+                        tick: AnalyticDataAxisTick {
+                            enabled: true,
+                            label_color: Some("#666".to_string()),
+                            text_align: Some(AnalyticDataAxisTickTextAlign::Right),
+                            text_angle: None,
+                            text_width: None,
+                            number: Some(5),
+                            format: None,
+                        },
+                    },
+                ],
+                data,
+            },
+            annotations: vec![],
+        }
+    }
+
+    fn generate_returning_users_percentage(&self, generator: &mut FakeDataGenerator) -> AnalyticQueryResponse {
+        let segments = vec!["New Users", "Returning Users"];
+        let data = generator.generate_percentage_data(segments);
+
+        AnalyticQueryResponse {
+            legend: Some(AnalyticDataLegend {
+                legend_type: Some(AnalyticDataLegendType::Bullet),
+                items: vec![
+                    AnalyticDataLegendItem {
+                        name: Some("New Users".to_string()),
+                        color: Some("#3B82F6".to_string()),
+                        shape: Some(AnalyticDataLegendShape::Circle),
+                        inactive: Some(false),
+                        hidden: Some(false),
+                        pointer: Some(true),
+                    },
+                    AnalyticDataLegendItem {
+                        name: Some("Returning Users".to_string()),
+                        color: Some("#10B981".to_string()),
+                        shape: Some(AnalyticDataLegendShape::Circle),
+                        inactive: Some(false),
+                        hidden: Some(false),
+                        pointer: Some(true),
+                    },
+                ],
+            }),
+            container: AnalyticDataContainer {
+                container_type: AnalyticDataContainerType::Single,
+                scale: None,
+                graphs: vec![AnalyticDataContainerGraph {
+                    graph_type: AnalyticQueryGraphType::Donut,
+                }],
+                axis: vec![],
+                data,
+            },
+            annotations: vec![],
+        }
+    }
+
+    fn generate_session_totals_chart(&self, generator: &mut FakeDataGenerator) -> AnalyticQueryResponse {
+        let now = Utc::now();
+        let data = generator.generate_time_series_data(
+            30,
+            now - Duration::days(29),
+            Duration::days(1),
+            500.0,
+            1200.0,
+        );
+
+        AnalyticQueryResponse {
+            legend: None,
+            container: AnalyticDataContainer {
+                container_type: AnalyticDataContainerType::Xy,
+                scale: Some(AnalyticDataContainerScale::Time),
+                graphs: vec![AnalyticDataContainerGraph {
+                    graph_type: AnalyticQueryGraphType::Bar,
+                }],
+                axis: vec![
+                    AnalyticDataAxis {
+                        axis_type: AnalyticDataAxisType::X,
+                        label: AnalyticDataAxisLabel {
+                            label: "Date".to_string(),
+                            axis_type: AnalyticDataAxisType::X,
+                            color: "#666".to_string(),
+                            margin: None,
+                            domain_line: true,
+                        },
+                        tick: AnalyticDataAxisTick {
+                            enabled: true,
+                            label_color: Some("#666".to_string()),
+                            text_align: Some(AnalyticDataAxisTickTextAlign::Center),
+                            text_angle: None,
+                            text_width: None,
+                            number: Some(10),
+                            format: Some("%m-%d".to_string()),
+                        },
+                    },
+                    AnalyticDataAxis {
+                        axis_type: AnalyticDataAxisType::Y,
+                        label: AnalyticDataAxisLabel {
+                            label: "Sessions".to_string(),
+                            axis_type: AnalyticDataAxisType::Y,
+                            color: "#666".to_string(),
+                            margin: None,
+                            domain_line: true,
+                        },
+                        tick: AnalyticDataAxisTick {
+                            enabled: true,
+                            label_color: Some("#666".to_string()),
+                            text_align: Some(AnalyticDataAxisTickTextAlign::Right),
+                            text_angle: None,
+                            text_width: None,
+                            number: Some(5),
+                            format: None,
+                        },
+                    },
+                ],
+                data,
+            },
+            annotations: vec![],
+        }
+    }
+
+    fn generate_avg_session_duration(&self, generator: &mut FakeDataGenerator) -> AnalyticQueryResponse {
+        let now = Utc::now();
+        let data = generator.generate_time_series_data(
+            7,
+            now - Duration::days(6),
+            Duration::days(1),
+            120.0,
+            300.0,
+        );
+
+        AnalyticQueryResponse {
+            legend: None,
+            container: AnalyticDataContainer {
+                container_type: AnalyticDataContainerType::Xy,
+                scale: Some(AnalyticDataContainerScale::Time),
+                graphs: vec![AnalyticDataContainerGraph {
+                    graph_type: AnalyticQueryGraphType::Line,
+                }],
+                axis: vec![
+                    AnalyticDataAxis {
+                        axis_type: AnalyticDataAxisType::X,
+                        label: AnalyticDataAxisLabel {
+                            label: "Date".to_string(),
+                            axis_type: AnalyticDataAxisType::X,
+                            color: "#666".to_string(),
+                            margin: None,
+                            domain_line: true,
+                        },
+                        tick: AnalyticDataAxisTick {
+                            enabled: true,
+                            label_color: Some("#666".to_string()),
+                            text_align: Some(AnalyticDataAxisTickTextAlign::Center),
+                            text_angle: None,
+                            text_width: None,
+                            number: Some(7),
+                            format: Some("%m-%d".to_string()),
+                        },
+                    },
+                    AnalyticDataAxis {
+                        axis_type: AnalyticDataAxisType::Y,
+                        label: AnalyticDataAxisLabel {
+                            label: "Duration (seconds)".to_string(),
+                            axis_type: AnalyticDataAxisType::Y,
+                            color: "#666".to_string(),
+                            margin: None,
+                            domain_line: true,
+                        },
+                        tick: AnalyticDataAxisTick {
+                            enabled: true,
+                            label_color: Some("#666".to_string()),
+                            text_align: Some(AnalyticDataAxisTickTextAlign::Right),
+                            text_angle: None,
+                            text_width: None,
+                            number: Some(5),
+                            format: None,
+                        },
+                    },
+                ],
+                data,
+            },
+            annotations: vec![],
+        }
+    }
+
+    fn generate_sessions_by_device_chart(&self, generator: &mut FakeDataGenerator) -> AnalyticQueryResponse {
+        let devices = vec!["Mobile", "Desktop", "Tablet"]
+            .into_iter().map(|s| s.to_string()).collect();
+        let data = generator.generate_categorical_data(devices, 300.0, 1500.0);
+
+        AnalyticQueryResponse {
+            legend: None,
+            container: AnalyticDataContainer {
+                container_type: AnalyticDataContainerType::Single,
+                scale: None,
+                graphs: vec![AnalyticDataContainerGraph {
+                    graph_type: AnalyticQueryGraphType::Bar,
+                }],
+                axis: vec![
+                    AnalyticDataAxis {
+                        axis_type: AnalyticDataAxisType::X,
+                        label: AnalyticDataAxisLabel {
+                            label: "Device Type".to_string(),
+                            axis_type: AnalyticDataAxisType::X,
+                            color: "#666".to_string(),
+                            margin: None,
+                            domain_line: true,
+                        },
+                        tick: AnalyticDataAxisTick {
+                            enabled: true,
+                            label_color: Some("#666".to_string()),
+                            text_align: Some(AnalyticDataAxisTickTextAlign::Center),
+                            text_angle: None,
+                            text_width: None,
+                            number: None,
+                            format: None,
+                        },
+                    },
+                    AnalyticDataAxis {
+                        axis_type: AnalyticDataAxisType::Y,
+                        label: AnalyticDataAxisLabel {
+                            label: "Sessions".to_string(),
+                            axis_type: AnalyticDataAxisType::Y,
+                            color: "#666".to_string(),
+                            margin: None,
+                            domain_line: true,
+                        },
+                        tick: AnalyticDataAxisTick {
+                            enabled: true,
+                            label_color: Some("#666".to_string()),
+                            text_align: Some(AnalyticDataAxisTickTextAlign::Right),
+                            text_angle: None,
+                            text_width: None,
+                            number: Some(5),
+                            format: None,
+                        },
+                    },
+                ],
+                data,
+            },
+            annotations: vec![],
+        }
+    }
+
+    fn generate_session_duration_distribution(&self, generator: &mut FakeDataGenerator) -> AnalyticQueryResponse {
+        let durations = vec!["0-30s", "30-60s", "1-2min", "2-5min", "5-10min", "10min+"]
+            .into_iter().map(|s| s.to_string()).collect();
+        let data = generator.generate_categorical_data(durations, 50.0, 400.0);
+
+        AnalyticQueryResponse {
+            legend: None,
+            container: AnalyticDataContainer {
+                container_type: AnalyticDataContainerType::Single,
+                scale: None,
+                graphs: vec![AnalyticDataContainerGraph {
+                    graph_type: AnalyticQueryGraphType::Bar,
+                }],
+                axis: vec![
+                    AnalyticDataAxis {
+                        axis_type: AnalyticDataAxisType::X,
+                        label: AnalyticDataAxisLabel {
+                            label: "Duration Range".to_string(),
+                            axis_type: AnalyticDataAxisType::X,
+                            color: "#666".to_string(),
+                            margin: None,
+                            domain_line: true,
+                        },
+                        tick: AnalyticDataAxisTick {
+                            enabled: true,
+                            label_color: Some("#666".to_string()),
+                            text_align: Some(AnalyticDataAxisTickTextAlign::Center),
+                            text_angle: None,
+                            text_width: None,
+                            number: None,
+                            format: None,
+                        },
+                    },
+                    AnalyticDataAxis {
+                        axis_type: AnalyticDataAxisType::Y,
+                        label: AnalyticDataAxisLabel {
+                            label: "Session Count".to_string(),
+                            axis_type: AnalyticDataAxisType::Y,
+                            color: "#666".to_string(),
+                            margin: None,
+                            domain_line: true,
+                        },
+                        tick: AnalyticDataAxisTick {
+                            enabled: true,
+                            label_color: Some("#666".to_string()),
+                            text_align: Some(AnalyticDataAxisTickTextAlign::Right),
+                            text_angle: None,
+                            text_width: None,
+                            number: Some(5),
+                            format: None,
+                        },
+                    },
+                ],
+                data,
+            },
+            annotations: vec![],
+        }
+    }
+
+    fn generate_top_content_views(&self, generator: &mut FakeDataGenerator) -> AnalyticQueryResponse {
+        let content_titles = vec![
+            "Getting Started Guide",
+            "Advanced Features",
+            "Troubleshooting Tips",
+            "Best Practices",
+            "API Documentation",
+        ].into_iter().map(|s| s.to_string()).collect();
+        let data = generator.generate_categorical_data(content_titles, 800.0, 2500.0);
+
+        AnalyticQueryResponse {
+            legend: None,
+            container: AnalyticDataContainer {
+                container_type: AnalyticDataContainerType::Single,
+                scale: None,
+                graphs: vec![AnalyticDataContainerGraph {
+                    graph_type: AnalyticQueryGraphType::Bar,
+                }],
+                axis: vec![
+                    AnalyticDataAxis {
+                        axis_type: AnalyticDataAxisType::X,
+                        label: AnalyticDataAxisLabel {
+                            label: "Content".to_string(),
+                            axis_type: AnalyticDataAxisType::X,
+                            color: "#666".to_string(),
+                            margin: None,
+                            domain_line: true,
+                        },
+                        tick: AnalyticDataAxisTick {
+                            enabled: true,
+                            label_color: Some("#666".to_string()),
+                            text_align: Some(AnalyticDataAxisTickTextAlign::Center),
+                            text_angle: Some(-45.0),
+                            text_width: None,
+                            number: None,
+                            format: None,
+                        },
+                    },
+                    AnalyticDataAxis {
+                        axis_type: AnalyticDataAxisType::Y,
+                        label: AnalyticDataAxisLabel {
+                            label: "Views".to_string(),
+                            axis_type: AnalyticDataAxisType::Y,
+                            color: "#666".to_string(),
+                            margin: None,
+                            domain_line: true,
+                        },
+                        tick: AnalyticDataAxisTick {
+                            enabled: true,
+                            label_color: Some("#666".to_string()),
+                            text_align: Some(AnalyticDataAxisTickTextAlign::Right),
+                            text_angle: None,
+                            text_width: None,
+                            number: Some(5),
+                            format: None,
+                        },
+                    },
+                ],
+                data,
+            },
+            annotations: vec![],
+        }
+    }
+
+    fn generate_content_engagement_chart(&self, generator: &mut FakeDataGenerator) -> AnalyticQueryResponse {
+        let metrics = vec!["Views", "Likes", "Shares", "Comments"]
+            .into_iter().map(|s| s.to_string()).collect();
+        let data = generator.generate_categorical_data(metrics, 100.0, 1000.0);
+
+        AnalyticQueryResponse {
+            legend: None,
+            container: AnalyticDataContainer {
+                container_type: AnalyticDataContainerType::Single,
+                scale: None,
+                graphs: vec![AnalyticDataContainerGraph {
+                    graph_type: AnalyticQueryGraphType::Bar,
+                }],
+                axis: vec![
+                    AnalyticDataAxis {
+                        axis_type: AnalyticDataAxisType::X,
+                        label: AnalyticDataAxisLabel {
+                            label: "Engagement Type".to_string(),
+                            axis_type: AnalyticDataAxisType::X,
+                            color: "#666".to_string(),
+                            margin: None,
+                            domain_line: true,
+                        },
+                        tick: AnalyticDataAxisTick {
+                            enabled: true,
+                            label_color: Some("#666".to_string()),
+                            text_align: Some(AnalyticDataAxisTickTextAlign::Center),
+                            text_angle: None,
+                            text_width: None,
+                            number: None,
+                            format: None,
+                        },
+                    },
+                    AnalyticDataAxis {
+                        axis_type: AnalyticDataAxisType::Y,
+                        label: AnalyticDataAxisLabel {
+                            label: "Count".to_string(),
+                            axis_type: AnalyticDataAxisType::Y,
+                            color: "#666".to_string(),
+                            margin: None,
+                            domain_line: true,
+                        },
+                        tick: AnalyticDataAxisTick {
+                            enabled: true,
+                            label_color: Some("#666".to_string()),
+                            text_align: Some(AnalyticDataAxisTickTextAlign::Right),
+                            text_angle: None,
+                            text_width: None,
+                            number: Some(5),
+                            format: None,
+                        },
+                    },
+                ],
+                data,
+            },
+            annotations: vec![],
+        }
+    }
+
+    fn generate_content_performance_by_category(&self, generator: &mut FakeDataGenerator) -> AnalyticQueryResponse {
+        let categories = vec!["Documentation", "Tutorials", "API Guides", "Examples", "FAQ"]
+            .into_iter().map(|s| s.to_string()).collect();
+        let data = generator.generate_categorical_data(categories, 200.0, 1200.0);
+
+        AnalyticQueryResponse {
+            legend: None,
+            container: AnalyticDataContainer {
+                container_type: AnalyticDataContainerType::Single,
+                scale: None,
+                graphs: vec![AnalyticDataContainerGraph {
+                    graph_type: AnalyticQueryGraphType::Bar,
+                }],
+                axis: vec![
+                    AnalyticDataAxis {
+                        axis_type: AnalyticDataAxisType::X,
+                        label: AnalyticDataAxisLabel {
+                            label: "Category".to_string(),
+                            axis_type: AnalyticDataAxisType::X,
+                            color: "#666".to_string(),
+                            margin: None,
+                            domain_line: true,
+                        },
+                        tick: AnalyticDataAxisTick {
+                            enabled: true,
+                            label_color: Some("#666".to_string()),
+                            text_align: Some(AnalyticDataAxisTickTextAlign::Center),
+                            text_angle: Some(-45.0),
+                            text_width: None,
+                            number: None,
+                            format: None,
+                        },
+                    },
+                    AnalyticDataAxis {
+                        axis_type: AnalyticDataAxisType::Y,
+                        label: AnalyticDataAxisLabel {
+                            label: "Performance Score".to_string(),
+                            axis_type: AnalyticDataAxisType::Y,
+                            color: "#666".to_string(),
+                            margin: None,
+                            domain_line: true,
+                        },
+                        tick: AnalyticDataAxisTick {
+                            enabled: true,
+                            label_color: Some("#666".to_string()),
+                            text_align: Some(AnalyticDataAxisTickTextAlign::Right),
+                            text_angle: None,
+                            text_width: None,
+                            number: Some(5),
+                            format: None,
+                        },
+                    },
+                ],
+                data,
+            },
+            annotations: vec![],
+        }
+    }
+
+    fn generate_trending_content(&self, generator: &mut FakeDataGenerator) -> AnalyticQueryResponse {
+        let now = Utc::now();
+        let data = generator.generate_time_series_data(
+            7,
+            now - Duration::days(6),
+            Duration::days(1),
+            50.0,
+            300.0,
+        );
+
+        AnalyticQueryResponse {
+            legend: None,
+            container: AnalyticDataContainer {
+                container_type: AnalyticDataContainerType::Xy,
+                scale: Some(AnalyticDataContainerScale::Time),
+                graphs: vec![AnalyticDataContainerGraph {
+                    graph_type: AnalyticQueryGraphType::Area,
+                }],
+                axis: vec![
+                    AnalyticDataAxis {
+                        axis_type: AnalyticDataAxisType::X,
+                        label: AnalyticDataAxisLabel {
+                            label: "Date".to_string(),
+                            axis_type: AnalyticDataAxisType::X,
+                            color: "#666".to_string(),
+                            margin: None,
+                            domain_line: true,
+                        },
+                        tick: AnalyticDataAxisTick {
+                            enabled: true,
+                            label_color: Some("#666".to_string()),
+                            text_align: Some(AnalyticDataAxisTickTextAlign::Center),
+                            text_angle: None,
+                            text_width: None,
+                            number: Some(7),
+                            format: Some("%m-%d".to_string()),
+                        },
+                    },
+                    AnalyticDataAxis {
+                        axis_type: AnalyticDataAxisType::Y,
+                        label: AnalyticDataAxisLabel {
+                            label: "Trending Score".to_string(),
+                            axis_type: AnalyticDataAxisType::Y,
+                            color: "#666".to_string(),
+                            margin: None,
+                            domain_line: true,
+                        },
+                        tick: AnalyticDataAxisTick {
+                            enabled: true,
+                            label_color: Some("#666".to_string()),
+                            text_align: Some(AnalyticDataAxisTickTextAlign::Right),
+                            text_angle: None,
+                            text_width: None,
+                            number: Some(5),
+                            format: None,
+                        },
+                    },
+                ],
                 data,
             },
             annotations: vec![],
