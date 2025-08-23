@@ -78,20 +78,20 @@ pub struct AnalyticDataAxis {
     pub tick: AnalyticDataAxisTick,
 }
 
-#[derive(Union)]
+#[derive(Union, Clone)]
 pub enum AnalyticDataRecord {
     Single(AnalyticSingleDataRecord),
     Multi(AnalyticMultiDataRecord),
 }
 
-#[derive(SimpleObject)]
+#[derive(SimpleObject, Clone)]
 pub struct AnalyticSingleDataRecord {
     pub x: Option<f64>,
     pub y: Option<f64>,
     pub attributes: Option<JsonValue>,
 }
 
-#[derive(SimpleObject)]
+#[derive(SimpleObject, Clone)]
 pub struct AnalyticMultiDataRecord {
     pub x: Option<f64>,
     pub y: Option<Vec<f64>>,
