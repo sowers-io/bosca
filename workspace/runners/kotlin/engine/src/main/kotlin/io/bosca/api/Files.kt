@@ -78,6 +78,9 @@ class Files(network: NetworkClient) : Api(network) {
 
     private suspend fun execute(request: Request, file: File) {
         network.http.newCall(request).executeAsync().use { response ->
+            if (response.code == 404) {
+                return
+            }
             if (!response.isSuccessful) throw Exception("Unexpected code $response")
             if (response.body == null) throw Exception("Missing body")
             withContext(Dispatchers.IO) {

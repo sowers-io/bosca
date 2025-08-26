@@ -51,11 +51,19 @@ async function main() {
         }
         const response = await fetch(imageUrl)
         if (!response.ok || !response.body) {
+            if (response.status === 404) {
+                reply.code(404).send()
+                return
+            }
             reply.code(500).send()
             return
         }
         // @ts-ignore
         const image = await response.arrayBuffer()
+        if (image.byteLength === 0) {
+            reply.code(404).send()
+            return
+        }
         const transformer = sharp(image)
         const metadata = await transformer.metadata()
         delete metadata.exif
@@ -85,11 +93,19 @@ async function main() {
         }
         const response = await fetch(imageUrl)
         if (!response.ok || !response.body) {
+            if (response.status === 404) {
+                reply.code(404).send()
+                return
+            }
             reply.code(500).send()
             return
         }
         // @ts-ignore
         const image = await response.arrayBuffer()
+        if (image.byteLength === 0) {
+            reply.code(404).send()
+            return
+        }
         let contentType = response.headers.get('Content-Type')
         let transformer = sharp(image)
         // @ts-ignore

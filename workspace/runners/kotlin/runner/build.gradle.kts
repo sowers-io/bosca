@@ -45,6 +45,8 @@ tasks.register<JavaExec>("runMain") {
     environment("BOSCA_PASSWORD", "password")
     environment("BOSCA_QUEUES", "profiles,10;video,4;media,2;default,10;bible,20;bible-ai,10;bible-book,20;bible-chapter,20;bible-verse,10;media-transcription,1;media-upload,5;metadata,50;search-index,100;traits,100;transition,100;")
     environment("BOSCA_URL", "http://127.0.0.1:8000/graphql")
+    environment("SEARCH_URL", "http://127.0.0.1:7701")
+    environment("SEARCH_KEY", "p8JcB_HuMHRxN7uVXfrG2wU06b5k7oTvaAAYo6nsi9M")
     mainClass.set("io.bosca.MainKt")
     jvmArgs = listOf("-XX:UseSVE=0")
     args = listOf("run")
