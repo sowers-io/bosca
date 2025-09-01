@@ -114,6 +114,19 @@ impl PermissionCheck {
             ..Default::default()
         }
     }
+    pub fn new_with_metadata_id_with_version_advertised(
+        metadata_id: Uuid,
+        version: i32,
+        action: PermissionAction,
+    ) -> Self {
+        Self {
+            metadata_id: Some(metadata_id),
+            version: Some(version),
+            enable_advertised: true,
+            action,
+            ..Default::default()
+        }
+    }
     pub fn new_with_metadata_supplementary_id(
         supplementary_id: Uuid,
         action: PermissionAction,

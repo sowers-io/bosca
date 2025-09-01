@@ -29,7 +29,7 @@ impl GuideStepObject {
 
     pub async fn metadata(&self, ctx: &Context<'_>) -> Result<Option<MetadataObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        let check = PermissionCheck::new_with_metadata_id_with_version(
+        let check = PermissionCheck::new_with_metadata_id_with_version_advertised(
             self.step.step_metadata_id,
             self.step.step_metadata_version,
             PermissionAction::View,
@@ -40,6 +40,12 @@ impl GuideStepObject {
 
     pub async fn modules(&self, ctx: &Context<'_>) -> Result<Vec<GuideStepModuleObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
+        let check = PermissionCheck::new_with_metadata_id_with_version(
+            self.step.step_metadata_id,
+            self.step.step_metadata_version,
+            PermissionAction::View,
+        );
+        ctx.metadata_permission_check(check).await?;
         let modules = ctx
             .content
             .guides
