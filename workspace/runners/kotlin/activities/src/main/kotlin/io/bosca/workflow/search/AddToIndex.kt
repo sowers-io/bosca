@@ -13,6 +13,9 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class AddToIndexConfiguration(val storageSystem: String)
 
+@Serializable
+data class AddToIndexContext(val taskId: Int? = null)
+
 class AddToIndex(client: io.bosca.api.Client) : Activity(client) {
 
     override val id: String = ID
@@ -33,14 +36,24 @@ class AddToIndex(client: io.bosca.api.Client) : Activity(client) {
     }
 
     override suspend fun execute(context: ActivityContext, job: WorkflowJob) {
+        val jobContext = getContext<AddToIndexContext>(job)
         val meilisearchConfig = newMeilisearchConfig()
         val configuration = getConfiguration<AddToIndexConfiguration>(job)
-        val storageSystem = client.workflows.getStorageSystems().firstOrNull { it.name == configuration.storageSystem } ?: error("storage system missing")
+        val storageSystem = this.client.workflows.getStorageSystems().firstOrNull { it.name == configuration.storageSystem } ?: error("storage system missing")
         val client = Client(meilisearchConfig)
         val document = getInputSupplementaryText(context, job, INPUT_NAME)
         val cfg = storageSystem.configuration.decode<IndexConfiguration>() ?: error("index configuration missing")
         val index = client.index(cfg.name)
+        if (jobContext.taskId != null) {
+            try {
+                index.suspendWaitForTask(jobContext.taskId)
+                return
+            } catch (_: TaskFailedException) {
+                println("task failed: $jobContext, retrying")
+            }
+        }
         val taskId = index.addDocuments(document).taskUid
+        setContext(job, AddToIndexContext(taskId))
         index.suspendWaitForTask(taskId)
     }
 
