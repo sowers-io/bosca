@@ -1,24 +1,30 @@
 package io.bosca.api
 
 import com.apollographql.apollo.ApolloClient
-import com.apollographql.apollo.api.*
+import com.apollographql.apollo.api.Adapter
+import com.apollographql.apollo.api.ApolloRequest
+import com.apollographql.apollo.api.ApolloResponse
+import com.apollographql.apollo.api.CustomScalarAdapters
+import com.apollographql.apollo.api.CustomScalarType
+import com.apollographql.apollo.api.Operation
 import com.apollographql.apollo.api.http.HttpHeader
 import com.apollographql.apollo.api.json.JsonReader
 import com.apollographql.apollo.api.json.JsonWriter
 import com.apollographql.apollo.interceptor.ApolloInterceptor
 import com.apollographql.apollo.interceptor.ApolloInterceptorChain
 import com.apollographql.apollo.network.http.DefaultHttpEngine
-import com.apollographql.apollo.network.http.HttpEngine
 import com.apollographql.apollo.network.ws.DefaultWebSocketEngine
 import com.apollographql.apollo.network.ws.WebSocketConnection
 import com.apollographql.apollo.network.ws.WebSocketEngine
 import com.apollographql.apollo.network.ws.WebSocketNetworkTransport
 import kotlinx.coroutines.flow.Flow
+import okhttp3.ConnectionPool
+import okhttp3.Dispatcher
 import okhttp3.OkHttpClient
 import java.time.Duration
-import java.time.LocalDateTime
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
+import java.util.concurrent.TimeUnit
 
 class NetworkClient {
 
@@ -50,6 +56,7 @@ class NetworkClient {
                 val response = reader.nextString() ?: error("missing date")
                 return ZonedDateTime.parse(response)
             }
+
             override fun toJson(writer: JsonWriter, customScalarAdapters: CustomScalarAdapters, value: ZonedDateTime) {
                 writer.value(value.format(DateTimeFormatter.ISO_OFFSET_DATE_TIME))
             }
@@ -68,9 +75,21 @@ class NetworkClient {
 
 
     val http = OkHttpClient.Builder()
-        .readTimeout(Duration.ofMinutes(10))
-        .writeTimeout(Duration.ofMinutes(10))
+        .callTimeout(Duration.ofMinutes(3))
+        .readTimeout(Duration.ofMinutes(3))
+        .writeTimeout(Duration.ofMinutes(3))
         .connectTimeout(Duration.ofSeconds(10))
+        .dispatcher(Dispatcher().apply {
+            maxRequests = 1024
+            maxRequestsPerHost = 10
+        })
+        .connectionPool(
+            ConnectionPool(
+                maxIdleConnections = 50,
+                keepAliveDuration = 1,
+                timeUnit = TimeUnit.MINUTES
+            )
+        )
         .build()
 }
 
