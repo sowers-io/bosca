@@ -111,6 +111,7 @@ impl MetadataObject {
 
     async fn attributes(
         &self,
+        ctx: &Context<'_>,
         filter: Option<AttributesFilterInput>,
     ) -> Result<Option<Value>, Error> {
         if self.metadata.attributes.is_null() {
@@ -118,15 +119,19 @@ impl MetadataObject {
         }
         let value = self.metadata.attributes.clone();
         if self.metadata.workflow_state_id == ADVERTISED {
-            let mut attrs = HashSet::new();
-            attrs.insert("type".to_string());
-            attrs.insert("description".to_string());
-            attrs.insert("published".to_string());
-            let filter = AttributesFilterInput {
-                attributes: attrs,
-                child_attributes: None,
-            };
-            return Ok(Some(filter.filter(&value)));
+            let ctx = ctx.data::<BoscaContext>()?;
+            let check = PermissionCheck::new_with_metadata(self.metadata.clone(), PermissionAction::Edit);
+            if !ctx.metadata_permission_check(check).await.is_ok() {
+                let mut attrs = HashSet::new();
+                attrs.insert("type".to_string());
+                attrs.insert("description".to_string());
+                attrs.insert("published".to_string());
+                let filter = AttributesFilterInput {
+                    attributes: attrs,
+                    child_attributes: None,
+                };
+                return Ok(Some(filter.filter(&value)));
+            }
         }
         if let Some(filter) = filter {
             return Ok(Some(filter.filter(&value)));
