@@ -84,11 +84,23 @@ impl MetadataMutationObject {
         let metadata_id = Uuid::parse_str(&metadata_id)?;
         let profile = ctx.profile.get_by_principal(&ctx.principal.id).await?;
         if let Some(profile) = profile {
-            Ok(ctx
+            let comment_id = ctx
                 .content
                 .comments
                 .add_metadata_comment(ctx, &profile.id, &metadata_id, metadata_version, &comment)
-                .await?)
+                .await?;
+
+            // Trigger moderation workflow for new comments with PENDING status
+            if comment.status == CommentStatus::Pending {
+                let mut request = EnqueueRequest {
+                    workflow_id: Some("moderation.openai.comment".to_string()),
+                    comment_id: Some(comment_id),
+                    ..Default::default()
+                };
+                ctx.workflow.enqueue_workflow(ctx, &mut request).await?;
+            }
+
+            Ok(comment_id)
         } else {
             Err(Error::new("unauthenticated"))
         }
