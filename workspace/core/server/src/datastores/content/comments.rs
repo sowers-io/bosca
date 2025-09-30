@@ -198,7 +198,7 @@ impl CommentsDataStore {
     ) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
-            .prepare_cached("update comments set system_attributes = $4, modified = now() where metadata_id = $1 and version = $2 and id = $3")
+            .prepare_cached("update comments set attributes = $4, modified = now() where metadata_id = $1 and version = $2 and id = $3")
             .await?;
         connection
             .query(&stmt, &[metadata_id, &version, &comment_id, attributes])
