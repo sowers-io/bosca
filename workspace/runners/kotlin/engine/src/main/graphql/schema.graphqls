@@ -112,6 +112,30 @@ type CategoryMutation {
     edit(category: CategoryInput!, id: String!): Category!
 }
 
+type Comment {
+    attributes: JSON
+    content: String!
+    created: DateTime!
+    deleted: Boolean!
+    id: Long!
+    modified: DateTime!
+    parentId: Long
+    profile: Profile
+    profileId: String!
+    status: CommentStatus!
+    systemAttributes: JSON
+    visibility: ProfileVisibility!
+    metadataId: String
+    version: Int
+    collectionId: String
+}
+
+enum CommentStatus {
+    APPROVED
+    PENDING
+    PENDING_APPROVAL
+}
+
 type Collection {
     attributes(filter: AttributesFilterInput): JSON
     categories: [Category!]!
@@ -1122,6 +1146,7 @@ type WorkflowJob {
     children: [WorkflowExecutionId!]!
     collection: Collection
     collectionId: String
+    comment: Comment
     completedChildren: [WorkflowExecutionId!]!
     context: JSON
     error: String
@@ -1377,6 +1402,8 @@ scalar DateTime
 
 "A scalar that can represent any JSON value."
 scalar JSON
+
+scalar Long
 
 scalar Upload
 

@@ -1,0 +1,16 @@
+fragment Comment on Comment {
+    id
+    content
+    created
+    modified
+    status
+    attributes
+    systemAttributes
+    deleted
+    parentId
+    profileId
+    visibility
+    metadataId
+    version
+    collectionId
+}
