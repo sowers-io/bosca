@@ -363,7 +363,7 @@ impl CollectionObject {
             .await
     }
 
-    async fn workflow(&self) -> CollectionWorkflowObject {
+    async fn workflow(&self) -> CollectionWorkflowObject<'_> {
         CollectionWorkflowObject {
             collection: &self.collection,
         }

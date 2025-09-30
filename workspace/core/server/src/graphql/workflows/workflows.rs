@@ -115,6 +115,7 @@ impl WorkflowsObject {
         workflow_id: Option<String>,
         metadata_id: Option<String>,
         metadata_version: Option<i32>,
+        comment_id: Option<i64>,
         collection_id: Option<String>,
         storage_system_ids: Option<Vec<String>>,
         configurations: Option<Vec<WorkflowConfigurationInput>>,
@@ -129,6 +130,7 @@ impl WorkflowsObject {
             workflow: None,
             metadata_id: metadata_id.map(|m| Uuid::parse_str(&m).unwrap()),
             metadata_version,
+            comment_id,
             collection_id: collection_id.map(|c| Uuid::parse_str(&c).unwrap()),
             storage_system_ids: storage_system_ids.map(|s| {
                 s.into_iter()

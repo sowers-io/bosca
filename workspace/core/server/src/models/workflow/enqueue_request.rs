@@ -15,6 +15,8 @@ pub struct EnqueueRequest {
     pub metadata_id: Option<Uuid>,
     pub metadata_version: Option<i32>,
 
+    pub comment_id: Option<i64>,
+
     pub collection_id: Option<Uuid>,
 
     pub storage_system_ids: Option<Vec<Uuid>>,

@@ -16,3 +16,4 @@ pub mod guides;
 pub mod tag;
 pub mod metadata_supplementary;
 pub mod collection_supplementary;
+pub mod comments;

@@ -4,6 +4,7 @@ use crate::graphql::content::bible::BibleObject;
 use crate::graphql::content::category::CategoryObject;
 use crate::graphql::content::collection::CollectionObject;
 use crate::graphql::content::collection_template::CollectionTemplateObject;
+use crate::graphql::content::comment::CommentsObject;
 use crate::graphql::content::document::DocumentObject;
 use crate::graphql::content::document_collaboration::DocumentCollaborationObject;
 use crate::graphql::content::document_template::DocumentTemplateObject;
@@ -120,7 +121,8 @@ impl MetadataObject {
         let value = self.metadata.attributes.clone();
         if self.metadata.workflow_state_id == ADVERTISED {
             let ctx = ctx.data::<BoscaContext>()?;
-            let check = PermissionCheck::new_with_metadata(self.metadata.clone(), PermissionAction::Edit);
+            let check =
+                PermissionCheck::new_with_metadata(self.metadata.clone(), PermissionAction::Edit);
             if !ctx.metadata_permission_check(check).await.is_ok() {
                 let mut attrs = HashSet::new();
                 attrs.insert("type".to_string());
@@ -527,6 +529,43 @@ impl MetadataObject {
             }
         }
         Ok(listable)
+    }
+
+    async fn comments(
+        &self,
+        ctx: &Context<'_>,
+        offset: i64,
+        limit: i64,
+    ) -> Result<CommentsObject, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let profile = ctx.profile.get_by_principal(&ctx.principal.id).await?;
+        let profile_id = profile.map(|p| p.id);
+        let check =
+            PermissionCheck::new_with_metadata(self.metadata.clone(), PermissionAction::Manage);
+        let can_manage = ctx.metadata_permission_check(check).await.is_ok();
+        let comments = ctx
+            .content
+            .comments
+            .get_metadata_comments(
+                &profile_id,
+                &self.metadata.id,
+                &self.metadata.version,
+                can_manage,
+                offset,
+                limit,
+            )
+            .await?;
+        let count = ctx
+            .content
+            .comments
+            .get_metadata_comments_count(
+                &profile_id,
+                &self.metadata.id,
+                &self.metadata.version,
+                can_manage,
+            )
+            .await?;
+        Ok(CommentsObject::new(can_manage, comments, count))
     }
 }
 

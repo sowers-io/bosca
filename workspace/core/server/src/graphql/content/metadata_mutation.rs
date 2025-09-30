@@ -10,6 +10,8 @@ use crate::graphql::content::permission::PermissionObject;
 use crate::graphql::workflows::workflow_execution_plan::WorkflowExecutionPlanObject;
 use crate::models::bible::bible::BibleInput;
 use crate::models::content::collection::MetadataChildInput;
+use crate::models::content::comment::CommentInput;
+use crate::models::content::comment_status::CommentStatus;
 use crate::models::content::document::DocumentInput;
 use crate::models::content::metadata::MetadataInput;
 use crate::models::content::metadata_relationship::MetadataRelationshipInput;
@@ -69,6 +71,142 @@ impl MetadataMutationObject {
                 .unwrap()
         };
         Ok(new_metadata.into())
+    }
+
+    async fn add_comment(
+        &self,
+        ctx: &Context<'_>,
+        metadata_id: String,
+        metadata_version: i32,
+        comment: CommentInput,
+    ) -> Result<i64, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let metadata_id = Uuid::parse_str(&metadata_id)?;
+        let profile = ctx.profile.get_by_principal(&ctx.principal.id).await?;
+        if let Some(profile) = profile {
+            Ok(ctx
+                .content
+                .comments
+                .add_metadata_comment(ctx, &profile.id, &metadata_id, metadata_version, &comment)
+                .await?)
+        } else {
+            Err(Error::new("unauthenticated"))
+        }
+    }
+
+    async fn set_comment_status(
+        &self,
+        ctx: &Context<'_>,
+        metadata_id: String,
+        metadata_version: i32,
+        comment_id: i64,
+        status: CommentStatus,
+    ) -> Result<bool, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let id = Uuid::parse_str(&metadata_id)?;
+        let check = PermissionCheck::new_with_metadata_id_with_version(
+            id,
+            metadata_version,
+            PermissionAction::Manage,
+        );
+        let metadata = ctx.metadata_permission_check(check).await?;
+        ctx.content
+            .comments
+            .set_metadata_comment_status(&metadata.id, &metadata.version, comment_id, status)
+            .await?;
+        Ok(true)
+    }
+
+    async fn set_comment_attributes(
+        &self,
+        ctx: &Context<'_>,
+        metadata_id: String,
+        metadata_version: i32,
+        comment_id: i64,
+        attributes: serde_json::Value,
+    ) -> Result<bool, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let id = Uuid::parse_str(&metadata_id)?;
+        let check = PermissionCheck::new_with_metadata_id_with_version(
+            id,
+            metadata_version,
+            PermissionAction::Manage,
+        );
+        let metadata = ctx.metadata_permission_check(check).await?;
+        ctx.content
+            .comments
+            .set_metadata_comment_attributes(
+                &metadata.id,
+                &metadata.version,
+                comment_id,
+                &attributes,
+            )
+            .await?;
+        Ok(true)
+    }
+
+    async fn set_comment_system_attributes(
+        &self,
+        ctx: &Context<'_>,
+        metadata_id: String,
+        metadata_version: i32,
+        comment_id: i64,
+        attributes: serde_json::Value,
+    ) -> Result<bool, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let id = Uuid::parse_str(&metadata_id)?;
+        let check = PermissionCheck::new_with_metadata_id_with_version(
+            id,
+            metadata_version,
+            PermissionAction::Manage,
+        );
+        let metadata = ctx.metadata_permission_check(check).await?;
+        ctx.content
+            .comments
+            .set_metadata_comment_system_attributes(
+                &metadata.id,
+                &metadata.version,
+                comment_id,
+                &attributes,
+            )
+            .await?;
+        Ok(true)
+    }
+
+    async fn delete_comment(
+        &self,
+        ctx: &Context<'_>,
+        metadata_id: String,
+        metadata_version: i32,
+        comment_id: i64,
+    ) -> Result<bool, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let id = Uuid::parse_str(&metadata_id)?;
+        let check = PermissionCheck::new_with_metadata_id_with_version(
+            id,
+            metadata_version,
+            PermissionAction::Manage,
+        );
+        let manager = ctx.metadata_permission_check(check).await.is_ok();
+        if manager {
+            ctx.content
+                .comments
+                .delete_metadata_comment(&id, &metadata_version, comment_id)
+                .await?;
+        } else {
+            let profile = ctx.profile.get_by_principal(&ctx.principal.id).await?;
+            let profile_id = profile.map(|p| p.id).unwrap_or(Uuid::nil());
+            ctx.content
+                .comments
+                .delete_metadata_comment_by_profile_id(
+                    &id,
+                    &metadata_version,
+                    comment_id,
+                    &profile_id,
+                )
+                .await?;
+        }
+        Ok(true)
     }
 
     async fn template(
