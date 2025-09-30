@@ -530,6 +530,7 @@ type MetadataMutation {
     add(collectionItemAttributes: JSON, metadata: MetadataInput!): Metadata!
     addBulk(metadatas: [MetadataChildInput!]!): [Metadata!]!
     addCategory(categoryId: String!, metadataId: String!): Boolean!
+    addComment(comment: CommentInput!, metadataId: String!, metadataVersion: Int!): Long!
     addDocument(parentCollectionId: String!, templateId: String!, templateVersion: Int!): Metadata
     addGuide(parentCollectionId: String!, templateId: String!, templateVersion: Int!): Metadata
     addGuideStep(metadataId: String!, metadataVersion: Int!, sort: Int!, templateId: String!, templateStepId: Int!, templateVersion: Int!): GuideStep!
@@ -540,6 +541,7 @@ type MetadataMutation {
     addTrait(metadataId: String!, traitId: String!): [WorkflowExecutionPlan!]!
     delete(metadataId: String!): Boolean!
     deleteCategory(categoryId: String!, metadataId: String!): Boolean!
+    deleteComment(commentId: Long!, metadataId: String!, metadataVersion: Int!): Boolean!
     deleteContent(metadataId: String!): Boolean!
     deleteGuide(metadataId: String!, metadataVersion: Int!): Boolean!
     deleteGuideStep(metadataId: String!, metadataVersion: Int!, stepId: Int!): Boolean!
@@ -554,6 +556,9 @@ type MetadataMutation {
     mergeMetadataRelationshipAttributes(attributes: JSON!, metadata1Id: String!, metadata2Id: String!, relationship: String!): Boolean!
     permanentlyDelete(metadataId: String!): Boolean!
     setCategories(categoryIds: [String!]!, metadataId: String!): Boolean!
+    setCommentAttributes(attributes: JSON!, commentId: Long!, metadataId: String!, metadataVersion: Int!): Boolean!
+    setCommentStatus(commentId: Long!, metadataId: String!, metadataVersion: Int!, status: CommentStatus!): Boolean!
+    setCommentSystemAttributes(attributes: JSON!, commentId: Long!, metadataId: String!, metadataVersion: Int!): Boolean!
     setGuideStartDate(date: DateTime!, metadataId: String!, metadataVersion: Int!): Metadata
     setLocked(id: String!, locked: Boolean!, version: Int!): Metadata!
     setMetadataAttributes(attributes: JSON!, id: String!): Boolean!
@@ -1476,6 +1481,16 @@ input BreakInput {
 
 input CategoryInput {
     name: String!
+}
+
+input CommentInput {
+    attributes: JSON
+    collectionId: String
+    content: String!
+    metadataId: String
+    parentId: Long
+    status: CommentStatus!
+    visibility: ProfileVisibility!
 }
 
 input ChapterInput {
