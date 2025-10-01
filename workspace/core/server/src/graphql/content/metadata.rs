@@ -573,7 +573,7 @@ impl MetadataObject {
                     can_manage,
                 )
                 .await?;
-            Ok(CommentsObject::new(can_manage, comments, count))
+            Ok(CommentsObject::new(self.metadata.id, self.metadata.version, can_manage, comments, count))
         } else {
             let comments = ctx
                 .content
@@ -597,7 +597,7 @@ impl MetadataObject {
                     can_manage,
                 )
                 .await?;
-            Ok(CommentsObject::new(can_manage, comments, count))
+            Ok(CommentsObject::new(self.metadata.id, self.metadata.version, can_manage, comments, count))
         }
     }
 }

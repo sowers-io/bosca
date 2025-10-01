@@ -99,12 +99,13 @@ impl WorkflowJobObject {
             return Ok(None);
         };
         let ctx = ctx.data::<BoscaContext>()?;
+        let metadata_id = Uuid::parse_str(self.job.metadata_id.clone().unwrap().as_str())?;
         Ok(ctx
             .content
             .comments
             .get_metadata_comment_by_id(&id)
             .await?
-            .map(|c| CommentObject::new(true, c)))
+            .map(|c| CommentObject::new(metadata_id, self.job.metadata_version.unwrap(), true, c)))
     }
 
     async fn metadata_version(&self) -> Option<i32> {

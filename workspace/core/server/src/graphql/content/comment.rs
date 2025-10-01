@@ -3,16 +3,21 @@ use crate::graphql::profiles::profile::ProfileObject;
 use crate::models::content::comment::Comment;
 use crate::models::content::comment_status::CommentStatus;
 use async_graphql::{Context, Error, Object};
+use uuid::Uuid;
 
 pub struct CommentsObject {
+    pub metadata_id: Uuid,
+    pub metadata_version: i32,
     pub manager: bool,
     pub comments: Vec<Comment>,
     pub count: i64,
 }
 
 impl CommentsObject {
-    pub fn new(manager: bool, comments: Vec<Comment>, count: i64) -> Self {
+    pub fn new(metadata_id: Uuid, metadata_version: i32, manager: bool, comments: Vec<Comment>, count: i64) -> Self {
         Self {
+            metadata_id,
+            metadata_version,
             manager,
             comments,
             count,
@@ -26,7 +31,7 @@ impl CommentsObject {
         self.comments
             .iter()
             .cloned()
-            .map(|c| CommentObject::new(self.manager, c))
+            .map(|c| CommentObject::new(self.metadata_id, self.metadata_version, self.manager, c))
             .collect()
     }
     pub async fn count(&self) -> &i64 {
@@ -35,13 +40,15 @@ impl CommentsObject {
 }
 
 pub struct CommentObject {
+    pub metadata_id: Uuid,
+    pub metadata_version: i32,
     pub manager: bool,
     pub comment: Comment,
 }
 
 impl CommentObject {
-    pub fn new(manager: bool, comment: Comment) -> Self {
-        Self { manager, comment }
+    pub fn new(metadata_id: Uuid, metadata_version: i32, manager: bool, comment: Comment) -> Self {
+        Self { metadata_id, metadata_version, manager, comment }
     }
 }
 
@@ -83,5 +90,35 @@ impl CommentObject {
     }
     pub async fn likes(&self) -> &i32 {
         &self.comment.likes
+    }
+    pub async fn replies(&self, ctx: &Context<'_>, offset: i64, limit: i64) -> Result<CommentsObject, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let profile = ctx.profile.get_by_principal(&ctx.principal.id).await?;
+        let profile_id = profile.map(|p| p.id);
+        let comments = ctx
+            .content
+            .comments
+            .get_metadata_comments_by_parent_id(
+                &profile_id,
+                &self.metadata_id,
+                &self.metadata_version,
+                &self.comment.id,
+                self.manager,
+                offset,
+                limit,
+            )
+            .await?;
+        let count = ctx
+            .content
+            .comments
+            .get_metadata_comments_count_by_parent_id(
+                &profile_id,
+                &self.metadata_id,
+                &self.metadata_version,
+                &self.comment.id,
+                self.manager,
+            )
+            .await?;
+        Ok(CommentsObject::new(self.metadata_id, self.metadata_version, self.manager, comments, count))
     }
 }

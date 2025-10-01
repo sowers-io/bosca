@@ -84,7 +84,7 @@ impl WorkflowExecutionPlanObject {
         if comment.is_none() {
             return Ok(None);
         }
-        Ok(Some(CommentObject::new(true, comment.unwrap())))
+        Ok(Some(CommentObject::new(*metadata_id, self.plan.metadata_version.unwrap(), true, comment.unwrap())))
     }
     async fn collection_id(&self) -> Option<String> {
         self.plan.collection_id.as_ref().map(|id| id.to_string())
