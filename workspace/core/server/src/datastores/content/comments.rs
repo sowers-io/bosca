@@ -259,21 +259,12 @@ impl CommentsDataStore {
         status: CommentStatus,
     ) -> Result<(), Error> {
         let connection = self.pool.get().await?;
-        if status == CommentStatus::Blocked {
-            let stmt = connection
-                .prepare_cached("update metadata_comments set status = 'blocked'::comment_status, deleted = true, modified = now() where metadata_id = $1 and version = $2 and id = $3")
-                .await?;
-            connection
-                .query(&stmt, &[metadata_id, &version, &comment_id])
-                .await?;
-        } else {
-            let stmt = connection
-                .prepare_cached("update metadata_comments set status = $4, modified = now() where metadata_id = $1 and version = $2 and id = $3")
-                .await?;
-            connection
-                .query(&stmt, &[metadata_id, &version, &comment_id, &status])
-                .await?;
-        }
+        let stmt = connection
+            .prepare_cached("update metadata_comments set status = $4, modified = now() where metadata_id = $1 and version = $2 and id = $3")
+            .await?;
+        connection
+            .query(&stmt, &[metadata_id, &version, &comment_id, &status])
+            .await?;
         Ok(())
     }
 
