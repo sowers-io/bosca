@@ -1,4 +1,8 @@
+use crate::context::BoscaContext;
+use crate::graphql::content::collection::CollectionObject;
+use crate::graphql::content::comment::CommentObject;
 use crate::graphql::content::metadata::MetadataObject;
+use crate::graphql::profiles::profile::ProfileObject;
 use crate::graphql::workflows::activity::ActivityObject;
 use crate::graphql::workflows::workflow::WorkflowObject;
 use crate::graphql::workflows::workflow_activity::WorkflowActivityObject;
@@ -11,9 +15,6 @@ use crate::models::workflow::execution_plan::WorkflowJob;
 use async_graphql::{Context, Error, Object};
 use serde_json::Value;
 use uuid::Uuid;
-use crate::context::BoscaContext;
-use crate::graphql::content::collection::CollectionObject;
-use crate::graphql::profiles::profile::ProfileObject;
 
 pub struct WorkflowJobObject {
     job: WorkflowJob,
@@ -28,7 +29,10 @@ impl WorkflowJobObject {
 #[Object(name = "WorkflowJob")]
 impl WorkflowJobObject {
     async fn parent(&self) -> Option<WorkflowJobIdObject> {
-        self.job.parent.as_ref().map(|p| WorkflowJobIdObject::new(p.clone()))
+        self.job
+            .parent
+            .as_ref()
+            .map(|p| WorkflowJobIdObject::new(p.clone()))
     }
 
     async fn plan_id(&self) -> WorkflowExecutionIdObject {
@@ -59,7 +63,8 @@ impl WorkflowJobObject {
         }
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::parse_str(self.job.collection_id.clone().unwrap().as_str())?;
-        Ok(ctx.content
+        Ok(ctx
+            .content
             .collections
             .get(&id)
             .await?
@@ -72,7 +77,8 @@ impl WorkflowJobObject {
         }
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::parse_str(self.job.metadata_id.clone().unwrap().as_str())?;
-        Ok(ctx.content
+        Ok(ctx
+            .content
             .metadata
             .get(&id)
             .await?
@@ -85,10 +91,20 @@ impl WorkflowJobObject {
         }
         let ctx = ctx.data::<BoscaContext>()?;
         let id = Uuid::parse_str(self.job.profile_id.clone().unwrap().as_str())?;
-        Ok(ctx.profile
-            .get_by_id(&id)
+        Ok(ctx.profile.get_by_id(&id).await?.map(ProfileObject::from))
+    }
+
+    async fn comment(&self, ctx: &Context<'_>) -> Result<Option<CommentObject>, Error> {
+        let Some(id) = self.job.comment_id else {
+            return Ok(None);
+        };
+        let ctx = ctx.data::<BoscaContext>()?;
+        Ok(ctx
+            .content
+            .comments
+            .get_metadata_comment_by_id(&id)
             .await?
-            .map(ProfileObject::from))
+            .map(|c| CommentObject::new(true, c)))
     }
 
     async fn metadata_version(&self) -> Option<i32> {

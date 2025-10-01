@@ -25,6 +25,7 @@ use bosca_database::TracingPool;
 use std::sync::Arc;
 use uuid::Uuid;
 use crate::datastores::bible_cache::BibleCache;
+use crate::datastores::content::comments::CommentsDataStore;
 
 #[derive(Clone)]
 pub struct ContentDataStore {
@@ -41,6 +42,7 @@ pub struct ContentDataStore {
     pub metadata_supplementary: MetadataSupplementaryDataStore,
     pub metadata_permissions: MetadataPermissionsDataStore,
     pub metadata_workflows: MetadataWorkflowsDataStore,
+    pub comments: CommentsDataStore,
     pub documents: DocumentsDataStore,
     pub guides: GuidesDataStore,
     pub bibles: BiblesDataStore,
@@ -81,6 +83,7 @@ impl ContentDataStore {
                 pool.clone(),
                 Arc::clone(&notifier),
             ),
+            comments: CommentsDataStore::new(pool.clone()),
             documents: DocumentsDataStore::new(pool.clone(), Arc::clone(&notifier)),
             guides: GuidesDataStore::new(pool.clone(), guide_cache.clone(), Arc::clone(&notifier)),
             sources: SourcesDataStore::new(pool.clone()),

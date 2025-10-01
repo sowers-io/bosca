@@ -7,6 +7,8 @@ pub const SEND_EMAIL: &str = "email.send";
 pub const REBUILD_STORAGE: &str = "rebuild.storage.systems.content";
 pub const RESIZE_IMAGE_INIT: &str = "image.resize.init";
 
+pub const COMMENT_PROCESS: &str = "comment.process";
+
 pub const METADATA_PROCESS: &str = "metadata.process";
 pub const METADATA_UPDATE_STORAGE: &str = "metadata.update.storage";
 pub const METADATA_DELETE_FINALIZE: &str = "metadata.delete.finalize";

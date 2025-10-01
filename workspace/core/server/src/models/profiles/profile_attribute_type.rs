@@ -8,6 +8,7 @@ pub struct ProfileAttributeType {
     pub name: String,
     pub description: String,
     pub visibility: ProfileVisibility,
+    pub protected: bool
 }
 
 #[derive(InputObject, Debug, Clone, PartialEq, Eq)]
@@ -16,6 +17,7 @@ pub struct ProfileAttributeTypeInput {
     pub name: String,
     pub description: String,
     pub visibility: ProfileVisibility,
+    pub protected: bool,
 }
 
 impl From<&Row> for ProfileAttributeType {
@@ -25,6 +27,7 @@ impl From<&Row> for ProfileAttributeType {
             name: row.get("name"),
             description: row.get("description"),
             visibility: row.get("visibility"),
+            protected: row.get("protected")
         }
     }
 }

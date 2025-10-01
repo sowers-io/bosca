@@ -1,0 +1,7 @@
+mutation MergeCommentSystemAttributes($metadataId: String!, $version: Int!, $id: Int!, $attributes: JSON!) {
+    content {
+        metadata {
+            mergeCommentSystemAttributes(metadataId: $metadataId, metadataVersion: $version, commentId: $id, attributes: $attributes)
+        }
+    }
+}

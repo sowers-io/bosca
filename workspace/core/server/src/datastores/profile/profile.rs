@@ -15,6 +15,7 @@ use async_graphql::Error;
 use bosca_database::TracingPool;
 use deadpool_postgres::{GenericClient, Transaction};
 use serde_json::Value;
+use std::collections::HashMap;
 use std::fmt::Debug;
 use uuid::Uuid;
 
@@ -46,6 +47,23 @@ impl ProfileDataStore {
             .await?;
         let rows = connection.query(&stmt, &[&offset, &limit]).await?;
         Ok(rows.iter().map(|r| r.into()).collect())
+    }
+
+    #[tracing::instrument(skip(self, type_id, attribute, value))]
+    pub async fn find_by_attribute(
+        &self,
+        type_id: &String,
+        attribute: &String,
+        value: &String,
+    ) -> async_graphql::Result<Vec<Profile>, Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("select p.* from profiles p inner join profile_attributes pa on p.id = pa.profile where pa.type_id = $1 and (pa.attributes->'$2')::varchar = $3::varchar")
+            .await?;
+        let rows = connection
+            .query(&stmt, &[type_id, attribute, value])
+            .await?;
+        Ok(rows.iter().map(|r| Profile::from(r)).collect())
     }
 
     #[tracing::instrument(skip(self, id))]
@@ -96,6 +114,23 @@ impl ProfileDataStore {
         Ok(rows.iter().map(|r| r.into()).collect())
     }
 
+    #[tracing::instrument(skip(self))]
+    pub async fn get_attribute_types_map(
+        &self,
+    ) -> async_graphql::Result<HashMap<String, ProfileAttributeType>, Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("select * from profile_attribute_types")
+            .await?;
+        let rows = connection.query(&stmt, &[]).await?;
+        let mut map = HashMap::new();
+        for row in rows.iter() {
+            let t: ProfileAttributeType = row.into();
+            map.insert(t.id.clone(), t);
+        }
+        Ok(map)
+    }
+
     #[tracing::instrument(skip(self, attribute))]
     pub async fn add_profile_attribute_type(
         &self,
@@ -103,7 +138,7 @@ impl ProfileDataStore {
     ) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
-            .prepare_cached("insert into profile_attribute_types (id, name, description, visibility) values ($1, $2, $3, $4)")
+            .prepare_cached("insert into profile_attribute_types (id, name, description, visibility, protected) values ($1, $2, $3, $4, $5)")
             .await?;
         connection
             .execute(
@@ -113,6 +148,7 @@ impl ProfileDataStore {
                     &attribute.name,
                     &attribute.description,
                     &attribute.visibility,
+                    &attribute.protected,
                 ],
             )
             .await?;
@@ -307,6 +343,20 @@ impl ProfileDataStore {
             .await?;
         let rows = connection.query(&stmt, &[profile_id]).await?;
         Ok(rows.iter().map(|r| r.into()).collect())
+    }
+
+    #[tracing::instrument(skip(self, profile_id, attribute_id))]
+    pub async fn get_attribute(
+        &self,
+        profile_id: &Uuid,
+        attribute_id: &Uuid,
+    ) -> async_graphql::Result<Option<ProfileAttribute>, Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("select * from profile_attributes where profile = $1 and id = $2 and (expiration is null or expiration > now()) order by priority asc, confidence desc")
+            .await?;
+        let rows = connection.query(&stmt, &[profile_id, attribute_id]).await?;
+        Ok(rows.first().map(|r| r.into()))
     }
 
     #[tracing::instrument(skip(self, profile_id))]

@@ -103,7 +103,7 @@ class ImageResizer(client: Client) : AbstractImageResizer(client) {
         val configuration = getConfiguration<ImageResizerConfiguration>(job)
         val content = client.metadata.getMetadataContentDownload(metadata.id)
             ?: error("missing content")
-        val url = URLEncoder.encode(content.urls.download.url, Charsets.UTF_8)
+        val url = URLEncoder.encode(content.urls?.download?.url ?: error("missing url"), Charsets.UTF_8)
         formats.forEach { format ->
             for (size in configuration.sizes) {
                 process(context, job, metadata.id, url, format, size)

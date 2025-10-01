@@ -67,7 +67,7 @@ suspend fun AssetDefinition.install(client: Client, parentCollectionId: String, 
     val id = if (current == null) {
         client.metadata.add(metadata)
     } else {
-        if (current.metadata?.workflow?.metadataWorkflow?.state == "draft") {
+        if (current.metadata?.metadataWorkflow?.metadataWorkflow?.state == "draft") {
             client.metadata.edit(current.metadata?.id ?: error("failed to edit metadata for asset $name"), metadata)
         } else {
             current.metadata?.id
@@ -84,14 +84,14 @@ suspend fun AssetDefinition.install(client: Client, parentCollectionId: String, 
     if (publish) {
         while (true) {
             val m = client.metadata.get(id)
-            val status = m?.workflow?.metadataWorkflow ?: break
+            val status = m?.metadataWorkflow?.metadataWorkflow ?: break
             if (status.state == "pending") {
                 delay(10)
             } else if (status.state == "failed") {
                 break
             } else if (status.state == "draft") {
                 try {
-                    if (m.workflow.metadataWorkflow.pending != null) {
+                    if (m.metadataWorkflow?.metadataWorkflow?.pending != null) {
                         client.workflows.cancelMetadataTransition(m.id, m.version)
                     }
                     client.workflows.beginMetadataTransition(

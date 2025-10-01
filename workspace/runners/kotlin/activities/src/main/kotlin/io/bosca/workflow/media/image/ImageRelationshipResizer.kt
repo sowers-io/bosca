@@ -47,7 +47,7 @@ class ImageRelationshipResizer(client: Client) : AbstractImageResizer(client) {
                     val download =
                         client.metadata.getMetadataContentDownload(relationship.metadata.metadataRelationshipMetadata.id)
                             ?: error("failed to crop: missing supplementary content")
-                    val url = URLEncoder.encode(download.urls.download.url, Charsets.UTF_8)
+                    val url = URLEncoder.encode(download.urls?.download?.url ?: error("missing url"), Charsets.UTF_8)
                     val supplementaryId = process(
                         context,
                         job,
@@ -66,7 +66,7 @@ class ImageRelationshipResizer(client: Client) : AbstractImageResizer(client) {
                     val download =
                         client.metadata.getMetadataContentDownload(relationship.metadata.metadataRelationshipMetadata.id)
                             ?: error("failed to crop: missing supplementary content")
-                    val url = URLEncoder.encode(download.urls.download.url, Charsets.UTF_8)
+                    val url = URLEncoder.encode(download.urls?.download?.url ?: error("missing url"), Charsets.UTF_8)
                     val supplementaryId = process(
                         context,
                         job,
@@ -98,7 +98,7 @@ class ImageRelationshipResizer(client: Client) : AbstractImageResizer(client) {
                     val download =
                         client.metadata.getMetadataContentDownload(relationship.metadata.metadataRelationshipMetadata.id)
                             ?: error("failed to crop: missing supplementary content")
-                    val url = URLEncoder.encode(download.urls.download.url, Charsets.UTF_8)
+                    val url = URLEncoder.encode(download.urls?.download?.url ?: error("missing url"), Charsets.UTF_8)
                     val supplementaryId = process(
                         context,
                         job,

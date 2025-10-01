@@ -36,3 +36,5 @@ pub mod guide_step_module;
 pub mod guide_type;
 pub mod collection_supplementary;
 pub mod document_collaboration;
+pub mod comment;
+pub mod comment_status;

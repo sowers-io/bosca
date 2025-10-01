@@ -28,8 +28,8 @@ class PublishGuide(client: Client) : Activity(client) {
         val guide = client.metadata.getGuide(metadata.id, metadata.version) ?: return
         for (step in guide.steps) {
             step.guideStep.metadata?.metadata?.let {
-                if (it.workflow.metadataWorkflow.pending == null &&
-                    it.workflow.metadataWorkflow.state != published.id
+                if (it.metadataWorkflow?.metadataWorkflow?.pending == null &&
+                    it.metadataWorkflow?.metadataWorkflow?.state != published.id
                 ) {
                     client.workflows.beginMetadataTransition(
                         it.id,
@@ -41,8 +41,8 @@ class PublishGuide(client: Client) : Activity(client) {
             }
             for (module in step.guideStep.modules) {
                 module.guideStepModule.metadata?.metadata?.let {
-                    if (it.workflow.metadataWorkflow.pending == null &&
-                        it.workflow.metadataWorkflow.state != published.id
+                    if (it.metadataWorkflow?.metadataWorkflow?.pending == null &&
+                        it.metadataWorkflow?.metadataWorkflow?.state != published.id
                     ) {
                         client.workflows.beginMetadataTransition(
                             it.id,

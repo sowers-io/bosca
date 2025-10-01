@@ -1,4 +1,5 @@
 use crate::context::{BoscaContext, PermissionCheck};
+use crate::graphql::content::comment::CommentObject;
 use crate::graphql::content::metadata::MetadataObject;
 use crate::graphql::workflows::workflow::WorkflowObject;
 use crate::graphql::workflows::workflow_execution_id::WorkflowExecutionIdObject;
@@ -9,6 +10,7 @@ use crate::models::workflow::execution_plan::WorkflowExecutionPlan;
 use async_graphql::{Context, Error, Object};
 use chrono::{DateTime, Utc};
 use serde_json::Value;
+use uuid::Uuid;
 
 pub struct WorkflowExecutionPlanObject {
     plan: WorkflowExecutionPlan,
@@ -48,13 +50,41 @@ impl WorkflowExecutionPlanObject {
         }
         let ctx = ctx.data::<BoscaContext>()?;
         let metadata_id = self.plan.metadata_id.as_ref().unwrap();
-        let check =
-            PermissionCheck::new_with_metadata_id(*metadata_id, PermissionAction::View);
+        let check = PermissionCheck::new_with_metadata_id(*metadata_id, PermissionAction::View);
         let metadata = ctx.metadata_permission_check(check).await?;
         Ok(Some(MetadataObject::from(metadata)))
     }
     async fn metadata_version(&self) -> Option<i32> {
         self.plan.metadata_version
+    }
+    async fn comment_id(&self) -> Option<i64> {
+        self.plan.comment_id
+    }
+    async fn comment(&self, ctx: &Context<'_>) -> Result<Option<CommentObject>, Error> {
+        if self.plan.comment_id.is_none() {
+            return Ok(None);
+        }
+        let ctx = ctx.data::<BoscaContext>()?;
+        let metadata_id = self.plan.metadata_id.as_ref().unwrap();
+        let check = PermissionCheck::new_with_metadata_id(*metadata_id, PermissionAction::Manage);
+        let metadata = ctx.metadata_permission_check(check).await?;
+        let nil_profile = Uuid::nil();
+        let comment_id = self.plan.comment_id.unwrap();
+        let comment = ctx
+            .content
+            .comments
+            .get_metadata_comment(
+                &nil_profile,
+                &metadata.id,
+                &metadata.version,
+                &comment_id,
+                true,
+            )
+            .await?;
+        if comment.is_none() {
+            return Ok(None);
+        }
+        Ok(Some(CommentObject::new(true, comment.unwrap())))
     }
     async fn collection_id(&self) -> Option<String> {
         self.plan.collection_id.as_ref().map(|id| id.to_string())

@@ -2,10 +2,19 @@ package io.bosca.workflow
 
 import com.apollographql.apollo.api.toUpload
 import io.bosca.api.Client
-import io.bosca.graphql.fragment.*
+import io.bosca.graphql.fragment.CollectionSupplementary
+import io.bosca.graphql.fragment.Metadata
+import io.bosca.graphql.fragment.MetadataSupplementary
+import io.bosca.graphql.fragment.WorkflowActivityParameter
+import io.bosca.graphql.fragment.WorkflowJob
 import io.bosca.graphql.type.CollectionSupplementaryInput
 import io.bosca.graphql.type.MetadataSupplementaryInput
-import io.bosca.util.*
+import io.bosca.util.getCollectionSupplementary
+import io.bosca.util.getMetadataSupplementary
+import io.bosca.util.json
+import io.bosca.util.toAny
+import io.bosca.util.toJsonElement
+import io.bosca.util.toOptional
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerializationStrategy
@@ -90,7 +99,7 @@ abstract class Activity(protected val client: Client) {
         val content = client.metadata.getMetadataContentDownload(metadata.id)
             ?: error("missing content")
         val file = context.newTemporaryFile(job, content.type.split("/").last())
-        client.files.download(content.urls.download, file)
+        client.files.download(content.urls?.download ?: error("missing urls"), file)
         return file
     }
 
@@ -399,7 +408,16 @@ abstract class Activity(protected val client: Client) {
 
     protected suspend inline fun <reified T> setSystemAttribute(job: WorkflowJob, name: String, value: T) {
         val data = json.encodeToJsonElement(value).toAny()
-        if (job.metadata != null) {
+        if (job.comment != null) {
+            @Suppress("UNCHECKED_CAST")
+            val attrs = mapOf(name to data)
+            client.comments.mergeSystemAttributes(
+                job.metadata?.metadata?.id ?: error("missing metadata id"),
+                job.metadata.metadata.version,
+                job.comment.comment.id,
+                attrs
+            )
+        } else if (job.metadata != null) {
             @Suppress("UNCHECKED_CAST")
             val attrs = job.metadata.metadata.systemAttributes as MutableMap<String, Any?>? ?: mutableMapOf()
             attrs[name] = data

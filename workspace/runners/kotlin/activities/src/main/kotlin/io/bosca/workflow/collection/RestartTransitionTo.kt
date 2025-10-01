@@ -23,15 +23,15 @@ class RestartTransitionTo(client: Client) : Activity(client) {
     }
 
     override suspend fun execute(context: ActivityContext, job: WorkflowJob) {
-        if (job.collection!!.collection.workflow.collectionWorkflow.pending == null) return
-        val delayUntil = job.collection!!.collection.workflow.collectionWorkflow.stateValid
+        if (job.collection!!.collection.collectionWorkflow.collectionWorkflow.pending == null) return
+        val delayUntil = job.collection!!.collection.collectionWorkflow.collectionWorkflow.stateValid
         if (delayUntil != null && delayUntil.isAfter(ZonedDateTime.now())) {
             println("ERROR: Should delay until $delayUntil")
             throw DelayedUntilException(delayUntil)
         }
         client.workflows.beginCollectionTransition(
             job.collection?.collection?.id ?: error("missing collection"),
-            job.collection!!.collection.workflow.collectionWorkflow.pending!!,
+            job.collection!!.collection.collectionWorkflow.collectionWorkflow.pending!!,
             "Restart Collection Transition",
             true
         )

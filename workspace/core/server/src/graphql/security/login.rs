@@ -33,7 +33,7 @@ impl LoginResponse {
         PrincipalObject::new(self.principal.clone())
     }
 
-    async fn token(&self) -> TokenObject {
+    async fn token(&self) -> TokenObject<'_> {
         TokenObject::new(&self.token)
     }
 

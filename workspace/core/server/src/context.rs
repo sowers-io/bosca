@@ -34,6 +34,7 @@ use log::info;
 use std::env;
 use std::sync::Arc;
 use uuid::Uuid;
+use crate::models::profiles::profile_attribute::{ProfileAttribute, ProfileAttributeInput};
 
 #[derive(Clone)]
 pub struct BoscaContext {
@@ -648,6 +649,38 @@ impl BoscaContext {
             }
             None => Err(Error::new(format!("profile not found: {id}"))),
         }
+    }
+
+    #[tracing::instrument(skip(self, attribute))]
+    pub async fn check_protected_attribute(
+        &self,
+        attribute: &ProfileAttribute,
+    ) -> Result<(), Error> {
+        let attribute_types = self.profile.get_attribute_types_map().await?;
+        let attribute_type = attribute_types.get(&attribute.type_id);
+        if let Some(attribute_type) = attribute_type {
+            if attribute_type.protected {
+                self.check_has_service_account().await?;
+            }
+        }
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self, attributes))]
+    pub async fn check_protected_attribute_inputs(
+        &self,
+        attributes: &Vec<ProfileAttributeInput>,
+    ) -> Result<(), Error> {
+        let attribute_types = self.profile.get_attribute_types_map().await?;
+        for attr in attributes.iter() {
+            let attribute_type = attribute_types.get(&attr.type_id);
+            if let Some(attribute_type) = attribute_type {
+                if attribute_type.protected {
+                    self.check_has_service_account().await?;
+                }
+            }
+        }
+        Ok(())
     }
 
     #[tracing::instrument(skip(self))]
