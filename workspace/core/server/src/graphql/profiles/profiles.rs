@@ -24,6 +24,17 @@ impl ProfilesObject {
             .map(ProfileObject::new).collect())
     }
 
+    async fn find_profiles(&self, ctx: &Context<'_>, type_id: String, attribute: String, value: String) -> Result<Vec<ProfileObject>, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        ctx.check_has_admin_account().await?;
+        Ok(ctx
+            .profile
+            .find_by_attribute(&type_id, &attribute, &value)
+            .await?
+            .into_iter()
+            .map(ProfileObject::new).collect())
+    }
+
     async fn profile(&self, ctx: &Context<'_>, id: String) -> Result<Option<ProfileObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         ctx.check_has_admin_account().await?;

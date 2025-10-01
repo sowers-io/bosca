@@ -54,7 +54,9 @@ pub struct Metadata {
     pub public_content: bool,
     pub public_supplementary: bool,
     pub etag: Option<String>,
-    pub deleted: bool
+    pub deleted: bool,
+    pub comments_enabled: bool,
+    pub comment_replies_enabled: bool,
 }
 
 impl ContentItem for Metadata {
@@ -166,7 +168,9 @@ impl From<&Row> for Metadata {
             public_content: row.get("public_content"),
             public_supplementary: row.get("public_supplementary"),
             etag: row.get("etag"),
-            deleted: row.get("deleted")
+            deleted: row.get("deleted"),
+            comments_enabled: row.get("comments_enabled"),
+            comment_replies_enabled: row.get("comment_replies_enabled"),
         }
     }
 }

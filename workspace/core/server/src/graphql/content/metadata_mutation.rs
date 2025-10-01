@@ -81,17 +81,60 @@ impl MetadataMutationObject {
         comment: CommentInput,
     ) -> Result<i64, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
-        let metadata_id = Uuid::parse_str(&metadata_id)?;
-        let profile = ctx.profile.get_by_principal(&ctx.principal.id).await?;
-        if let Some(profile) = profile {
-            Ok(ctx
-                .content
-                .comments
-                .add_metadata_comment(ctx, &profile.id, &metadata_id, metadata_version, &comment)
-                .await?)
-        } else {
-            Err(Error::new("unauthenticated"))
+        if ctx.principal.anonymous {
+            return Err(Error::new("unauthorized"));
         }
+        let metadata_id = Uuid::parse_str(&metadata_id)?;
+        let check = PermissionCheck::new_with_metadata_id_with_version(
+            metadata_id,
+            metadata_version,
+            PermissionAction::View,
+        );
+        let mut metadata = ctx.metadata_permission_check(check).await?;
+        if !metadata.comments_enabled {
+            let check = PermissionCheck::new_with_metadata(
+                metadata,
+                PermissionAction::Manage,
+            );
+            metadata = ctx.metadata_permission_check(check).await?;
+        }
+        if comment.parent_id.is_none() && !metadata.comment_replies_enabled {
+            let check = PermissionCheck::new_with_metadata(
+                metadata,
+                PermissionAction::Manage,
+            );
+            metadata = ctx.metadata_permission_check(check).await?;
+        }
+        let profile = ctx.profile.get_by_principal(&ctx.principal.id).await?;
+        let profile = profile.ok_or(Error::new("unauthorized"))?;
+        for attr in ctx.profile.get_attributes(&profile.id).await? {
+            if attr.type_id == "bosca.profiles.comment.disabled" {
+                return Ok(1);
+            }
+        }
+        let mut profile_id = profile.id.clone();
+        let mut impersonator_id = None::<Uuid>;
+        if let Some(impersonate_id) = &comment.impersonate_id {
+            let check = PermissionCheck::new_with_metadata(
+                metadata,
+                PermissionAction::Manage,
+            );
+            ctx.metadata_permission_check(check).await?;
+            impersonator_id = Some(profile_id.clone());
+            profile_id = Uuid::parse_str(&impersonate_id)?;
+        }
+        Ok(ctx
+            .content
+            .comments
+            .add_metadata_comment(
+                ctx,
+                &profile_id,
+                impersonator_id,
+                &metadata_id,
+                metadata_version,
+                &comment,
+            )
+            .await?)
     }
 
     async fn set_comment_status(

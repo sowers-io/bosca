@@ -20,6 +20,7 @@ impl ProfilesMutationObject {
         profile: ProfileInput,
     ) -> Result<Option<ProfileObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
+        ctx.check_protected_attribute_inputs(&profile.attributes).await?;
         let id = ctx.profile.add(ctx, None, &profile, None).await?;
         let mut request = EnqueueRequest {
             workflow_id: Some(PROFILE_ADDED.to_string()),
@@ -58,7 +59,7 @@ impl ProfilesMutationObject {
             return Err(Error::new("not authorized"));
         }
         if let Some(id) = id {
-            ctx.check_has_admin_account().await?;
+            ctx.check_has_service_account().await?;
             let id = Uuid::parse_str(&id)?;
             ctx.profile.edit_by_id(ctx, &id, &profile).await?;
             Ok(ctx
@@ -68,6 +69,7 @@ impl ProfilesMutationObject {
                 .map(ProfileObject::new))
         } else {
             let principal_id = ctx.principal.id;
+            ctx.check_protected_attribute_inputs(&profile.attributes).await?;
             ctx.profile.edit_by_principal(ctx, &principal_id, &profile).await?;
             Ok(ctx
                 .profile
@@ -107,6 +109,10 @@ impl ProfilesMutationObject {
                 return Err(Error::new("profile not found"));
             };
             let attribute_id = Uuid::parse_str(&attribute_id)?;
+            let Some(attribute) = ctx.profile.get_attribute(&profile.id, &attribute_id).await? else {
+                return Err(Error::new("attribute not found"));
+            };
+            ctx.check_protected_attribute(&attribute).await?;
             ctx.profile.delete_profile_attribute(&profile.id, &attribute_id).await?;
         }
         Ok(true)

@@ -154,12 +154,21 @@ impl ProfileMutationObject {
     ) -> Result<bool, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         if self.profile.principal.is_none() || self.profile.principal != Some(ctx.principal.id) {
-            return Err(Error::new("Unauthorized"));
+            ctx.check_has_service_account().await?;
         }
         let attribute_id = Uuid::parse_str(&attribute_id)?;
-        ctx.profile
-            .delete_profile_attribute(&self.profile.id, &attribute_id)
-            .await?;
+        let attributes = ctx.profile.get_attributes(&self.profile.id).await?;
+        if let Some(attribute) = attributes.iter().find(|a| a.id == attribute_id) {
+            let attribute_types = ctx.profile.get_attribute_types().await?;
+            if let Some(attribute_type) = attribute_types.iter().find(|t| t.id == attribute.type_id) {
+                if attribute_type.protected {
+                    ctx.check_has_service_account().await?;
+                }
+            }
+            ctx.profile
+                .delete_profile_attribute(&self.profile.id, &attribute_id)
+                .await?;
+        }
         Ok(true)
     }
 }

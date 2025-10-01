@@ -32,6 +32,7 @@ pub struct CommentInput {
     pub content: String,
     pub attributes: Option<Value>,
     pub system_attributes: Option<Value>,
+    pub impersonate_id: Option<String>,
 }
 
 impl From<&Row> for Comment {

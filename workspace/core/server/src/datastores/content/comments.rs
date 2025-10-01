@@ -17,20 +17,20 @@ impl CommentsDataStore {
         Self { pool }
     }
 
-    #[tracing::instrument(skip(self, ctx, profile_id, metadata_id, version, comment))]
+    #[tracing::instrument(skip(self, ctx, profile_id, impersonator_id, metadata_id, version, comment))]
     pub async fn add_metadata_comment(
         &self,
         ctx: &BoscaContext,
         profile_id: &Uuid,
+        impersonator_id: Option<Uuid>,
         metadata_id: &Uuid,
         version: i32,
         comment: &CommentInput,
     ) -> Result<i64, Error> {
         let id = {
-            let collection_id = None::<Uuid>;
             let connection = self.pool.get().await?;
             let stmt = connection
-                .prepare_cached("insert into comments (parent_id, metadata_id, version, collection_id, profile_id, visibility, content, attributes, system_attributes) values ($1, $2, $3, $4, $5, $6, $7, $8, $9) returning id")
+                .prepare_cached("insert into metadata_comments (parent_id, metadata_id, version, profile_id, impersonator_id, visibility, content, attributes, system_attributes) values ($1, $2, $3, $4, $5, $6, $7, $8, $9) returning id")
                 .await?;
             let rows = connection
                 .query_one(
@@ -39,8 +39,8 @@ impl CommentsDataStore {
                         &comment.parent_id,
                         metadata_id,
                         &version,
-                        &collection_id,
                         &profile_id,
+                        &impersonator_id,
                         &comment.visibility,
                         &comment.content,
                         &comment.attributes,
