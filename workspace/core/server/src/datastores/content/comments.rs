@@ -75,7 +75,7 @@ impl CommentsDataStore {
         let connection = self.pool.get().await?;
         let rows = if manager {
             let stmt = connection
-                .prepare_cached("select * from metadata_comments where metadata_id = $1 and version = $2 and id = $3 deleted = false")
+                .prepare_cached("select * from metadata_comments where metadata_id = $1 and version = $2 and id = $3 and deleted = false")
                 .await?;
             connection
                 .query(&stmt, &[metadata_id, &version, &id])
@@ -160,7 +160,7 @@ impl CommentsDataStore {
                 .await?
         } else if let Some(profile_id) = profile_id {
             let stmt = connection
-                .prepare_cached("select count(*) from metadata_comments where metadata_id = $1 and version = $2 and deleted = false and ((visibility = 'public' and status = 'approved') or (profile_id = $3)) desc")
+                .prepare_cached("select count(*) from metadata_comments where metadata_id = $1 and version = $2 and deleted = false and ((visibility = 'public' and status = 'approved') or (profile_id = $3)) order by created desc")
                 .await?;
             connection
                 .query_one(&stmt, &[metadata_id, &version, profile_id])
