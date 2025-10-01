@@ -18,6 +18,7 @@ class Client(val network: NetworkClient) {
     val collections = ContentCollections(network)
     val metadata = ContentMetadata(network)
     val categories = ContentCategories(network)
+    val comments = Comments(network)
     val configurations = Configurations(network)
     val workflows = Workflows(network)
     val search = Search(network)
