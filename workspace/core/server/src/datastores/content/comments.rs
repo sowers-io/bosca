@@ -37,6 +37,18 @@ impl CommentsDataStore {
     ) -> Result<i64, Error> {
         let id = {
             let connection = self.pool.get().await?;
+
+            if let Some(parent_id) = &comment.parent_id {
+                let m = self.get_metadata_comment_by_id(parent_id).await?;
+                if let Some(parent_comment) = m {
+                    if parent_comment.metadata_id != *metadata_id || parent_comment.version != version {
+                        return Err(Error::new("Parent comment not found"));
+                    }
+                } else {
+                    return Err(Error::new("Parent comment not found"));
+                }
+            }
+
             let stmt = connection
                 .prepare_cached("insert into metadata_comments (parent_id, metadata_id, version, profile_id, impersonator_id, visibility, content, attributes, system_attributes) values ($1, $2, $3, $4, $5, $6, $7, $8, $9) returning id")
                 .await?;
@@ -120,7 +132,9 @@ impl CommentsDataStore {
                 "update metadata_comments set likes = likes - 1 where metadata_id = $1 and version = $2 and id = $3 returning coalesce(likes, -1)",
             )
             .await?;
-        let rows = txn.query_one(&stmt, &[metadata_id, version, comment_id]).await?;
+        let rows = txn
+            .query_one(&stmt, &[metadata_id, version, comment_id])
+            .await?;
         let likes = rows.get(0);
         if likes >= 0 {
             let stmt = txn
@@ -180,7 +194,7 @@ impl CommentsDataStore {
         Ok(rows.first().map(|r| r.into()))
     }
 
-    #[tracing::instrument(skip(self, profile_id, metadata_id, version, offset, limit))]
+    #[tracing::instrument(skip(self, profile_id, metadata_id, version, manager, offset, limit))]
     pub async fn get_metadata_comments(
         &self,
         profile_id: &Option<Uuid>,
@@ -193,7 +207,7 @@ impl CommentsDataStore {
         let connection = self.pool.get().await?;
         let rows = if manager {
             let stmt = connection
-                .prepare_cached("select * from metadata_comments where metadata_id = $1 and version = $2 and deleted = false order by created desc offset $3 limit $4")
+                .prepare_cached("select * from metadata_comments where metadata_id = $1 and version = $2 and deleted = false and status != 'blocked' order by created desc offset $3 limit $4")
                 .await?;
             connection
                 .query(&stmt, &[metadata_id, &version, &offset, &limit])
@@ -214,6 +228,80 @@ impl CommentsDataStore {
                 .await?
         };
         Ok(rows.iter().map(|r| r.into()).collect())
+    }
+
+    #[tracing::instrument(skip(self, profile_id, metadata_id, version, attribute, attribute_value, manager, offset, limit))]
+    pub async fn get_metadata_comments_by_attribute(
+        &self,
+        profile_id: &Option<Uuid>,
+        metadata_id: &Uuid,
+        version: &i32,
+        attribute: &String,
+        attribute_value: &String,
+        manager: bool,
+        offset: i64,
+        limit: i64,
+    ) -> Result<Vec<Comment>, Error> {
+        let connection = self.pool.get().await?;
+        let rows = if manager {
+            let stmt = connection
+                .prepare_cached("select * from metadata_comments where metadata_id = $1 and version = $2 and deleted = false and status != 'blocked' and (system_attributes->$3)::varchar = $4 order by created desc offset $5 limit $6")
+                .await?;
+            connection
+                .query(&stmt, &[metadata_id, &version, attribute, attribute_value, &offset, &limit])
+                .await?
+        } else if let Some(profile_id) = profile_id {
+            let stmt = connection
+                .prepare_cached("select * from metadata_comments where metadata_id = $1 and version = $2 and deleted = false and ((visibility = 'public' and status = 'approved') or (profile_id = $3)) and (system_attributes->$4)::varchar = $5 order by created desc offset $6 limit $7")
+                .await?;
+            connection
+                .query(&stmt, &[metadata_id, &version, profile_id, attribute, attribute_value, &offset, &limit])
+                .await?
+        } else {
+            let stmt = connection
+                .prepare_cached("select * from metadata_comments where metadata_id = $1 and version = $2 and deleted = false and (visibility = 'public' and status = 'approved') and (system_attributes->$3)::varchar = $4 order by created desc offset $5 limit $6")
+                .await?;
+            connection
+                .query(&stmt, &[metadata_id, &version, attribute, attribute_value, &offset, &limit])
+                .await?
+        };
+        Ok(rows.iter().map(|r| r.into()).collect())
+    }
+
+    #[tracing::instrument(skip(self, profile_id, metadata_id, version))]
+    pub async fn get_metadata_comments_by_attribute_count(
+        &self,
+        profile_id: &Option<Uuid>,
+        metadata_id: &Uuid,
+        version: &i32,
+        attribute: &String,
+        attribute_value: &String,
+        manager: bool,
+    ) -> Result<i64, Error> {
+        let connection = self.pool.get().await?;
+        let row = if manager {
+            let stmt = connection
+                .prepare_cached("select count(*) from metadata_comments where metadata_id = $1 and version = $2 and deleted = false and status != 'blocked' and (system_attributes->$3)::varchar = $4")
+                .await?;
+            connection
+                .query_one(&stmt, &[metadata_id, &version, attribute, attribute_value])
+                .await?
+        } else if let Some(profile_id) = profile_id {
+            let stmt = connection
+                .prepare_cached("select count(*) from metadata_comments where metadata_id = $1 and version = $2 and deleted = false and ((visibility = 'public' and status = 'approved') or (profile_id = $3)) and (system_attributes->$3)::varchar = $4 order by created desc")
+                .await?;
+            connection
+                .query_one(&stmt, &[metadata_id, &version, profile_id, attribute, attribute_value])
+                .await?
+        } else {
+            let stmt = connection
+                .prepare_cached("select count(*) from metadata_comments where metadata_id = $1 and version = $2 and deleted = false and (visibility = 'public' and status = 'approved') and (system_attributes->$3)::varchar = $4")
+                .await?;
+            connection
+                .query_one(&stmt, &[metadata_id, &version, attribute, attribute_value])
+                .await?
+        };
+        Ok(row.get(0))
     }
 
     #[tracing::instrument(skip(self, profile_id, metadata_id, version))]

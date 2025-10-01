@@ -11,8 +11,8 @@ use crate::models::content::comment_status::CommentStatus;
 pub struct Comment {
     pub parent_id: Option<i64>,
     pub id: i64,
-    pub metadata_id: Option<Uuid>,
-    pub version: Option<i32>,
+    pub metadata_id: Uuid,
+    pub version: i32,
     pub profile_id: Uuid,
     pub visibility: ProfileVisibility,
     pub created: DateTime<Utc>,

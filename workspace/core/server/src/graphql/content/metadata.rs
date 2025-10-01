@@ -534,6 +534,7 @@ impl MetadataObject {
     async fn comments(
         &self,
         ctx: &Context<'_>,
+        pinned: Option<bool>,
         offset: i64,
         limit: i64,
     ) -> Result<CommentsObject, Error> {
@@ -543,29 +544,61 @@ impl MetadataObject {
         let check =
             PermissionCheck::new_with_metadata(self.metadata.clone(), PermissionAction::Manage);
         let can_manage = ctx.metadata_permission_check(check).await.is_ok();
-        let comments = ctx
-            .content
-            .comments
-            .get_metadata_comments(
-                &profile_id,
-                &self.metadata.id,
-                &self.metadata.version,
-                can_manage,
-                offset,
-                limit,
-            )
-            .await?;
-        let count = ctx
-            .content
-            .comments
-            .get_metadata_comments_count(
-                &profile_id,
-                &self.metadata.id,
-                &self.metadata.version,
-                can_manage,
-            )
-            .await?;
-        Ok(CommentsObject::new(can_manage, comments, count))
+        if pinned.is_some() && pinned.unwrap() {
+            let attribute = "pinned".to_string();
+            let attribute_value = "true".to_string();
+            let comments = ctx
+                .content
+                .comments
+                .get_metadata_comments_by_attribute(
+                    &profile_id,
+                    &self.metadata.id,
+                    &self.metadata.version,
+                    &attribute,
+                    &attribute_value,
+                    can_manage,
+                    offset,
+                    limit,
+                )
+                .await?;
+            let count = ctx
+                .content
+                .comments
+                .get_metadata_comments_by_attribute_count(
+                    &profile_id,
+                    &self.metadata.id,
+                    &self.metadata.version,
+                    &attribute,
+                    &attribute_value,
+                    can_manage,
+                )
+                .await?;
+            Ok(CommentsObject::new(can_manage, comments, count))
+        } else {
+            let comments = ctx
+                .content
+                .comments
+                .get_metadata_comments(
+                    &profile_id,
+                    &self.metadata.id,
+                    &self.metadata.version,
+                    can_manage,
+                    offset,
+                    limit,
+                )
+                .await?;
+            let count = ctx
+                .content
+                .comments
+                .get_metadata_comments_count(
+                    &profile_id,
+                    &self.metadata.id,
+                    &self.metadata.version,
+                    can_manage,
+                )
+                .await?;
+            Ok(CommentsObject::new(can_manage, comments, count))
+        }
     }
 }
 
