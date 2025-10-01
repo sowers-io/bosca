@@ -27,7 +27,7 @@ class BeginTransitionTo(client: Client) : Activity(client) {
     override suspend fun execute(context: ActivityContext, job: WorkflowJob) {
         val configuration = job.workflowActivity.workflowActivity.configuration as Map<*, *>
         val state = configuration["state"] as String
-        val current = job.collection?.collection?.workflow?.collectionWorkflow
+        val current = job.collection?.collection?.collectionWorkflow?.collectionWorkflow
         if (state != current?.state && state != current?.pending) {
             client.workflows.beginCollectionTransition(
                 job.collection?.collection?.id ?: error("missing collection"),

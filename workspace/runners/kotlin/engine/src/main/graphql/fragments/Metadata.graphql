@@ -33,7 +33,7 @@ fragment Metadata on Metadata {
         identifier
         sourceUrl
     }
-    workflow {
+    metadataWorkflow: workflow {
         ...MetadataWorkflow
     }
     supplementary {

@@ -75,19 +75,34 @@ impl CommentsDataStore {
         let connection = self.pool.get().await?;
         let rows = if manager {
             let stmt = connection
-                .prepare_cached("select * from comments where metadata_id = $1 and version = $2 and id = $3 deleted = false")
+                .prepare_cached("select * from metadata_comments where metadata_id = $1 and version = $2 and id = $3 deleted = false")
                 .await?;
             connection
                 .query(&stmt, &[metadata_id, &version, &id])
                 .await?
         } else {
             let stmt = connection
-                .prepare_cached("select * from comments where metadata_id = $1 and version = $2 and id = $3 and deleted = false and ((visibility = 'public' and status = 'approved') or profile_id = $4)")
+                .prepare_cached("select * from metadata_comments where metadata_id = $1 and version = $2 and id = $3 and deleted = false and ((visibility = 'public' and status = 'approved') or profile_id = $4)")
                 .await?;
             connection
                 .query(&stmt, &[metadata_id, version, id, profile_id])
                 .await?
         };
+        Ok(rows.first().map(|r| r.into()))
+    }
+
+    #[tracing::instrument(skip(self, id))]
+    pub async fn get_metadata_comment_by_id(
+        &self,
+        id: &i64,
+    ) -> Result<Option<Comment>, Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("select * from metadata_comments where id = $1")
+            .await?;
+        let rows = connection
+            .query(&stmt, &[id])
+            .await?;
         Ok(rows.first().map(|r| r.into()))
     }
 
@@ -104,21 +119,21 @@ impl CommentsDataStore {
         let connection = self.pool.get().await?;
         let rows = if manager {
             let stmt = connection
-                .prepare_cached("select * from comments where metadata_id = $1 and version = $2 and deleted = false order by created desc offset $3 limit $4")
+                .prepare_cached("select * from metadata_comments where metadata_id = $1 and version = $2 and deleted = false order by created desc offset $3 limit $4")
                 .await?;
             connection
                 .query(&stmt, &[metadata_id, &version, &offset, &limit])
                 .await?
         } else if let Some(profile_id) = profile_id {
             let stmt = connection
-                .prepare_cached("select * from comments where metadata_id = $1 and version = $2 and deleted = false and ((visibility = 'public' and status = 'approved') or (profile_id = $3)) order by created desc offset $4 limit $5")
+                .prepare_cached("select * from metadata_comments where metadata_id = $1 and version = $2 and deleted = false and ((visibility = 'public' and status = 'approved') or (profile_id = $3)) order by created desc offset $4 limit $5")
                 .await?;
             connection
                 .query(&stmt, &[metadata_id, &version, profile_id, &offset, &limit])
                 .await?
         } else {
             let stmt = connection
-                .prepare_cached("select * from comments where metadata_id = $1 and version = $2 and deleted = false and (visibility = 'public' and status = 'approved') order by created desc offset $3 limit $4")
+                .prepare_cached("select * from metadata_comments where metadata_id = $1 and version = $2 and deleted = false and (visibility = 'public' and status = 'approved') order by created desc offset $3 limit $4")
                 .await?;
             connection
                 .query(&stmt, &[metadata_id, &version, &offset, &limit])
@@ -138,21 +153,21 @@ impl CommentsDataStore {
         let connection = self.pool.get().await?;
         let row = if manager {
             let stmt = connection
-                .prepare_cached("select count(*) from comments where metadata_id = $1 and version = $2 and deleted = false")
+                .prepare_cached("select count(*) from metadata_comments where metadata_id = $1 and version = $2 and deleted = false")
                 .await?;
             connection
                 .query_one(&stmt, &[metadata_id, &version])
                 .await?
         } else if let Some(profile_id) = profile_id {
             let stmt = connection
-                .prepare_cached("select count(*) from comments where metadata_id = $1 and version = $2 and deleted = false and ((visibility = 'public' and status = 'approved') or (profile_id = $3)) desc")
+                .prepare_cached("select count(*) from metadata_comments where metadata_id = $1 and version = $2 and deleted = false and ((visibility = 'public' and status = 'approved') or (profile_id = $3)) desc")
                 .await?;
             connection
                 .query_one(&stmt, &[metadata_id, &version, profile_id])
                 .await?
         } else {
             let stmt = connection
-                .prepare_cached("select count(*) from comments where metadata_id = $1 and version = $2 and deleted = false and (visibility = 'public' and status = 'approved')")
+                .prepare_cached("select count(*) from metadata_comments where metadata_id = $1 and version = $2 and deleted = false and (visibility = 'public' and status = 'approved')")
                 .await?;
             connection
                 .query_one(&stmt, &[metadata_id, &version])
@@ -172,14 +187,14 @@ impl CommentsDataStore {
         let connection = self.pool.get().await?;
         if status == CommentStatus::Blocked {
             let stmt = connection
-                .prepare_cached("update comments set status = 'blocked'::comment_status, deleted = true, modified = now() where metadata_id = $1 and version = $2 and id = $3")
+                .prepare_cached("update metadata_comments set status = 'blocked'::comment_status, deleted = true, modified = now() where metadata_id = $1 and version = $2 and id = $3")
                 .await?;
             connection
                 .query(&stmt, &[metadata_id, &version, &comment_id])
                 .await?;
         } else {
             let stmt = connection
-                .prepare_cached("update comments set status = $4, modified = now() where metadata_id = $1 and version = $2 and id = $3")
+                .prepare_cached("update metadata_comments set status = $4, modified = now() where metadata_id = $1 and version = $2 and id = $3")
                 .await?;
             connection
                 .query(&stmt, &[metadata_id, &version, &comment_id, &status])
@@ -198,7 +213,7 @@ impl CommentsDataStore {
     ) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
-            .prepare_cached("update comments set attributes = $4, modified = now() where metadata_id = $1 and version = $2 and id = $3")
+            .prepare_cached("update metadata_comments set attributes = $4, modified = now() where metadata_id = $1 and version = $2 and id = $3")
             .await?;
         connection
             .query(&stmt, &[metadata_id, &version, &comment_id, attributes])
@@ -216,7 +231,25 @@ impl CommentsDataStore {
     ) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
-            .prepare_cached("update comments set system_attributes = $4, modified = now() where metadata_id = $1 and version = $2 and id = $3")
+            .prepare_cached("update metadata_comments set system_attributes = $4, modified = now() where metadata_id = $1 and version = $2 and id = $3")
+            .await?;
+        connection
+            .query(&stmt, &[metadata_id, &version, &comment_id, attributes])
+            .await?;
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self, metadata_id, version, attributes))]
+    pub async fn merge_metadata_comment_system_attributes(
+        &self,
+        metadata_id: &Uuid,
+        version: &i32,
+        comment_id: i64,
+        attributes: &serde_json::Value,
+    ) -> Result<(), Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("update metadata_comments set system_attributes = coalesce(system_attributes, '{}'::jsonb) || $4, modified = now() where metadata_id = $1 and version = $2 and id = $3")
             .await?;
         connection
             .query(&stmt, &[metadata_id, &version, &comment_id, attributes])
@@ -234,7 +267,7 @@ impl CommentsDataStore {
         // TODO: log who deleted the comment
         let connection = self.pool.get().await?;
         let stmt = connection
-            .prepare_cached("update comments set deleted = true where metadata_id = $1 and version = $2 and id = $3")
+            .prepare_cached("update metadata_comments set deleted = true where metadata_id = $1 and version = $2 and id = $3")
             .await?;
         connection
             .query(&stmt, &[metadata_id, &version, &comment_id])
@@ -253,7 +286,7 @@ impl CommentsDataStore {
         // TODO: log who deleted the comment
         let connection = self.pool.get().await?;
         let stmt = connection
-            .prepare_cached("update comments set deleted = true where metadata_id = $1 and version = $2 and id = $3 and profile_id = $4")
+            .prepare_cached("update metadata_comments set deleted = true where metadata_id = $1 and version = $2 and id = $3 and profile_id = $4")
             .await?;
         connection
             .query(&stmt, &[metadata_id, &version, &comment_id, profile_id])

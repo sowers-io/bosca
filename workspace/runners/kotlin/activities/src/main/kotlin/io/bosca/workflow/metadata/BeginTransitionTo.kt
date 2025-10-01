@@ -36,11 +36,11 @@ class BeginTransitionTo(client: Client) : Activity(client) {
     override suspend fun execute(context: ActivityContext, job: WorkflowJob) {
         val configuration = job.workflowActivity.workflowActivity.configuration as Map<*, *>
         val requiredState = configuration["requiredState"] as? String
-        if (requiredState != null && requiredState != job.metadata?.metadata?.workflow?.metadataWorkflow?.state) {
+        if (requiredState != null && requiredState != job.metadata?.metadata?.metadataWorkflow?.metadataWorkflow?.state) {
             return
         }
         val state = configuration["state"] as String
-        val current = job.metadata?.metadata?.workflow?.metadataWorkflow
+        val current = job.metadata?.metadata?.metadataWorkflow?.metadataWorkflow
         if (state != current?.state && state != current?.pending) {
             val states = client.workflows.getStates()
             val published = states.first { it.id == "published" }

@@ -70,6 +70,7 @@ type BibleBook {
 type BibleChapter {
     component: JSON!
     human: String!
+    humanShort: String!
     reference: BibleReference!
     usfm: String!
     verses: [BibleReference!]!
@@ -86,6 +87,7 @@ type BibleLanguage {
 
 type BibleReference {
     human: String!
+    humanShort: String!
     usfm: String!
 }
 
@@ -191,6 +193,7 @@ type CollectionMutation {
     setSupplementaryContents(contentType: String!, file: Upload!, supplementaryId: String!): Boolean!
     setSupplementaryTextContents(content: String!, contentType: String!, supplementaryId: String!): Boolean!
     setSupplementaryUploaded(contentType: String!, len: Int!, supplementaryId: String!): Boolean!
+    setTemplate(collectionId: String!, templateId: String!, templateVersion: Int!): Boolean!
     setWorkflowState(state: CollectionWorkflowState!): Boolean!
     setWorkflowStateComplete(state: CollectionWorkflowCompleteState!): Boolean!
     template(metadataId: String!, metadataVersion: Int!): CollectionTemplateMutation!
@@ -267,6 +270,22 @@ type CollectionWorkflow {
     running: Int!
     state: String!
     stateValid: DateTime
+}
+
+type Comment {
+    attributes: JSON
+    content: String!
+    created: DateTime!
+    id: Int!
+    modified: DateTime!
+    profile: Profile
+    status: CommentStatus!
+    systemAttributes: JSON
+}
+
+type Comments {
+    comments: [Comment!]!
+    count: Int!
 }
 
 type Configuration {
@@ -367,6 +386,7 @@ type FindBibleResult {
     chapter: BibleChapter
     component: FilteredComponent
     human: String!
+    humanShort: String!
     usfm: String!
 }
 
@@ -411,9 +431,28 @@ type GuideStepModule {
 }
 
 type GuideTemplate {
+    attributes: [TemplateAttribute!]!
+    configuration: JSON
+    defaultAttributes: JSON
     rrule: String
     steps: [GuideTemplateStep!]!
     type: GuideType!
+}
+
+type GuideTemplateMutation {
+    addAttribute(attribute: TemplateAttributeInput!, sort: Int!): Metadata
+    addModule(moduleMetadataId: String!, moduleMetadataVersion: Int!, stepId: Int!): Boolean!
+    addStep(stepMetadataId: String!, stepMetadataVersion: Int): Boolean!
+    deleteAttribute(key: String!): Metadata
+    removeModule(moduleId: Int!, stepId: Int!): Boolean!
+    removeStep(stepId: Int!): Boolean!
+    reorderModules(moduleIds: [Int!]!, stepId: Int!): Boolean!
+    reorderSteps(stepIds: [Int!]!): Boolean!
+    setAttributes(attributes: [TemplateAttributeInput!]!): Metadata
+    setConfiguration(configuration: JSON!): Metadata
+    setDefaultAttributes(attributes: JSON!): Metadata
+    setRrule(rrule: String!): Metadata
+    setType(guideType: String!): Metadata
 }
 
 type GuideTemplateStep {
@@ -453,6 +492,7 @@ type Metadata {
     bible(variant: String): Bible
     categories: [Category!]!
     collectionTemplate: CollectionTemplate
+    comments(limit: Int!, offset: Int!): Comments!
     content: MetadataContent!
     created: DateTime!
     deleted: Boolean!
@@ -479,22 +519,22 @@ type Metadata {
     ready: DateTime
     relationships(filter: [String!], inverse: Boolean): [MetadataRelationship!]!
     slug: String
-    source: MetadataSource!
+    source: MetadataSource
     supplementary(key: String, planId: String): [MetadataSupplementary!]!
     systemAttributes: JSON
     traitIds: [String!]!
     type: MetadataType!
     uploaded: DateTime
     version: Int!
-    workflow: MetadataWorkflow!
+    workflow: MetadataWorkflow
 }
 
 type MetadataContent {
-    json: JSON!
+    json: JSON
     length: Int
-    text: String!
+    text: String
     type: String!
-    urls: MetadataContentUrls!
+    urls: MetadataContentUrls
 }
 
 type MetadataContentUrls {
@@ -506,6 +546,7 @@ type MetadataMutation {
     add(collectionItemAttributes: JSON, metadata: MetadataInput!): Metadata!
     addBulk(metadatas: [MetadataChildInput!]!): [Metadata!]!
     addCategory(categoryId: String!, metadataId: String!): Boolean!
+    addComment(comment: CommentInput!, metadataId: String!, metadataVersion: Int!): Int!
     addDocument(parentCollectionId: String!, templateId: String!, templateVersion: Int!): Metadata
     addGuide(parentCollectionId: String!, templateId: String!, templateVersion: Int!): Metadata
     addGuideStep(metadataId: String!, metadataVersion: Int!, sort: Int!, templateId: String!, templateStepId: Int!, templateVersion: Int!): GuideStep!
@@ -516,6 +557,7 @@ type MetadataMutation {
     addTrait(metadataId: String!, traitId: String!): [WorkflowExecutionPlan!]!
     delete(metadataId: String!): Boolean!
     deleteCategory(categoryId: String!, metadataId: String!): Boolean!
+    deleteComment(commentId: Int!, metadataId: String!, metadataVersion: Int!): Boolean!
     deleteContent(metadataId: String!): Boolean!
     deleteGuide(metadataId: String!, metadataVersion: Int!): Boolean!
     deleteGuideStep(metadataId: String!, metadataVersion: Int!, stepId: Int!): Boolean!
@@ -526,10 +568,15 @@ type MetadataMutation {
     detachSupplementary(id: String!): Boolean!
     edit(id: String!, metadata: MetadataInput!): Metadata!
     editRelationship(relationship: MetadataRelationshipInput!): Boolean!
+    guideTemplate(metadataId: String!, metadataVersion: Int!): GuideTemplateMutation!
     mergeMetadataAttributes(attributes: JSON!, id: String!): Boolean!
     mergeMetadataRelationshipAttributes(attributes: JSON!, metadata1Id: String!, metadata2Id: String!, relationship: String!): Boolean!
     permanentlyDelete(metadataId: String!): Boolean!
     setCategories(categoryIds: [String!]!, metadataId: String!): Boolean!
+    setCommentAttributes(attributes: JSON!, commentId: Int!, metadataId: String!, metadataVersion: Int!): Boolean!
+    setCommentStatus(commentId: Int!, metadataId: String!, metadataVersion: Int!, status: CommentStatus!): Boolean!
+    setCommentSystemAttributes(attributes: JSON!, commentId: Int!, metadataId: String!, metadataVersion: Int!): Boolean!
+    mergeCommentSystemAttributes(attributes: JSON!, commentId: Int!, metadataId: String!, metadataVersion: Int!): Boolean!
     setGuideStartDate(date: DateTime!, metadataId: String!, metadataVersion: Int!): Metadata
     setLocked(id: String!, locked: Boolean!, version: Int!): Metadata!
     setMetadataAttributes(attributes: JSON!, id: String!): Boolean!
@@ -712,6 +759,7 @@ type Profile {
     collection: Collection
     guides: ProfileGuides!
     id: String!
+    marks: ProfileMarks!
     name: String!
     principal: Principal
     slug: String
@@ -742,15 +790,16 @@ type ProfileAttributeTypes {
 }
 
 type ProfileBookmark {
+    attributes: JSON
     collection: Collection
-    createdAt: DateTime!
+    created: DateTime!
     id: Int!
     metadata: Metadata
 }
 
 type ProfileBookmarks {
     bookmark(collectionId: String, metadataId: String, metadataVersion: Int): ProfileBookmark
-    bookmarks: [ProfileBookmark!]!
+    bookmarks(limit: Int, offset: Int): [ProfileBookmark!]!
     count: Int!
 }
 
@@ -788,17 +837,35 @@ type ProfileGuides {
     progressions: ProfileGuideProgressions!
 }
 
+type ProfileMark {
+    attributes: JSON
+    collection: Collection
+    created: DateTime!
+    id: Int!
+    metadata: Metadata
+}
+
+type ProfileMarks {
+    count: Int!
+    mark(collectionId: String, limit: Int!, metadataId: String, metadataVersion: Int, offset: Int!): [ProfileMark!]!
+    markCount(collectionId: String, metadataId: String, metadataVersion: Int): Int!
+    marks(limit: Int, offset: Int): [ProfileMark!]!
+}
+
 type ProfileMutation {
-    addBookmark(collectionId: String, metadataId: String, version: Int): Boolean!
+    addBookmark(attributes: JSON, collectionId: String, metadataId: String, version: Int): Boolean!
+    addMark(attributes: JSON, collectionId: String, metadataId: String, version: Int): Boolean!
     addProgress(attributes: JSON!, metadataId: String!, metadataVersion: Int!, stepId: Int!): ProfileGuideProgress
     deleteAttribute(attributeId: String!): Boolean!
     deleteBookmark(collectionId: String, metadataId: String, version: Int): Boolean!
+    deleteMark(id: Int!): Boolean!
 }
 
 type Profiles {
     all(limit: Int!, offset: Int!): [Profile!]!
     attributeTypes: ProfileAttributeTypes!
     current: Profile
+    findProfiles(attribute: String!, typeId: String!, value: String!): [Profile!]!
     profile(id: String!): Profile
 }
 
@@ -1098,6 +1165,8 @@ type WorkflowExecutionPlan {
     active: [Int!]!
     cancelled: Boolean!
     collectionId: String
+    comment: Comment
+    commentId: Int
     complete: [Int!]!
     context: JSON
     delayedUntil: DateTime
@@ -1122,6 +1191,7 @@ type WorkflowJob {
     children: [WorkflowExecutionId!]!
     collection: Collection
     collectionId: String
+    comment: Comment
     completedChildren: [WorkflowExecutionId!]!
     context: JSON
     error: String
@@ -1206,7 +1276,7 @@ type Workflows {
     schedules: WorkflowSchedules!
     states: WorkflowStates!
     storageSystems: StorageSystems!
-    testPlan(collectionId: String, configurations: [WorkflowConfigurationInput!], delayUntil: DateTime, metadataId: String, metadataVersion: Int, profileId: String, storageSystemIds: [String!], traitId: String, workflowId: String): WorkflowExecutionPlan
+    testPlan(collectionId: String, commentId: Int, configurations: [WorkflowConfigurationInput!], delayUntil: DateTime, metadataId: String, metadataVersion: Int, profileId: String, storageSystemIds: [String!], traitId: String, workflowId: String): WorkflowExecutionPlan
     traits: Traits!
     transitions: Transitions!
     workflow(id: String!): Workflow
@@ -1281,6 +1351,13 @@ enum CollectionType {
     ROOT
     STANDARD
     SYSTEM
+}
+
+enum CommentStatus {
+    APPROVED
+    BLOCKED
+    PENDING
+    PENDING_APPROVAL
 }
 
 enum ContainerType {
@@ -1358,6 +1435,7 @@ enum StorageSystemType {
 }
 
 enum WorkflowStateType {
+    ADVERTISED
     APPROVAL
     APPROVED
     DRAFT
@@ -1534,6 +1612,15 @@ input CollectionWorkflowState {
     status: String!
 }
 
+input CommentInput {
+    attributes: JSON
+    content: String!
+    impersonateId: String
+    parentId: Int
+    systemAttributes: JSON
+    visibility: ProfileVisibility!
+}
+
 input ComponentContainerInput {
     components: [ComponentInput!]!
     style: StyleInput
@@ -1624,6 +1711,8 @@ input GuideStepModuleInput {
 }
 
 input GuideTemplateInput {
+    configuration: JSON
+    defaultAttributes: JSON
     rrule: String!
     steps: [GuideTemplateStepInput!]!
     type: GuideType!
@@ -1760,6 +1849,7 @@ input ProfileAttributeTypeInput {
     description: String!
     id: String!
     name: String!
+    protected: Boolean!
     visibility: ProfileVisibility!
 }
 

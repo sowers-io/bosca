@@ -37,7 +37,7 @@ fragment Collection on Collection {
     categories {
         ...Category
     }
-    workflow {
+    collectionWorkflow: workflow {
         ...CollectionWorkflow
     }
     supplementary {

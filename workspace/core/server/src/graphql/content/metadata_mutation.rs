@@ -216,6 +216,34 @@ impl MetadataMutationObject {
         Ok(true)
     }
 
+    async fn merge_comment_system_attributes(
+        &self,
+        ctx: &Context<'_>,
+        metadata_id: String,
+        metadata_version: i32,
+        comment_id: i64,
+        attributes: serde_json::Value,
+    ) -> Result<bool, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let id = Uuid::parse_str(&metadata_id)?;
+        let check = PermissionCheck::new_with_metadata_id_with_version(
+            id,
+            metadata_version,
+            PermissionAction::Manage,
+        );
+        let metadata = ctx.metadata_permission_check(check).await?;
+        ctx.content
+            .comments
+            .merge_metadata_comment_system_attributes(
+                &metadata.id,
+                &metadata.version,
+                comment_id,
+                &attributes,
+            )
+            .await?;
+        Ok(true)
+    }
+
     async fn delete_comment(
         &self,
         ctx: &Context<'_>,

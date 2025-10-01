@@ -40,7 +40,7 @@ class PublishMetadata(client: Client) : Activity(client) {
             while (tries-- > 0) {
                 val updated = client.metadata.get(metadata.id)
                 if (updated == null) throw Exception("metadata not found while trying to update workflow state")
-                if (updated.workflow.metadataWorkflow.state == draft.id) break
+                if (updated.metadataWorkflow?.metadataWorkflow?.state == draft.id) break
                 delay(1000)
             }
         }

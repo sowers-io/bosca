@@ -23,8 +23,8 @@ class RestartTransitionTo(client: Client) : Activity(client) {
     }
 
     override suspend fun execute(context: ActivityContext, job: WorkflowJob) {
-        if (job.metadata!!.metadata.workflow.metadataWorkflow.pending == null) return
-        val delayUntil = job.metadata!!.metadata.workflow.metadataWorkflow.stateValid
+        if (job.metadata!!.metadata.metadataWorkflow?.metadataWorkflow?.pending == null) return
+        val delayUntil = job.metadata!!.metadata.metadataWorkflow?.metadataWorkflow?.stateValid
         if (delayUntil != null && delayUntil.isAfter(ZonedDateTime.now())) {
             println("ERROR: Should delay until $delayUntil")
             throw DelayedUntilException(delayUntil)
@@ -32,7 +32,7 @@ class RestartTransitionTo(client: Client) : Activity(client) {
         client.workflows.beginMetadataTransition(
             job.metadata?.metadata?.id ?: error("missing metadata"),
             job.metadata!!.metadata.version,
-            job.metadata!!.metadata.workflow.metadataWorkflow.pending!!,
+            job.metadata!!.metadata.metadataWorkflow?.metadataWorkflow?.pending!!,
             "Restart Metadata Transition",
             restart = true
         )

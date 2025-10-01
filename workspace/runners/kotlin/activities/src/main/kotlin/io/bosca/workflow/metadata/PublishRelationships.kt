@@ -35,7 +35,7 @@ class PublishRelationships(client: Client) : Activity(client) {
                     while (tries-- > 0) {
                         val updated = client.metadata.get(m.id)
                         if (updated == null) throw Exception("metadata not found while trying to update workflow state")
-                        if (updated.workflow.metadataWorkflow.state == draft.id) break
+                        if (updated.metadataWorkflow?.metadataWorkflow?.state == draft.id) break
                         delay(1000)
                     }
                 }
@@ -48,8 +48,8 @@ class PublishRelationships(client: Client) : Activity(client) {
                 if (!m.publicSupplementary && m.content.type.startsWith("image/")) {
                     client.metadata.setPublicSupplementary(m.id, true)
                 }
-                if (m.workflow.state != state.id) {
-                    if (m.workflow.pending != null) {
+                if (m.workflow?.state != state.id) {
+                    if (m.workflow?.pending != null) {
                         client.workflows.cancelMetadataTransition(m.id, m.version)
                     }
                     client.workflows.beginMetadataTransition(
@@ -70,7 +70,7 @@ class PublishRelationships(client: Client) : Activity(client) {
                     while (tries-- > 0) {
                         val updated = client.metadata.get(m.id)
                         if (updated == null) throw Exception("metadata not found while trying to update workflow state")
-                        if (updated.workflow.metadataWorkflow.state == draft.id) break
+                        if (updated.metadataWorkflow?.metadataWorkflow?.state == draft.id) break
                         delay(1000)
                     }
                 }
@@ -83,8 +83,8 @@ class PublishRelationships(client: Client) : Activity(client) {
                 if (!m.publicSupplementary && m.content.type.startsWith("image/")) {
                     client.metadata.setPublicSupplementary(m.id, true)
                 }
-                if (m.workflow.state != state.id) {
-                    if (m.workflow.pending != null) {
+                if (m.workflow?.state != state.id) {
+                    if (m.workflow?.pending != null) {
                         client.workflows.cancelMetadataTransition(m.id, m.version)
                     }
                     client.workflows.beginMetadataTransition(

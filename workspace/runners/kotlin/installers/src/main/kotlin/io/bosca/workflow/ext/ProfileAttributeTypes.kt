@@ -7,5 +7,6 @@ fun ProfileAttributeTypeDefinition.toInput() = ProfileAttributeTypeInput(
     id = id,
     name = name,
     description = description,
-    visibility = visibility
+    visibility = visibility,
+    protected = false
 )

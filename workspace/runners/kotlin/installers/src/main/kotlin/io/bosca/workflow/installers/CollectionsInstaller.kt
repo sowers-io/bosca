@@ -69,7 +69,7 @@ class CollectionsInstaller(val client: Client) : Installer {
         }
         collection.templates?.collection?.let {
             val templateSlug = client.get(collection.slug + "-collection-template")
-            if (templateSlug?.metadata?.ready != null && templateSlug.metadata?.workflow?.metadataWorkflow?.state == "published") {
+            if (templateSlug?.metadata?.ready != null && templateSlug.metadata?.metadataWorkflow?.metadataWorkflow?.state == "published") {
                 return@let
             }
             val metadataId = if (templateSlug?.metadata?.id == null) {
@@ -80,7 +80,7 @@ class CollectionsInstaller(val client: Client) : Installer {
                         currentCategories
                     )
                 )
-            } else if (templateSlug.metadata?.workflow?.metadataWorkflow?.state != "published") {
+            } else if (templateSlug.metadata?.metadataWorkflow?.metadataWorkflow?.state != "published") {
                 client.metadata.edit(
                     templateSlug.metadata!!.id,
                     collection.templates.collection.toCollectionTemplateInput(
@@ -108,7 +108,7 @@ class CollectionsInstaller(val client: Client) : Installer {
         }
         collection.templates?.document?.let {
             val templateSlug = client.get(collection.slug + "-document-template")
-            if (templateSlug?.metadata?.ready != null && templateSlug.metadata?.workflow?.metadataWorkflow?.state == "published") {
+            if (templateSlug?.metadata?.ready != null && templateSlug.metadata?.metadataWorkflow?.metadataWorkflow?.state == "published") {
                 return@let
             }
             val metadataId = if (templateSlug?.metadata?.id == null) {
@@ -119,8 +119,8 @@ class CollectionsInstaller(val client: Client) : Installer {
                         currentCategories
                     )
                 )
-            } else if (templateSlug.metadata?.workflow?.metadataWorkflow?.state != "published" &&
-                templateSlug.metadata?.workflow?.metadataWorkflow?.state != "pending") {
+            } else if (templateSlug.metadata?.metadataWorkflow?.metadataWorkflow?.state != "published" &&
+                templateSlug.metadata?.metadataWorkflow?.metadataWorkflow?.state != "pending") {
                 client.metadata.edit(
                     templateSlug.metadata!!.id,
                     collection.templates.document.toDocumentTemplateInput(
@@ -148,7 +148,7 @@ class CollectionsInstaller(val client: Client) : Installer {
         }
         collection.templates?.guide?.let {
             val templateSlug = client.get(collection.slug + "-guide-template")
-            if (templateSlug?.metadata?.ready != null && templateSlug.metadata?.workflow?.metadataWorkflow?.state == "published") {
+            if (templateSlug?.metadata?.ready != null && templateSlug.metadata?.metadataWorkflow?.metadataWorkflow?.state == "published") {
                 return@let
             }
             val metadataId = if (templateSlug?.metadata?.id == null) {
@@ -160,7 +160,7 @@ class CollectionsInstaller(val client: Client) : Installer {
                         currentCategories
                     )
                 )
-            } else if (templateSlug.metadata?.workflow?.metadataWorkflow?.state != "published") {
+            } else if (templateSlug.metadata?.metadataWorkflow?.metadataWorkflow?.state != "published") {
                 client.metadata.edit(
                     templateSlug.metadata!!.id,
                     collection.templates.guide.toGuideTemplateInput(
