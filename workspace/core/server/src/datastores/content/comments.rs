@@ -160,7 +160,7 @@ impl CommentsDataStore {
                 .await?
         } else if let Some(profile_id) = profile_id {
             let stmt = connection
-                .prepare_cached("select count(*) from metadata_comments where metadata_id = $1 and version = $2 and deleted = false and ((visibility = 'public' and status = 'approved') or (profile_id = $3)) desc")
+                .prepare_cached("select count(*) from metadata_comments where metadata_id = $1 and version = $2 and deleted = false and ((visibility = 'public' and status = 'approved') or (profile_id = $3)) order by created desc")
                 .await?;
             connection
                 .query_one(&stmt, &[metadata_id, &version, profile_id])
