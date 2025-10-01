@@ -1,11 +1,11 @@
+use crate::context::BoscaContext;
 use crate::models::content::comment::{Comment, CommentInput};
 use crate::models::content::comment_status::CommentStatus;
+use crate::models::workflow::enqueue_request::EnqueueRequest;
+use crate::workflow::core_workflow_ids::COMMENT_PROCESS;
 use async_graphql::Error;
 use bosca_database::TracingPool;
 use uuid::Uuid;
-use crate::context::BoscaContext;
-use crate::models::workflow::enqueue_request::EnqueueRequest;
-use crate::workflow::core_workflow_ids::COMMENT_PROCESS;
 
 #[derive(Clone)]
 pub struct CommentsDataStore {
@@ -17,7 +17,15 @@ impl CommentsDataStore {
         Self { pool }
     }
 
-    #[tracing::instrument(skip(self, ctx, profile_id, impersonator_id, metadata_id, version, comment))]
+    #[tracing::instrument(skip(
+        self,
+        ctx,
+        profile_id,
+        impersonator_id,
+        metadata_id,
+        version,
+        comment
+    ))]
     pub async fn add_metadata_comment(
         &self,
         ctx: &BoscaContext,
@@ -63,6 +71,77 @@ impl CommentsDataStore {
         Ok(id)
     }
 
+    #[tracing::instrument(skip(self, profile_id, comment_id))]
+    pub async fn add_metadata_comment_like(
+        &self,
+        metadata_id: &Uuid,
+        version: &i32,
+        profile_id: &Uuid,
+        comment_id: &i64,
+    ) -> Result<i32, Error> {
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        let stmt = txn
+            .prepare_cached(
+                "update metadata_comments set likes = likes + 1 where metadata_id = $1 and version = $2 and id = $3 returning coalesce(likes, -1)",
+            )
+            .await?;
+        let rows = txn
+            .query_one(&stmt, &[metadata_id, version, comment_id])
+            .await?;
+        let likes = rows.get(0);
+        if likes > 0 {
+            let stmt = txn
+                .prepare_cached(
+                    "insert into metadata_comment_likes (comment_id, profile_id) values ($1, $2)",
+                )
+                .await?;
+            txn.execute(&stmt, &[comment_id, profile_id]).await?;
+            txn.commit().await?;
+        } else {
+            txn.rollback().await?;
+        }
+        Ok(likes)
+    }
+
+    #[tracing::instrument(skip(self, profile_id, comment_id))]
+    pub async fn delete_metadata_comment_like(
+        &self,
+        metadata_id: &Uuid,
+        version: &i32,
+        profile_id: &Uuid,
+        comment_id: &i64,
+    ) -> Result<i32, Error> {
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+
+        let stmt = txn
+            .prepare_cached(
+                "update metadata_comments set likes = likes - 1 where metadata_id = $1 and version = $2 and id = $3 returning coalesce(likes, -1)",
+            )
+            .await?;
+        let rows = txn.query_one(&stmt, &[metadata_id, version, comment_id]).await?;
+        let likes = rows.get(0);
+        if likes >= 0 {
+            let stmt = txn
+                .prepare_cached(
+                    "delete from metadata_comment_likes where comment_id = $1 and profile_id = $2 returning comment_id",
+                )
+                .await?;
+            let rows = txn.query_one(&stmt, &[comment_id, profile_id]).await?;
+            let deleted_comment_id: i64 = rows.get(0);
+            if deleted_comment_id != *comment_id {
+                txn.rollback().await?;
+                return Ok(-1);
+            } else {
+                txn.commit().await?;
+            }
+        } else {
+            txn.rollback().await?;
+        }
+        Ok(likes)
+    }
+
     #[tracing::instrument(skip(self, profile_id, metadata_id, version, id))]
     pub async fn get_metadata_comment(
         &self,
@@ -92,17 +171,12 @@ impl CommentsDataStore {
     }
 
     #[tracing::instrument(skip(self, id))]
-    pub async fn get_metadata_comment_by_id(
-        &self,
-        id: &i64,
-    ) -> Result<Option<Comment>, Error> {
+    pub async fn get_metadata_comment_by_id(&self, id: &i64) -> Result<Option<Comment>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
             .prepare_cached("select * from metadata_comments where id = $1")
             .await?;
-        let rows = connection
-            .query(&stmt, &[id])
-            .await?;
+        let rows = connection.query(&stmt, &[id]).await?;
         Ok(rows.first().map(|r| r.into()))
     }
 

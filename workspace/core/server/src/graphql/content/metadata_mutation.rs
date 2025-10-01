@@ -92,17 +92,11 @@ impl MetadataMutationObject {
         );
         let mut metadata = ctx.metadata_permission_check(check).await?;
         if !metadata.comments_enabled {
-            let check = PermissionCheck::new_with_metadata(
-                metadata,
-                PermissionAction::Manage,
-            );
+            let check = PermissionCheck::new_with_metadata(metadata, PermissionAction::Manage);
             metadata = ctx.metadata_permission_check(check).await?;
         }
         if comment.parent_id.is_some() && !metadata.comment_replies_enabled {
-            let check = PermissionCheck::new_with_metadata(
-                metadata,
-                PermissionAction::Manage,
-            );
+            let check = PermissionCheck::new_with_metadata(metadata, PermissionAction::Manage);
             metadata = ctx.metadata_permission_check(check).await?;
         }
         let profile = ctx.profile.get_by_principal(&ctx.principal.id).await?;
@@ -115,10 +109,7 @@ impl MetadataMutationObject {
         let mut profile_id = profile.id.clone();
         let mut impersonator_id = None::<Uuid>;
         if let Some(impersonate_id) = &comment.impersonate_id {
-            let check = PermissionCheck::new_with_metadata(
-                metadata,
-                PermissionAction::Manage,
-            );
+            let check = PermissionCheck::new_with_metadata(metadata, PermissionAction::Manage);
             ctx.metadata_permission_check(check).await?;
             impersonator_id = Some(profile_id.clone());
             profile_id = Uuid::parse_str(&impersonate_id)?;
@@ -134,6 +125,64 @@ impl MetadataMutationObject {
                 metadata_version,
                 &comment,
             )
+            .await?)
+    }
+
+    async fn add_comment_like(
+        &self,
+        ctx: &Context<'_>,
+        metadata_id: String,
+        metadata_version: i32,
+        comment_id: i64,
+    ) -> Result<i32, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let id = Uuid::parse_str(&metadata_id)?;
+        let check = PermissionCheck::new_with_metadata_id_with_version(
+            id,
+            metadata_version,
+            PermissionAction::View,
+        );
+        let metadata = ctx.metadata_permission_check(check).await?;
+        let profile = ctx.profile.get_by_principal(&ctx.principal.id).await?;
+        let profile = profile.ok_or(Error::new("unauthorized"))?;
+        for attr in ctx.profile.get_attributes(&profile.id).await? {
+            if attr.type_id == "bosca.profiles.comment.disabled" {
+                return Ok(-1);
+            }
+        }
+        Ok(ctx
+            .content
+            .comments
+            .add_metadata_comment_like(&metadata.id, &metadata.version, &profile.id, &comment_id)
+            .await?)
+    }
+
+    async fn delete_comment_like(
+        &self,
+        ctx: &Context<'_>,
+        metadata_id: String,
+        metadata_version: i32,
+        comment_id: i64,
+    ) -> Result<i32, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let id = Uuid::parse_str(&metadata_id)?;
+        let check = PermissionCheck::new_with_metadata_id_with_version(
+            id,
+            metadata_version,
+            PermissionAction::View,
+        );
+        let metadata = ctx.metadata_permission_check(check).await?;
+        let profile = ctx.profile.get_by_principal(&ctx.principal.id).await?;
+        let profile = profile.ok_or(Error::new("unauthorized"))?;
+        for attr in ctx.profile.get_attributes(&profile.id).await? {
+            if attr.type_id == "bosca.profiles.comment.disabled" {
+                return Ok(-1);
+            }
+        }
+        Ok(ctx
+            .content
+            .comments
+            .delete_metadata_comment_like(&metadata.id, &metadata.version, &profile.id, &comment_id)
             .await?)
     }
 

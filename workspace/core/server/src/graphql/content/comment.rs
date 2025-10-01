@@ -81,4 +81,7 @@ impl CommentObject {
     pub async fn content(&self) -> &String {
         &self.comment.content
     }
+    pub async fn likes(&self) -> &i32 {
+        &self.comment.likes
+    }
 }

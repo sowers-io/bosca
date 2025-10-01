@@ -22,6 +22,7 @@ pub struct Comment {
     pub attributes: Option<Value>,
     pub system_attributes: Option<Value>,
     pub deleted: bool,
+    pub likes: i32
 }
 
 #[derive(InputObject, Clone, Serialize, Deserialize)]
@@ -50,6 +51,7 @@ impl From<&Row> for Comment {
             attributes: row.get("attributes"),
             system_attributes: row.get("system_attributes"),
             deleted: row.get("deleted"),
+            likes: row.get("likes")
         }
     }
 }
