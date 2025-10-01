@@ -98,7 +98,7 @@ impl MetadataMutationObject {
             );
             metadata = ctx.metadata_permission_check(check).await?;
         }
-        if comment.parent_id.is_none() && !metadata.comment_replies_enabled {
+        if comment.parent_id.is_some() && !metadata.comment_replies_enabled {
             let check = PermissionCheck::new_with_metadata(
                 metadata,
                 PermissionAction::Manage,
