@@ -81,7 +81,10 @@ impl ProfileObject {
             {
                 self.profile.name.clone()
             } else {
-                "".to_string()
+                let mut parts = self.profile.name.split(" ");
+                let first_name = parts.next().unwrap_or("");
+                let last_name = parts.next().unwrap_or("");
+                format!("{} {}.", first_name, last_name.chars().next().unwrap_or(' ')).trim().to_string()
             },
         )
     }
