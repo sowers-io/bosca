@@ -71,6 +71,7 @@ impl ProfileObject {
         )
     }
 
+
     async fn name(&self, ctx: &Context<'_>) -> Result<String, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         // TODO: Filter things out based on who is looking at the profiles
@@ -81,7 +82,12 @@ impl ProfileObject {
             {
                 self.profile.name.clone()
             } else {
-                let mut parts = self.profile.name.split(" ");
+                let name = if self.profile.name.contains("@") {
+                    email_to_name(&self.profile.name)
+                } else {
+                    self.profile.name.clone()
+                };
+                let mut parts = name.split(" ");
                 let first_name = parts.next().unwrap_or("");
                 let last_name = parts.next().unwrap_or("");
                 if last_name.is_empty() {
@@ -158,4 +164,28 @@ impl From<Profile> for ProfileObject {
     fn from(profile: Profile) -> Self {
         Self::new(profile)
     }
+}
+
+fn email_to_name(email: &String) -> String {
+    let username = email.split('@').next().unwrap_or(email);
+
+    // 2. Replace common separators with a space.
+    let name_with_spaces = username.replace('.', " ").replace('_', " ").replace('-', " ");
+
+    // 3. Capitalize each word.
+    let display_name: String = name_with_spaces
+        .split_whitespace() // Creates an iterator of words
+        .map(|word| {
+            let mut chars = word.chars();
+            match chars.next() {
+                // If the word is not empty, capitalize the first letter
+                Some(first) => first.to_uppercase().to_string() + chars.as_str(),
+                // If the word is empty, return an empty string
+                None => String::new(),
+            }
+        })
+        .collect::<Vec<String>>() // Collect the capitalized words into a vector
+        .join(" "); // Join them back together with spaces
+
+    display_name
 }
