@@ -47,10 +47,8 @@ impl ProfileObject {
     async fn collection(&self, ctx: &Context<'_>) -> Result<Option<CollectionObject>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         if let Some(collection_id) = &self.profile.collection_id {
-            let check = PermissionCheck::new_with_collection_id(
-                *collection_id,
-                PermissionAction::View,
-            );
+            let check =
+                PermissionCheck::new_with_collection_id(*collection_id, PermissionAction::View);
             let Ok(collection) = ctx.collection_permission_check(check).await else {
                 return Ok(None);
             };
@@ -133,6 +131,19 @@ impl ProfileObject {
 
     async fn marks(&self) -> ProfileMarksObject {
         ProfileMarksObject::new(self.profile.clone())
+    }
+
+    async fn metadata_comment_like_ids(&self, ctx: &Context<'_>) -> Result<Vec<i64>, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        if self.profile.principal == Some(ctx.principal.id) {
+            Ok(ctx
+                .content
+                .comments
+                .get_metadata_comment_like_ids_by_profile(&self.profile.id)
+                .await?)
+        } else {
+            Ok(vec![])
+        }
     }
 }
 

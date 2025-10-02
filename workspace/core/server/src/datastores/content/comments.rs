@@ -230,6 +230,18 @@ impl CommentsDataStore {
         Ok(rows.iter().map(|r| r.into()).collect())
     }
 
+    pub async fn get_metadata_comment_like_ids_by_profile(
+        &self,
+        profile_id: &Uuid,
+    ) -> Result<Vec<i64>, Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("select comment_id from metadata_comment_likes where profile_id = $1")
+            .await?;
+        let rows = connection.query(&stmt, &[profile_id]).await?;
+        Ok(rows.iter().map(|r| r.get(0)).collect())
+    }
+
     #[tracing::instrument(skip(self, profile_id, metadata_id, version, manager, offset, limit))]
     pub async fn get_metadata_comments_by_parent_id(
         &self,
