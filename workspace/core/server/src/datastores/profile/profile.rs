@@ -58,7 +58,7 @@ impl ProfileDataStore {
     ) -> async_graphql::Result<Vec<Profile>, Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
-            .prepare_cached("select p.* from profiles p inner join profile_attributes pa on p.id = pa.profile where pa.type_id = $1 and (pa.attributes->'$2')::varchar = $3::varchar")
+            .prepare_cached("select p.* from profiles p inner join profile_attributes pa on p.id = pa.profile where pa.type_id = $1 and (pa.attributes->$2)::varchar = $3::varchar")
             .await?;
         let rows = connection
             .query(&stmt, &[type_id, attribute, value])
