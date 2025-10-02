@@ -26,6 +26,7 @@ use crate::util::upload::upload_file;
 use async_graphql::*;
 use bytes::Bytes;
 use chrono::{DateTime, Timelike, Utc};
+use log::{error, warn};
 use rrule::RRuleSet;
 use uuid::Uuid;
 
@@ -92,23 +93,30 @@ impl MetadataMutationObject {
         );
         let mut metadata = ctx.metadata_permission_check(check).await?;
         if !metadata.comments_enabled {
+            error!("comments disabled: {}", metadata.id);
             let check = PermissionCheck::new_with_metadata(metadata, PermissionAction::Manage);
             metadata = ctx.metadata_permission_check(check).await?;
         }
         if comment.parent_id.is_some() && !metadata.comment_replies_enabled {
+            error!("comment replies disabled: {}", metadata.id);
             let check = PermissionCheck::new_with_metadata(metadata, PermissionAction::Manage);
             metadata = ctx.metadata_permission_check(check).await?;
         }
         let profile = ctx.profile.get_by_principal(&ctx.principal.id).await?;
+        if profile.is_none() {
+            error!("missing profile: {}", ctx.principal.id);
+        }
         let profile = profile.ok_or(Error::new("unauthorized"))?;
         for attr in ctx.profile.get_attributes(&profile.id).await? {
             if attr.type_id == "bosca.profiles.comment.disabled" {
+                warn!("blocked user trying to comment");
                 return Ok(1);
             }
         }
         let mut profile_id = profile.id.clone();
         let mut impersonator_id = None::<Uuid>;
         if let Some(impersonate_id) = &comment.impersonate_id {
+            warn!("impersonating: {} {}", profile.id, impersonate_id);
             let check = PermissionCheck::new_with_metadata(metadata, PermissionAction::Manage);
             ctx.metadata_permission_check(check).await?;
             impersonator_id = Some(profile_id.clone());
