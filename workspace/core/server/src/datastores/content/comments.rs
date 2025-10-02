@@ -207,21 +207,21 @@ impl CommentsDataStore {
         let connection = self.pool.get().await?;
         let rows = if manager {
             let stmt = connection
-                .prepare_cached("select * from metadata_comments where metadata_id = $1 and version = $2 and deleted = false and status != 'blocked' order by created desc offset $3 limit $4")
+                .prepare_cached("select * from metadata_comments where metadata_id = $1 and version = $2 and deleted = false and status != 'blocked' and parent_id is null order by created desc offset $3 limit $4")
                 .await?;
             connection
                 .query(&stmt, &[metadata_id, &version, &offset, &limit])
                 .await?
         } else if let Some(profile_id) = profile_id {
             let stmt = connection
-                .prepare_cached("select * from metadata_comments where metadata_id = $1 and version = $2 and deleted = false and ((visibility = 'public' and status = 'approved') or (profile_id = $3)) order by created desc offset $4 limit $5")
+                .prepare_cached("select * from metadata_comments where metadata_id = $1 and version = $2 and deleted = false and ((visibility = 'public' and status = 'approved') or (profile_id = $3)) and parent_id is null order by created desc offset $4 limit $5")
                 .await?;
             connection
                 .query(&stmt, &[metadata_id, &version, profile_id, &offset, &limit])
                 .await?
         } else {
             let stmt = connection
-                .prepare_cached("select * from metadata_comments where metadata_id = $1 and version = $2 and deleted = false and (visibility = 'public' and status = 'approved') order by created desc offset $3 limit $4")
+                .prepare_cached("select * from metadata_comments where metadata_id = $1 and version = $2 and deleted = false and (visibility = 'public' and status = 'approved') and parent_id is null order by created desc offset $3 limit $4")
                 .await?;
             connection
                 .query(&stmt, &[metadata_id, &version, &offset, &limit])
