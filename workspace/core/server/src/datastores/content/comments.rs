@@ -270,7 +270,7 @@ impl CommentsDataStore {
                 .await?
         } else {
             let stmt = connection
-                .prepare_cached("select * from metadata_comments where metadata_id = $1 and version = $2 and deleted = false and (visibility = 'public' and status = 'approved') and parent_id = $4 order by created desc offset $5 limit $6")
+                .prepare_cached("select * from metadata_comments where metadata_id = $1 and version = $2 and deleted = false and (visibility = 'public' and status = 'approved') and parent_id = $3 order by created desc offset $4 limit $5")
                 .await?;
             connection
                 .query(&stmt, &[metadata_id, &version, parent_id, &offset, &limit])
