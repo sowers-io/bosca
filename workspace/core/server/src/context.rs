@@ -303,14 +303,16 @@ impl BoscaContext {
         let search = new_search_client()?;
         info!("Connecting to Cache");
         let cache_client = new_cache_client().await?;
-        info!("Building Context");
+        info!("Building Cache Manager");
         let mut cache = BoscaCacheManager::new(cache_client.clone());
+        info!("Building Configuration Store");
         let configuration = ConfigurationDataStore::new(
             bosca_pool.clone(),
             configuration_secret_key,
             cache_client.clone(),
             Arc::clone(&notifier),
         );
+        info!("Building Context");
         let ctx = BoscaContext {
             security: SecurityDataStore::new(
                 configuration.clone(),

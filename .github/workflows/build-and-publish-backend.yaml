@@ -10,7 +10,7 @@ on:
 
 jobs:
   build-and-publish-backend:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-8c-32m
     env:
       RUNNER_TOOL_CACHE: /toolcache
       IMAGE_PREFIX: ${{ secrets.IMAGE_PREFIX }}
