@@ -28,6 +28,7 @@ pub struct FindAttributesInput {
 pub struct FindQueryInput {
     pub attributes: Vec<FindAttributesInput>,
     pub content_types: Option<Vec<String>>,
+    pub language_tags: Option<Vec<String>>,
     pub category_ids: Option<Vec<String>>,
     pub trait_ids: Option<Vec<String>>,
     pub extension_filter: Option<ExtensionFilterType>,

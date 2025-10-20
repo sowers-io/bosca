@@ -229,6 +229,21 @@ pub fn build_find_args<'a>(
         }
     }
 
+    if let Some(language_tags) = &find_query.language_tags {
+        if !language_tags.is_empty() {
+            q.push_str(format!(" and {table_alias}.language_tag in (").as_str());
+            for (ix, tag) in language_tags.iter().enumerate() {
+                if ix > 0 {
+                    q.push_str(", ");
+                }
+                q.push_str(format!("${pos}").as_str());
+                pos += 1;
+                values.push(tag as &(dyn ToSql + Sync));
+            }
+            q.push_str(") ")
+        }
+    }
+
     if !count {
         if let Some(ordering) = &find_query.ordering {
             let js = json!(ordering);
