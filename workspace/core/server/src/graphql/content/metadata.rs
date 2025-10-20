@@ -185,14 +185,14 @@ impl MetadataObject {
         &self.metadata.created
     }
 
-    async fn modified(&self, ctx: &Context<'_>) -> Result<Option<&DateTime<Utc>>, Error> {
+    async fn modified(&self, ctx: &Context<'_>) -> Result<DateTime<Utc>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let check =
             PermissionCheck::new_with_metadata(self.metadata.clone(), PermissionAction::View);
         if ctx.metadata_permission_check(check).await.is_ok() {
-            Ok(Some(&self.metadata.modified))
+            Ok(self.metadata.modified.clone())
         } else {
-            Ok(None)
+            Ok(Utc::now())
         }
     }
 

@@ -61,6 +61,12 @@ class ContentMetadata(network: NetworkClient) : Api(network) {
         return response.data?.content?.metadata?.documentTemplate?.documentTemplate
     }
 
+    suspend fun getDocumentTemplates(): List<DocumentTemplate> {
+        val response = network.graphql.query(GetMetadataDocumentTemplatesQuery()).execute()
+        response.validate()
+        return response.data?.content?.documentTemplates?.all?.map { it.documentTemplate } ?: emptyList()
+    }
+
     suspend fun getGuide(id: String, version: Int): Guide? {
         val response = network.graphql.query(GetMetadataGuideQuery(id, version)).execute()
         response.validate()

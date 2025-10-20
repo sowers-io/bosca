@@ -20,6 +20,6 @@ data class TableNodeAttributes(
 data class TableNode(
     @SerialName("attrs")
     override val attributes: TableNodeAttributes = TableNodeAttributes(),
-    override val content: List<DocumentNode> = emptyList(),
+    override var content: List<DocumentNode> = emptyList(),
     override val marks: List<Mark> = emptyList(),
 ) : DocumentNode

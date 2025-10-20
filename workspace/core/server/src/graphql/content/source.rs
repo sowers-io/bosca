@@ -1,5 +1,5 @@
 use crate::models::content::source::Source;
-use async_graphql::Object;
+use async_graphql::{Context, Error, Object};
 use serde_json::Value;
 
 pub struct SourceObject {
@@ -26,8 +26,13 @@ impl SourceObject {
         &self.source.description
     }
 
-    async fn configuration(&self) -> &Value {
-        &self.source.configuration
+    async fn configuration(&self, ctx: &Context<'_>) -> Result<Value, Error> {
+        let ctx = ctx.data::<crate::context::BoscaContext>()?;
+        if ctx.check_has_service_account().await.is_ok() {
+            Ok(self.source.configuration.clone())
+        } else {
+            Ok(Value::Null)
+        }
     }
 }
 

@@ -21,6 +21,6 @@ data class ParagraphAttributes(
 data class ParagraphNode(
     @SerialName("attrs")
     override val attributes: ParagraphAttributes = ParagraphAttributes(),
-    override val content: List<DocumentNode> = emptyList(),
+    override var content: List<DocumentNode> = emptyList(),
     override val marks: List<Mark> = emptyList(),
 ) : DocumentNode

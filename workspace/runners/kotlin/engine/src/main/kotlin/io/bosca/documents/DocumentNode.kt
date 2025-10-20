@@ -8,7 +8,7 @@ import kotlinx.serialization.Serializable
 sealed interface DocumentNode {
     @SerialName("attrs")
     val attributes: DocumentAttributes
-    val content: List<DocumentNode>
+    var content: List<DocumentNode>
     val marks: List<Mark>
 }
 

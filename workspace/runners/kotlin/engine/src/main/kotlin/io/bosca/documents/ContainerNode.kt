@@ -28,6 +28,6 @@ data class ContainerAttributes(
 data class ContainerNode(
     @SerialName("attrs")
     override val attributes: ContainerAttributes,
-    override val content: List<DocumentNode> = emptyList(),
+    override var content: List<DocumentNode> = emptyList(),
     override val marks: List<Mark> = emptyList(),
 ) : DocumentNode

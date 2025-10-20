@@ -21,7 +21,7 @@ data class TextAttributes(
 data class TextNode(
     @SerialName("attrs")
     override val attributes: TextAttributes = TextAttributes(),
-    override val content: List<DocumentNode> = emptyList(),
+    override var content: List<DocumentNode> = emptyList(),
     override val marks: List<Mark> = emptyList(),
     val text: String,
 ) : DocumentNode

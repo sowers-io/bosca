@@ -277,8 +277,10 @@ type Comment {
     content: String!
     created: DateTime!
     id: Int!
+    likes: Int!
     modified: DateTime!
     profile: Profile
+    replies(limit: Int!, offset: Int!): Comments!
     status: CommentStatus!
     systemAttributes: JSON
 }
@@ -492,7 +494,7 @@ type Metadata {
     bible(variant: String): Bible
     categories: [Category!]!
     collectionTemplate: CollectionTemplate
-    comments(limit: Int!, offset: Int!): Comments!
+    comments(limit: Int!, offset: Int!, pinned: Boolean): Comments!
     content: MetadataContent!
     created: DateTime!
     deleted: Boolean!
@@ -547,6 +549,7 @@ type MetadataMutation {
     addBulk(metadatas: [MetadataChildInput!]!): [Metadata!]!
     addCategory(categoryId: String!, metadataId: String!): Boolean!
     addComment(comment: CommentInput!, metadataId: String!, metadataVersion: Int!): Int!
+    addCommentLike(commentId: Int!, metadataId: String!, metadataVersion: Int!): Int!
     addDocument(parentCollectionId: String!, templateId: String!, templateVersion: Int!): Metadata
     addGuide(parentCollectionId: String!, templateId: String!, templateVersion: Int!): Metadata
     addGuideStep(metadataId: String!, metadataVersion: Int!, sort: Int!, templateId: String!, templateStepId: Int!, templateVersion: Int!): GuideStep!
@@ -558,6 +561,7 @@ type MetadataMutation {
     delete(metadataId: String!): Boolean!
     deleteCategory(categoryId: String!, metadataId: String!): Boolean!
     deleteComment(commentId: Int!, metadataId: String!, metadataVersion: Int!): Boolean!
+    deleteCommentLike(commentId: Int!, metadataId: String!, metadataVersion: Int!): Int!
     deleteContent(metadataId: String!): Boolean!
     deleteGuide(metadataId: String!, metadataVersion: Int!): Boolean!
     deleteGuideStep(metadataId: String!, metadataVersion: Int!, stepId: Int!): Boolean!
@@ -569,6 +573,7 @@ type MetadataMutation {
     edit(id: String!, metadata: MetadataInput!): Metadata!
     editRelationship(relationship: MetadataRelationshipInput!): Boolean!
     guideTemplate(metadataId: String!, metadataVersion: Int!): GuideTemplateMutation!
+    mergeCommentSystemAttributes(attributes: JSON!, commentId: Int!, metadataId: String!, metadataVersion: Int!): Boolean!
     mergeMetadataAttributes(attributes: JSON!, id: String!): Boolean!
     mergeMetadataRelationshipAttributes(attributes: JSON!, metadata1Id: String!, metadata2Id: String!, relationship: String!): Boolean!
     permanentlyDelete(metadataId: String!): Boolean!
@@ -576,7 +581,6 @@ type MetadataMutation {
     setCommentAttributes(attributes: JSON!, commentId: Int!, metadataId: String!, metadataVersion: Int!): Boolean!
     setCommentStatus(commentId: Int!, metadataId: String!, metadataVersion: Int!, status: CommentStatus!): Boolean!
     setCommentSystemAttributes(attributes: JSON!, commentId: Int!, metadataId: String!, metadataVersion: Int!): Boolean!
-    mergeCommentSystemAttributes(attributes: JSON!, commentId: Int!, metadataId: String!, metadataVersion: Int!): Boolean!
     setGuideStartDate(date: DateTime!, metadataId: String!, metadataVersion: Int!): Metadata
     setLocked(id: String!, locked: Boolean!, version: Int!): Metadata!
     setMetadataAttributes(attributes: JSON!, id: String!): Boolean!
@@ -614,6 +618,7 @@ type MetadataRelationship {
 type MetadataSource {
     id: String
     identifier: String
+    source: Source
     sourceUrl: String
 }
 
@@ -760,6 +765,7 @@ type Profile {
     guides: ProfileGuides!
     id: String!
     marks: ProfileMarks!
+    metadataCommentLikeIds: [Int!]!
     name: String!
     principal: Principal
     slug: String

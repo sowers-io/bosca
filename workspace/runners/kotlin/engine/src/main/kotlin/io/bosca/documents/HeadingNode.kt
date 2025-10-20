@@ -22,6 +22,6 @@ data class HeadingAttributes(
 data class HeadingNode(
     @SerialName("attrs")
     override val attributes: HeadingAttributes,
-    override val content: List<DocumentNode> = emptyList(),
+    override var content: List<DocumentNode> = emptyList(),
     override val marks: List<Mark> = emptyList(),
 ) : DocumentNode

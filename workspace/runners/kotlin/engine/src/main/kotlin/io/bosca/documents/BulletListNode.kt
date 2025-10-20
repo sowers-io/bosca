@@ -20,6 +20,6 @@ data class BulletListAttributes(
 data class BulletListNode(
     @SerialName("attrs")
     override val attributes: BulletListAttributes = BulletListAttributes(),
-    override val content: List<DocumentNode> = emptyList(),
+    override var content: List<DocumentNode> = emptyList(),
     override val marks: List<Mark> = emptyList(),
 ) : DocumentNode

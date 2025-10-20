@@ -24,6 +24,6 @@ data class ImageAttributes(
 data class ImageNode(
     @SerialName("attrs")
     override val attributes: ImageAttributes,
-    override val content: List<DocumentNode> = emptyList(),
+    override var content: List<DocumentNode> = emptyList(),
     override val marks: List<Mark> = emptyList(),
 ) : DocumentNode

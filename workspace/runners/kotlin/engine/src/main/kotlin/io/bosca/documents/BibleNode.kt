@@ -24,6 +24,6 @@ data class BibleAttributes(
 data class BibleNode(
     @SerialName("attrs")
     override val attributes: BibleAttributes = BibleAttributes(),
-    override val content: List<DocumentNode> = emptyList(),
+    override var content: List<DocumentNode> = emptyList(),
     override val marks: List<Mark> = emptyList(),
 ) : DocumentNode

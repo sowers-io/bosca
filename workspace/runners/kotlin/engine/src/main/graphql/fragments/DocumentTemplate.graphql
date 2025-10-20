@@ -2,6 +2,7 @@ fragment DocumentTemplate on DocumentTemplate {
     metadata {
         id
         version
+        slug
     }
     configuration
     schema
