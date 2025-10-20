@@ -52,6 +52,24 @@ tasks.register<JavaExec>("runMain") {
     args = listOf("run")
 }
 
+tasks.register<JavaExec>("installBlog") {
+    val properties = rootProject.gradle.startParameter.projectProperties
+
+    group = "application"
+    description = "Install Blog Template"
+    classpath = sourceSets["main"].runtimeClasspath
+
+    environment("BOSCA_USERNAME", properties["BOSCA_USERNAME"] ?: "admin")
+    environment("BOSCA_PASSWORD", properties["BOSCA_PASSWORD"] ?: "password")
+    environment("BOSCA_SERVER_URL", properties["BOSCA_URL"] ?: "http://localhost:8000/graphql")
+    environment("SEARCH_URL", properties["SEARCH_URL"] ?: "http://localhost:7701")
+
+    mainClass.set("io.bosca.MainKt")
+    jvmArgs = listOf("-XX:UseSVE=0")
+    args = listOf("install", "--directory", "${rootProject.rootDir}/../../../examples/blog/configuration")
+    outputs.upToDateWhen { false }
+}
+
 //graalvmNative {
 //    binaries {
 //        named("main") {
