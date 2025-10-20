@@ -23,7 +23,7 @@ mod search;
 use crate::metadata_files::{metadata_download, metadata_upload};
 use async_graphql::extensions::apollo_persisted_queries::ApolloPersistedQueries;
 use axum::extract::DefaultBodyLimit;
-use axum::routing::post;
+use axum::routing::{post, put};
 use axum::{routing::get, Router};
 use axum_tracing_opentelemetry::middleware::{OtelAxumLayer, OtelInResponseLayer};
 use http::StatusCode;
@@ -116,6 +116,7 @@ async fn main() {
     let documents = Router::new()
         .route("/collaboration", get(get_document_collaboration))
         .route("/collaboration", post(set_document_collaboration))
+        .route("/collaboration", put(set_document_collaboration))
         .with_state(ctx.clone());
 
     let app = Router::new()
