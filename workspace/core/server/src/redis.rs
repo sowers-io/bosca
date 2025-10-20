@@ -48,12 +48,12 @@ impl RedisClient {
         Ok(client)
     }
 
-    async fn new_cache_client(password: String, host: &String, port: u16) -> Result<Client, Error> {
+    async fn new_cache_client(password: Option<String>, host: &String, port: u16) -> Result<Client, Error> {
         let info = ConnectionInfo {
             addr: ConnectionAddr::Tcp(host.to_string(), port),
             redis: RedisConnectionInfo {
                 protocol: ProtocolVersion::RESP3,
-                password: Some(password.clone()),
+                password: password.clone(),
                 ..Default::default()
             },
         };
@@ -86,7 +86,6 @@ impl RedisClient {
             .set_connection_timeout(Duration::from_millis(3000))
             .set_response_timeout(Duration::from_millis(3000))
             .set_cache_config(CacheConfig::new().set_default_client_ttl(Duration::from_secs(60)));
-        let password = password.unwrap_or_default();
         let client = Self::new_cache_client(password.clone(), &host, port).await?;
         let mgr = ConnectionManager::new_with_config(client.clone(), cfg).await?;
         Ok(Self {

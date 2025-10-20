@@ -9,7 +9,7 @@ pub struct Principal {
     pub id: Uuid,
     pub verified: bool,
     pub anonymous: bool,
-    pub attributes: Value,
+    pub attributes: Option<Value>,
     pub verification_token: Option<String>,
 }
 
@@ -34,7 +34,7 @@ impl Principal {
             id,
             verified,
             anonymous,
-            attributes,
+            attributes: Some(attributes),
             verification_token: None,
         }
     }
