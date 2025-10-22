@@ -1,0 +1,7 @@
+mutation SetMetadataParent($id: String!, $parentId: String!) {
+    content {
+        metadata {
+            setParent(metadataId: $id, parentId: $parentId)
+        }
+    }
+}

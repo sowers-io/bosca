@@ -198,6 +198,7 @@ impl CollectionObject {
         offset: i64,
         limit: i64,
         state: Option<String>,
+        language_tag: Option<String>,
     ) -> Result<Vec<CollectionItem>, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let check = PermissionCheck::new_with_collection_id(
@@ -208,7 +209,7 @@ impl CollectionObject {
         let items = ctx
             .content
             .collections
-            .get_children(&self.collection, offset, limit, &state)
+            .get_children(&self.collection, offset, limit, &state, &language_tag)
             .await?;
         let mut content = Vec::new();
         for item in items {
@@ -233,14 +234,14 @@ impl CollectionObject {
         Ok(content)
     }
 
-    async fn items_count(&self, ctx: &Context<'_>, state: Option<String>) -> Result<i64, Error> {
+    async fn items_count(&self, ctx: &Context<'_>, state: Option<String>, language_tag: Option<String>) -> Result<i64, Error> {
         let ctx = ctx.data::<BoscaContext>()?;
         let check =
             PermissionCheck::new_with_collection_id(self.collection.id, PermissionAction::List);
         ctx.collection_permission_check(check).await?;
         ctx.content
             .collections
-            .get_children_count(&self.collection, &state)
+            .get_children_count(&self.collection, &state, &language_tag)
             .await
     }
 

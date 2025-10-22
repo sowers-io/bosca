@@ -33,12 +33,6 @@ pub struct FilteredComponent {
     pub content: Value,
 }
 
-#[derive(SimpleObject)]
-pub struct BibleChapterComponent {
-    pub chapter: BibleChapterObject,
-    pub component: FilteredComponent,
-}
-
 #[Object(name = "Bible")]
 impl BibleObject {
     async fn system_id(&self) -> &String {

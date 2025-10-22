@@ -39,14 +39,6 @@ pub struct SearchQuery {
     pub embedder: Option<String>,
 }
 
-#[derive(InputObject)]
-pub struct SearchDocumentInput {
-    pub metadata_id: Option<String>,
-    pub collection_id: Option<String>,
-    pub profile_id: Option<String>,
-    pub content: String,
-}
-
 #[Object(name = "SearchDocument")]
 impl SearchDocument {
 

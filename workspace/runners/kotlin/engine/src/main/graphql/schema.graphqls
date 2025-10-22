@@ -127,8 +127,8 @@ type Collection {
     expandedMetadataCount(state: String): Int!
     id: String!
     itemAttributes: JSON
-    items(limit: Int!, offset: Int!, state: String): [CollectionItem!]!
-    itemsCount(state: String): Int!
+    items(languageTag: String, limit: Int!, offset: Int!, state: String): [CollectionItem!]!
+    itemsCount(languageTag: String, state: String): Int!
     itemsLocked: Boolean!
     labels: [String!]!
     locked: Boolean!
@@ -592,6 +592,7 @@ type MetadataMutation {
     setMetadataSystemAttributes(attributes: JSON!, id: String!): Boolean!
     setMetadataTextContents(content: String!, contentType: String, id: String!): Boolean!
     setMetadataUploaded(configurations: [WorkflowConfigurationInput!], contentType: String, id: String!, len: Int!, ready: Boolean): Boolean!
+    setParent(metadataId: String!, parentId: String!): Boolean!
     setPublic(id: String!, public: Boolean!): Metadata!
     setPublicContent(id: String!, public: Boolean!): Metadata!
     setPublicSupplementary(id: String!, public: Boolean!): Metadata!
@@ -1689,6 +1690,7 @@ input FindQueryInput {
     collectionType: CollectionType
     contentTypes: [String!]
     extensionFilter: ExtensionFilterType
+    languageTags: [String!]
     limit: Int
     offset: Int
     ordering: [OrderingInput!]

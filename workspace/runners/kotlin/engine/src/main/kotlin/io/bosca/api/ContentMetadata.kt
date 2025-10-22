@@ -97,6 +97,11 @@ class ContentMetadata(network: NetworkClient) : Api(network) {
         return response.data?.content?.metadata?.parentCollections?.map { it.parentCollection } ?: emptyList()
     }
 
+    suspend fun setParent(id: String, parentId: String) {
+        val response = network.graphql.mutation(SetMetadataParentMutation(id, parentId)).execute()
+        response.validate()
+    }
+
     suspend fun findMetadata(
         attributes: List<FindAttributeInput> = emptyList(),
         contentTypes: List<String>? = null,

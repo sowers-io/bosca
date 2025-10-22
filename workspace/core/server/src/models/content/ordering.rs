@@ -7,9 +7,11 @@ use crate::models::content::attribute_location::AttributeLocation;
 #[derive(Default)]
 pub enum Order {
     #[serde(alias = "ASCENDING")]
+    #[serde(alias = "ascending")]
     Ascending,
     #[default]
     #[serde(alias = "DESCENDING")]
+    #[serde(alias = "descending")]
     Descending,
 }
 

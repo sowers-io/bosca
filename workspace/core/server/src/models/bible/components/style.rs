@@ -22,11 +22,6 @@ pub struct StyleReference {
     pub id: String,
 }
 
-#[derive(InputObject)]
-pub struct StyleReferenceInput {
-    pub id: String,
-}
-
 #[derive(SimpleObject, Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TextIndent {
     pub size: f64,

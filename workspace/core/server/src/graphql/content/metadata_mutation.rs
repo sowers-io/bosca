@@ -40,6 +40,23 @@ pub struct MetadataMutationObject {}
 
 #[Object(name = "MetadataMutation")]
 impl MetadataMutationObject {
+    async fn set_parent(
+        &self,
+        ctx: &Context<'_>,
+        metadata_id: String,
+        parent_id: String,
+    ) -> Result<bool, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let metadata_id = Uuid::parse_str(&metadata_id)?;
+        let parent_id = Uuid::parse_str(&parent_id)?;
+        let check = PermissionCheck::new_with_metadata_id(metadata_id, PermissionAction::Edit);
+        ctx.metadata_permission_check(check).await?;
+        let check = PermissionCheck::new_with_metadata_id(parent_id, PermissionAction::Edit);
+        ctx.metadata_permission_check(check).await?;
+        ctx.content.metadata.set_parent_id(&metadata_id, &parent_id).await?;
+        Ok(true)
+    }
+
     async fn add(
         &self,
         ctx: &Context<'_>,

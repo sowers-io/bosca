@@ -4,6 +4,7 @@ use crate::datastores::content::util::build_find_args;
 use crate::datastores::guide_cache::GuideCache;
 use crate::datastores::metadata_cache::MetadataCache;
 use crate::datastores::notifier::Notifier;
+use crate::datastores::slug_cache::SlugCache;
 use crate::models::content::category::Category;
 use crate::models::content::collection::MetadataChildInput;
 use crate::models::content::find_query::FindQueryInput;
@@ -29,7 +30,6 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::time::sleep;
 use uuid::Uuid;
-use crate::datastores::slug_cache::SlugCache;
 
 #[derive(Clone)]
 pub struct MetadataDataStore {
@@ -255,6 +255,16 @@ impl MetadataDataStore {
         let metadata = rows.first().unwrap().into();
         self.cache.set_metadata(&metadata).await;
         Ok(Some(metadata))
+    }
+
+    #[tracing::instrument(skip(self, id))]
+    pub async fn set_parent_id(&self, id: &Uuid, parent_id: &Uuid) -> Result<(), Error> {
+        let connection = self.pool.get().await?;
+        let stmt = connection
+            .prepare_cached("update metadata parent_id = $2, modified = now() where id = $1")
+            .await?;
+        connection.execute(&stmt, &[id, parent_id]).await?;
+        Ok(())
     }
 
     #[tracing::instrument(skip(self, id))]

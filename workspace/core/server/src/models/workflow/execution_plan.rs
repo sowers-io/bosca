@@ -140,12 +140,6 @@ pub enum WorkflowExecutePlanState {
     Error,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
-pub enum WorkflowExecuteJobState {
-    NotComplete,
-    Complete,
-}
-
 impl WorkflowExecutionPlan {
     pub async fn enqueue(
         &mut self,

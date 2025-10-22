@@ -392,19 +392,27 @@ impl CollectionsDataStore {
         Ok(())
     }
 
-    #[tracing::instrument(skip(self, collection, offset, limit))]
+    #[tracing::instrument(skip(self, collection, offset, limit, state, language_tag))]
     pub async fn get_children(
         &self,
         collection: &Collection,
         offset: i64,
         limit: i64,
         state: &Option<String>,
+        language_tag: &Option<String>,
     ) -> Result<Vec<CollectionChild>, Error> {
         let mut values = Vec::new();
         let mut names = Vec::new();
         values.push(&collection.id as &(dyn ToSql + Sync));
         if let Some(state) = state {
             values.push(state as &(dyn ToSql + Sync));
+        }
+        let mut start_index = 2;
+        if state.is_some() {
+            start_index += 1;
+        }
+        if language_tag.is_some() {
+            start_index += 1;
         }
         let ordering = if let Some(ordering) = &collection.ordering {
             build_ordering_names(ordering, &mut names);
@@ -413,7 +421,7 @@ impl CollectionsDataStore {
                 "collections.attributes",
                 "metadata.attributes",
                 "collection_items.attributes",
-                if state.is_some() { 3 } else { 2 },
+                start_index,
                 ordering,
                 &mut values,
                 &names,
@@ -431,6 +439,12 @@ impl CollectionsDataStore {
             query.push_str(" left join metadata on (child_metadata_id = metadata.id) ");
         }
         query.push_str(" where collection_id = $1 and ((collections.id is not null and (collections.deleted is null or collections.deleted = false)) or (metadata.id is not null and (metadata.deleted is null or metadata.deleted = false))) ");
+        if let Some(language_tag) = language_tag {
+            query.push_str(" and metadata.language_tag = $");
+            values.push(language_tag as &(dyn ToSql + Sync));
+            query.push_str(values.len().to_string().as_str());
+            query.push_str(" ");
+        }
         if !ordering.is_empty() {
             query.push_str(ordering.as_str());
         } else {
@@ -447,12 +461,18 @@ impl CollectionsDataStore {
         Ok(rows.iter().map(|r| r.into()).collect())
     }
 
-    #[tracing::instrument(skip(self, collection))]
+    #[tracing::instrument(skip(self, collection, language_tag))]
     pub async fn get_children_count(
         &self,
         collection: &Collection,
         state: &Option<String>,
+        language_tag: &Option<String>,
     ) -> Result<i64, Error> {
+        let mut values = Vec::new();
+        values.push(&collection.id as &(dyn ToSql + Sync));
+        if let Some(state) = state {
+            values.push(state as &(dyn ToSql + Sync));
+        }
         let mut query = "select count(*) as count from collection_items ".to_owned();
         if state.is_some() {
             query.push_str(" left join collections on (child_collection_id = collections.id and collections.workflow_state_id = $2) ");
@@ -462,15 +482,15 @@ impl CollectionsDataStore {
             query.push_str(" left join metadata on (child_metadata_id = metadata.id) ");
         }
         query.push_str(" where collection_id = $1 and ((collections.id is not null and (collections.deleted is null or collections.deleted = false)) or (metadata.id is not null and (metadata.deleted is null or metadata.deleted = false))) ");
+        if let Some(language_tag) = language_tag {
+            query.push_str(" and metadata.language_tag = $");
+            values.push(language_tag as &(dyn ToSql + Sync));
+            query.push_str(values.len().to_string().as_str());
+            query.push_str(" ");
+        }
         let connection = self.pool.get().await?;
         let stmt = connection.prepare_cached(query.as_str()).await?;
-        let rows = if let Some(state) = state {
-            connection
-                .query_one(&stmt, &[&collection.id, state])
-                .await?
-        } else {
-            connection.query_one(&stmt, &[&collection.id]).await?
-        };
+        let rows = connection.query_one(&stmt, values.as_slice()).await?;
         Ok(rows.get(0))
     }
 

@@ -9,8 +9,10 @@ use std::error::Error;
 pub enum AttributeLocation {
     #[default]
     #[serde(alias = "ITEM")]
+    #[serde(alias = "item")]
     Item,
     #[serde(alias = "RELATIONSHIP")]
+    #[serde(alias = "relationship")]
     Relationship,
 }
 

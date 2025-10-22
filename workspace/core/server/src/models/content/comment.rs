@@ -9,19 +9,16 @@ use crate::models::content::comment_status::CommentStatus;
 
 #[derive(Clone)]
 pub struct Comment {
-    pub parent_id: Option<i64>,
     pub id: i64,
     pub metadata_id: Uuid,
     pub version: i32,
     pub profile_id: Uuid,
-    pub visibility: ProfileVisibility,
     pub created: DateTime<Utc>,
     pub modified: DateTime<Utc>,
     pub status: CommentStatus,
     pub content: String,
     pub attributes: Option<Value>,
     pub system_attributes: Option<Value>,
-    pub deleted: bool,
     pub likes: i32
 }
 
@@ -38,19 +35,16 @@ pub struct CommentInput {
 impl From<&Row> for Comment {
     fn from(row: &Row) -> Self {
         Self {
-            parent_id: row.get("parent_id"),
             id: row.get("id"),
             metadata_id: row.get("metadata_id"),
             version: row.get("version"),
             profile_id: row.get("profile_id"),
-            visibility: row.get("visibility"),
             created: row.get("created"),
             modified: row.get("modified"),
             status: row.get("status"),
             content: row.get("content"),
             attributes: row.get("attributes"),
             system_attributes: row.get("system_attributes"),
-            deleted: row.get("deleted"),
             likes: row.get("likes")
         }
     }
