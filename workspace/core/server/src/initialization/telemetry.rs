@@ -2,13 +2,14 @@ use async_graphql::Error;
 use opentelemetry::propagation::TextMapCompositePropagator;
 use opentelemetry::trace::TracerProvider as _;
 use opentelemetry::{global, KeyValue};
-use opentelemetry_otlp::WithExportConfig;
+use opentelemetry_otlp::{WithExportConfig, WithHttpConfig};
 use opentelemetry_sdk::metrics::{
     MeterProviderBuilder, PeriodicReader, SdkMeterProvider, Temporality,
 };
 use opentelemetry_sdk::propagation::{BaggagePropagator, TraceContextPropagator};
 use opentelemetry_sdk::trace::{RandomIdGenerator, SdkTracerProvider};
 use opentelemetry_sdk::Resource;
+use std::collections::HashMap;
 use std::env;
 use tracing::Level;
 use tracing_opentelemetry::{MetricsLayer, OpenTelemetryLayer};
@@ -18,12 +19,17 @@ use tracing_subscriber::util::SubscriberInitExt;
 fn new_tracing_provider(resource: Resource) -> Result<SdkTracerProvider, Error> {
     let mut provider_builder = SdkTracerProvider::builder().with_resource(resource);
     if env::var("OTEL_ENABLED").unwrap_or_else(|_| "false".to_string()) == "true" {
-        let exporter = opentelemetry_otlp::SpanExporter::builder()
+        let mut exporter = opentelemetry_otlp::SpanExporter::builder()
             .with_http()
-            .build()?;
+            .with_protocol(opentelemetry_otlp::Protocol::HttpBinary);
+        if let Ok(value) = env::var("OTEL_EXPORTER_OTLP_API_KEY") {
+            let mut headers = HashMap::new();
+            headers.insert("x-api-key".to_string(), value);
+            exporter = exporter.with_headers(headers)
+        }
         provider_builder = provider_builder
             .with_id_generator(RandomIdGenerator::default())
-            .with_batch_exporter(exporter);
+            .with_batch_exporter(exporter.build()?);
     }
     Ok(provider_builder.build())
 }
@@ -31,10 +37,15 @@ fn new_tracing_provider(resource: Resource) -> Result<SdkTracerProvider, Error> 
 fn new_meter_provider(resource: Resource) -> Result<SdkMeterProvider, Error> {
     let mut provider_builder = MeterProviderBuilder::default().with_resource(resource);
     if env::var("OTEL_ENABLED").unwrap_or_else(|_| "false".to_string()) == "true" {
-        let exporter = opentelemetry_otlp::MetricExporter::builder()
+        let mut exporter = opentelemetry_otlp::MetricExporter::builder()
             .with_http()
             .with_protocol(opentelemetry_otlp::Protocol::HttpBinary)
             .with_temporality(Temporality::default());
+        if let Ok(value) = env::var("OTEL_EXPORTER_OTLP_API_KEY") {
+            let mut headers = HashMap::new();
+            headers.insert("x-api-key".to_string(), value);
+            exporter = exporter.with_headers(headers)
+        }
         let reader = PeriodicReader::builder(exporter.build()?)
             .with_interval(std::time::Duration::from_secs(30))
             .build();
