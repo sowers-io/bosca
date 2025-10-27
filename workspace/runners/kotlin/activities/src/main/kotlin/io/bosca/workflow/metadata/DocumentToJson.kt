@@ -33,7 +33,11 @@ class DocumentToJson(client: Client) : Activity(client) {
         val document = client.metadata.getDocument(
             job.metadata?.metadata?.id ?: error("metadata id is missing"),
             job.metadata?.metadata?.version ?: error("metadata version is missing")
-        ) ?: return
+        )
+        if (document == null) {
+            setSupplementaryContents(job, OUTPUT_NAME, "Document JSON", "{}", "text/json")
+            return
+        }
         val content = document.content.decode<Content>()
         setSupplementaryContents(job, OUTPUT_NAME, "Document JSON", Json.encodeToString(content), "text/json")
     }
