@@ -20,8 +20,8 @@ class UnionJson(client: Client) : Activity(client) {
     override suspend fun toActivityDefinition(): ActivityInput {
         return ActivityInput(
             id = id,
-            name = "Convert Metadata Details to JSON",
-            description = "Convert Metadata Details to JSON",
+            name = "Union JSON",
+            description = "Union JSON",
             inputs = listOf(
                 ActivityParameterInput(
                     JSON1,
