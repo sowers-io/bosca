@@ -11,6 +11,7 @@ import io.bosca.util.toJsonElement
 import io.bosca.workflow.Activity
 import io.bosca.workflow.ActivityContext
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 
 class DocumentToJson(client: Client) : Activity(client) {
 
@@ -34,7 +35,7 @@ class DocumentToJson(client: Client) : Activity(client) {
             job.metadata?.metadata?.version ?: error("metadata version is missing")
         ) ?: return
         val content = document.content.decode<Content>()
-        setSupplementaryContents(job, OUTPUT_NAME, "Document JSON", content.toJsonElement().toString(), "text/json")
+        setSupplementaryContents(job, OUTPUT_NAME, "Document JSON", Json.encodeToString(content), "text/json")
     }
 
     companion object {
