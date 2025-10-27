@@ -68,7 +68,7 @@ class JSONata(client: Client) : Activity(client) {
     override suspend fun execute(context: ActivityContext, job: WorkflowJob) {
         val configuration = getConfiguration<JSONataConfiguration>(job)
         val file = if (hasInputs(job)) {
-            getInputSupplementaryFile(context, job, INPUT_NAME)
+             getInputSupplementaryFile(context, job, INPUT_NAME)
         } else if (job.metadata?.metadata?.content?.metadataContent?.type?.startsWith("text/") == true || job.metadata?.metadata?.content?.metadataContent?.type?.equals("application/json") == true) {
             getContentFile(context, job)
         } else {

@@ -42,17 +42,32 @@ class UnionJson(client: Client) : Activity(client) {
     }
 
     override suspend fun execute(context: ActivityContext, job: WorkflowJob) {
-        val json1Str = getInputSupplementaryText(context, job, JSON1) ?: error("No JSON1 Found")
-        val json2Str = getInputSupplementaryText(context, job, JSON2) ?: error("No JSON2 Found")
+        val json1Str = getInputSupplementaryText(context, job, JSON1)
+        val json2Str = getInputSupplementaryText(context, job, JSON2)
 
-        val json1 = json1Str.parseToJsonElement()
-        val json2 = json2Str.parseToJsonElement()
+        if (json1Str == null && json2Str == null) {
+            setSupplementaryContents(job, OUTPUT_NAME, "JSON", "{}", "application/json")
+            return
+        }
+
+        if (json1Str == null && json2Str != null) {
+            setSupplementaryContents(job, OUTPUT_NAME, "JSON", json2Str, "application/json")
+            return
+        }
+
+        if (json1Str != null && json2Str == null) {
+            setSupplementaryContents(job, OUTPUT_NAME, "JSON", json1Str, "application/json")
+            return
+        }
+
+        val json1 = json1Str?.parseToJsonElement()
+        val json2 = json2Str?.parseToJsonElement()
 
         val json3 = if (json1 is JsonObject && json2 is JsonObject) {
             JsonObject(json1.jsonObject + json2.jsonObject).toString()
         } else if (json1 is JsonArray && json2 is JsonArray) {
             JsonArray(json1.jsonArray + json2.jsonArray).toString()
-        }  else {
+        } else {
             error("JSON1 and JSON2 are not of the same type")
         }
 
