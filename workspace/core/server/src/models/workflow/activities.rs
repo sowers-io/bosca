@@ -30,6 +30,7 @@ pub struct WorkflowActivity {
     pub queue: String,
     pub execution_group: i32,
     pub configuration: Option<Value>,
+    pub description: Option<String>
 }
 
 #[derive(InputObject)]
@@ -127,6 +128,7 @@ impl From<&Row> for WorkflowActivity {
             queue: row.get("queue"),
             execution_group: row.get("execution_group"),
             configuration: row.get("configuration"),
+            description: row.get("description")
         }
     }
 }
@@ -197,6 +199,7 @@ impl From<Row> for WorkflowActivity {
             queue: row.get("queue"),
             execution_group: row.get("execution_group"),
             configuration: row.get("configuration"),
+            description: row.get("description")
         }
     }
 }

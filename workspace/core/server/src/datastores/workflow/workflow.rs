@@ -457,7 +457,7 @@ impl WorkflowDataStore {
             configuration = Value::Object(serde_json::Map::new());
         }
         let id: i64 = {
-            let stmt = txn.prepare_cached("insert into workflow_activities (workflow_id, activity_id, execution_group, queue, configuration) values ($1, $2, $3, $4, $5) returning id").await?;
+            let stmt = txn.prepare_cached("insert into workflow_activities (workflow_id, activity_id, execution_group, queue, configuration, description) values ($1, $2, $3, $4, $5, $6) returning id").await?;
             let rows = txn
                 .query(
                     &stmt,
@@ -467,6 +467,7 @@ impl WorkflowDataStore {
                         &execution_group,
                         &activity.queue,
                         &configuration,
+                        &activity.description
                     ],
                 )
                 .await?;

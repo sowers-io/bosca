@@ -36,6 +36,10 @@ impl WorkflowActivityObject {
         &self.activity.queue
     }
 
+    async fn description(&self) -> &Option<String> {
+        &self.activity.description
+    }
+
     async fn execution_group(&self) -> i32 {
         self.activity.execution_group
     }
