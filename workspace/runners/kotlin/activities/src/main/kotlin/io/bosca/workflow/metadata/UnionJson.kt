@@ -49,14 +49,14 @@ class UnionJson(client: Client) : Activity(client) {
         val json2 = json2Str.parseToJsonElement()
 
         val json3 = if (json1 is JsonObject && json2 is JsonObject) {
-            json1.jsonObject + json2.jsonObject
+            JsonObject(json1.jsonObject + json2.jsonObject).toString()
         } else if (json1 is JsonArray && json2 is JsonArray) {
-            (json1.jsonArray + json2.jsonArray).toString()
+            JsonArray(json1.jsonArray + json2.jsonArray).toString()
         }  else {
             error("JSON1 and JSON2 are not of the same type")
         }
 
-        setSupplementaryContents(job, OUTPUT_NAME, "JSON", json3.toString(), "application/json")
+        setSupplementaryContents(job, OUTPUT_NAME, "JSON", json3, "application/json")
     }
 
     companion object {
