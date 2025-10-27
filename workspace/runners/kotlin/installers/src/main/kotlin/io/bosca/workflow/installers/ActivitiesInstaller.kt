@@ -85,6 +85,9 @@ class ActivitiesInstaller(client: Client) : Installer, ActivityRegistry {
         MetadataDeleteAllPlanSupplementary(client),
         PublishMetadata(client),
 
+        UnionJson(client),
+        DocumentToJson(client),
+
         PublishRelationships(client),
 
         ExecuteChildWorkflow(client),
