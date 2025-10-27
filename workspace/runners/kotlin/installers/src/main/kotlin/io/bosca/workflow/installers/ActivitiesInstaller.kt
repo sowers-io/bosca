@@ -47,6 +47,7 @@ import io.bosca.workflow.search.DeleteFromIndex
 import io.bosca.workflow.search.DeleteFromIndexes
 import io.bosca.workflow.storage.InitializeIndex
 import io.bosca.workflow.storage.RebuildData
+import io.bosca.workflow.storage.UpdateStorage
 import java.io.File
 import io.bosca.workflow.media.video.mux.Uploader as MuxUploader
 
@@ -68,6 +69,7 @@ class ActivitiesInstaller(client: Client) : Installer, ActivityRegistry {
         DeleteFromIndex(client),
         DeleteFromIndexes(client),
         RebuildData(client),
+        UpdateStorage(client),
 
         ActivityInstaller(client),
 
