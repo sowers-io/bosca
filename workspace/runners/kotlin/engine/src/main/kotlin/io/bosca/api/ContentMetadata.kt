@@ -49,6 +49,16 @@ class ContentMetadata(network: NetworkClient) : Api(network) {
         return response.data?.content?.metadata?.bible?.chapter?.bibleChapterContent
     }
 
+    suspend fun getBibleHumanReference(
+        id: String,
+        version: Int?,
+        usfm: String
+    ): String? {
+        val response = network.graphql.query(GetBibleReferenceQuery(id, version.toOptional(), usfm)).execute()
+        response.validate()
+        return response.data?.content?.metadata?.bible?.chapter?.reference?.human
+    }
+
     suspend fun getDocument(id: String, version: Int): Document? {
         val response = network.graphql.query(GetMetadataDocumentQuery(id, version)).execute()
         response.validate()
