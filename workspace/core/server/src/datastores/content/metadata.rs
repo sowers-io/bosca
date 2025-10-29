@@ -261,7 +261,7 @@ impl MetadataDataStore {
     pub async fn set_parent_id(&self, id: &Uuid, parent_id: &Uuid) -> Result<(), Error> {
         let connection = self.pool.get().await?;
         let stmt = connection
-            .prepare_cached("update metadata parent_id = $2, modified = now() where id = $1")
+            .prepare_cached("update metadata set parent_id = $2, modified = now() where id = $1")
             .await?;
         connection.execute(&stmt, &[id, parent_id]).await?;
         Ok(())
