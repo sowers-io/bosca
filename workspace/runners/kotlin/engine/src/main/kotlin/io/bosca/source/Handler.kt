@@ -29,9 +29,13 @@ abstract class Handler {
                 File.createTempFile(job.id.id, ".$extension")
             }
             context.addFile(file)
-            client.files.download(it, file)
+            onDownload(it, file)
             return file
         }
         return null
+    }
+
+    open suspend fun onDownload(url: String, file: File) {
+        client.files.download(url, file)
     }
 }

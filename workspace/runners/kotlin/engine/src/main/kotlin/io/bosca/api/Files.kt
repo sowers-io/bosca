@@ -1,6 +1,9 @@
 package io.bosca.api
 
-import io.bosca.graphql.fragment.*
+import io.bosca.graphql.fragment.CollectionSupplementaryContentDownload
+import io.bosca.graphql.fragment.MetadataContentDownload
+import io.bosca.graphql.fragment.MetadataContentUpload
+import io.bosca.graphql.fragment.MetadataSupplementaryContentDownload
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -55,10 +58,12 @@ class Files(network: NetworkClient) : Api(network) {
             Files.probeContentType(file.toPath())
         } ?: "application/octet-stream"
         val request = Request.Builder()
-            .post(MultipartBody.Builder()
-                .setType(FORM)
-                .addFormDataPart("file", file.name, file.asRequestBody(mimeType.toMediaType()))
-                .build())
+            .post(
+                MultipartBody.Builder()
+                    .setType(FORM)
+                    .addFormDataPart("file", file.name, file.asRequestBody(mimeType.toMediaType()))
+                    .build()
+            )
             .url(upload.url)
             .apply {
                 upload.headers.forEach { header ->
@@ -69,11 +74,12 @@ class Files(network: NetworkClient) : Api(network) {
         execute(request, file)
     }
 
-    suspend fun download(url: String, file: File) {
-        val request = Request.Builder()
-            .url(url)
-            .build()
-        execute(request, file)
+    suspend fun download(url: String, file: File, authorization: String? = null) {
+        val request = Request.Builder().url(url)
+        authorization?.let {
+            request.header("Authorization", it)
+        }
+        execute(request.build(), file)
     }
 
     private suspend fun execute(request: Request, file: File) {
