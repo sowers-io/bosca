@@ -10,7 +10,7 @@ data class ContainerAttributes(
     override val classes: String? = null,
     val name: String? = null,
     val metadataId: String? = null,
-    val references: List<String>? = null
+    var references: List<String>? = null
 ) : DocumentAttributes {
 
     override fun withClasses(classes: String?): ContainerAttributes {
