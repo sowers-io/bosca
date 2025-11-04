@@ -592,6 +592,7 @@ type MetadataMutation {
     setMetadataSystemAttributes(attributes: JSON!, id: String!): Boolean!
     setMetadataTextContents(content: String!, contentType: String, id: String!): Boolean!
     setMetadataUploaded(configurations: [WorkflowConfigurationInput!], contentType: String, id: String!, len: Int!, ready: Boolean): Boolean!
+    setName(metadataId: String!, metadataVersion: Int!, name: String!): Metadata!
     setParent(metadataId: String!, parentId: String!): Boolean!
     setPublic(id: String!, public: Boolean!): Metadata!
     setPublicContent(id: String!, public: Boolean!): Metadata!
@@ -1133,6 +1134,7 @@ type Workflow {
 type WorkflowActivity {
     activityId: String!
     configuration: JSON
+    description: String
     executionGroup: Int!
     id: Int!
     inputs: [WorkflowActivityParameter!]!

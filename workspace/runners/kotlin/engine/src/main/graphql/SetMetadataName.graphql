@@ -1,0 +1,9 @@
+mutation SetMetadataName($id: String!, $version: Int!, $name: String!) {
+    content {
+        metadata {
+            setName(metadataId: $id, metadataVersion: $version, name: $name) {
+                id
+            }
+        }
+    }
+}

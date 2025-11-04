@@ -735,7 +735,32 @@ impl MetadataMutationObject {
         ctx.content.metadata.edit(ctx, &id, &metadata).await?;
         match ctx.content.metadata.get(&id).await? {
             Some(metadata) => Ok(metadata.into()),
-            None => Err(Error::new("Error creating metadata")),
+            None => Err(Error::new("Error editing metadata")),
+        }
+    }
+
+    async fn set_name(
+        &self,
+        ctx: &Context<'_>,
+        metadata_id: String,
+        metadata_version: i32,
+        name: String,
+    ) -> Result<MetadataObject, Error> {
+        let ctx = ctx.data::<BoscaContext>()?;
+        let metadata_id = Uuid::parse_str(&metadata_id)?;
+        let check = PermissionCheck::new_with_metadata_id_with_version(
+            metadata_id,
+            metadata_version,
+            PermissionAction::Edit
+        );
+        let current = ctx.metadata_permission_check(check).await?;
+        if current.locked && !ctx.has_service_account().await? {
+            return Err(Error::new("locked"));
+        }
+        ctx.content.metadata.set_name(ctx, &metadata_id, &name).await?;
+        match ctx.content.metadata.get(&metadata_id).await? {
+            Some(metadata) => Ok(metadata.into()),
+            None => Err(Error::new("Error editing metadata")),
         }
     }
 

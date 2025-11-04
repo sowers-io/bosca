@@ -381,6 +381,25 @@ impl MetadataDataStore {
         Ok(())
     }
 
+    #[tracing::instrument(skip(self, ctx, id, name))]
+    pub async fn set_name(
+        &self,
+        ctx: &BoscaContext,
+        id: &Uuid,
+        name: &String,
+    ) -> Result<(), Error> {
+        let mut connection = self.pool.get().await?;
+        let txn = connection.transaction().await?;
+        let stmt = txn
+            .prepare_cached("update metadata set name = $1, modified = now() where id = $2")
+            .await?;
+        txn.execute(&stmt, &[name, id]).await?;
+        update_metadata_etag(&txn, id).await?;
+        txn.commit().await?;
+        self.on_metadata_changed(ctx, id).await?;
+        Ok(())
+    }
+
     #[tracing::instrument(skip(self, ctx, id, public))]
     pub async fn set_public(
         &self,

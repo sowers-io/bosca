@@ -275,6 +275,12 @@ class ContentMetadata(network: NetworkClient) : Api(network) {
         response.validate()
     }
 
+    suspend fun setName(id: String, version: Int, name: String) {
+        val response = network.graphql.mutation(SetMetadataNameMutation(id, version, name)).execute()
+        response.validate()
+    }
+
+
     suspend fun setDocument(id: String, version: Int, document: DocumentInput) {
         val response = network.graphql.mutation(SetDocumentMutation(id, version, document)).execute()
         response.validate()
