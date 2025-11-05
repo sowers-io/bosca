@@ -9,7 +9,7 @@ data class ContainerAttributes(
     @SerialName("class")
     override val classes: String? = null,
     val name: String? = null,
-    val metadataId: String? = null,
+    var metadataId: String? = null,
     var references: List<String>? = null
 ) : DocumentAttributes {
 

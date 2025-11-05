@@ -140,7 +140,7 @@ impl DocumentsDataStore {
                 &template.content,
             ],
         )
-        .await?;
+            .await?;
         self.add_template_items_txn(
             txn,
             metadata_id,
@@ -148,7 +148,7 @@ impl DocumentsDataStore {
             &template.attributes,
             &template.containers,
         )
-        .await?;
+            .await?;
         Ok(())
     }
 
@@ -172,17 +172,17 @@ impl DocumentsDataStore {
                 &template.content,
             ],
         )
-        .await?;
+            .await?;
         txn.execute(
             "delete from document_template_attributes where metadata_id = $1 and version = $2",
             &[metadata_id, &version],
         )
-        .await?;
+            .await?;
         txn.execute(
             "delete from document_template_containers where metadata_id = $1 and version = $2",
             &[metadata_id, &version],
         )
-        .await?;
+            .await?;
         self.add_template_items_txn(
             txn,
             metadata_id,
@@ -190,7 +190,7 @@ impl DocumentsDataStore {
             &template.attributes,
             &template.containers,
         )
-        .await?;
+            .await?;
         Ok(())
     }
 
@@ -207,7 +207,7 @@ impl DocumentsDataStore {
             "delete from document_template_attributes where metadata_id = $1 and version = $2",
             &[metadata_id, &version],
         )
-        .await?;
+            .await?;
         self.add_template_items_txn(&txn, metadata_id, version, attributes, &None)
             .await?;
         txn.commit().await?;
@@ -230,7 +230,7 @@ impl DocumentsDataStore {
             "delete from document_template_containers where metadata_id = $1 and version = $2",
             &[metadata_id, &version],
         )
-        .await?;
+            .await?;
         let attributes = Vec::new();
         let containers = Some(containers.to_vec());
         self.add_template_items_txn(&txn, metadata_id, version, &attributes, &containers)
@@ -315,7 +315,7 @@ impl DocumentsDataStore {
                 &attr.supplementary_key,
             ],
         )
-        .await?;
+            .await?;
         for wid in &attr.workflows {
             txn.execute(
                 &stmt_wid,
@@ -327,7 +327,7 @@ impl DocumentsDataStore {
                     &wid.auto_run,
                 ],
             )
-            .await?;
+                .await?;
         }
         txn.commit().await?;
         Ok(())
@@ -381,7 +381,7 @@ impl DocumentsDataStore {
                 &sort,
             ],
         )
-        .await?;
+            .await?;
         for wid in &container.workflows {
             txn.execute(
                 &stmt_wid,
@@ -393,7 +393,7 @@ impl DocumentsDataStore {
                     &wid.auto_run,
                 ],
             )
-            .await?;
+                .await?;
         }
         txn.commit().await?;
         Ok(())
@@ -445,7 +445,7 @@ impl DocumentsDataStore {
                     &attr.supplementary_key,
                 ],
             )
-            .await?;
+                .await?;
             for wid in &attr.workflows {
                 txn.execute(
                     &stmt_wid,
@@ -457,7 +457,7 @@ impl DocumentsDataStore {
                         &wid.auto_run,
                     ],
                 )
-                .await?;
+                    .await?;
             }
         }
         if let Some(containers) = containers {
@@ -481,7 +481,7 @@ impl DocumentsDataStore {
                         &sort,
                     ],
                 )
-                .await?;
+                    .await?;
                 for wid in &container.workflows {
                     txn.execute(
                         &stmt_wid,
@@ -493,7 +493,7 @@ impl DocumentsDataStore {
                             &wid.auto_run,
                         ],
                     )
-                    .await?;
+                        .await?;
                 }
             }
         }
@@ -538,7 +538,7 @@ impl DocumentsDataStore {
                 &document.content,
             ],
         )
-        .await?;
+            .await?;
         Ok(())
     }
 
@@ -567,12 +567,13 @@ impl DocumentsDataStore {
                 &document.content,
             ],
         )
-        .await?;
+            .await?;
         let stmt = txn
             .prepare_cached("update metadata set modified = now() where id = $1")
             .await?;
         txn.execute(&stmt, &[metadata_id]).await?;
         update_metadata_etag(&txn, metadata_id).await?;
+        self.delete_document_collaboration(&txn, metadata_id, version).await?;
         txn.commit().await?;
         self.on_metadata_changed(metadata_id).await?;
         Ok(())
@@ -602,7 +603,7 @@ impl DocumentsDataStore {
                 &document.content,
             ],
         )
-        .await?;
+            .await?;
         Ok(())
     }
 
@@ -635,6 +636,22 @@ impl DocumentsDataStore {
             .await?;
         connection
             .execute(&stmt, &[metadata_id, &version, &content])
+            .await?;
+        Ok(())
+    }
+
+    #[tracing::instrument(skip(self, metadata_id, version))]
+    pub async fn delete_document_collaboration(
+        &self,
+        txn: &Transaction<'_>,
+        metadata_id: &Uuid,
+        version: i32,
+    ) -> Result<(), Error> {
+        let stmt = txn
+            .prepare_cached("delete from document_collaborations where metadata_id = $1 and version = $2")
+            .await?;
+        txn
+            .execute(&stmt, &[metadata_id, &version])
             .await?;
         Ok(())
     }
