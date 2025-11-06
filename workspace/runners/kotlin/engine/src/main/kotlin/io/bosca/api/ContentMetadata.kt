@@ -368,6 +368,13 @@ class ContentMetadata(network: NetworkClient) : Api(network) {
         response.validate()
     }
 
+    suspend fun mergeAttributes(id: String, attributes: Any) {
+        val response =
+            network.graphql.mutation(MergeMetadataAttributesMutation(id, attributes))
+                .execute()
+        response.validate()
+    }
+
     suspend fun mergeRelationshipAttributes(id1: String, id2: String, relationship: String, attributes: Any) {
         val response =
             network.graphql.mutation(MergeMetadataRelationshipAttributesMutation(id1, id2, relationship, attributes))
