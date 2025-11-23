@@ -10,7 +10,7 @@ pub enum Style {
 }
 
 #[derive(Union, Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(tag = "type")]
+#[serde(tag = "_")]
 pub enum Style2 {
     #[serde(rename = "s")]
     Declared(DeclaredStyle),
