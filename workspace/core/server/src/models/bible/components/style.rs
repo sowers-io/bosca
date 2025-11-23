@@ -9,6 +9,15 @@ pub enum Style {
     Referenced(StyleReference),
 }
 
+#[derive(Union, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(tag = "type")]
+pub enum Style2 {
+    #[serde(rename = "s")]
+    Declared(DeclaredStyle),
+    #[serde(rename = "sr")]
+    Referenced(StyleReference),
+}
+
 #[derive(SimpleObject, Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct DeclaredStyle {
     pub id: String,
