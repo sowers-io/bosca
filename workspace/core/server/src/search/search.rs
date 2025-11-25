@@ -103,10 +103,14 @@ impl SearchClient {
                 continue;
             }
             let obj = obj.unwrap();
-            let Some(id) = obj.get("id") else {
-                return Err(Error::new("missing id"));
-            };
-            let id = id.as_str().unwrap();
+            let mut id = obj.get("contentId");
+            if id.is_none() {
+                id = obj.get("id");
+            }
+            if id.is_none() {
+                continue;
+            }
+            let id = id.unwrap().as_str().unwrap();
             let Ok(id) = Uuid::parse_str(id) else {
                 error!("failed to parse id: {id}");
                 continue;
