@@ -154,7 +154,7 @@ impl From<&Row> for Metadata {
             system_attributes: row.get("system_attributes"),
             item_attributes: row.try_get("item_attributes").unwrap_or(None),
             created: row.get("created"),
-            modified: row.get("modified"),
+            modified: row.try_get("modified").unwrap_or(row.get("created")),
             workflow_state_id: row.get("workflow_state_id"),
             workflow_state_pending_id: row.get("workflow_state_pending_id"),
             workflow_state_valid: row.get("workflow_state_valid"),
