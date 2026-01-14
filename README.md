@@ -1,3 +1,5 @@
+NOTE: We've moved on to version 3 of Bosca, and this codebase is largely obsolete.  We'll provide more details in the future.
+
 # Bosca
 
 Bosca is an AI-powered Content Management, Analytics, and Personalization platform built to help organizations unlock the 
